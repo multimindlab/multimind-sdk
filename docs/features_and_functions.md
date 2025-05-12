@@ -1,5 +1,85 @@
 # MultiMind SDK: Features & Functions
 
+## Project Structure (Current & Planned)
+
+Below is the planned modular structure for MultiMind SDK. **Modules marked as [implemented] are available now; others are planned for future releases.**
+
+```
+multimind-sdk/
+├── multimind/
+│   ├── __init__.py
+│   ├── config.py                   # [implemented] Central config loader
+│
+│   ├── models/                    # [implemented] Unified model wrappers
+│   │   ├── base.py                # [implemented]
+│   │   ├── openai.py              # [implemented]
+│   │   ├── claude.py              # [planned]
+│   │   ├── mistral.py             # [planned]
+│   │   ├── huggingface.py         # [implemented]
+│   │   └── ollama.py              # [implemented]
+│
+│   ├── router/                    # [implemented] Fallback, latency-aware, cost-aware logic
+│   │   ├── strategy.py            # [implemented]
+│   │   ├── fallback.py            # [implemented]
+│   │   └── router.py              # [implemented]
+│
+│   ├── rag/                       # [implemented] Retrieval-Augmented Generation support
+│   │   ├── base.py                # [implemented]
+│   │   ├── embedder.py            # [implemented]
+│   │   └── vector_store.py        # [implemented]
+│
+│   ├── fine_tuning/              # [implemented] Training logic
+│   │   ├── lora_trainer.py        # [implemented]
+│   │   ├── qlora_trainer.py       # [implemented]
+│   │   └── dataset_loader.py      # [implemented]
+│
+│   ├── agents/                   # [planned] Agent abstraction
+│   │   ├── agent.py               # [planned]
+│   │   ├── memory.py              # [planned]
+│   │   ├── agent_loader.py        # [planned]
+│   │   └── tools/
+│   │       ├── web_search.py      # [planned]
+│   │       ├── calculator.py      # [planned]
+│   │       └── file_reader.py     # [planned]
+│
+│   ├── orchestration/           # [planned] Prompt chaining and flow control
+│   │   ├── prompt_chain.py        # [planned]
+│   │   └── task_runner.py         # [planned]
+│
+│   ├── mcp/                     # [planned] Model Composition Protocol
+│   │   ├── parser.py             # [planned]
+│   │   ├── executor.py           # [planned]
+│   │   └── schema.json           # [planned]
+│
+│   ├── integrations/           # [implemented] Compatibility with LangChain, CrewAI, etc.
+│   │   ├── langchain_adapter.py   # [implemented]
+│   │   ├── crewai_adapter.py      # [implemented]
+│   │   └── lite_llm.py           # [implemented]
+│
+│   ├── logging/
+│   │   ├── trace_logger.py        # [planned]
+│   │   └── usage_tracker.py       # [planned]
+│
+│   ├── cli/
+│   │   ├── main.py                # [implemented] multimind CLI entry
+│   │   └── commands/
+│   │       ├── agent.py           # [planned]
+│   │       ├── run_mcp.py         # [planned]
+│   │       └── finetune.py        # [planned]
+│
+├── examples/
+├── configs/                    # [implemented] Sample config files (e.g., train_config.yaml)
+├── tests/                      # [implemented]
+├── README.md
+├── LICENSE
+├── pyproject.toml
+├── setup.py
+```
+
+> **Note:** This structure is forward-looking. All [implemented] modules are available now; [planned] modules will be added in future releases. Current functionality is not impacted.
+
+---
+
 ## Overview
 
 MultiMind SDK is a modular, extensible framework for parameter-efficient fine-tuning, inference, and management of large language models (LLMs) across multiple providers. It supports advanced routing, logging, configuration, and integration with popular agent and orchestration frameworks.
