@@ -344,4 +344,51 @@ Workflow files in `.github/workflows/`:
 - Check [documentation](https://multimind-sdk.readthedocs.io/)
 - Search [issues](https://github.com/multimind-dev/multimind-sdk/issues)
 - Join [Discord](https://discord.gg/your-invite-link)
-- Ask in [Discussions](https://github.com/multimind-dev/multimind-sdk/discussions) 
+- Ask in [Discussions](https://github.com/multimind-dev/multimind-sdk/discussions)
+
+## Examples and Testing
+
+The SDK includes a comprehensive set of examples and tests to help developers understand and verify the functionality:
+
+### Examples
+
+The [examples directory](../examples/) contains working examples of all major SDK features:
+
+- [Basic Agent Usage](../examples/basic_agent.py) - Shows how to create and use agents
+- [Prompt Chaining](../examples/prompt_chain.py) - Demonstrates complex reasoning workflows
+- [Task Running](../examples/task_runner.py) - Shows workflow orchestration
+- [MCP Workflows](../examples/mcp_workflow.py) - Examples of Model Composition Protocol
+- [Usage Tracking](../examples/usage_tracking.py) - Demonstrates monitoring and logging
+
+Each example is self-contained and includes detailed comments. They serve as both documentation and test cases.
+
+### Running Tests
+
+The test suite includes unit tests, integration tests, and example-based tests:
+
+```bash
+# Run all tests
+pytest
+
+# Run specific test categories
+pytest tests/test_basic.py  # Basic functionality tests
+pytest tests/test_agents.py  # Agent-specific tests
+pytest tests/test_models.py  # Model wrapper tests
+
+# Run with coverage
+pytest --cov=multimind
+
+# Run examples as tests
+pytest examples/
+```
+
+### Writing Tests
+
+When adding new features:
+
+1. Write unit tests in the `tests/` directory
+2. Add example scripts in `examples/`
+3. Update existing examples if they demonstrate related functionality
+4. Ensure all tests pass before submitting PRs
+
+See [test_basic.py](../tests/test_basic.py) for examples of test structure and best practices. 

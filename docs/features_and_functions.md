@@ -1,88 +1,81 @@
 # MultiMind SDK: Features & Functions
 
-## Project Structure (Current & Planned)
+## Project Structure (Current & Implemented)
 
-Below is the planned modular structure for MultiMind SDK. **Modules marked as [implemented] are available now; others are planned for future releases.**
+Below is the current modular structure for MultiMind SDK. All modules are now implemented and available:
 
 ```
 multimind-sdk/
 ├── multimind/
 │   ├── __init__.py
-│   ├── config.py                   # [implemented] Central config loader
+│   ├── config.py                   # Central config loader
 │
-│   ├── models/                    # [implemented] Unified model wrappers
-│   │   ├── base.py                # [implemented]
-│   │   ├── openai.py              # [implemented]
-│   │   ├── claude.py              # [planned]
-│   │   ├── mistral.py             # [planned]
-│   │   ├── huggingface.py         # [implemented]
-│   │   └── ollama.py              # [implemented]
+│   ├── models/                    # Unified model wrappers
+│   │   ├── base.py                # Base model interface
+│   │   ├── openai.py              # OpenAI model wrapper
+│   │   ├── claude.py              # Claude model wrapper
+│   │   ├── mistral.py             # Mistral model wrapper
+│   │   ├── huggingface.py         # HuggingFace model wrapper
+│   │   └── ollama.py              # Ollama model wrapper
 │
-│   ├── router/                    # [implemented] Fallback, latency-aware, cost-aware logic
-│   │   ├── strategy.py            # [implemented]
-│   │   ├── fallback.py            # [implemented]
-│   │   └── router.py              # [implemented]
+│   ├── router/                    # Model routing and selection
+│   │   ├── strategy.py            # Routing strategies
+│   │   ├── fallback.py            # Fallback handling
+│   │   └── router.py              # Main router implementation
 │
-│   ├── rag/                       # [implemented] Retrieval-Augmented Generation support
-│   │   ├── base.py                # [implemented]
-│   │   ├── embedder.py            # [implemented]
-│   │   └── vector_store.py        # [implemented]
+│   ├── rag/                       # Retrieval-Augmented Generation
+│   │   ├── base.py                # Base RAG interface
+│   │   ├── embedder.py            # Embedding utilities
+│   │   └── vector_store.py        # Vector store integration
 │
-│   ├── fine_tuning/              # [implemented] Training logic
-│   │   ├── lora_trainer.py        # [implemented]
-│   │   ├── qlora_trainer.py       # [implemented]
-│   │   └── dataset_loader.py      # [implemented]
+│   ├── fine_tuning/              # Training and adaptation
+│   │   ├── lora_trainer.py        # LoRA training
+│   │   ├── qlora_trainer.py       # QLoRA training
+│   │   └── dataset_loader.py      # Dataset handling
 │
-│   ├── agents/                   # [planned] Agent abstraction
-│   │   ├── agent.py               # [planned]
-│   │   ├── memory.py              # [planned]
-│   │   ├── agent_loader.py        # [planned]
+│   ├── agents/                   # Agent system
+│   │   ├── agent.py               # Agent implementation
+│   │   ├── memory.py              # Agent memory
+│   │   ├── agent_loader.py        # Agent configuration loading
 │   │   └── tools/
-│   │       ├── web_search.py      # [planned]
-│   │       ├── calculator.py      # [planned]
-│   │       └── file_reader.py     # [planned]
+│   │       ├── web_search.py      # Web search tool
+│   │       ├── calculator.py      # Calculator tool
+│   │       └── file_reader.py     # File operations tool
 │
-│   ├── orchestration/           # [planned] Prompt chaining and flow control
-│   │   ├── prompt_chain.py        # [planned]
-│   │   └── task_runner.py         # [planned]
+│   ├── orchestration/           # Workflow orchestration
+│   │   ├── prompt_chain.py        # Prompt chaining
+│   │   └── task_runner.py         # Task orchestration
 │
-│   ├── mcp/                     # [planned] Model Composition Protocol
-│   │   ├── parser.py             # [planned]
-│   │   ├── executor.py           # [planned]
-│   │   └── schema.json           # [planned]
+│   ├── mcp/                     # Model Composition Protocol
+│   │   ├── parser.py             # MCP workflow parser
+│   │   ├── executor.py           # MCP workflow executor
+│   │   └── schema.json           # MCP schema definition
 │
-│   ├── integrations/           # [implemented] Compatibility with LangChain, CrewAI, etc.
-│   │   ├── langchain_adapter.py   # [implemented]
-│   │   ├── crewai_adapter.py      # [implemented]
-│   │   └── lite_llm.py           # [implemented]
+│   ├── integrations/           # Framework integrations
+│   │   ├── langchain_adapter.py   # LangChain integration
+│   │   ├── crewai_adapter.py      # CrewAI integration
+│   │   └── lite_llm.py           # LiteLLM integration
 │
-│   ├── logging/
-│   │   ├── trace_logger.py        # [planned]
-│   │   └── usage_tracker.py       # [planned]
+│   ├── logging/                # Monitoring and logging
+│   │   ├── trace_logger.py        # Trace logging
+│   │   └── usage_tracker.py       # Usage tracking
 │
-│   ├── cli/
-│   │   ├── main.py                # [implemented] multimind CLI entry
+│   ├── cli/                    # Command-line interface
+│   │   ├── main.py                # CLI entry point
 │   │   └── commands/
-│   │       ├── agent.py           # [planned]
-│   │       ├── run_mcp.py         # [planned]
-│   │       └── finetune.py        # [planned]
+│   │       ├── agent.py           # Agent commands
+│   │       ├── run_mcp.py         # MCP workflow commands
+│   │       └── finetune.py        # Fine-tuning commands
 │
-├── examples/
-├── configs/                    # [implemented] Sample config files (e.g., train_config.yaml)
-├── tests/                      # [implemented]
+├── examples/                   # Example scripts
+├── configs/                    # Configuration templates
+├── tests/                      # Test suite
+├── docs/                       # Documentation
 ├── README.md
 ├── LICENSE
 ├── pyproject.toml
-├── setup.py
+└── setup.py
 ```
-
-> **Note:** This structure is forward-looking. All [implemented] modules are available now; [planned] modules will be added in future releases. Current functionality is not impacted.
-
----
-
-## Overview
-
-MultiMind SDK is a modular, extensible framework for parameter-efficient fine-tuning, inference, and management of large language models (LLMs) across multiple providers. It supports advanced routing, logging, configuration, and integration with popular agent and orchestration frameworks.
 
 ---
 
@@ -90,11 +83,46 @@ MultiMind SDK is a modular, extensible framework for parameter-efficient fine-tu
 
 ### Model Support
 - **Model Wrappers:**
-  - OpenAI (GPT)
+  - OpenAI (GPT-3.5, GPT-4)
+  - Anthropic Claude (Claude-3)
+  - Mistral AI (Mistral Medium)
   - HuggingFace (any compatible model)
   - Ollama (local models)
-  - [Planned/Extensible] Anthropic Claude, Mistral, and others
-- **Unified Interface:** All wrappers support `generate`, `chat`, and `embeddings` (where applicable).
+- **Unified Interface:** All wrappers support `generate`, `chat`, and `embeddings` (where applicable)
+
+### Agent System
+- **Agent Framework:**
+  - Configurable agents with memory and tools
+  - Agent configuration loading from MCP files
+  - Built-in tools (calculator, web search, file operations)
+  - Extensible tool system
+- **Memory Management:**
+  - Conversation history tracking
+  - Configurable memory size
+  - Memory persistence
+
+### Orchestration
+- **Prompt Chains:**
+  - Multi-step reasoning workflows
+  - Variable substitution
+  - Conditional execution
+- **Task Runner:**
+  - Task dependencies
+  - Retry logic
+  - Context management
+  - Parallel execution
+
+### Model Composition Protocol (MCP)
+- **Workflow Definition:**
+  - JSON/YAML-based workflow specification
+  - Model composition and chaining
+  - Conditional execution
+  - Data transformation
+- **Execution Engine:**
+  - Workflow validation
+  - Model registration
+  - Step execution
+  - Error handling
 
 ### Routing & Strategy
 - **Model Router:**
@@ -104,7 +132,7 @@ MultiMind SDK is a modular, extensible framework for parameter-efficient fine-tu
 
 ### Fine-Tuning & PEFT
 - **PEFT Methods:**
-  - LoRA, Adapters, Prefix/Prompt Tuning, IA³, BitFit, QLoRA, Compacter, HyperLoRA, UniPELT, MAM, and more
+  - LoRA, Adapters, Prefix/Prompt Tuning, IA³, BitFit, QLoRA, Compacter, HyperLoRA, UniPELT, MAM
 - **Meta-Learning:**
   - Few-shot (MAML, Reptile, Prototype)
   - Transfer learning
@@ -114,39 +142,71 @@ MultiMind SDK is a modular, extensible framework for parameter-efficient fine-tu
   - Embedding and retrieval utilities
 
 ### Logging & Monitoring
-- **Centralized Logging:**
-  - Token usage, cost, latency, and errors
-  - Configurable output (console, file, etc.)
+- **Usage Tracking:**
+  - Token usage monitoring
+  - Cost tracking
+  - Operation logging
+- **Trace Logging:**
+  - Request/response tracing
+  - Performance metrics
+  - Error tracking
+- **Export & Reporting:**
+  - JSON/CSV export
+  - Usage summaries
+  - Cost analysis
 
 ### Configuration
 - **Config Management:**
   - YAML/JSON config files
-  - `.env` and environment variable support for secrets
-  - CLI and SDK share config logic
+  - `.env` and environment variable support
+  - CLI and SDK config sharing
 
 ### CLI & Integration
 - **CLI:**
-  - Train, evaluate, infer, list, download, export, delete, config, info, completion
-  - Interactive prompts for missing arguments
+  - Agent management
+  - MCP workflow execution
+  - Fine-tuning commands
+  - Usage monitoring
 - **Framework Integrations:**
-  - LangChain, CrewAI, LiteLLM, SuperAGI, Semantic Kernel
-  - Adapter classes for seamless use in agent frameworks
+  - LangChain, CrewAI, LiteLLM, SuperAGI
+  - Adapter classes for seamless integration
+
+---
+
+## Feature Table
+
+| Category         | Feature/Functionality                                      | Status      |
+|------------------|-----------------------------------------------------------|-------------|
+| Model Wrappers   | OpenAI, Claude, Mistral, HuggingFace, Ollama              | Implemented |
+| Agent System     | Agent framework, memory, tools, configuration loading      | Implemented |
+| Orchestration    | Prompt chains, task runner, workflow management           | Implemented |
+| MCP             | Workflow definition, execution, model composition         | Implemented |
+| Routing         | Strategy, fallback, dynamic selection                     | Implemented |
+| Logging         | Usage tracking, trace logging, reporting                  | Implemented |
+| Config          | YAML/JSON, .env, env vars, validation                     | Implemented |
+| CLI             | Agent, MCP, fine-tuning, monitoring commands              | Implemented |
+| Fine-Tuning     | LoRA, Adapters, Prefix, Prompt, IA³, BitFit, QLoRA       | Implemented |
+| Meta-Learning   | Few-shot, transfer, multi-task                            | Implemented |
+| RAG             | FAISS, Chroma, embedding, retrieval                       | Implemented |
+| Integrations    | LangChain, CrewAI, LiteLLM, SuperAGI                      | Implemented |
+
+---
+
+## Examples
+
+The SDK includes comprehensive examples demonstrating all major features:
+
+- [Basic Agent Usage](../examples/basic_agent.py) - Agent creation and usage
+- [Prompt Chaining](../examples/prompt_chain.py) - Complex reasoning workflows
+- [Task Running](../examples/task_runner.py) - Workflow orchestration
+- [MCP Workflows](../examples/mcp_workflow.py) - Model composition examples
+- [Usage Tracking](../examples/usage_tracking.py) - Monitoring and logging
+
+See the [examples README](../examples/README.md) for detailed usage instructions.
 
 ---
 
 ## Architecture Overview
-
-- **Model Wrappers**: Abstract base + provider-specific classes
-- **Router**: Strategy, fallback, and dynamic selection
-- **Fine-Tuning**: Modular PEFT, meta-learning, and RAG
-- **Logging**: Centralized, pluggable
-- **Config**: Unified loader, validation, and secrets management
-- **CLI**: Click-based, extensible, test-covered
-- **Integrations**: Adapter pattern for external frameworks
-
----
-
-## Flow Chart
 
 ```mermaid
 graph TD
@@ -154,48 +214,57 @@ graph TD
         CLI[CLI]
         API[Python API]
     end
-    CLI -->|calls| Router
-    API -->|calls| Router
-    Router -->|routes| ModelWrappers
-    ModelWrappers -->|invoke| Providers[OpenAI/HF/Ollama/Claude/Mistral]
-    Router -->|fallback/strategy| ModelWrappers
-    Router -->|logs| Logging
-    ModelWrappers -->|logs| Logging
-    CLI -->|reads| Config
-    API -->|reads| Config
-    FineTuning[Fine-Tuning/PEFT] --> ModelWrappers
-    RAG[RAG/Vector Store] --> ModelWrappers
-    Integrations -->|adapts| ModelWrappers
-    subgraph External
-        Providers
-        VectorStore[FAISS/Chroma]
+    
+    subgraph Core
+        Agent[Agent System]
+        MCP[MCP Engine]
+        Router[Model Router]
+        Chain[Prompt Chain]
+        Runner[Task Runner]
     end
-    RAG --> VectorStore
+    
+    subgraph Models
+        OpenAI[OpenAI]
+        Claude[Claude]
+        Mistral[Mistral]
+        HF[HuggingFace]
+        Ollama[Ollama]
+    end
+    
+    subgraph Tools
+        Memory[Agent Memory]
+        Calculator[Calculator]
+        WebSearch[Web Search]
+        FileOps[File Operations]
+    end
+    
+    subgraph Monitoring
+        Usage[Usage Tracker]
+        Trace[Trace Logger]
+        Export[Export/Report]
+    end
+    
+    CLI -->|commands| Agent
+    CLI -->|workflows| MCP
+    API -->|calls| Agent
+    API -->|executes| MCP
+    
+    Agent -->|uses| Router
+    Agent -->|manages| Memory
+    Agent -->|invokes| Tools
+    
+    MCP -->|composes| Models
+    MCP -->|orchestrates| Chain
+    MCP -->|runs| Runner
+    
+    Router -->|routes to| Models
+    Chain -->|uses| Models
+    Runner -->|executes| Chain
+    
+    Agent -->|logs to| Usage
+    MCP -->|logs to| Trace
+    Usage -->|exports to| Export
+    Trace -->|exports to| Export
 ```
-
----
-
-## Feature Table
-
-| Category         | Feature/Functionality                                      | Status         |
-|------------------|-----------------------------------------------------------|----------------|
-| Model Wrappers   | OpenAI, HuggingFace, Ollama, (Claude/Mistral: planned)    | Implemented/Extensible |
-| Routing          | Strategy, fallback, dynamic selection                     | Implemented    |
-| Logging          | Token usage, cost, latency, errors                        | Implemented    |
-| Config           | YAML/JSON, .env, env vars, validation                     | Implemented    |
-| CLI              | All major commands, interactive, test-covered             | Implemented    |
-| Fine-Tuning/PEFT | LoRA, Adapters, Prefix, Prompt, IA³, BitFit, QLoRA, etc.  | Implemented    |
-| Meta-Learning    | Few-shot, transfer, multi-task                            | Implemented    |
-| RAG              | FAISS, Chroma, embedding, retrieval                       | Implemented    |
-| Integrations     | LangChain, CrewAI, LiteLLM, SuperAGI, Semantic Kernel     | Implemented    |
-
----
-
-## Extensibility
-- New model providers can be added by subclassing the base wrapper.
-- New routing strategies and logging sinks are pluggable.
-- CLI and config are designed for easy extension.
-
----
 
 For more details, see the [Architecture Overview](architecture.md) and [Development Guide](development.md). 

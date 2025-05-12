@@ -8,9 +8,9 @@ numpy>=1.24.0
 pydantic>=2.0.0
 
 # RAG dependencies
-faiss-cpu>=1.7.4
+faiss-cpu>=1.7.0
 chromadb>=0.4.0
-sentence-transformers>=2.2.2
+sentence-transformers>=2.2.0
 
 # Fine-tuning dependencies
 peft>=0.5.0
@@ -29,4 +29,11 @@ pytest-asyncio>=0.21.0
 black>=23.0.0
 isort>=5.12.0
 mypy>=1.0.0
-ruff>=0.1.0 
+ruff>=0.1.0
+
+# Additional dependencies
+mistralai>=0.0.7
+pandas>=2.0.0
+sqlalchemy>=2.0.0
+python-dotenv>=1.0.0
+typing-extensions>=4.5.0 

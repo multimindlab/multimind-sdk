@@ -34,6 +34,18 @@ pip install multimind-sdk[langchain,lite-llm,superagi]
 
 ## 🛠️ Usage Examples
 
+### Quick Start Examples
+
+We provide comprehensive examples demonstrating various features of the SDK. Check out the [examples directory](examples/) for:
+
+- [Basic Agent Usage](examples/basic_agent.py) - Creating and using agents with different models
+- [Prompt Chaining](examples/prompt_chain.py) - Complex reasoning with multi-step prompts
+- [Task Running](examples/task_runner.py) - Orchestrating complex workflows
+- [MCP Workflows](examples/mcp_workflow.py) - Model Composition Protocol examples
+- [Usage Tracking](examples/usage_tracking.py) - Monitoring model usage and costs
+
+Each example includes detailed comments and demonstrates best practices. See the [examples README](examples/README.md) for more details.
+
 ### Basic PEFT Fine-Tuning
 ```python
 from multimind.fine_tuning import UniPELTPlusTuner
