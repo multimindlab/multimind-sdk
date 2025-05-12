@@ -14,6 +14,7 @@ Thank you for your interest in contributing to MultiMind SDK! This document prov
 8. [Pull Request Process](#pull-request-process)
 9. [Feature Requests and Bug Reports](#feature-requests-and-bug-reports)
 10. [Community](#community)
+11. [CLI Testing Guidelines](#cli-testing-guidelines)
 
 ## Code of Conduct
 
@@ -245,5 +246,38 @@ pytest --cov=multimind
 - [Architecture Overview](docs/architecture.md)
 - [Development Guidelines](docs/development.md)
 - [Release Process](docs/release_process.md)
+
+## CLI Testing Guidelines
+
+All new CLI features or changes **must** include corresponding tests in `tests/test_cli.py`.
+
+- Use `pytest` and `pytest-mock` for mocking SDK and external dependencies.
+- Use `click.testing.CliRunner` to invoke CLI commands and check outputs.
+- Test both success and failure cases, including edge cases and user prompts.
+- For destructive actions (like `delete`), test both confirmation and abort scenarios.
+
+### Minimal Example
+
+```python
+from click.testing import CliRunner
+from multimind.cli import cli
+
+def test_train_help():
+    runner = CliRunner()
+    result = runner.invoke(cli, ['train', '--help'])
+    assert result.exit_code == 0
+    assert "Fine-tune a model" in result.output
+
+def test_train_with_mock(mocker):
+    runner = CliRunner()
+    mock_tuner = mocker.patch('multimind.cli.UniPELTTuner')
+    instance = mock_tuner.return_value
+    instance.train.return_value = None
+    result = runner.invoke(cli, ['train', '--config', 'dummy.yaml'])
+    assert result.exit_code == 0 or result.exit_code == 1
+    instance.train.assert_called()
+```
+
+See `tests/test_cli.py` for more comprehensive examples.
 
 Thank you for contributing to MultiMind SDK! Your help makes the project better for everyone. 

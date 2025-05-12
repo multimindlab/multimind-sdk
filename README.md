@@ -116,3 +116,74 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 Your SDK solves all of this. One interface. Unified logic. Local + hosted models. Fine-tuning. Agent tools. No switching headaches.
 
 [www.multimind.dev](https://www.multimind.dev)
+
+---
+
+## 🖥️ Command-Line Interface
+
+MultiMind SDK provides a powerful CLI for training, evaluation, inference, and model management.
+
+### Basic Usage
+
+```bash
+multimind train --config configs/train_config.yaml
+# or (alias)
+multimind finetune --config configs/train_config.yaml
+```
+
+### Example Config (YAML or JSON)
+
+<details>
+<summary>train_config.yaml</summary>
+
+```yaml
+base_model_name: "bert-base-uncased"
+output_dir: "./output"
+methods:
+  - lora
+  - adapter
+method_configs:
+  lora:
+    r: 8
+    lora_alpha: 32
+    target_modules: ["q_proj", "v_proj"]
+    lora_dropout: 0.05
+    bias: "none"
+  adapter:
+    adapter_type: "houlsby"
+    adapter_size: 64
+    adapter_non_linearity: "relu"
+    adapter_dropout: 0.1
+    target_modules: ["k_proj", "o_proj"]
+training_args:
+  num_train_epochs: 3
+  per_device_train_batch_size: 4
+  learning_rate: 1e-3
+  fp16: true
+  logging_steps: 10
+  save_strategy: "epoch"
+  warmup_ratio: 0.1
+  lr_scheduler_type: "cosine"
+train_dataset: "path/to/train_dataset.json"
+eval_dataset: "path/to/eval_dataset.json"
+model_type: "causal_lm"
+```
+</details>
+
+- You can use either YAML or JSON for the config file.
+- Both `multimind train` and `multimind finetune` work identically.
+- The CLI will prompt for missing arguments interactively.
+
+### More CLI Commands
+
+- `multimind evaluate --model ./output/model --dataset data.json`
+- `multimind infer --model ./output/model --input "What is PEFT?"`
+- `multimind list-models`
+- `multimind download --model bert-base-uncased`
+- `multimind export --model ./output/model --format onnx --output ./output/model.onnx`
+- `multimind delete --model ./output/model`
+- `multimind config --set default_dir ./models`
+- `multimind info`
+- `multimind completion bash`
+
+See `multimind --help` for all options.
