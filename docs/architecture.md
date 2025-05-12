@@ -202,17 +202,20 @@ graph LR
    - Multi-node support
    - Model parallelism
    - Data parallelism
+   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Adistributed-training)
 
 2. **Advanced Meta-Learning**
    - Neural architecture search
    - Automated hyperparameter tuning
    - Multi-task optimization
+   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Ameta-learning)
 
 3. **Model Serving**
    - REST API
    - gRPC support
    - Model versioning
    - A/B testing
+   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Amodel-serving)
 
 ## Dependencies
 

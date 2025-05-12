@@ -15,11 +15,16 @@ This guide provides detailed instructions for setting up the development environ
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/yourusername/multimind-sdk.git
+   git clone https://github.com/multimind-dev/multimind-sdk.git
    cd multimind-sdk
    ```
 
-2. **Create Virtual Environment**
+2. **Add the upstream repository**
+   ```bash
+   git remote add upstream https://github.com/multimind-dev/multimind-sdk.git
+   ```
+
+3. **Create Virtual Environment**
    ```bash
    # Using venv
    python -m venv venv
@@ -30,7 +35,7 @@ This guide provides detailed instructions for setting up the development environ
    conda activate multimind
    ```
 
-3. **Install Development Dependencies**
+4. **Install Development Dependencies**
    ```bash
    # Install in editable mode with development dependencies
    pip install -e ".[dev]"
@@ -39,7 +44,7 @@ This guide provides detailed instructions for setting up the development environ
    pre-commit install
    ```
 
-4. **Verify Installation**
+5. **Verify Installation**
    ```bash
    # Run tests
    pytest
@@ -337,6 +342,6 @@ Workflow files in `.github/workflows/`:
 ### Getting Help
 
 - Check [documentation](https://multimind-sdk.readthedocs.io/)
-- Search [issues](https://github.com/yourusername/multimind-sdk/issues)
+- Search [issues](https://github.com/multimind-dev/multimind-sdk/issues)
 - Join [Discord](https://discord.gg/your-invite-link)
-- Ask in [Discussions](https://github.com/yourusername/multimind-sdk/discussions) 
+- Ask in [Discussions](https://github.com/multimind-dev/multimind-sdk/discussions) 
