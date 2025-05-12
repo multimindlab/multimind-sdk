@@ -404,11 +404,7 @@ If you use MultiMind SDK in your research, please cite:
 
 ## Contact
 
-<<<<<<< HEAD
 - GitHub Issues: [Report bugs or request features](https://github.com/multimind-dev/multimind-sdk/issues)
-=======
-- GitHub Issues: [Report bugs or request features](https://github.com/yourusername/multimind-sdk/issues)
->>>>>>> 8b551eb6ee9a843ecd319c4de080603e5f2e6f5d
 - Email: support@multimind.dev
 - Discord: [Join our community](https://discord.gg/your-invite-link)
 
