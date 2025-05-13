@@ -10,6 +10,7 @@ This guide provides detailed instructions for setting up the development environ
 - Git
 - Virtual environment tool (venv, conda, etc.)
 - CUDA toolkit (for GPU support)
+- API keys for supported models (OpenAI, Anthropic, Mistral)
 
 ### Initial Setup
 
@@ -19,12 +20,7 @@ This guide provides detailed instructions for setting up the development environ
    cd multimind-sdk
    ```
 
-2. **Add the upstream repository**
-   ```bash
-   git remote add upstream https://github.com/multimind-dev/multimind-sdk.git
-   ```
-
-3. **Create Virtual Environment**
+2. **Create Virtual Environment**
    ```bash
    # Using venv
    python -m venv venv
@@ -35,7 +31,7 @@ This guide provides detailed instructions for setting up the development environ
    conda activate multimind
    ```
 
-4. **Install Development Dependencies**
+3. **Install Development Dependencies**
    ```bash
    # Install in editable mode with development dependencies
    pip install -e ".[dev]"
@@ -44,39 +40,52 @@ This guide provides detailed instructions for setting up the development environ
    pre-commit install
    ```
 
+4. **Configure Environment Variables**
+   Create a `.env` file in the project root:
+   ```bash
+   OPENAI_API_KEY=your_openai_api_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   MISTRAL_API_KEY=your_mistral_api_key
+   HUGGINGFACE_API_KEY=your_huggingface_api_key
+   ```
+
 5. **Verify Installation**
    ```bash
    # Run tests
    pytest
 
-   # Check code style
-   black . --check
-   isort . --check
-   flake8
-   mypy .
+   # Run examples
+   python examples/basic_agent.py
+   python examples/prompt_chain.py
+   python examples/task_runner.py
+   python examples/mcp_workflow.py
+   python examples/usage_tracking.py
    ```
 
 ## Project Structure
 
 ```
 multimind-sdk/
-├── docs/                    # Documentation
-├── examples/               # Example notebooks and scripts
-├── multimind/             # Main package
-│   ├── fine_tuning/      # Fine-tuning implementations
-│   ├── integrations/     # Framework integrations
-│   ├── utils/           # Utility functions
-│   └── __init__.py
-├── tests/                # Test suite
-├── .pre-commit-config.yaml
-├── pyproject.toml
-├── setup.py
-└── README.md
+├── multimind/                # Main package
+│   ├── models/              # Model wrappers
+│   ├── router/             # Model routing
+│   ├── rag/                # RAG support
+│   ├── fine_tuning/        # Training logic
+│   ├── agents/             # Agent system
+│   ├── orchestration/      # Workflow management
+│   ├── mcp/                # Model Composition Protocol
+│   ├── integrations/       # Framework integrations
+│   ├── logging/            # Monitoring and logging
+│   └── cli/                # Command-line interface
+├── examples/               # Example scripts
+├── tests/                 # Test suite
+├── docs/                  # Documentation
+└── configs/              # Configuration templates
 ```
 
 ## Development Workflow
 
-### 1. Code Style
+### 1. Code Style and Quality
 
 We use several tools to maintain code quality:
 
@@ -95,33 +104,28 @@ pre-commit run --all-files
 
 ### 2. Testing
 
-#### Writing Tests
+#### Test Categories
 
-- Place tests in the `tests/` directory
-- Follow naming convention: `test_*.py`
-- Use pytest fixtures for common setup
-- Include both unit and integration tests
+1. **Unit Tests** (`tests/unit/`)
+   - Model wrappers
+   - Agent system
+   - Tools
+   - Memory management
+   - Configuration
 
-Example test:
-```python
-import pytest
-from multimind.fine_tuning import UniPELTPlusTuner
+2. **Integration Tests** (`tests/integration/`)
+   - Agent workflows
+   - MCP execution
+   - Prompt chains
+   - Task runner
+   - Usage tracking
 
-def test_unipelt_tuner_initialization():
-    # Arrange
-    model_name = "bert-base-uncased"
-    output_dir = "./test_output"
-    
-    # Act
-    tuner = UniPELTPlusTuner(
-        base_model_name=model_name,
-        output_dir=output_dir
-    )
-    
-    # Assert
-    assert tuner.model_name == model_name
-    assert tuner.output_dir == output_dir
-```
+3. **Example Tests** (`tests/examples/`)
+   - Basic agent usage
+   - Prompt chaining
+   - Task running
+   - MCP workflows
+   - Usage tracking
 
 #### Running Tests
 
@@ -129,17 +133,104 @@ def test_unipelt_tuner_initialization():
 # Run all tests
 pytest
 
-# Run specific test file
-pytest tests/test_file.py
+# Run specific test categories
+pytest tests/unit/          # Unit tests
+pytest tests/integration/   # Integration tests
+pytest tests/examples/      # Example tests
 
 # Run with coverage
 pytest --cov=multimind
 
+# Run specific test file
+pytest tests/unit/test_agent.py
+
 # Run specific test
-pytest tests/test_file.py::test_name
+pytest tests/unit/test_agent.py::test_agent_creation
 ```
 
-### 3. Documentation
+#### Writing Tests
+
+Example test structure:
+
+```python
+import pytest
+from multimind.agents import Agent, AgentMemory
+from multimind.models import OpenAIModel
+
+def test_agent_creation():
+    # Arrange
+    model = OpenAIModel(model="gpt-3.5-turbo")
+    memory = AgentMemory(max_history=50)
+    
+    # Act
+    agent = Agent(
+        model=model,
+        memory=memory,
+        system_prompt="You are a helpful assistant."
+    )
+    
+    # Assert
+    assert agent.model == model
+    assert agent.memory == memory
+    assert agent.system_prompt == "You are a helpful assistant."
+
+@pytest.mark.asyncio
+async def test_agent_interaction():
+    # Arrange
+    agent = create_test_agent()  # Helper fixture
+    
+    # Act
+    response = await agent.run("What is 2+2?")
+    
+    # Assert
+    assert response is not None
+    assert "4" in response.lower()
+```
+
+### 3. Examples
+
+The `examples/` directory contains working examples of all major features:
+
+1. **Basic Agent** (`basic_agent.py`)
+   - Agent creation
+   - Model usage
+   - Tool integration
+   - Memory management
+
+2. **Prompt Chain** (`prompt_chain.py`)
+   - Multi-step reasoning
+   - Variable substitution
+   - Code review workflow
+
+3. **Task Runner** (`task_runner.py`)
+   - Task dependencies
+   - Research workflow
+   - Context management
+
+4. **MCP Workflow** (`mcp_workflow.py`)
+   - Workflow definition
+   - Model composition
+   - Step execution
+
+5. **Usage Tracking** (`usage_tracking.py`)
+   - Usage monitoring
+   - Cost tracking
+   - Export/reporting
+
+To run examples:
+```bash
+# Run all examples
+python examples/basic_agent.py
+python examples/prompt_chain.py
+python examples/task_runner.py
+python examples/mcp_workflow.py
+python examples/usage_tracking.py
+
+# Run with specific model
+OPENAI_API_KEY=your_key python examples/basic_agent.py
+```
+
+### 4. Documentation
 
 #### Code Documentation
 
@@ -150,26 +241,29 @@ pytest tests/test_file.py::test_name
 
 Example:
 ```python
-def train_model(
-    model: torch.nn.Module,
-    train_data: Dataset,
-    epochs: int = 10
-) -> Dict[str, float]:
-    """Train a model on the given dataset.
+def create_agent(
+    model: BaseModel,
+    memory: Optional[AgentMemory] = None,
+    tools: Optional[List[BaseTool]] = None,
+    system_prompt: str = "You are a helpful assistant."
+) -> Agent:
+    """Create a new agent with the specified configuration.
 
     Args:
-        model: The model to train.
-        train_data: Training dataset.
-        epochs: Number of training epochs.
+        model: The language model to use.
+        memory: Optional memory for conversation history.
+        tools: Optional list of tools for the agent.
+        system_prompt: The system prompt to use.
 
     Returns:
-        Dictionary containing training metrics.
+        An initialized Agent instance.
 
     Example:
-        >>> model = MyModel()
-        >>> metrics = train_model(model, train_dataset, epochs=5)
-        >>> print(metrics['loss'])
-        0.123
+        >>> model = OpenAIModel(model="gpt-3.5-turbo")
+        >>> agent = create_agent(model, system_prompt="You are a math tutor.")
+        >>> response = await agent.run("What is 2+2?")
+        >>> print(response)
+        "The answer is 4."
     """
     pass
 ```
@@ -181,7 +275,7 @@ def train_model(
 - Include usage examples
 - Document configuration options
 
-### 4. Version Control
+### 5. Version Control
 
 #### Branch Strategy
 
@@ -211,11 +305,19 @@ Types:
 - `test`: Testing
 - `chore`: Maintenance
 
-### 5. Pull Requests
+### 6. Pull Requests
 
 1. Create feature/fix branch
 2. Make changes
-3. Run tests and checks
+3. Run tests and checks:
+   ```bash
+   # Run all checks
+   pytest
+   black . --check
+   isort . --check
+   flake8
+   mypy .
+   ```
 4. Update documentation
 5. Create PR with template
 6. Request review
@@ -224,28 +326,41 @@ Types:
 
 ### Adding New Features
 
-1. **New PEFT Method**
+1. **New Model Wrapper**
    ```python
-   from multimind.fine_tuning.base import BasePEFTMethod
+   from multimind.models.base import BaseModel
 
-   class MyPEFTMethod(BasePEFTMethod):
+   class NewModelWrapper(BaseModel):
        def __init__(self, config: Dict[str, Any]):
            super().__init__(config)
            
-       def apply(self, model: torch.nn.Module) -> torch.nn.Module:
+       async def generate(self, prompt: str) -> str:
            # Implementation
            pass
    ```
 
-2. **New Framework Adapter**
+2. **New Agent Tool**
    ```python
-   from multimind.integrations.base import BaseModelAdapter
+   from multimind.agents.tools.base import BaseTool
 
-   class MyFrameworkAdapter(BaseModelAdapter):
+   class NewTool(BaseTool):
        def __init__(self, config: Dict[str, Any]):
            super().__init__(config)
            
-       def generate(self, prompt: str) -> str:
+       async def execute(self, input_data: Any) -> Any:
+           # Implementation
+           pass
+   ```
+
+3. **New MCP Step Type**
+   ```python
+   from multimind.mcp.base import BaseStep
+
+   class NewStepType(BaseStep):
+       def __init__(self, config: Dict[str, Any]):
+           super().__init__(config)
+           
+       async def execute(self, context: Dict[str, Any]) -> Dict[str, Any]:
            # Implementation
            pass
    ```
@@ -324,15 +439,15 @@ Workflow files in `.github/workflows/`:
 
 ### Common Issues
 
-1. **CUDA Issues**
-   - Check CUDA version compatibility
-   - Verify GPU availability
-   - Check PyTorch CUDA installation
+1. **API Key Issues**
+   - Check environment variables
+   - Verify API key permissions
+   - Check rate limits
 
-2. **Dependency Conflicts**
-   - Use virtual environment
-   - Check dependency versions
-   - Update requirements.txt
+2. **Model Loading Issues**
+   - Check model availability
+   - Verify model configuration
+   - Check GPU memory (if using)
 
 3. **Memory Issues**
    - Reduce batch size
@@ -346,49 +461,91 @@ Workflow files in `.github/workflows/`:
 - Join [Discord](https://discord.gg/your-invite-link)
 - Ask in [Discussions](https://github.com/multimind-dev/multimind-sdk/discussions)
 
-## Examples and Testing
+## Contributor License Agreement (CLA)
 
-The SDK includes a comprehensive set of examples and tests to help developers understand and verify the functionality:
+Before contributing to the MultiMind SDK, you must sign our Contributor License Agreement. This agreement ensures that the project has the necessary rights to use, modify, and distribute your contributions.
 
-### Examples
+### Why We Need a CLA
 
-The [examples directory](../examples/) contains working examples of all major SDK features:
+The CLA serves several important purposes:
+1. Establishes clear terms for contributions
+2. Protects both contributors and the project
+3. Ensures the project can be used under its chosen license
+4. Provides a record of contributor consent
 
-- [Basic Agent Usage](../examples/basic_agent.py) - Shows how to create and use agents
-- [Prompt Chaining](../examples/prompt_chain.py) - Demonstrates complex reasoning workflows
-- [Task Running](../examples/task_runner.py) - Shows workflow orchestration
-- [MCP Workflows](../examples/mcp_workflow.py) - Examples of Model Composition Protocol
-- [Usage Tracking](../examples/usage_tracking.py) - Demonstrates monitoring and logging
+### CLA Process
 
-Each example is self-contained and includes detailed comments. They serve as both documentation and test cases.
+1. **Review the Agreement**
+   - Read the [CLA document](../CLA.md)
+   - Understand your rights and obligations
+   - Review the license terms
 
-### Running Tests
+2. **Sign the Agreement**
+   - Individual contributors: Sign through [CLA Assistant](https://cla-assistant.io/multimind-dev/multimind-sdk)
+   - Corporate contributors: Contact the project maintainers for a corporate CLA
 
-The test suite includes unit tests, integration tests, and example-based tests:
+3. **Link Your GitHub Account**
+   - Connect your GitHub account to CLA Assistant
+   - This allows automatic verification of your contributions
 
-```bash
-# Run all tests
-pytest
+4. **Verify Status**
+   - Check your CLA status in pull requests
+   - CLA Assistant will comment on PRs with status
+   - Ensure your email matches in Git config and CLA
 
-# Run specific test categories
-pytest tests/test_basic.py  # Basic functionality tests
-pytest tests/test_agents.py  # Agent-specific tests
-pytest tests/test_models.py  # Model wrapper tests
+### CLA Requirements
 
-# Run with coverage
-pytest --cov=multimind
+1. **For Individual Contributors**
+   - Must be 18 years or older
+   - Must have authority to grant the rights
+   - Must provide valid contact information
+   - Must use consistent identity across contributions
 
-# Run examples as tests
-pytest examples/
-```
+2. **For Corporate Contributors**
+   - Must have authority to bind the organization
+   - Must provide company details
+   - Must designate authorized contributors
+   - Must maintain current contact information
 
-### Writing Tests
+3. **For All Contributors**
+   - Must agree to the terms of the MIT License
+   - Must warrant contributions are original work
+   - Must not include third-party code without permission
+   - Must disclose any relevant patents or IP
 
-When adding new features:
+### CLA Enforcement
 
-1. Write unit tests in the `tests/` directory
-2. Add example scripts in `examples/`
-3. Update existing examples if they demonstrate related functionality
-4. Ensure all tests pass before submitting PRs
+- All pull requests require CLA verification
+- CLA Assistant automatically checks status
+- Maintainers will not merge PRs without CLA
+- Existing contributors must sign for new contributions
 
-See [test_basic.py](../tests/test_basic.py) for examples of test structure and best practices. 
+### Updating Your CLA
+
+If you need to update your CLA information:
+1. Contact the project maintainers
+2. Provide updated information
+3. Sign a new agreement if necessary
+4. Update your Git configuration
+
+### CLA FAQ
+
+1. **Do I need to sign for each contribution?**
+   - No, one signature covers all contributions
+   - Keep your CLA information current
+
+2. **What if I change employers?**
+   - Update your CLA if contributing on behalf of a company
+   - Personal contributions remain covered
+
+3. **Can I revoke my CLA?**
+   - No, but you can stop contributing
+   - Existing contributions remain licensed
+
+4. **What about small changes?**
+   - All contributions require CLA
+   - No exceptions for size or type
+
+For questions about the CLA process, contact the project maintainers at [legal@multimind.dev](mailto:legal@multimind.dev).
+
+For more details, see the [Architecture Overview](architecture.md) and [API Reference](api.md). 
