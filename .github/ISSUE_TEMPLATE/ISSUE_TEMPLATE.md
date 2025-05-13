@@ -1,9 +1,11 @@
 ---
 name: General Issue
-about: Use this template for questions, documentation, or other issues not covered by bug/feature templates.
-title: '[ISSUE] '
-labels: question
+about: Use this template for questions, documentation, or other issues not covered
+  by bug/feature templates.
+title: "[ISSUE] "
+labels: enhancement, question
 assignees: ''
+
 ---
 
 ## Issue Type
@@ -24,4 +26,4 @@ Add any other context, screenshots, or references here.
 ## Checklist
 - [ ] I have searched the [existing issues](https://github.com/multimind-dev/multimind-sdk/issues)
 - [ ] I have checked the [documentation](https://multimind-sdk.readthedocs.io/)
-- [ ] I have provided sufficient information for maintainers to assist 
+- [ ] I have provided sufficient information for maintainers to assist

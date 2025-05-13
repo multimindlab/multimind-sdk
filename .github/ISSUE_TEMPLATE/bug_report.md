@@ -1,9 +1,10 @@
 ---
 name: Bug Report
 about: Create a report to help us improve
-title: '[BUG] '
+title: "[BUG] "
 labels: bug
 assignees: ''
+
 ---
 
 ## Bug Description
@@ -47,4 +48,4 @@ Add any other context about the problem here.
 - [ ] I have checked the [documentation](https://multimind-sdk.readthedocs.io/) for relevant information
 - [ ] I have provided a minimal reproducible example
 - [ ] I have included all relevant environment details
-- [ ] I have added appropriate labels to this issue 
+- [ ] I have added appropriate labels to this issue
