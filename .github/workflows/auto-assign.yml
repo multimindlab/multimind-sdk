@@ -13,14 +13,11 @@ jobs:
       - name: Auto assign users
         uses: kentaro-m/auto-assign-action@v1.2.4
         with:
+          addAssignees: true
+          addReviewers: true
           assignees: |
             your-github-username
           reviewers: |
             your-github-username
-          # Optionally, you can add more users or teams
-          # assignees: |
-          #   user1
-          #   user2
-          # reviewers: |
-          #   team1
-          #   user3 
+          numberOfAssignees: 1
+          numberOfReviewers: 1

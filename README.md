@@ -184,10 +184,10 @@ MultiMind SDK is [MIT licensed](LICENSE).
 
 ## 📣 About
 
-MultiMind SDK is developed and maintained by the MultiMind team. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to simplify AI development.
+MultiMind SDK is developed and maintained by the AI2Innovate team. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to simplify AI development.
 
 ---
 
 <p align="center">
-  Made with ❤️ by the MultiMind Team
+  Made with ❤️ by the AI2Innovate Team
 </p>
