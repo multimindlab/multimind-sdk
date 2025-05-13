@@ -1,248 +1,329 @@
-# MultiMind SDK Architecture
-
-This document provides a detailed overview of the MultiMind SDK architecture, its components, and how they interact.
+# MultiMind RAG System Architecture
 
 ## System Overview
 
-MultiMind SDK is built with a modular, extensible architecture that enables efficient fine-tuning and adaptation of language models. The system is organized into several key components:
+The MultiMind RAG system is built with a modular architecture that separates concerns and allows for easy extension. The system consists of several key components that work together to provide a complete RAG solution.
 
-### Core Components
+## Architecture Diagram
 
-1. **Model Adapters**
-   - Framework-specific adapters (LangChain, LiteLLM, etc.)
-   - Unified interface for model interaction
-   - Automatic device management (CPU/GPU)
-   - Resource optimization
+```mermaid
+graph TB
+    subgraph Client Layer
+        CL[Client Library]
+        API[API Client]
+    end
 
-2. **Fine-Tuning System**
-   - PEFT methods implementation
-   - Meta-learning framework
-   - Transfer learning capabilities
-   - Multi-task learning support
+    subgraph API Layer
+        AUTH[Authentication]
+        EP[API Endpoints]
+        MID[Middleware]
+    end
 
-3. **Training Pipeline**
-   - Data processing and preparation
-   - Model training and evaluation
-   - Hyperparameter optimization
-   - Checkpoint management
+    subgraph Core Layer
+        RAG[RAG System]
+        DOC[Document Processor]
+        EMB[Embedding System]
+        VS[Vector Store]
+        GEN[Generator]
+    end
+
+    subgraph External Services
+        OAI[OpenAI]
+        ANT[Anthropic]
+        HF[HuggingFace]
+    end
+
+    %% Client to API connections
+    CL -->|HTTP| API
+    API -->|Auth| AUTH
+    API -->|Requests| EP
+
+    %% API to Core connections
+    EP -->|Process| RAG
+    AUTH -->|Validate| EP
+    MID -->|Log/Monitor| EP
+
+    %% Core component connections
+    RAG -->|Process| DOC
+    RAG -->|Embed| EMB
+    RAG -->|Store| VS
+    RAG -->|Generate| GEN
+
+    %% External service connections
+    EMB -->|Embed| OAI
+    EMB -->|Embed| HF
+    GEN -->|Generate| OAI
+    GEN -->|Generate| ANT
+```
+
+## Component Flow
+
+### 1. Document Processing Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant DP as Document Processor
+    participant RAG as RAG System
+    participant VS as Vector Store
+
+    C->>API: Add Document(s)
+    API->>DP: Process Document
+    DP->>DP: Chunk Text
+    DP->>DP: Add Metadata
+    DP->>RAG: Processed Chunks
+    RAG->>RAG: Generate Embeddings
+    RAG->>VS: Store Vectors
+    VS-->>RAG: Confirmation
+    RAG-->>API: Success
+    API-->>C: Response
+```
+
+### 2. Query and Generation Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant RAG as RAG System
+    participant VS as Vector Store
+    participant GEN as Generator
+    participant LLM as Language Model
+
+    C->>API: Query Request
+    API->>RAG: Process Query
+    RAG->>RAG: Generate Query Embedding
+    RAG->>VS: Search Similar
+    VS-->>RAG: Relevant Documents
+    RAG->>GEN: Generate Response
+    GEN->>LLM: Generate with Context
+    LLM-->>GEN: Generated Text
+    GEN-->>RAG: Response
+    RAG-->>API: Formatted Response
+    API-->>C: Final Response
+```
+
+### 3. Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant API as API Layer
+    participant AUTH as Auth System
+    participant DB as User DB
+
+    C->>API: Login Request
+    API->>AUTH: Validate Credentials
+    AUTH->>DB: Check User
+    DB-->>AUTH: User Data
+    AUTH->>AUTH: Generate Token
+    AUTH-->>API: Token
+    API-->>C: Auth Response
+
+    Note over C,API: Subsequent Requests
+    C->>API: Request with Token
+    API->>AUTH: Validate Token
+    AUTH-->>API: Token Valid
+    API->>API: Process Request
+    API-->>C: Response
+```
 
 ## Component Details
 
-### 1. Model Adapters Layer
+### 1. Client Layer
+- **Client Library**
+  - Async Python client
+  - Type-safe interfaces
+  - Error handling
+  - Authentication management
+- **API Client**
+  - HTTP request handling
+  - Response parsing
+  - Connection management
 
-```mermaid
-graph TD
-    A[BaseModelAdapter] --> B[LangChainAdapter]
-    A --> C[LiteLLMAdapter]
-    A --> D[SuperAGIAdapter]
-    A --> E[SemanticKernelAdapter]
-    A --> F[CrewAIAdapter]
-    B --> G[Model Interface]
-    C --> G
-    D --> G
-    E --> G
-    F --> G
-```
+### 2. API Layer
+- **Authentication**
+  - JWT validation
+  - API key management
+  - Scope checking
+  - User management
+- **Endpoints**
+  - Document management
+  - Query and generation
+  - Model management
+  - Health monitoring
+- **Middleware**
+  - Request logging
+  - Error handling
+  - Rate limiting
+  - CORS management
 
-#### Key Features:
-- Abstract base class for all adapters
-- Framework-specific implementations
-- Common interface for model operations
-- Automatic resource management
+### 3. Core Layer
+- **RAG System**
+  - Document processing
+  - Embedding management
+  - Vector storage
+  - Response generation
+- **Document Processor**
+  - Text chunking
+  - Metadata management
+  - Format handling
+- **Embedding System**
+  - Model management
+  - Batch processing
+  - Caching
+- **Vector Store**
+  - Similarity search
+  - Document storage
+  - Metadata indexing
+- **Generator**
+  - Context management
+  - Model integration
+  - Response formatting
 
-### 2. Fine-Tuning System
-
-```mermaid
-graph TD
-    A[FineTuningSystem] --> B[PEFT Methods]
-    A --> C[Meta Learning]
-    A --> D[Transfer Learning]
-    B --> E[LoRA]
-    B --> F[Adapters]
-    B --> G[Prefix Tuning]
-    C --> H[MAML]
-    C --> I[Reptile]
-    C --> J[Prototype Learning]
-    D --> K[Layer Transfer]
-    D --> L[Task Adaptation]
-```
-
-#### PEFT Methods:
-- **LoRA**: Low-rank adaptation for efficient fine-tuning
-- **Adapters**: Task-specific adapter layers
-- **Prefix Tuning**: Learnable prefix vectors
-- **IA³**: Infused adapter by inhibiting and amplifying inner activations
-
-#### Meta-Learning:
-- **MAML**: Model-Agnostic Meta-Learning
-- **Reptile**: Simple meta-learning algorithm
-- **Prototype Learning**: Few-shot classification
-
-#### Transfer Learning:
-- Layer-wise similarity analysis
-- Automatic layer selection
-- Multi-task transfer support
-
-### 3. Training Pipeline
-
-```mermaid
-graph LR
-    A[Data Processing] --> B[Model Training]
-    B --> C[Evaluation]
-    C --> D[Hyperparameter Optimization]
-    D --> B
-```
-
-#### Components:
-1. **Data Processing**
-   - Dataset loading and preprocessing
-   - Task-specific data formatting
-   - Few-shot episode generation
-   - Data augmentation
-
-2. **Model Training**
-   - Training loop implementation
-   - Gradient computation
-   - Optimization strategies
-   - Checkpoint management
-
-3. **Evaluation**
-   - Performance metrics
-   - Task-specific evaluation
-   - Cross-validation
-   - Model comparison
-
-4. **Hyperparameter Optimization**
-   - Meta-learning based optimization
-   - Task-specific parameter tuning
-   - Resource-aware adaptation
-   - Performance tracking
+### 4. External Services
+- **OpenAI**
+  - Embedding models
+  - Generation models
+- **Anthropic**
+  - Generation models
+- **HuggingFace**
+  - Embedding models
+  - Custom models
 
 ## Data Flow
 
-### Training Process
-1. Data ingestion and preprocessing
-2. Model initialization and adapter setup
-3. Training loop execution
-4. Evaluation and metric computation
-5. Hyperparameter optimization
-6. Model checkpointing
+### 1. Document Ingestion
+1. Client sends document(s)
+2. API validates request
+3. Document processor chunks text
+4. Embeddings generated
+5. Vectors stored
+6. Response returned
 
-### Inference Process
-1. Model loading and adapter initialization
-2. Input preprocessing
-3. Model inference
-4. Output postprocessing
-5. Result formatting
+### 2. Query Processing
+1. Client sends query
+2. API validates request
+3. Query embedded
+4. Similar documents retrieved
+5. Context prepared
+6. Response generated
+7. Result returned
 
-## Resource Management
+### 3. Model Management
+1. Client requests model switch
+2. API validates request
+3. Model initialized
+4. System updated
+5. Confirmation returned
 
-### Memory Optimization
-- Gradient checkpointing
-- Mixed precision training
-- Efficient data loading
-- Model sharding
+## Security Architecture
 
-### GPU Utilization
-- Automatic device selection
-- Batch size optimization
-- Memory-efficient training
-- Multi-GPU support
+```mermaid
+graph TB
+    subgraph Security Layer
+        AUTH[Authentication]
+        RBAC[Role-Based Access]
+        RATE[Rate Limiting]
+        VAL[Input Validation]
+    end
 
-## Extension Points
+    subgraph API Layer
+        EP[Endpoints]
+        MID[Middleware]
+    end
 
-### Adding New Components
-1. **New PEFT Method**
-   - Implement method-specific adapter
-   - Add to PEFT registry
-   - Update documentation
+    subgraph Data Layer
+        DB[User Database]
+        VS[Vector Store]
+    end
 
-2. **New Framework Adapter**
-   - Extend BaseModelAdapter
-   - Implement required methods
-   - Add to adapter factory
+    AUTH -->|Validate| EP
+    RBAC -->|Check| EP
+    RATE -->|Limit| EP
+    VAL -->|Sanitize| EP
+    EP -->|Store| DB
+    EP -->|Access| VS
+```
 
-3. **New Meta-Learning Strategy**
-   - Implement strategy class
-   - Add to meta-learning registry
-   - Update training pipeline
+## Deployment Architecture
 
-## Security Considerations
+```mermaid
+graph TB
+    subgraph Client
+        WEB[Web Client]
+        CLI[CLI Client]
+        LIB[Python Library]
+    end
 
-### Model Security
-- Secure model loading
-- Input validation
-- Output sanitization
-- Access control
+    subgraph API Server
+        LB[Load Balancer]
+        API[API Servers]
+        CACHE[Cache]
+    end
 
-### Data Security
-- Secure data handling
-- Privacy-preserving training
-- Data encryption
-- Access logging
+    subgraph Processing
+        WORK[Worker Pool]
+        QUEUE[Task Queue]
+    end
+
+    subgraph Storage
+        DB[(Database)]
+        VS[(Vector Store)]
+        CACHE[(Cache)]
+    end
+
+    WEB -->|HTTP| LB
+    CLI -->|HTTP| LB
+    LIB -->|HTTP| LB
+    LB -->|Route| API
+    API -->|Queue| QUEUE
+    QUEUE -->|Process| WORK
+    WORK -->|Store| DB
+    WORK -->|Store| VS
+    API -->|Cache| CACHE
+    API -->|Read| DB
+    API -->|Query| VS
+```
 
 ## Performance Considerations
 
-### Optimization Strategies
-- Batch processing
-- Caching mechanisms
-- Parallel processing
-- Resource pooling
+1. **Caching Strategy**
+   - Embedding cache
+   - Query result cache
+   - Model response cache
+   - User session cache
 
-### Scalability
-- Distributed training
-- Model parallelism
-- Data parallelism
-- Resource scaling
+2. **Scaling Strategy**
+   - Horizontal scaling of API servers
+   - Worker pool for processing
+   - Distributed vector store
+   - Load balancing
 
-## Future Architecture
+3. **Resource Management**
+   - Connection pooling
+   - Memory management
+   - Batch processing
+   - Async operations
 
-### Planned Components
-1. **Distributed Training**
-   - Multi-node support
-   - Model parallelism
-   - Data parallelism
-   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Adistributed-training)
+## Monitoring and Logging
 
-2. **Advanced Meta-Learning**
-   - Neural architecture search
-   - Automated hyperparameter tuning
-   - Multi-task optimization
-   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Ameta-learning)
+1. **Metrics**
+   - Request latency
+   - Processing time
+   - Cache hit rates
+   - Error rates
+   - Resource usage
 
-3. **Model Serving**
-   - REST API
-   - gRPC support
-   - Model versioning
-   - A/B testing
-   - [Track progress](https://github.com/multimind-dev/multimind-sdk/issues?q=is%3Aopen+is%3Aissue+label%3Amodel-serving)
+2. **Logging**
+   - Request logs
+   - Error logs
+   - Access logs
+   - Performance logs
 
-## Dependencies
-
-### Core Dependencies
-- PyTorch
-- Transformers
-- PEFT
-- Optuna
-- NumPy
-
-### Optional Dependencies
-- LangChain
-- LiteLLM
-- SuperAGI
-- Semantic Kernel
-- CrewAI
-
-## Configuration
-
-### System Configuration
-- Environment variables
-- Configuration files
-- Runtime settings
-- Resource limits
-
-### Model Configuration
-- Model parameters
-- Training settings
-- Optimization options
-- Evaluation metrics 
+3. **Alerts**
+   - Error thresholds
+   - Performance degradation
+   - Resource exhaustion
+   - Security events 
