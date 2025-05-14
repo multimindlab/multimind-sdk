@@ -22,7 +22,7 @@ We will acknowledge your report within 3 business days and work with you to reso
 
 ## Scope
 
-This policy applies to the MultiMind SDK codebase and all official repositories under the [multimind-dev](https://github.com/multimind-dev) organization.
+This policy applies to the MultiMind SDK codebase and all official repositories under the [multimind-dev](https://github.com/multimindlabs) organization.
 
 ## Responsible Disclosure
 
