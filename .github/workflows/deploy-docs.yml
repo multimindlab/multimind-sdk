@@ -32,4 +32,4 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: multimind-docs/build
           publish_branch: gh-pages
-          cname: '' # Set if you use a custom domain 
+          cname: '' # Set if you use a custom domain
