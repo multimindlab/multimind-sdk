@@ -177,10 +177,10 @@ MultiMind SDK is [MIT licensed](LICENSE).
 
 ## 🌟 Support
 
-- [Discord Community](https://discord.gg/multimind) - Join our community
+- [Discord Community]([https://discord.gg/multimind](https://discord.gg/K64U65je7h)) - Join our community
 - [GitHub Issues](https://github.com/multimind-dev/multimind-sdk/issues) - Bug reports and feature requests
-- [Documentation](https://multimind.dev/docs) - Detailed guides and tutorials
-- [Blog](https://multimind.dev/blog) - Latest updates and articles
+- [Documentation](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Detailed guides and tutorials
+
 
 ## 📣 About
 
