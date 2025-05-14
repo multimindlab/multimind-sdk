@@ -121,10 +121,10 @@ tuner.train(
 
 ## 📚 Documentation
 
-- [Interactive Documentation](https://multimind.dev/docs) - Comprehensive guides and tutorials
-- [API Reference](https://multimind.dev/docs/api) - Detailed API documentation
-- [Examples](https://multimind.dev/docs/examples) - Ready-to-use code examples
-- [Architecture](https://multimind.dev/docs/architecture) - System design and components
+- [Interactive Documentation](https://multimind.dev/docs](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Comprehensive guides and tutorials
+- [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Detailed API documentation
+- [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Ready-to-use code examples
+- [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - System design and components
 
 ### Local Documentation
 
@@ -177,7 +177,7 @@ MultiMind SDK is [MIT licensed](LICENSE).
 
 ## 🌟 Support
 
-- [Discord Community]([https://discord.gg/multimind](https://discord.gg/K64U65je7h)) - Join our community
+- [Discord Community](https://discord.gg/multimind](https://discord.gg/K64U65je7h) - Join our community
 - [GitHub Issues](https://github.com/multimind-dev/multimind-sdk/issues) - Bug reports and feature requests
 - [Documentation](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Detailed guides and tutorials
 
