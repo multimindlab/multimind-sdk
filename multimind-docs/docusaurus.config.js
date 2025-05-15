@@ -6,9 +6,8 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'MultiMind RAG System',
-  tagline: 'Advanced Retrieval-Augmented Generation System',
-  favicon: 'img/favicon.ico',
+  title: 'MultiMind SDK',
+  tagline: 'One SDK.Every AI Model.Unlimited Agents',
 
   // Set the production url of your site here
   url: 'https://multimind.dev',
@@ -16,7 +15,7 @@ const config = {
   baseUrl: '/',
 
   // GitHub pages deployment config
-  organizationName: 'multimind-dev',
+  organizationName: 'Ai2Innovate',
   projectName: 'multimind-sdk',
 
   onBrokenLinks: 'throw',
@@ -27,7 +26,13 @@ const config = {
   // to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'fr', 'nl', 'pt'],
+    localeConfigs: {
+      en: { label: 'English' },
+      fr: { label: 'Français' },
+      nl: { label: 'Nederlands' },
+      pt: { label: 'Português' },
+    },
   },
 
   presets: [
@@ -37,12 +42,12 @@ const config = {
       ({
         docs: {
           sidebarPath: require.resolve('./sidebars.js'),
-          editUrl: 'https://github.com/multimind-dev/multimind-sdk/edit/main/website/',
+          editUrl: 'https://github.com/multimind-dev/multimind-sdk/edit/develop/',
           showLastUpdateTime: true,
         },
         blog: {
           showReadingTime: true,
-          editUrl: 'https://github.com/multimind-dev/multimind-sdk/edit/main/website/blog/',
+          editUrl: 'https://www.multimind.dev/blogs',
         },
         theme: {
           customCss: require.resolve('./src/css/custom.css'),
@@ -55,12 +60,13 @@ const config = {
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
       // Replace with your project's social card
-      image: 'img/multimind-social-card.jpg',
+      image: '../assets/Logo-with-name-final2.png',
       navbar: {
-        title: 'MultiMind RAG',
+        title: 'MultiMind',
         logo: {
-          alt: 'MultiMind Logo',
-          src: 'img/logo.svg',
+          alt: 'MultiMind SDK',
+          src: '../assets/Logo-with-name-final2.png',
+          width: 160,
         },
         items: [
           {
@@ -70,17 +76,17 @@ const config = {
             label: 'Documentation',
           },
           {
-            to: '/features',
+            to: '/docs/features',
             label: 'Features',
             position: 'left',
           },
           {
-            to: '/api',
+            to: '/docs/api',
             label: 'API Reference',
             position: 'left',
           },
           {
-            to: '/architecture',
+            to: '/docs/architecture',
             label: 'Architecture',
             position: 'left',
           },
@@ -103,11 +109,11 @@ const config = {
               },
               {
                 label: 'API Reference',
-                to: '/api',
+                to: '/docs/api',
               },
               {
                 label: 'Architecture',
-                to: '/architecture',
+                to: '/docs/architecture',
               },
             ],
           },
@@ -116,11 +122,11 @@ const config = {
             items: [
               {
                 label: 'Discord',
-                href: 'https://discord.gg/multimind',
+                href: 'https://discord.gg/K64U65je7h',
               },
               {
                 label: 'Twitter',
-                href: 'https://twitter.com/multimind_dev',
+                href: 'x.com/Ai2Innovate',
               },
               {
                 label: 'GitHub',
@@ -133,7 +139,7 @@ const config = {
             items: [
               {
                 label: 'Blog',
-                to: '/blog',
+                href: 'https://www.multimind.dev/blogs',
               },
               {
                 label: 'GitHub',

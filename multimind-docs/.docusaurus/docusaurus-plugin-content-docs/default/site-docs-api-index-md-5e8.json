@@ -1,0 +1,15 @@
+{
+  "id": "api/index",
+  "title": "API Reference",
+  "description": "This section provides detailed documentation for the MultiMind SDK APIs.",
+  "source": "@site/docs/api/index.md",
+  "sourceDirName": "api",
+  "slug": "/api/",
+  "permalink": "/docs/api/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/api/index.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

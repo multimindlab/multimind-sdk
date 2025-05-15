@@ -1,0 +1,15 @@
+{
+  "id": "examples/basic-agent",
+  "title": "Basic Agent Example",
+  "description": "This example demonstrates how to create and use a basic agent with MultiMind SDK.",
+  "source": "@site/docs/examples/basic-agent.md",
+  "sourceDirName": "examples",
+  "slug": "/examples/basic-agent",
+  "permalink": "/docs/examples/basic-agent",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/examples/basic-agent.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

@@ -1,0 +1,24 @@
+{
+  "id": "getting-started",
+  "title": "Getting Started",
+  "description": "Prerequisites",
+  "source": "@site/docs/getting-started.md",
+  "sourceDirName": ".",
+  "slug": "/getting-started",
+  "permalink": "/docs/getting-started",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/getting-started.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Introduction",
+    "permalink": "/docs/introduction"
+  },
+  "next": {
+    "title": "Architecture",
+    "permalink": "/docs/architecture"
+  }
+}

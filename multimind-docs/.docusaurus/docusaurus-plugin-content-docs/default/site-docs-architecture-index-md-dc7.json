@@ -1,0 +1,15 @@
+{
+  "id": "architecture/index",
+  "title": "Architecture",
+  "description": "Learn about the architecture of MultiMind SDK:",
+  "source": "@site/docs/architecture/index.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/",
+  "permalink": "/docs/architecture/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/architecture/index.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

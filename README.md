@@ -1,6 +1,6 @@
 <!-- Logo -->
 <p align="center">
-  <img src="assets/Logo with name-final2.png" alt="MultiMind SDK Logo" width="320"/>
+  <img src="assets/Logo-with-name-final2.png" alt="MultiMind SDK Logo" width="320"/>
 </p>
 
 <h1 align="center">MultiMind SDK</h1>

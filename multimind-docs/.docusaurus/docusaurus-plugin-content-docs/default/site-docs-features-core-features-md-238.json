@@ -1,0 +1,15 @@
+{
+  "id": "features/core-features",
+  "title": "Core Features",
+  "description": "MultiMind SDK offers a rich set of features for modern AI development:",
+  "source": "@site/docs/features/core-features.md",
+  "sourceDirName": "features",
+  "slug": "/features/core-features",
+  "permalink": "/docs/features/core-features",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/features/core-features.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

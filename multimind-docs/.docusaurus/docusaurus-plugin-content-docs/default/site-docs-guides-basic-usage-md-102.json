@@ -1,0 +1,15 @@
+{
+  "id": "guides/basic-usage",
+  "title": "Basic Usage Guide",
+  "description": "This guide walks you through the most common tasks with MultiMind SDK.",
+  "source": "@site/docs/guides/basic-usage.md",
+  "sourceDirName": "guides",
+  "slug": "/guides/basic-usage",
+  "permalink": "/docs/guides/basic-usage",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/guides/basic-usage.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

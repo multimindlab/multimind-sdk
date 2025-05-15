@@ -1,0 +1,15 @@
+{
+  "id": "api/client-library",
+  "title": "Python Client Library",
+  "description": "The MultiMind Python client makes it easy to interact with the RAG API and other SDK features from your own code.",
+  "source": "@site/docs/api/client-library.md",
+  "sourceDirName": "api",
+  "slug": "/api/client-library",
+  "permalink": "/docs/api/client-library",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/api/client-library.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

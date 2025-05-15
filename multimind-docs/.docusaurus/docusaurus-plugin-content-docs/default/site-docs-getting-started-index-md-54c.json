@@ -1,0 +1,15 @@
+{
+  "id": "getting-started/index",
+  "title": "Getting Started",
+  "description": "Start your journey with MultiMind SDK:",
+  "source": "@site/docs/getting-started/index.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/",
+  "permalink": "/docs/getting-started/",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/getting-started/index.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

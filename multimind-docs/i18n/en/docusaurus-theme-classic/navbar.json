@@ -1,0 +1,30 @@
+{
+  "title": {
+    "message": "MultiMind",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "MultiMind SDK Logo",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Documentation": {
+    "message": "Documentation",
+    "description": "Navbar item with label Documentation"
+  },
+  "item.label.Features": {
+    "message": "Features",
+    "description": "Navbar item with label Features"
+  },
+  "item.label.API Reference": {
+    "message": "API Reference",
+    "description": "Navbar item with label API Reference"
+  },
+  "item.label.Architecture": {
+    "message": "Architecture",
+    "description": "Navbar item with label Architecture"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "integration-guide",
+  "title": "Integration Guide",
+  "description": "This guide demonstrates how to integrate MultiMind SDK into your own Python projects or APIs.",
+  "source": "@site/docs/integration-guide.md",
+  "sourceDirName": ".",
+  "slug": "/integration-guide",
+  "permalink": "/docs/integration-guide",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/integration-guide.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Architecture",
+    "permalink": "/docs/architecture"
+  },
+  "next": {
+    "title": "Contributing",
+    "permalink": "/docs/contributing"
+  }
+}

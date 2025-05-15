@@ -1,0 +1,15 @@
+{
+  "id": "getting-started/quickstart",
+  "title": "Quickstart",
+  "description": "Get started with MultiMind SDK in minutes!",
+  "source": "@site/docs/getting-started/quickstart.md",
+  "sourceDirName": "getting-started",
+  "slug": "/getting-started/quickstart",
+  "permalink": "/docs/getting-started/quickstart",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/getting-started/quickstart.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

@@ -1,0 +1,15 @@
+{
+  "id": "features/advanced-features",
+  "title": "Advanced Features",
+  "description": "Unlock advanced AI capabilities with MultiMind SDK:",
+  "source": "@site/docs/features/advanced-features.md",
+  "sourceDirName": "features",
+  "slug": "/features/advanced-features",
+  "permalink": "/docs/features/advanced-features",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/features/advanced-features.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

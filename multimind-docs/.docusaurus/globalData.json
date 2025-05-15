@@ -1,0 +1,117 @@
+{
+  "docusaurus-plugin-content-docs": {
+    "default": {
+      "path": "/docs",
+      "versions": [
+        {
+          "name": "current",
+          "label": "Next",
+          "isLast": true,
+          "path": "/docs",
+          "mainDocId": "introduction",
+          "docs": [
+            {
+              "id": "api/authentication",
+              "path": "/docs/api/authentication"
+            },
+            {
+              "id": "api/client-library",
+              "path": "/docs/api/client-library"
+            },
+            {
+              "id": "api/index",
+              "path": "/docs/api/"
+            },
+            {
+              "id": "api/rag-api",
+              "path": "/docs/api/rag-api"
+            },
+            {
+              "id": "architecture",
+              "path": "/docs/architecture",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "architecture/index",
+              "path": "/docs/architecture/"
+            },
+            {
+              "id": "architecture/overview",
+              "path": "/docs/architecture/overview"
+            },
+            {
+              "id": "contributing",
+              "path": "/docs/contributing",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "examples/basic-agent",
+              "path": "/docs/examples/basic-agent"
+            },
+            {
+              "id": "features/advanced-features",
+              "path": "/docs/features/advanced-features"
+            },
+            {
+              "id": "features/core-features",
+              "path": "/docs/features/core-features"
+            },
+            {
+              "id": "features/implementation-status",
+              "path": "/docs/features/implementation-status"
+            },
+            {
+              "id": "features/index",
+              "path": "/docs/features/"
+            },
+            {
+              "id": "getting-started",
+              "path": "/docs/getting-started",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "getting-started/index",
+              "path": "/docs/getting-started/"
+            },
+            {
+              "id": "getting-started/installation",
+              "path": "/docs/getting-started/installation"
+            },
+            {
+              "id": "getting-started/quickstart",
+              "path": "/docs/getting-started/quickstart"
+            },
+            {
+              "id": "guides/basic-usage",
+              "path": "/docs/guides/basic-usage"
+            },
+            {
+              "id": "integration-guide",
+              "path": "/docs/integration-guide",
+              "sidebar": "tutorialSidebar"
+            },
+            {
+              "id": "intro",
+              "path": "/docs/intro"
+            },
+            {
+              "id": "introduction",
+              "path": "/docs/introduction",
+              "sidebar": "tutorialSidebar"
+            }
+          ],
+          "draftIds": [],
+          "sidebars": {
+            "tutorialSidebar": {
+              "link": {
+                "path": "/docs/introduction",
+                "label": "introduction"
+              }
+            }
+          }
+        }
+      ],
+      "breadcrumbs": true
+    }
+  }
+}

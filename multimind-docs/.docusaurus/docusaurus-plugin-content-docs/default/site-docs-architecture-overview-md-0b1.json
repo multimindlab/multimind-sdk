@@ -1,0 +1,15 @@
+{
+  "id": "architecture/overview",
+  "title": "Architecture Overview",
+  "description": "MultiMind SDK is designed for modularity, extensibility, and developer productivity. The architecture enables seamless integration of models, agents, RAG, and orchestration workflows.",
+  "source": "@site/docs/architecture/overview.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/overview",
+  "permalink": "/docs/architecture/overview",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/architecture/overview.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

@@ -1,0 +1,15 @@
+{
+  "id": "api/rag-api",
+  "title": "RAG API Reference",
+  "description": "The Retrieval-Augmented Generation (RAG) module provides tools for document ingestion, embedding, retrieval, and generation.",
+  "source": "@site/docs/api/rag-api.md",
+  "sourceDirName": "api",
+  "slug": "/api/rag-api",
+  "permalink": "/docs/api/rag-api",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/api/rag-api.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

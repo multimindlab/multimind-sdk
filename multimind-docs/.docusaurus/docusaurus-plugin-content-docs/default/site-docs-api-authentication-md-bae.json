@@ -1,0 +1,15 @@
+{
+  "id": "api/authentication",
+  "title": "Authentication",
+  "description": "MultiMind SDK supports both API key and JWT authentication for secure access to the RAG API and other services.",
+  "source": "@site/docs/api/authentication.md",
+  "sourceDirName": "api",
+  "slug": "/api/authentication",
+  "permalink": "/docs/api/authentication",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/api/authentication.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}

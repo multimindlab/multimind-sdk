@@ -1,0 +1,41 @@
+{
+  "defaultLocale": "en",
+  "locales": [
+    "en",
+    "fr",
+    "nl",
+    "pt"
+  ],
+  "path": "i18n",
+  "currentLocale": "en",
+  "localeConfigs": {
+    "en": {
+      "label": "English",
+      "direction": "ltr",
+      "htmlLang": "en",
+      "calendar": "gregory",
+      "path": "en"
+    },
+    "fr": {
+      "label": "Français",
+      "direction": "ltr",
+      "htmlLang": "fr",
+      "calendar": "gregory",
+      "path": "fr"
+    },
+    "nl": {
+      "label": "Nederlands",
+      "direction": "ltr",
+      "htmlLang": "nl",
+      "calendar": "gregory",
+      "path": "nl"
+    },
+    "pt": {
+      "label": "Português",
+      "direction": "ltr",
+      "htmlLang": "pt",
+      "calendar": "gregory",
+      "path": "pt"
+    }
+  }
+}

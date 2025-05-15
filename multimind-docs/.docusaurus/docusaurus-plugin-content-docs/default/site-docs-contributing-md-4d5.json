@@ -1,0 +1,20 @@
+{
+  "id": "contributing",
+  "title": "Contributing",
+  "description": "Thank you for your interest in contributing to MultiMind SDK!",
+  "source": "@site/docs/contributing.md",
+  "sourceDirName": ".",
+  "slug": "/contributing",
+  "permalink": "/docs/contributing",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/contributing.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {},
+  "sidebar": "tutorialSidebar",
+  "previous": {
+    "title": "Integration Guide",
+    "permalink": "/docs/integration-guide"
+  }
+}

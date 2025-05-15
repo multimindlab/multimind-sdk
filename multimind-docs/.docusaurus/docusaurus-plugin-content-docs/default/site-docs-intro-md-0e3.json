@@ -1,0 +1,15 @@
+{
+  "id": "intro",
+  "title": "intro",
+  "description": "MultiMind SDK is a unified, developer-friendly toolkit for building, fine-tuning, and deploying advanced AI agents and Retrieval-Augmented Generation (RAG) systems. Whether you're a researcher, engineer, or enterprise developer, MultiMind SDK provides a consistent interface and powerful abstractions to accelerate your AI projects.",
+  "source": "@site/docs/intro.md",
+  "sourceDirName": ".",
+  "slug": "/intro",
+  "permalink": "/docs/intro",
+  "draft": false,
+  "unlisted": false,
+  "editUrl": "https://github.com/multimind-dev/multimind-sdk/edit/develop/docs/intro.md",
+  "tags": [],
+  "version": "current",
+  "frontMatter": {}
+}
