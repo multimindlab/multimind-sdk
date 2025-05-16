@@ -121,7 +121,6 @@ tuner.train(
 
 ## 📚 Documentation
 
-- [Interactive Documentation](https://multimind.dev/](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Comprehensive guides and tutorials
 - [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Detailed API documentation
 - [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Ready-to-use code examples
 - [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - System design and components
