@@ -38,6 +38,12 @@
   <a href="#contributing">Contributing</a>
 </p>
 
+## 📏 Codebase Statistics
+
+- **Total lines of code (Python, JS, TS):** 9539257
+
+---
+
 ## Why MultiMind SDK?
 
 MultiMind SDK is a comprehensive Python toolkit designed for AI developers and researchers. It provides a unified interface for building advanced AI applications, from fine-tuning models to implementing RAG systems and developing AI agents. Our SDK simplifies complex AI workflows while maintaining flexibility and performance.
