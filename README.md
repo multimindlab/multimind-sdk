@@ -16,6 +16,11 @@
   <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="Stars"></a>
 </p>
 
+<div align="center">
+  <h3>🚧 Project Status: In Active Development 🚧</h3>
+  <p>We're actively building MultiMind SDK and looking for contributors! Join our <a href="https://discord.gg/K64U65je7h">Discord community</a> to discuss ideas, get help, and contribute to the project.</p>
+</div>
+
 <p align="center">
   <a href="#-why-multimind-sdk">Why MultiMind SDK?</a> •
   <a href="#-key-features">Key Features</a> •
