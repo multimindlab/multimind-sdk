@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, 3.10, 3.11] # Ensure only supported versions are listed
+        python-version: [3.8, 3.9, 3.10, 3.11, 3.12] # Added 3.12, the latest stable version as of May 2025
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
