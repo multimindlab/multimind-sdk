@@ -546,6 +546,6 @@ If you need to update your CLA information:
    - All contributions require CLA
    - No exceptions for size or type
 
-For questions about the CLA process, contact the project maintainers at [legal@multimind.dev](mailto:legal@multimind.dev).
+For questions about the CLA process, contact the project maintainers at [support@multimind.dev](mailto:support@multimind.dev).
 
 For more details, see the [Architecture Overview](architecture.md) and [API Reference](api.md). 

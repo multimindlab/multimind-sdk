@@ -1,46 +1,54 @@
+<!--
+  MultiMind SDK - Unified AI Development Toolkit
+  Description: A powerful Python SDK for fine-tuning, RAG systems, and AI agent development
+  Keywords: AI development, fine-tuning, RAG, LLM, machine learning, Python SDK, LangChain, CrewAI, LiteLLM, SuperAGI
+  Author: AI2Innovate Team
+  Version: 0.1.0
+-->
+
 <!-- Logo -->
 <p align="center">
-  <img src="assets/Logo-with-name-final2.png" alt="MultiMind SDK Logo" width="320"/>
+  <img src="assets/Logo-with-name-final2.png" alt="MultiMind SDK - Unified AI Development Toolkit Logo" width="320"/>
 </p>
 
-<h1 align="center">MultiMind SDK</h1>
+<h1 align="center">MultiMind SDK: Unified AI Development Toolkit</h1>
 
 <p align="center">
-  <strong>Unified Interface for Fine-Tuning, RAG, and Agent Development</strong>
+  <strong>Build, Fine-Tune, and Deploy Advanced AI Applications with Ease</strong>
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/v/multimind-sdk.svg" alt="PyPI version"></a>
-  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/pyversions/multimind-sdk.svg" alt="Python versions"></a>
-  <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="License"></a>
-  <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="Stars"></a>
+  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/v/multimind-sdk.svg" alt="MultiMind SDK PyPI version"></a>
+  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/pyversions/multimind-sdk.svg" alt="MultiMind SDK Python versions"></a>
+  <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
+  <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
 </p>
 
 <div align="center">
-  <h3>🚧 Project Status: In Active Development 🚧</h3>
-  <p>We're actively building MultiMind SDK and looking for contributors! Join our <a href="https://discord.gg/K64U65je7h">Discord community</a> to discuss ideas, get help, and contribute to the project.</p>
+  <h2>🚧 Project Status: In Active Development 🚧</h2>
+  <p>Join the future of AI development! We're actively building MultiMind SDK and looking for contributors. Connect with our growing community on <a href="https://discord.gg/K64U65je7h" aria-label="Join MultiMind SDK Discord Community">Discord</a> to discuss ideas, get help, and contribute to the project.</p>
 </div>
 
 <p align="center">
-  <a href="#-why-multimind-sdk">Why MultiMind SDK?</a> •
-  <a href="#-key-features">Key Features</a> •
-  <a href="#-quick-start">Quick Start</a> •
-  <a href="#-documentation">Documentation</a> •
-  <a href="#-examples">Examples</a> •
-  <a href="#-contributing">Contributing</a>
+  <a href="#why-multimind-sdk">Why MultiMind SDK?</a> •
+  <a href="#key-features">Key Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#examples">Examples</a> •
+  <a href="#contributing">Contributing</a>
 </p>
 
-## 🎯 Why MultiMind SDK?
+## Why MultiMind SDK?
 
-MultiMind SDK is your all-in-one solution for building advanced AI applications. Whether you're working on fine-tuning models, implementing RAG systems, or developing AI agents, MultiMind SDK provides a unified interface that simplifies your workflow.
+MultiMind SDK is a comprehensive Python toolkit designed for AI developers and researchers. It provides a unified interface for building advanced AI applications, from fine-tuning models to implementing RAG systems and developing AI agents. Our SDK simplifies complex AI workflows while maintaining flexibility and performance.
 
 ### Key Benefits
 
-- **🚀 Unified Interface**: One consistent API for all your AI development needs
-- **💡 Production-Ready**: Built-in support for deployment, monitoring, and scaling
-- **🛠️ Framework Agnostic**: Works seamlessly with popular frameworks like LangChain, CrewAI, and more
-- **🔌 Extensible**: Easy to integrate with your existing tools and workflows
-- **📊 Enterprise Features**: Built-in support for logging, monitoring, and cost tracking
+- **🚀 Unified Interface**: Streamline your AI development with one consistent API
+- **💡 Production-Ready**: Enterprise-grade deployment, monitoring, and scaling
+- **🛠️ Framework Agnostic**: Seamless integration with LangChain, CrewAI, and more
+- **🔌 Extensible**: Customizable architecture for your specific needs
+- **📊 Enterprise Features**: Comprehensive logging, monitoring, and cost tracking
 
 ## ✨ Key Features
 
@@ -83,7 +91,17 @@ pip install multimind-sdk[dev]
 pip install multimind-sdk[langchain,lite-llm,superagi]
 ```
 
-### Your First RAG Application
+### Environment Setup
+
+Copy the example environment file and add your API keys and configuration values:
+
+```bash
+cp examples/multi-model-wrapper/.env.example examples/multi-model-wrapper/.env
+```
+
+> **Note:** Never commit your `.env` file to version control. Only `.env.example` should be tracked in git.
+
+### Build Your First RAG Application
 
 ```python
 from multimind.client.rag_client import RAGClient, Document
@@ -126,9 +144,12 @@ tuner.train(
 
 ## 📚 Documentation
 
-- [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Detailed API documentation
-- [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Ready-to-use code examples
-- [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - System design and components
+- [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Complete API documentation
+- [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Production-ready code examples
+- [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - Detailed system design
+- [Contributing Guide](CONTRIBUTING.md) - Join our development team
+- [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
+- [Issue Tracker](https://github.com/multimind-dev/multimind-sdk/issues) - Report bugs or request features
 
 ### Local Documentation
 
@@ -177,21 +198,31 @@ npm start
 
 ## 📝 License
 
-MultiMind SDK is [MIT licensed](LICENSE).
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+
+The Apache License 2.0 is a permissive license that:
+- Allows commercial use
+- Allows modification
+- Allows distribution
+- Allows private use
+- Includes a patent grant
+- Includes a limitation of liability
+- Includes a warranty disclaimer
+
+For more information about the Apache License 2.0, visit [apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 ## 🌟 Support
 
-- [Discord Community](https://discord.gg/K64U65je7h) - Join our community
-- [GitHub Issues](https://github.com/multimind-dev/multimind-sdk/issues) - Bug reports and feature requests
-- [Documentation](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Detailed guides and tutorials
-
+- [Discord Community](https://discord.gg/K64U65je7h) - Join our active developer community
+- [GitHub Issues](https://github.com/multimind-dev/multimind-sdk/issues) - Get help and report issues
+- [Documentation](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/README.md) - Comprehensive guides
 
 ## 📣 About
 
-MultiMind SDK is developed and maintained by the AI2Innovate team. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to simplify AI development.
+MultiMind SDK is developed and maintained by the AI2Innovate team, dedicated to simplifying AI development for everyone. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to democratize AI development.
 
 ---
 
 <p align="center">
-  Made with ❤️ by the AI2Innovate Team
+  Made with ❤️ by the AI2Innovate Team | <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE">MIT License</a>
 </p>
