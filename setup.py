@@ -24,6 +24,10 @@ sdk_requirements = [
     if not req.startswith('-r')
 ]
 
+# Define long_description by reading the README.md file
+with open("README.md", "r", encoding="utf-8") as fh:
+    long_description = fh.read()
+
 setup(
     name="multimind-sdk",
     version="0.1.0",
@@ -64,4 +68,4 @@ setup(
             'multimind=multimind.gateway.cli:main',
         ],
     },
-) 
+)
