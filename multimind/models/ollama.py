@@ -8,7 +8,7 @@ from .base import BaseLLM
 
 class OllamaModel(BaseLLM):
     """Runner for local models using Ollama."""
-    
+
     def __init__(
         self,
         model_name: str,
@@ -20,7 +20,7 @@ class OllamaModel(BaseLLM):
         # Set default cost and latency for local models
         self.cost_per_token = 0.0
         self.avg_latency = 0.1  # 100ms default latency
-        
+
     async def _make_request(
         self,
         endpoint: str,
@@ -37,7 +37,7 @@ class OllamaModel(BaseLLM):
                             yield line
                 else:
                     return await response.json()
-                    
+
     async def generate(
         self,
         prompt: str,
@@ -54,10 +54,10 @@ class OllamaModel(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         response = await self._make_request("api/generate", data)
         return response["response"]
-        
+
     async def generate_stream(
         self,
         prompt: str,
@@ -75,11 +75,11 @@ class OllamaModel(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         async for chunk in self._make_request("api/generate", data, stream=True):
             if chunk:
                 yield chunk.decode().strip()
-                
+
     async def chat(
         self,
         messages: List[Dict[str, str]],
@@ -96,10 +96,10 @@ class OllamaModel(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         response = await self._make_request("api/chat", data)
         return response["message"]["content"]
-        
+
     async def chat_stream(
         self,
         messages: List[Dict[str, str]],
@@ -117,11 +117,11 @@ class OllamaModel(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         async for chunk in self._make_request("api/chat", data, stream=True):
             if chunk:
                 yield chunk.decode().strip()
-                
+
     async def embeddings(
         self,
         text: Union[str, List[str]],
@@ -130,13 +130,13 @@ class OllamaModel(BaseLLM):
         """Generate embeddings from the local model."""
         if isinstance(text, str):
             text = [text]
-            
+
         data = {
             "model": self.model_name,
             "prompt": text[0] if len(text) == 1 else text,
             **kwargs
         }
-        
+
         response = await self._make_request("api/embeddings", data)
         embeddings = response["embeddings"]
-        return embeddings[0] if len(text) == 1 else embeddings 
+        return embeddings[0] if len(text) == 1 else embeddings

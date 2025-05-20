@@ -8,4 +8,4 @@ from multimind.logging.usage_tracker import UsageTracker
 __all__ = [
     "TraceLogger",
     "UsageTracker",
-] 
+]

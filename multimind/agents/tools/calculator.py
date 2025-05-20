@@ -2,14 +2,14 @@
 Calculator tool for agents.
 """
 
-import ast
+import as
 import operator
-from typing import Any, Dict
+from typing import Any, Dic
 from multimind.agents.tools.base import BaseTool
 
 class CalculatorTool(BaseTool):
     """A tool for performing mathematical calculations."""
-    
+
     def __init__(self):
         super().__init__(
             name="calculator",
@@ -23,17 +23,17 @@ class CalculatorTool(BaseTool):
             ast.Pow: operator.pow,
             ast.USub: operator.neg
         }
-        
+
     async def run(self, expression: str) -> float:
         """Evaluate a mathematical expression."""
         if not self.validate_parameters(expression=expression):
             raise ValueError("Invalid parameters")
-            
+
         try:
             return self._evaluate(expression)
         except Exception as e:
             raise ValueError(f"Invalid expression: {str(e)}")
-            
+
     def get_parameters(self) -> Dict[str, Any]:
         """Get tool parameters schema."""
         return {
@@ -45,7 +45,7 @@ class CalculatorTool(BaseTool):
                 }
             }
         }
-        
+
     def _evaluate(self, expression: str) -> float:
         """Safely evaluate a mathematical expression."""
         def _eval(node):
@@ -60,6 +60,6 @@ class CalculatorTool(BaseTool):
                 return self.operators[type(node.op)](_eval(node.operand))
             else:
                 raise TypeError(f"Unsupported operation: {type(node)}")
-                
+
         tree = ast.parse(expression, mode='eval')
-        return _eval(tree.body) 
+        return _eval(tree.body)

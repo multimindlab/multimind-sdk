@@ -1,5 +1,5 @@
 """
-MultiMind Gateway - Unified CLI and API Gateway for Multi-Model Support
+MultiMind Gateway - Unified CLI and API Gateway for Multi-Model Suppor
 """
 
 __version__ = "0.1.0"
@@ -15,4 +15,4 @@ __all__ = [
     "ModelHandler",
     "ModelResponse",
     "GatewayConfig"
-] 
+]

@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 import asyncio
 import json
 
-from multimind.rag import RAG, Document
+from multimind.rag import RAG, Documen
 from multimind.rag.embeddings import get_embedder
 from multimind.models import OpenAIModel, AnthropicModel
 from multimind.api.auth import (
@@ -59,7 +59,7 @@ class DocumentResponse(BaseModel):
 
 class QueryResponse(BaseModel):
     documents: List[DocumentResponse]
-    total: int
+    total: in
 
 class GenerateResponse(BaseModel):
     text: str
@@ -120,19 +120,19 @@ async def add_file(
     try:
         # Parse metadata if provided
         file_metadata = json.loads(metadata) if metadata else {}
-        
+
         # Save file temporarily
         file_path = Path(f"temp_{file.filename}")
         try:
             content = await file.read()
             file_path.write_bytes(content)
-            
+
             # Add file to RAG
             await rag.add_file(file_path, metadata=file_metadata)
-            
-            # Get document count
+
+            # Get document coun
             count = await rag.get_document_count()
-            
+
             return QueryResponse(
                 documents=[
                     DocumentResponse(
@@ -140,7 +140,7 @@ async def add_file(
                         metadata=file_metadata
                     )
                 ],
-                total=count
+                total=coun
             )
         finally:
             # Clean up temporary file
@@ -162,7 +162,7 @@ async def query(
             top_k=request.top_k,
             filter_metadata=request.filter_metadata
         )
-        
+
         return QueryResponse(
             documents=[
                 DocumentResponse(
@@ -191,14 +191,14 @@ async def generate(
             top_k=request.top_k,
             filter_metadata=request.filter_metadata
         )
-        
+
         # Generate response
         response = await rag.generate(
             request.query,
             temperature=request.temperature,
             max_tokens=request.max_tokens
         )
-        
+
         return GenerateResponse(
             text=response,
             documents=[
@@ -253,12 +253,12 @@ async def switch_model(
             rag.model = AnthropicModel(model=model_name)
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
-        
+
         return {"message": f"Switched to {model_type} model: {model_name}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Health check endpoint
+# Health check endpoin
 @app.get("/health")
 async def health_check(
     current_user: User = Depends(get_current_active_user)
@@ -269,7 +269,7 @@ async def health_check(
         count = await rag.get_document_count()
         return {
             "status": "healthy",
-            "document_count": count
+            "document_count": coun
         }
     except Exception as e:
         raise HTTPException(
@@ -291,7 +291,7 @@ async def login_for_access_token(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user["username"]},
@@ -301,4 +301,4 @@ async def login_for_access_token(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

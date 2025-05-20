@@ -68,10 +68,10 @@ class ModelResponse(BaseModel):
 class CompareResponse(BaseModel):
     responses: Dict[str, ModelResponse]
 
-# New Pydantic models for monitoring and chat
+# New Pydantic models for monitoring and cha
 class MetricsResponse(BaseModel):
     """Response model for metrics endpoint"""
-    metrics: Dict
+    metrics: Dic
     health: Dict[str, ModelHealth]
 
 class SessionCreate(BaseModel):
@@ -86,7 +86,7 @@ class SessionResponse(BaseModel):
     model: str
     created_at: datetime
     updated_at: datetime
-    message_count: int
+    message_count: in
 
 # Dependency to validate model configuration
 async def validate_model_config():
@@ -133,18 +133,18 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
                 status_code=400,
                 detail=f"Model {request.model} is not available"
             )
-        
+
         handler = get_model_handler(request.model)
         start_time = time.time()
-        
+
         try:
             response = await handler.chat(
                 [{"role": msg.role, "content": msg.content} for msg in request.messages],
                 temperature=request.temperature,
                 max_tokens=request.max_tokens
             )
-            
-            # Track successful request
+
+            # Track successful reques
             await monitor.track_request(
                 model=request.model,
                 tokens=response.usage.get("total_tokens", 0) if response.usage else 0,
@@ -152,11 +152,11 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
                 response_time=time.time() - start_time,
                 success=True
             )
-            
+
             return response
-            
+
         except Exception as e:
-            # Track failed request
+            # Track failed reques
             await monitor.track_request(
                 model=request.model,
                 tokens=0,
@@ -166,7 +166,7 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
                 error=str(e)
             )
             raise
-    
+
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -180,16 +180,16 @@ async def generate(request: GenerateRequest, status: Dict = Depends(validate_mod
                 status_code=400,
                 detail=f"Model {request.model} is not available"
             )
-        
+
         handler = get_model_handler(request.model)
         response = await handler.generate(
             request.prompt,
             temperature=request.temperature,
             max_tokens=request.max_tokens
         )
-        
+
         return response
-    
+
     except Exception as e:
         logger.error(f"Error in generate endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -199,7 +199,7 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
     """Compare responses from multiple models"""
     try:
         responses = {}
-        
+
         for model in request.models:
             if model not in status or not status[model]:
                 responses[model] = ModelResponse(
@@ -207,7 +207,7 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
                     model=model
                 )
                 continue
-            
+
             try:
                 handler = get_model_handler(model)
                 response = await handler.generate(
@@ -222,9 +222,9 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
                     content=f"Error: {str(e)}",
                     model=model
                 )
-        
+
         return CompareResponse(responses=responses)
-    
+
     except Exception as e:
         logger.error(f"Error in compare endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -297,7 +297,7 @@ async def add_message(
             session = chat_manager.load_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-        
+
         # Add message to session
         session.add_message(
             role=message.role,
@@ -305,10 +305,10 @@ async def add_message(
             model=message.model,
             metadata=message.metadata
         )
-        
+
         # Save session in background
         background_tasks.add_task(chat_manager.save_session, session_id)
-        
+
         return {"status": "success", "message_count": len(session.messages)}
     except HTTPException:
         raise
@@ -337,7 +337,7 @@ async def check_health(model: Optional[str] = None):
             handler = get_model_handler(model)
             health = await monitor.check_health(model, handler)
             return {model: health}
-        
+
         # Check all configured models
         health_status = {}
         for model_name in config.validate().keys():
@@ -353,4 +353,4 @@ async def check_health(model: Optional[str] = None):
 def start_api(host: str = "0.0.0.0", port: int = 8000):
     """Start the FastAPI server"""
     import uvicorn
-    uvicorn.run(app, host=host, port=port) 
+    uvicorn.run(app, host=host, port=port)

@@ -3,8 +3,8 @@ Tests for the MultiMind Gateway module
 """
 
 import os
-import pytest
-from fastapi.testclient import TestClient
+import pytes
+from fastapi.testclient import TestClien
 from unittest.mock import patch, MagicMock
 
 from multimind.gateway.api import app, ModelResponse
@@ -72,7 +72,7 @@ def test_api_chat(mock_model_handler, mock_config):
     }
     response = client.post("/v1/chat", json=request_data)
     assert response.status_code == 200
-    assert response.json()["content"] == MOCK_RESPONSE.content
+    assert response.json()["content"] == MOCK_RESPONSE.conten
     assert response.json()["model"] == MOCK_RESPONSE.model
 
 def test_api_generate(mock_model_handler, mock_config):
@@ -84,7 +84,7 @@ def test_api_generate(mock_model_handler, mock_config):
     }
     response = client.post("/v1/generate", json=request_data)
     assert response.status_code == 200
-    assert response.json()["content"] == MOCK_RESPONSE.content
+    assert response.json()["content"] == MOCK_RESPONSE.conten
     assert response.json()["model"] == MOCK_RESPONSE.model
 
 def test_api_compare(mock_model_handler, mock_config):
@@ -103,11 +103,11 @@ async def test_cli_chat(mock_model_handler, mock_config):
     """Test the CLI chat functionality"""
     cli = MultiMindCLI()
     cli.validate_config()  # Should not raise any exceptions
-    
+
     # Test single message mode
     await cli.chat("openai", "Hello, world!")
     mock_model_handler.assert_called_once_with("openai")
-    
+
     # Test interactive mode (simulated)
     with patch("click.prompt") as mock_prompt:
         mock_prompt.side_effect = ["Hello", "exit"]
@@ -119,7 +119,7 @@ async def test_cli_compare(mock_model_handler, mock_config):
     """Test the CLI compare functionality"""
     cli = MultiMindCLI()
     cli.validate_config()
-    
+
     await cli.compare("Hello, world!", ["openai", "anthropic"])
     assert mock_model_handler.call_count == 2
 
@@ -127,7 +127,7 @@ def test_model_handler_factory():
     """Test the model handler factory function"""
     with pytest.raises(ValueError):
         get_model_handler("invalid-model")
-    
+
     # Test with mock config
     with patch("multimind.gateway.config.config") as mock_config:
         mock_config.get_model_config.return_value = MagicMock()
@@ -143,10 +143,10 @@ def test_error_handling():
     }
     response = client.post("/v1/chat", json=request_data)
     assert response.status_code == 400
-    
-    # Test with invalid request format
+
+    # Test with invalid request forma
     response = client.post("/v1/chat", json={"invalid": "data"})
     assert response.status_code == 422
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])

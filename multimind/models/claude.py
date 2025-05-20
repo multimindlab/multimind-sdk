@@ -8,7 +8,7 @@ from ..core.base import BaseLLM
 
 class ClaudeModel(BaseLLM):
     """Anthropic Claude model implementation."""
-    
+
     def __init__(
         self,
         model_name: str = "claude-3-opus-20240229",
@@ -17,7 +17,7 @@ class ClaudeModel(BaseLLM):
     ):
         super().__init__(model_name, **kwargs)
         self.client = AsyncAnthropic(api_key=api_key)
-        
+
     async def generate(
         self,
         prompt: str,
@@ -34,7 +34,7 @@ class ClaudeModel(BaseLLM):
             **kwargs
         )
         return response.content[0].text
-        
+
     async def generate_stream(
         self,
         prompt: str,
@@ -54,7 +54,7 @@ class ClaudeModel(BaseLLM):
         async for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.text:
                 yield chunk.delta.text
-                
+
     async def chat(
         self,
         messages: List[Dict[str, str]],
@@ -70,8 +70,8 @@ class ClaudeModel(BaseLLM):
             max_tokens=max_tokens,
             **kwargs
         )
-        return response.content[0].text
-        
+        return response.content[0].tex
+
     async def chat_stream(
         self,
         messages: List[Dict[str, str]],
@@ -90,12 +90,12 @@ class ClaudeModel(BaseLLM):
         )
         async for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.text:
-                yield chunk.delta.text
-                
+                yield chunk.delta.tex
+
     async def embeddings(
         self,
         text: Union[str, List[str]],
         **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using Claude's embeddings API."""
-        raise NotImplementedError("Claude does not currently support embeddings generation") 
+        raise NotImplementedError("Claude does not currently support embeddings generation")

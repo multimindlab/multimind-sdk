@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdic
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ class ChatSession(BaseModel):
     messages: List[ChatMessage] = []
     metadata: Dict = {}
     system_prompt: Optional[str] = None
-    
+
     def add_message(self, role: str, content: str, model: str, metadata: Dict = None) -> None:
         """Add a message to the session"""
         self.messages.append(ChatMessage(
@@ -40,12 +40,12 @@ class ChatSession(BaseModel):
             metadata=metadata or {}
         ))
         self.updated_at = datetime.now()
-    
+
     def get_context(self, max_messages: int = 10) -> List[Dict[str, str]]:
         """Get recent messages for context"""
         messages = self.messages[-max_messages:] if max_messages else self.messages
         return [{"role": msg.role, "content": msg.content} for msg in messages]
-    
+
     def export(self, format: str = "json") -> Union[str, Dict]:
         """Export session to different formats"""
         if format == "json":
@@ -54,7 +54,7 @@ class ChatSession(BaseModel):
             return asdict(self)
         else:
             raise ValueError(f"Unsupported export format: {format}")
-    
+
     @classmethod
     def from_file(cls, file_path: Union[str, Path]) -> "ChatSession":
         """Load session from file"""
@@ -66,7 +66,7 @@ class ChatSession(BaseModel):
             for msg in data["messages"]:
                 msg["timestamp"] = datetime.fromisoformat(msg["timestamp"])
             return cls(**data)
-    
+
     def save(self, directory: Union[str, Path]) -> Path:
         """Save session to file"""
         directory = Path(directory)
@@ -78,12 +78,12 @@ class ChatSession(BaseModel):
 
 class ChatManager:
     """Manage chat sessions and persistence"""
-    
+
     def __init__(self, storage_dir: Union[str, Path] = "chat_sessions"):
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self.active_sessions: Dict[str, ChatSession] = {}
-    
+
     def create_session(
         self,
         model: str,
@@ -99,11 +99,11 @@ class ChatManager:
         )
         self.active_sessions[session.session_id] = session
         return session
-    
+
     def get_session(self, session_id: str) -> Optional[ChatSession]:
         """Get an active session by ID"""
         return self.active_sessions.get(session_id)
-    
+
     def list_sessions(self) -> List[Dict]:
         """List all active sessions"""
         return [
@@ -116,7 +116,7 @@ class ChatManager:
             }
             for session in self.active_sessions.values()
         ]
-    
+
     def load_session(self, session_id: str) -> Optional[ChatSession]:
         """Load a session from storage"""
         file_path = self.storage_dir / f"chat_{session_id}.json"
@@ -128,7 +128,7 @@ class ChatManager:
             except Exception as e:
                 logger.error(f"Error loading session {session_id}: {e}")
         return None
-    
+
     def save_session(self, session_id: str) -> Optional[Path]:
         """Save a session to storage"""
         session = self.active_sessions.get(session_id)
@@ -138,7 +138,7 @@ class ChatManager:
             except Exception as e:
                 logger.error(f"Error saving session {session_id}: {e}")
         return None
-    
+
     def delete_session(self, session_id: str) -> bool:
         """Delete a session"""
         if session_id in self.active_sessions:
@@ -150,4 +150,4 @@ class ChatManager:
         return False
 
 # Global chat manager instance
-chat_manager = ChatManager() 
+chat_manager = ChatManager()

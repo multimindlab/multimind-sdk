@@ -2,11 +2,11 @@
 Authentication module for the RAG API.
 """
 
-from typing import Optional, Dict
+from typing import Optional, Dic
 from fastapi import Depends, HTTPException, status
 from fastapi.security import APIKeyHeader
 from datetime import datetime, timedelta
-import jwt
+import jw
 import os
 from pydantic import BaseModel
 
@@ -55,7 +55,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
-    return encoded_jwt
+    return encoded_jw
 
 async def get_current_user(token: str = Depends(api_key_header)) -> User:
     """Get current user from API key or JWT token."""
@@ -64,7 +64,7 @@ async def get_current_user(token: str = Depends(api_key_header)) -> User:
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     try:
         # First try API key
         if token in os.getenv("API_KEYS", "").split(","):
@@ -72,7 +72,7 @@ async def get_current_user(token: str = Depends(api_key_header)) -> User:
                 username="api_user",
                 scopes=["rag:read", "rag:write"]
             )
-            
+
         # Then try JWT
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         username: str = payload.get("sub")
@@ -81,7 +81,7 @@ async def get_current_user(token: str = Depends(api_key_header)) -> User:
         token_data = TokenData(username=username)
     except jwt.PyJWTError:
         raise credentials_exception
-        
+
     user = fake_users_db.get(token_data.username)
     if user is None:
         raise credentials_exception
@@ -104,4 +104,4 @@ def check_scope(required_scope: str):
                 detail="Not enough permissions"
             )
         return current_user
-    return scope_checker 
+    return scope_checker

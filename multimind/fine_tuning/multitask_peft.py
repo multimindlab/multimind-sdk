@@ -2,7 +2,7 @@
 Advanced multi-task and cross-model features for PEFT methods.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+from typing import List, Dict, Any, Optional, Union, Tuple, Se
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -34,7 +34,7 @@ class TaskType(Enum):
 
 class TaskConfig:
     """Configuration for a specific task in multi-task learning."""
-    
+
     def __init__(
         self,
         task_type: TaskType,
@@ -54,7 +54,7 @@ class TaskConfig:
 
 class MultiTaskMethodSelector:
     """Method selection optimized for multi-task learning."""
-    
+
     def __init__(
         self,
         tasks: List[TaskConfig],
@@ -70,7 +70,7 @@ class MultiTaskMethodSelector:
         }
         self.task_method_performance = {}
         self.method_task_importance = {}
-        
+
     def update_task_performance(
         self,
         task_name: str,
@@ -83,7 +83,7 @@ class MultiTaskMethodSelector:
         if method not in self.task_method_performance[task_name]:
             self.task_method_performance[task_name][method] = []
         self.task_method_performance[task_name][method].append(metrics)
-        
+
     def get_method_task_importance(
         self,
         method: UniPELTPlusMethod,
@@ -92,7 +92,7 @@ class MultiTaskMethodSelector:
         """Calculate method importance for a specific task."""
         if method not in self.method_task_importance:
             self.method_task_importance[method] = {}
-            
+
         if task_name not in self.method_task_importance[method]:
             # Calculate based on performance and preferences
             task = self.tasks[task_name]
@@ -100,18 +100,18 @@ class MultiTaskMethodSelector:
                 base_importance = task.method_preferences[method]
             else:
                 base_importance = 0.5
-                
+
             if task_name in self.task_method_performance and method in self.task_method_performance[task_name]:
                 performance = self.task_method_performance[task_name][method][-1]
                 performance_score = sum(performance.values()) / len(performance)
                 importance = (base_importance + performance_score) / 2
             else:
                 importance = base_importance
-                
+
             self.method_task_importance[method][task_name] = importance
-            
+
         return self.method_task_importance[method][task_name]
-        
+
     def select_methods_for_tasks(
         self,
         model_size: int,
@@ -122,38 +122,38 @@ class MultiTaskMethodSelector:
         total_params = 0
         total_memory = 0
         total_time = 0
-        
+
         for task_name in active_tasks:
             task = self.tasks[task_name]
-            
+
             # Calculate method scores for this task
             method_scores = []
             for method in self.available_methods:
                 importance = self.get_method_task_importance(method, task_name)
                 method_scores.append((method, importance))
-                
+
             # Sort methods by score
             sorted_methods = [m for m, _ in sorted(method_scores, key=lambda x: x[1], reverse=True)]
-            
+
             # Select methods within constraints
             selected_methods = []
             for method in sorted_methods:
                 usage = self.estimate_resource_usage(method, model_size)
-                
+
                 if (total_params + usage["params"] > self.resource_constraints["max_trainable_params"] or
                     total_memory + usage["memory"] > self.resource_constraints["max_memory_gb"] or
                     total_time + usage["time"] > self.resource_constraints["max_training_time_hours"]):
                     continue
-                    
+
                 selected_methods.append(method)
                 total_params += usage["params"]
                 total_memory += usage["memory"]
                 total_time += usage["time"]
-                
+
             task_methods[task_name] = selected_methods
-            
+
         return task_methods
-        
+
     def estimate_resource_usage(self, method: UniPELTPlusMethod, model_size: int) -> Dict[str, float]:
         """Estimate resource usage for a method (reused from AdaptiveMethodSelector)."""
         # Base estimates (can be refined based on empirical data)
@@ -173,7 +173,7 @@ class MultiTaskMethodSelector:
 
 class CrossModelTransfer:
     """Cross-model transfer learning for PEFT methods."""
-    
+
     def __init__(
         self,
         source_model: str,
@@ -189,7 +189,7 @@ class CrossModelTransfer:
         }
         self.method_mappings = {}
         self.performance_history = {}
-        
+
     def analyze_model_similarity(
         self,
         source_weights: Dict[str, torch.Tensor],
@@ -207,7 +207,7 @@ class CrossModelTransfer:
                     ).item()
                     similarities[name] = similarity
         return similarities
-        
+
     def transfer_method_weights(
         self,
         source_weights: Dict[str, torch.Tensor],
@@ -219,7 +219,7 @@ class CrossModelTransfer:
             source_weights,
             {name: param for name, param in target_model.named_parameters()}
         )
-        
+
         if self.transfer_config["transfer_strategy"] == "selective":
             # Only transfer highly similar components
             for name, similarity in similarities.items():
@@ -245,7 +245,7 @@ class CrossModelTransfer:
 
 class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
     """UniPELT++ with multi-task adaptation support."""
-    
+
     def __init__(
         self,
         base_model_name: str,
@@ -265,7 +265,7 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
             available_methods=available_methods,
             resource_constraints=resource_constraints
         )
-        
+
         # Get initial method selection for all tasks
         initial_methods = set()
         for task_name in [task.task_name for task in tasks]:
@@ -274,7 +274,7 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
                 active_tasks=[task_name]
             )[task_name]
             initial_methods.update(task_methods)
-            
+
         super().__init__(
             base_model_name=base_model_name,
             output_dir=output_dir,
@@ -285,13 +285,13 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
             model_config=model_config,
             resource_constraints=resource_constraints
         )
-        
+
         self.tasks = tasks
         self.task_weights = DynamicComponentWeighting(
             num_components=len(tasks),
             initial_weights=[task.importance for task in tasks]
         )
-        
+
     def train(
         self,
         train_datasets: Dict[str, Union[HFDataset, List[str]]],
@@ -301,12 +301,12 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
         """Train with multi-task adaptation."""
         if self.model is None:
             self._prepare_model()
-            
+
         # Add multi-task callback
         class MultiTaskCallback(TrainerCallback):
             def __init__(self, tuner):
                 self.tuner = tuner
-                
+
             def on_evaluate(
                 self,
                 args: TrainingArguments,
@@ -324,7 +324,7 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
                                 method=method,
                                 metrics=task_metrics
                             )
-                            
+
                 # Update task weights
                 task_metrics = [
                     {metric: metrics.get(f"{task.task_name}_{metric}", 0.0)
@@ -332,29 +332,29 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
                     for task in self.tuner.tasks
                 ]
                 self.tuner.task_weights.update_weights(task_metrics)
-                
+
                 # Adapt methods for each task
                 for task_name in train_datasets.keys():
                     new_methods = self.tuner.task_selector.select_methods_for_tasks(
                         model_size=sum(p.numel() for p in self.tuner.model.parameters()),
                         active_tasks=[task_name]
                     )[task_name]
-                    
+
                     if set(new_methods) != set(self.tuner.methods):
                         logger.info(f"Adapting methods for {task_name}: {[m.value for m in new_methods]}")
                         self.tuner._adapt_methods(new_methods)
-                        
+
         # Add callback to trainer
         if "callbacks" not in self.training_args:
             self.training_args["callbacks"] = []
         self.training_args["callbacks"].append(MultiTaskCallback(self))
-        
+
         # Train with base class method
         super().train(train_datasets, eval_datasets, **kwargs)
 
 class CrossModelUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
     """UniPELT++ with cross-model transfer support."""
-    
+
     def __init__(
         self,
         base_model_name: str,
@@ -374,7 +374,7 @@ class CrossModelUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
             target_model=base_model_name,
             transfer_config=transfer_config
         )
-        
+
         super().__init__(
             base_model_name=base_model_name,
             output_dir=output_dir,
@@ -384,18 +384,18 @@ class CrossModelUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
             training_args=training_args,
             model_config=model_config
         )
-        
+
     def _prepare_model(self) -> None:
         """Prepare model with cross-model transfer."""
         super()._prepare_model()
-        
+
         # Load source model weights
         source_weights = {}
         for method in self.methods:
             method_weights = self._load_method_weights(method)
             if method_weights:
                 source_weights[method] = method_weights
-                
+
         # Transfer weights
         for method, weights in source_weights.items():
             self.transfer.transfer_method_weights(
@@ -403,7 +403,7 @@ class CrossModelUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
                 target_model=self.model,
                 method=method
             )
-            
+
     def _load_method_weights(self, method: UniPELTPlusMethod) -> Optional[Dict[str, torch.Tensor]]:
         """Load weights for a specific method from source model."""
         try:
@@ -418,4 +418,4 @@ class CrossModelUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
             }
         except Exception as e:
             logger.warning(f"Failed to load weights for {method.value}: {e}")
-            return None 
+            return None
