@@ -5,13 +5,14 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, 3.12] # Updated list of supported Python versions
+        python-version: [3.8, 3.9, 3.12] # Ensure only supported Python versions are listed
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -26,6 +27,10 @@ jobs:
         run: |
           pip install flake8
           flake8 multimind tests
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
+      - name: Install multimind in editable mode
+        run: pip install -e .
       - name: Run tests
         run: |
           pip install pytest
