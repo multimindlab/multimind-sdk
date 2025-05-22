@@ -37,3 +37,8 @@ jobs:
           pip install pytest
           pip install pytest-mock
           pytest
+      - name: Install Ollama
+        run: |
+          echo "Installing Ollama..."
+          # Add specific installation commands for Ollama here
+          # Example: wget <ollama-download-url> && chmod +x ollama && mv ollama /usr/local/bin/
