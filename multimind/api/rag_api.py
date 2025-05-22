@@ -227,6 +227,14 @@ async def health_check(
             }
         )
 
+# Mock user database for testing purposes
+fake_users_db = {
+    "testuser": {
+        "username": "testuser",
+        "password": "secret"
+    }
+}
+
 # Add authentication endpoints
 @app.post("/token", response_model=Token)
 async def login_for_access_token(
