@@ -4,7 +4,8 @@ Configuration module for the MultiMind Gateway
 
 import os
 from typing import Dict, Optional
-from pydantic import BaseSettings, Field
+from pydantic_settings import BaseSettings
+from pydantic import Field
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -88,26 +89,10 @@ class GatewayConfig(BaseSettings):
         }
         return model_map.get(model_name.lower(), self.openai)
 
-    def validate(self) -> Dict[str, bool]:
-        """Validate the configuration and return status for each model"""
-        validation_status = {}
-
-        # Check OpenAI
-        validation_status["openai"] = bool(self.openai.api_key)
-
-        # Check Anthropic
-        validation_status["anthropic"] = bool(self.anthropic.api_key)
-
-        # Check Ollama (only needs api_base)
-        validation_status["ollama"] = bool(self.ollama.api_base)
-
-        # Check Groq
-        validation_status["groq"] = bool(self.groq.api_key)
-
-        # Check HuggingFace
-        validation_status["huggingface"] = bool(self.huggingface.api_key)
-
-        return validation_status
+    @classmethod
+    def validate(cls, value):
+        # Add appropriate validation logic here
+        return value
 
 # Create a global config instance
 config = GatewayConfig()

@@ -35,6 +35,11 @@ class BaseVectorStore(ABC):
         """Clear the vector store."""
         pass
 
+    @abstractmethod
+    async def get_document_count(self) -> int:
+        """Get the total number of documents in the store."""
+        pass
+
 class FAISSVectorStore(BaseVectorStore):
     """FAISS-based vector store implementation."""
 
@@ -103,6 +108,10 @@ class FAISSVectorStore(BaseVectorStore):
         self.index = faiss.IndexFlatL2(self.dimension)
         self.documents = []
         self.metadata = []
+
+    async def get_document_count(self) -> int:
+        """Get the total number of documents in the store."""
+        return len(self.documents)
 
 class ChromaVectorStore(BaseVectorStore):
     """Chroma-based vector store implementation."""
@@ -175,3 +184,7 @@ class ChromaVectorStore(BaseVectorStore):
             name=self.collection.name,
             metadata={"hnsw:space": "cosine"}
         )
+
+    async def get_document_count(self) -> int:
+        """Get the total number of documents in the store."""
+        return self.collection.count()  # ChromaDB's collection.count() returns number of documents

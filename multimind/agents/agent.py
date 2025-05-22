@@ -20,7 +20,7 @@ class Agent:
         self.model = model
         self.memory = memory or AgentMemory()
         self.tools = tools or []
-        self.system_prompt = system_promp
+        self.system_prompt = system_prompt
 
     async def run(self, task: str, **kwargs) -> Dict[str, Any]:
         """Run the agent on a given task."""

@@ -12,8 +12,7 @@ from datetime import datetime
 import openai
 import anthropic
 import requests
-from groq import Groq
-from huggingface_hub import InferenceClien
+from huggingface_hub import InferenceClient
 
 from .config import ModelConfig, config
 
@@ -61,13 +60,27 @@ class OpenAIHandler(ModelHandler):
                 max_tokens=kwargs.get("max_tokens", self.config.max_tokens)
             )
 
+            # Fix typing issues
+            if response.choices and response.choices[0].message and response.choices[0].message.content:
+                content = response.choices[0].message.content
+            else:
+                content = ""
+
+            # Handle None cases for token attributes
+            if response.usage:
+                prompt_tokens = response.usage.prompt_tokens or 0
+                completion_tokens = response.usage.completion_tokens or 0
+                total_tokens = response.usage.total_tokens or 0
+            else:
+                prompt_tokens = completion_tokens = total_tokens = 0
+
             return ModelResponse(
-                content=response.choices[0].message.content,
+                content=content,
                 model=self.config.model_name,
                 usage={
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens
                 },
                 finish_reason=response.choices[0].finish_reason
             )
@@ -99,7 +112,7 @@ class AnthropicHandler(ModelHandler):
             )
 
             return ModelResponse(
-                content=response.content[0].text,
+                content=response.content[0].text if hasattr(response.content[0], 'text') else "",
                 model=self.config.model_name,
                 usage={
                     "input_tokens": response.usage.input_tokens,
@@ -131,7 +144,7 @@ class OllamaHandler(ModelHandler):
                     "temperature": kwargs.get("temperature", self.config.temperature),
                     "max_tokens": kwargs.get("max_tokens", self.config.max_tokens)
                 },
-                timeout=self.config.timeou
+                timeout=self.config.timeout if hasattr(self.config, 'timeout') else 30
             )
             response.raise_for_status()
 
@@ -149,39 +162,38 @@ class OllamaHandler(ModelHandler):
         messages = [{"role": "user", "content": prompt}]
         return await self.chat(messages, **kwargs)
 
-class GroqHandler(ModelHandler):
-    """Handler for Groq models"""
+# Commented out GroqHandler and related usages
+# class GroqHandler(ModelHandler):
+#     """Handler for Groq models"""
+#     def __init__(self, config):
+#         self._client = Groq(api_key=config.api_key)
 
-    def __init__(self, model_config: ModelConfig):
-        super().__init__(model_config)
-        self._client = Groq(api_key=self.config.api_key)
+#     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
+#         try:
+#             response = await self._client.chat.completions.create(
+#                 model=self.config.model_name,
+#                 messages=messages,
+#                 temperature=kwargs.get("temperature", self.config.temperature),
+#                 max_tokens=kwargs.get("max_tokens", self.config.max_tokens)
+#             )
 
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
-        try:
-            response = await self._client.chat.completions.create(
-                model=self.config.model_name,
-                messages=messages,
-                temperature=kwargs.get("temperature", self.config.temperature),
-                max_tokens=kwargs.get("max_tokens", self.config.max_tokens)
-            )
+#             return ModelResponse(
+#                 content=response.choices[0].message.content,
+#                 model=self.config.model_name,
+#                 usage={
+#                     "prompt_tokens": response.usage.prompt_tokens,
+#                     "completion_tokens": response.usage.completion_tokens,
+#                     "total_tokens": response.usage.total_tokens
+#                 },
+#                 finish_reason=response.choices[0].finish_reason
+#             )
+#         except Exception as e:
+#             logger.error(f"Groq API error: {str(e)}")
+#             raise
 
-            return ModelResponse(
-                content=response.choices[0].message.content,
-                model=self.config.model_name,
-                usage={
-                    "prompt_tokens": response.usage.prompt_tokens,
-                    "completion_tokens": response.usage.completion_tokens,
-                    "total_tokens": response.usage.total_tokens
-                },
-                finish_reason=response.choices[0].finish_reason
-            )
-        except Exception as e:
-            logger.error(f"Groq API error: {str(e)}")
-            raise
-
-    async def generate(self, prompt: str, **kwargs) -> ModelResponse:
-        messages = [{"role": "user", "content": prompt}]
-        return await self.chat(messages, **kwargs)
+#     async def generate(self, prompt: str, **kwargs) -> ModelResponse:
+#         messages = [{"role": "user", "content": prompt}]
+#         return await self.chat(messages, **kwargs)
 
 class HuggingFaceHandler(ModelHandler):
     """Handler for HuggingFace models"""
@@ -223,7 +235,6 @@ def get_model_handler(model_name: str) -> ModelHandler:
         "openai": OpenAIHandler,
         "anthropic": AnthropicHandler,
         "ollama": OllamaHandler,
-        "groq": GroqHandler,
         "huggingface": HuggingFaceHandler
     }
 

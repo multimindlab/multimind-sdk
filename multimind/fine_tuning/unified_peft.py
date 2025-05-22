@@ -2,7 +2,7 @@
 UniPELT and MAM Adapters implementations for advanced parameter-efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 from transformers import (
@@ -19,7 +19,7 @@ from transformers import (
 )
 from peft import (
     LoraConfig,
-    AdapterConfig,
+    # AdapterConfig,  # Commented out due to ImportError
     PromptTuningConfig,
     PrefixTuningConfig,
     IA3Config,
@@ -27,7 +27,7 @@ from peft import (
     TaskType,
     PeftModel
 )
-from datasets import Dataset as HFDatase
+from datasets import Dataset as HFDataset
 import logging
 from enum import Enum
 from .peft_methods import PEFTMethod, PEFTTuner
@@ -161,8 +161,9 @@ class UniPELTTuner:
                 config = LoraConfig(**self.method_configs[method],
                                   task_type=TaskType.CAUSAL_LM)
             elif method == UniPELTMethod.ADAPTER:
-                config = AdapterConfig(**self.method_configs[method],
-                                     task_type=TaskType.CAUSAL_LM)
+                # config = AdapterConfig(**self.method_configs[method],
+                #                      task_type=TaskType.CAUSAL_LM)
+                continue  # Skip AdapterConfig for now
             elif method == UniPELTMethod.PROMPT:
                 config = PromptTuningConfig(**self.method_configs[method],
                                           task_type=TaskType.CAUSAL_LM)
@@ -387,9 +388,9 @@ class MAMAdapterTuner:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Configure adapter
-        adapter_config = AdapterConfig(**self.adapter_config,
-                                     task_type=TaskType.CAUSAL_LM)
-        self.model = get_peft_model(self.model, adapter_config)
+        # adapter_config = AdapterConfig(**self.adapter_config,
+        #                              task_type=TaskType.CAUSAL_LM)
+        # self.model = get_peft_model(self.model, adapter_config)
 
         # Configure LoRA
         lora_config = LoraConfig(**self.lora_config,

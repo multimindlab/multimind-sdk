@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-from dataclasses import dataclass, asdic
+from dataclasses import dataclass, asdict
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,15 @@ class ChatSession(BaseModel):
     metadata: Dict = {}
     system_prompt: Optional[str] = None
 
-    def add_message(self, role: str, content: str, model: str, metadata: Dict = None) -> None:
+    def add_message(self, role: str, content: str, model: str, metadata: Optional[Dict[str, Union[str, int, float]]] = None) -> None:
         """Add a message to the session"""
+        if metadata is None:
+            metadata = {}
         self.messages.append(ChatMessage(
             role=role,
             content=content,
             model=model,
-            metadata=metadata or {}
+            metadata=metadata
         ))
         self.updated_at = datetime.now()
 

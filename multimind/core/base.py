@@ -3,7 +3,7 @@ Base class for all LLM implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, AsyncGenerator
 
 class BaseLLM(ABC):
     """Abstract base class for all LLM implementations."""
@@ -32,7 +32,7 @@ class BaseLLM(ABC):
         **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
-        pass
+        yield ""  # Placeholder to make it an async generator
 
     @abstractmethod
     async def chat(
@@ -54,7 +54,7 @@ class BaseLLM(ABC):
         **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream from the model."""
-        pass
+        yield ""  # Placeholder to make it an async generator
 
     @abstractmethod
     async def embeddings(

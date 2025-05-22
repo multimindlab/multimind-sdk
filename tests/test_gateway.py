@@ -3,8 +3,8 @@ Tests for the MultiMind Gateway module
 """
 
 import os
-import pytes
-from fastapi.testclient import TestClien
+import pytest
+from fastapi.testclient import TestClient  # Corrected import statement
 from unittest.mock import patch, MagicMock
 
 from multimind.gateway.api import app, ModelResponse
@@ -72,7 +72,7 @@ def test_api_chat(mock_model_handler, mock_config):
     }
     response = client.post("/v1/chat", json=request_data)
     assert response.status_code == 200
-    assert response.json()["content"] == MOCK_RESPONSE.conten
+    assert response.json()["content"] == MOCK_RESPONSE.content  # Fixed attribute name
     assert response.json()["model"] == MOCK_RESPONSE.model
 
 def test_api_generate(mock_model_handler, mock_config):
@@ -84,7 +84,7 @@ def test_api_generate(mock_model_handler, mock_config):
     }
     response = client.post("/v1/generate", json=request_data)
     assert response.status_code == 200
-    assert response.json()["content"] == MOCK_RESPONSE.conten
+    assert response.json()["content"] == MOCK_RESPONSE.content  # Fixed attribute name
     assert response.json()["model"] == MOCK_RESPONSE.model
 
 def test_api_compare(mock_model_handler, mock_config):

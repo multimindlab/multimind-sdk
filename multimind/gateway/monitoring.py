@@ -6,8 +6,8 @@ import time
 import logging
 from datetime import datetime
 from typing import Dict, List, Optional
-from dataclasses import dataclass
-from collections import defaultdic
+from dataclasses import dataclass, field
+from collections import defaultdict
 import asyncio
 import aiohttp
 from pydantic import BaseModel
@@ -24,7 +24,7 @@ class ModelMetrics:
     total_cost: float = 0.0
     avg_response_time: float = 0.0
     last_used: Optional[datetime] = None
-    error_count: Dict[str, int] = defaultdict(int)
+    error_count: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
 class ModelHealth(BaseModel):
     """Health status of a model"""
@@ -40,10 +40,12 @@ class ModelMonitor:
     def __init__(self):
         self.metrics: Dict[str, ModelMetrics] = defaultdict(ModelMetrics)
         self.health: Dict[str, ModelHealth] = {}
-        self.rate_limits: Dict[str, Dict[str, int]] = defaultdict(lambda: {
-            "requests_per_minute": 60,
-            "tokens_per_minute": 100000
-        })
+        self.rate_limits: Dict[str, Dict[str, int]] = defaultdict(
+            lambda: {
+                "requests_per_minute": 60,
+                "tokens_per_minute": 100000
+            }
+        )
         self._lock = asyncio.Lock()
 
     async def track_request(
@@ -60,7 +62,7 @@ class ModelMonitor:
             metrics = self.metrics[model]
             metrics.total_requests += 1
             metrics.total_tokens += tokens
-            metrics.total_cost += cos
+            metrics.total_cost += cost
             metrics.last_used = datetime.now()
 
             # Update response time (moving average)
@@ -115,17 +117,12 @@ class ModelMonitor:
             for model, metrics in self.metrics.items()
         }
 
-    def set_rate_limits(
-        self,
-        model: str,
-        requests_per_minute: int,
-        tokens_per_minute: in
-    ) -> None:
-        """Set rate limits for a model"""
-        self.rate_limits[model].update({
+    def set_rate_limits(self, model: str, *, requests_per_minute: int, tokens_per_minute: int) -> None:
+        """Set rate limits for a specific model"""
+        self.rate_limits[model] = {
             "requests_per_minute": requests_per_minute,
             "tokens_per_minute": tokens_per_minute
-        })
+        }
 
     async def check_rate_limit(self, model: str, tokens: int) -> bool:
         """Check if a request would exceed rate limits"""

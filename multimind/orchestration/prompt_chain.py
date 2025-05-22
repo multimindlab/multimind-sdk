@@ -63,7 +63,7 @@ class PromptChain:
             # Update contex
             context.update({
                 "last_response": response,
-                "last_prompt": formatted_promp
+                "last_prompt": formatted_prompt
             })
 
         return self.results
@@ -74,7 +74,7 @@ class PromptChain:
         variables = {**self.variables, **context}
 
         # Replace variables in promp
-        formatted = promp
+        formatted = prompt
         for key, value in variables.items():
             placeholder = f"{{{key}}}"
             if placeholder in formatted:

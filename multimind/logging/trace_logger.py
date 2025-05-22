@@ -5,7 +5,7 @@ Trace logging functionality for tracking execution flow.
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, Optional, Lis
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 
 class TraceLogger:
@@ -92,7 +92,7 @@ class TraceLogger:
 
         trace["end_time"] = datetime.now().isoformat()
         trace["status"] = status
-        trace["result"] = resul
+        trace["result"] = result
 
         # Save trace to file
         trace_file = self.log_dir / f"trace_{trace_id}.json"

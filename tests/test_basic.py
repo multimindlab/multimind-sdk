@@ -2,7 +2,8 @@
 Basic tests for Multimind SDK.
 """
 
-import pytes
+import pytest
+from typing import AsyncGenerator, Coroutine, Any, Optional, List, Dict, Union, cast
 from multimind import (
     BaseLLM, ModelRouter, Config,
     Agent, AgentMemory, CalculatorTool,
@@ -10,6 +11,7 @@ from multimind import (
     MCPParser, MCPExecutor,
     TraceLogger, UsageTracker
 )
+from asyncio import sleep
 
 def test_imports():
     """Test that all major components can be imported."""
@@ -39,11 +41,32 @@ def test_agent_creation():
     """Test basic agent creation."""
     # Create a mock model
     class MockModel(BaseLLM):
-        async def generate(self, prompt: str) -> str:
+        def __init__(self, model_name: str = "mock-model"):
+            self.model_name = model_name
+
+        async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
             return "Mock response"
 
-    # Create agent components
-    model = MockModel()
+        async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+            async def stream() -> AsyncGenerator[str, None]:
+                yield "Mock response"
+            return stream()
+
+        async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+            return "Mock chat response"
+
+        async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+            async def stream() -> AsyncGenerator[str, None]:
+                yield "Mock chat response"
+            return stream()
+
+        async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+            if isinstance(text, str):
+                return [0.0] * 768
+            return [[0.0] * 768 for _ in text]
+
+    # Instantiate MockModel with required parameter
+    model = MockModel(model_name="mock-model")
     memory = AgentMemory()
     calculator = CalculatorTool()
 
@@ -64,11 +87,27 @@ def test_prompt_chain():
     """Test basic prompt chain creation."""
     # Create a mock model
     class MockModel(BaseLLM):
-        async def generate(self, prompt: str) -> str:
+        async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
             return "Mock response"
 
+        async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+            yield "Mock response"
+
+        async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+            return "Mock chat response"
+
+        async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+            async def stream() -> AsyncGenerator[str, None]:
+                yield "Mock chat response"
+            return stream()
+
+        async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+            if isinstance(text, str):
+                return [0.0] * 768
+            return [[0.0] * 768 for _ in text]
+
     # Create prompt chain
-    model = MockModel()
+    model = MockModel(model_name="mock-model")
     chain = PromptChain(model)
 
     # Add prompts

@@ -3,7 +3,7 @@ FastAPI-based API Gateway for MultiMind
 """
 
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -40,8 +40,11 @@ app.add_middleware(
 
 # Pydantic models for request/response
 class ChatMessage(BaseModel):
+    """Model for chat messages"""
     role: str = Field(..., description="Role of the message sender (user/assistant)")
     content: str = Field(..., description="Content of the message")
+    model: Optional[str] = Field(default=None, description="Model that generated the message")
+    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict, description="Additional message metadata")
 
 class ChatRequest(BaseModel):
     messages: List[ChatMessage] = Field(..., description="List of chat messages")
@@ -56,8 +59,11 @@ class GenerateRequest(BaseModel):
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
 
 class CompareRequest(BaseModel):
+    """Request model for comparing models"""
     prompt: str = Field(..., description="Prompt to compare models on")
     models: List[str] = Field(default=["openai", "anthropic", "ollama"], description="Models to compare")
+    temperature: Optional[float] = Field(default=0.7, description="Sampling temperature")
+    max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
 
 class ModelResponse(BaseModel):
     content: str
@@ -71,7 +77,7 @@ class CompareResponse(BaseModel):
 # New Pydantic models for monitoring and cha
 class MetricsResponse(BaseModel):
     """Response model for metrics endpoint"""
-    metrics: Dic
+    metrics: Dict[str, Any]
     health: Dict[str, ModelHealth]
 
 class SessionCreate(BaseModel):
@@ -86,11 +92,11 @@ class SessionResponse(BaseModel):
     model: str
     created_at: datetime
     updated_at: datetime
-    message_count: in
+    message_count: int
 
 # Dependency to validate model configuration
 async def validate_model_config():
-    status = config.validate()
+    status = config.validate(value={})
     if not any(status.values()):
         raise HTTPException(
             status_code=500,
@@ -104,7 +110,7 @@ async def root():
     return {
         "name": "MultiMind Gateway API",
         "version": "0.1.0",
-        "models": list(config.validate().keys())
+        "models": list(config.validate(value={}).keys())
     }
 
 @app.get("/v1/models")
@@ -299,10 +305,15 @@ async def add_message(
             raise HTTPException(status_code=404, detail="Session not found")
 
         # Add message to session
+        if message.model is None:
+            model = "default_model"
+        else:
+            model = message.model
+
         session.add_message(
             role=message.role,
             content=message.content,
-            model=message.model,
+            model=model,
             metadata=message.metadata
         )
 
@@ -340,8 +351,8 @@ async def check_health(model: Optional[str] = None):
 
         # Check all configured models
         health_status = {}
-        for model_name in config.validate().keys():
-            if config.validate()[model_name]:
+        for model_name in config.validate(value={}).keys():
+            if config.validate(value={})[model_name]:
                 handler = get_model_handler(model_name)
                 health = await monitor.check_health(model_name, handler)
                 health_status[model_name] = health
@@ -349,6 +360,22 @@ async def check_health(model: Optional[str] = None):
     except Exception as e:
         logger.error(f"Error checking health: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+class MultiMindAPI:
+    """API Gateway for MultiMind"""
+    def __init__(self):
+        self.app = FastAPI()
+        self.configure_routes()
+
+    def configure_routes(self):
+        @self.app.get("/health")
+        async def health_check():
+            return {"status": "healthy"}
+
+        # Add more routes as needed
+
+# Export the MultiMindAPI instance
+api = MultiMindAPI()
 
 def start_api(host: str = "0.0.0.0", port: int = 8000):
     """Start the FastAPI server"""

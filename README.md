@@ -38,11 +38,9 @@
   <a href="#contributing">Contributing</a>
 </p>
 
-## 📏 Codebase Statistics
+[![💖 Support MultiMind SDK](https://img.shields.io/badge/💖_Support-MultiMind%20SDK-blueviolet?style=for-the-badge)](https://opencollective.com/multimind-sdk)
 
-- **Total lines of code (Python, JS, TS):** 9539257
 
----
 
 ## Why MultiMind SDK?
 
@@ -201,6 +199,19 @@ cd multimind-docs
 npm install
 npm start
 ```
+
+## 💖 Support MultiMind SDK
+
+If you find MultiMind SDK helpful, please consider supporting us to sustain development and grow the community.
+
+Your support will help fund:
+
+- ⚙️ Feature development and maintenance
+- 📖 Better documentation and onboarding
+- 🌍 Community outreach and support
+- 🧪 Infrastructure, testing, and CI/CD
+
+👉 <a href="https://opencollective.com/multimind-sdk" aria-label="Join MultiMind SDK Community">Contribute here</a>
 
 ## 📝 License
 

@@ -3,9 +3,9 @@ Agent loader for loading agent configurations from MCP files.
 """
 
 import json
-from typing import Dict, Any, Optional, Lis
+from typing import Dict, Any, Optional, List
 from pathlib import Path
-from multimind.agents.agent import Agen
+from multimind.agents.agent import Agent
 from multimind.agents.memory import AgentMemory
 from multimind.agents.tools.base import BaseTool
 from multimind.models.base import BaseLLM
@@ -70,7 +70,7 @@ class AgentLoader:
             system_prompt=config["system_prompt"]
         )
 
-        return agen
+        return agent
 
     def load_agents_from_dir(
         self,

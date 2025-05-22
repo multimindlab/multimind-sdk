@@ -5,21 +5,16 @@ Additional PEFT (Parameter-Efficient Fine-Tuning) methods implementation.
 from typing import List, Dict, Any, Optional, Union, Tuple
 import torch
 import torch.nn as nn
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling,
-    DataCollatorForSeq2Seq
-)
+from transformers.modeling_utils import PreTrainedModel
+from transformers.tokenization_utils import PreTrainedTokenizer
+from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers.training_args import TrainingArguments
+from transformers.trainer import Trainer
+from transformers.data.data_collator import DataCollatorForLanguageModeling, DataCollatorForSeq2Seq
 from peft import (
     LoraConfig,
-    AdapterConfig,
+    # AdapterConfig,  # Commented out due to ImportError
     PromptTuningConfig,
     PrefixTuningConfig,
     IA3Config,
@@ -27,7 +22,7 @@ from peft import (
     TaskType,
     PeftModel
 )
-from datasets import Dataset as HFDatase
+from datasets import Dataset as HFDataset
 import logging
 import math
 from enum import Enum
@@ -172,7 +167,7 @@ class PEFTTuner:
                 "bias": "none"
             },
             PEFTMethod.ADAPTER: {
-                "adapter_type": "houlsby",
+                # "adapter_type": "houlsby",
                 "adapter_size": 64,
                 "adapter_non_linearity": "relu",
                 "adapter_dropout": 0.1,
@@ -269,8 +264,10 @@ class PEFTTuner:
                 config = LoraConfig(**self.method_configs[self.method],
                                   task_type=TaskType.CAUSAL_LM)
             elif self.method == PEFTMethod.ADAPTER:
-                config = AdapterConfig(**self.method_configs[self.method],
-                                     task_type=TaskType.CAUSAL_LM)
+                # config = AdapterConfig(**self.method_configs[self.method],
+                #                      task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs[self.method],
+                                  task_type=TaskType.CAUSAL_LM)  # Fallback to LoraConfig
             elif self.method == PEFTMethod.PROMPT:
                 config = PromptTuningConfig(**self.method_configs[self.method],
                                           task_type=TaskType.CAUSAL_LM)

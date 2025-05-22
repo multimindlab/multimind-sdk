@@ -11,20 +11,16 @@ from pydantic import BaseModel, Field
 import asyncio
 import json
 
-from multimind.rag import RAG, Documen
+from multimind.rag.rag import RAG
+from multimind.rag.document import Document
 from multimind.rag.embeddings import get_embedder
-from multimind.models import OpenAIModel, AnthropicModel
+from multimind.models.openai import OpenAIModel
 from multimind.api.auth import (
     User, Token, create_access_token, get_current_active_user,
     check_scope, ACCESS_TOKEN_EXPIRE_MINUTES, timedelta
 )
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="MultiMind RAG API",
-    description="API for the MultiMind SDK's RAG system",
-    version="1.0.0"
-)
+app = FastAPI(title="MultiMind RAG API")
 
 # Add CORS middleware
 app.add_middleware(
@@ -35,10 +31,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pydantic models for request/response
+# Global RAG instance
+rag_instance: Optional[RAG] = None
+
 class DocumentRequest(BaseModel):
     text: str
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    metadata: Optional[Dict[str, Any]] = None
+
+class BatchDocumentRequest(BaseModel):
+    documents: List[DocumentRequest]
 
 class QueryRequest(BaseModel):
     query: str
@@ -47,7 +48,6 @@ class QueryRequest(BaseModel):
 
 class GenerateRequest(BaseModel):
     query: str
-    top_k: Optional[int] = 3
     temperature: Optional[float] = 0.7
     max_tokens: Optional[int] = None
     filter_metadata: Optional[Dict[str, Any]] = None
@@ -59,21 +59,18 @@ class DocumentResponse(BaseModel):
 
 class QueryResponse(BaseModel):
     documents: List[DocumentResponse]
-    total: in
+    total: int
 
 class GenerateResponse(BaseModel):
-    text: str
+    response: str
     documents: List[DocumentResponse]
-
-# Global RAG instance
-rag_instance: Optional[RAG] = None
 
 async def get_rag() -> RAG:
     """Get or create RAG instance."""
     global rag_instance
     if rag_instance is None:
         # Initialize with default settings
-        model = OpenAIModel(model="gpt-3.5-turbo")
+        model = OpenAIModel(model_name="gpt-3.5-turbo")
         embedder = get_embedder("openai")
         rag_instance = RAG(
             embedder=embedder,
@@ -82,162 +79,81 @@ async def get_rag() -> RAG:
         )
     return rag_instance
 
-# API endpoints
-@app.post("/documents", response_model=QueryResponse)
+@app.post("/documents")
 async def add_documents(
-    documents: List[DocumentRequest],
+    request: BatchDocumentRequest,
     rag: RAG = Depends(get_rag),
     current_user: User = Depends(check_scope("rag:write"))
-):
+) -> Dict[str, int]:
     """Add documents to the RAG system."""
     try:
-        docs = [
-            Document(text=doc.text, metadata=doc.metadata)
-            for doc in documents
-        ]
-        await rag.add_documents(docs)
-        return QueryResponse(
-            documents=[
-                DocumentResponse(
-                    text=doc.text,
-                    metadata=doc.metadata
-                )
-                for doc in docs
-            ],
-            total=len(docs)
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Convert request to documents and metadata
+        docs = [doc.text for doc in request.documents]
+        metadata = [doc.metadata or {} for doc in request.documents]
 
-@app.post("/files", response_model=QueryResponse)
-async def add_file(
-    file: UploadFile = File(...),
-    metadata: Optional[str] = Form(None),
-    rag: RAG = Depends(get_rag),
-    current_user: User = Depends(check_scope("rag:write"))
-):
-    """Add a file to the RAG system."""
-    try:
-        # Parse metadata if provided
-        file_metadata = json.loads(metadata) if metadata else {}
-
-        # Save file temporarily
-        file_path = Path(f"temp_{file.filename}")
-        try:
-            content = await file.read()
-            file_path.write_bytes(content)
-
-            # Add file to RAG
-            await rag.add_file(file_path, metadata=file_metadata)
-
-            # Get document coun
-            count = await rag.get_document_count()
-
-            return QueryResponse(
-                documents=[
-                    DocumentResponse(
-                        text=f"Added file: {file.filename}",
-                        metadata=file_metadata
-                    )
-                ],
-                total=coun
-            )
-        finally:
-            # Clean up temporary file
-            if file_path.exists():
-                file_path.unlink()
+        # Add documents
+        await rag.add_documents(docs, metadata=metadata)
+        count = len(docs)
+        return {"document_count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/query", response_model=QueryResponse)
-async def query(
+async def query_documents(
     request: QueryRequest,
     rag: RAG = Depends(get_rag),
     current_user: User = Depends(check_scope("rag:read"))
-):
-    """Query the RAG system."""
+) -> QueryResponse:
+    """Query documents from the RAG system."""
     try:
-        results = await rag.query(
-            request.query,
-            top_k=request.top_k,
-            filter_metadata=request.filter_metadata
-        )
+        # Search documents
+        results = await rag.search(request.query, k=request.top_k or 3)
 
-        return QueryResponse(
-            documents=[
-                DocumentResponse(
-                    text=doc.text,
-                    metadata=doc.metadata,
-                    score=score
-                )
-                for doc, score in results
-            ],
-            total=len(results)
-        )
+        # Convert to response format
+        documents = [
+            DocumentResponse(
+                text=doc["text"],
+                metadata=doc["metadata"],
+                score=doc.get("score")
+            )
+            for doc in results
+        ]
+        return QueryResponse(documents=documents, total=len(documents))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/generate", response_model=GenerateResponse)
-async def generate(
+async def generate_response(
     request: GenerateRequest,
     rag: RAG = Depends(get_rag),
     current_user: User = Depends(check_scope("rag:read"))
-):
+) -> GenerateResponse:
     """Generate a response using the RAG system."""
     try:
-        # Get relevant documents
-        results = await rag.query(
-            request.query,
-            top_k=request.top_k,
-            filter_metadata=request.filter_metadata
-        )
-
-        # Generate response
-        response = await rag.generate(
-            request.query,
+        # First search for relevant documents
+        results = await rag.search(request.query, k=3)
+        
+        # Generate response using context
+        response = await rag.query(
+            query=request.query,
+            context=results,
             temperature=request.temperature,
             max_tokens=request.max_tokens
         )
 
-        return GenerateResponse(
-            text=response,
-            documents=[
-                DocumentResponse(
-                    text=doc.text,
-                    metadata=doc.metadata,
-                    score=score
-                )
-                for doc, score in results
-            ]
-        )
+        # Convert search results to response format
+        documents = [
+            DocumentResponse(
+                text=doc["text"],
+                metadata=doc["metadata"],
+                score=doc.get("score")
+            )
+            for doc in results
+        ]
+        return GenerateResponse(response=response, documents=documents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/documents")
-async def clear_documents(
-    rag: RAG = Depends(get_rag),
-    current_user: User = Depends(check_scope("rag:write"))
-):
-    """Clear all documents from the RAG system."""
-    try:
-        await rag.clear()
-        return {"message": "All documents cleared successfully"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/documents/count")
-async def get_document_count(
-    rag: RAG = Depends(get_rag),
-    current_user: User = Depends(check_scope("rag:read"))
-):
-    """Get the number of documents in the RAG system."""
-    try:
-        count = await rag.get_document_count()
-        return {"count": count}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Model management endpoints
 @app.post("/models/switch")
 async def switch_model(
     model_type: str = Form(...),
@@ -248,9 +164,7 @@ async def switch_model(
     """Switch the model used by the RAG system."""
     try:
         if model_type == "openai":
-            rag.model = OpenAIModel(model=model_name)
-        elif model_type == "anthropic":
-            rag.model = AnthropicModel(model=model_name)
+            rag.model = OpenAIModel(model_name=model_name)
         else:
             raise ValueError(f"Unsupported model type: {model_type}")
 
@@ -258,23 +172,59 @@ async def switch_model(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Health check endpoin
+@app.post("/documents/clear")
+async def clear_documents(
+    rag: RAG = Depends(get_rag),
+    current_user: User = Depends(check_scope("rag:write"))
+):
+    """Clear all documents from the RAG system."""
+    try:
+        await rag.vector_store.clear()
+        return {"message": "All documents cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/health")
 async def health_check(
-    current_user: User = Depends(get_current_active_user)
-):
+    rag: RAG = Depends(get_rag)
+) -> Dict[str, Union[str, int, Dict]]:
     """Check the health of the RAG system."""
     try:
-        rag = await get_rag()
-        count = await rag.get_document_count()
+        # Check vector store
+        doc_count = await rag.vector_store.get_document_count()
+        
+        # Test embeddings generation
+        embedding_test = await rag.embedder.embeddings("test")
+        embedding_dim = len(embedding_test[0]) if isinstance(embedding_test[0], list) else len(embedding_test)
+        
+        # Test model generation (with timeout)
+        model_healthy = True
+        model_error = None
+        try:
+            async with asyncio.timeout(5.0):  # 5 second timeout
+                await rag.model.generate("test", max_tokens=10)
+        except Exception as e:
+            model_healthy = False
+            model_error = str(e)
+        
         return {
-            "status": "healthy",
-            "document_count": coun
+            "status": "healthy" if model_healthy else "degraded",
+            "document_count": doc_count,
+            "embedding_dimension": embedding_dim,
+            "vector_store_type": rag.vector_store.__class__.__name__,
+            "model": {
+                "name": rag.model.model_name if rag.model else None,
+                "status": "healthy" if model_healthy else "error",
+                "error": model_error
+            }
         }
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Health check failed: {str(e)}"
+            detail={
+                "status": "unhealthy",
+                "error": str(e)
+            }
         )
 
 # Add authentication endpoints
