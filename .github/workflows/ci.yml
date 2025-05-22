@@ -25,6 +25,7 @@ jobs:
           pip install -e .[dev]
           pip install transformers pyyaml
           pip install aiohttp
+          pip install torch pydantic_settings
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
       - name: Install multimind in editable mode
