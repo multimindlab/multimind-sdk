@@ -37,26 +37,5 @@ jobs:
           pip install pytest
           pip install pytest-mock
           pytest || echo "Some tests failed but were bypassed."
-      - name: Install Ollama
-        run: |
-          echo "Installing Ollama..."
-          wget https://ollama-download-url/ollama-latest-linux-x64.tar.gz -O ollama.tar.gz
-          tar -xzf ollama.tar.gz
-          chmod +x ollama
-          sudo mv ollama /usr/local/bin/ollama
-          echo "Ollama installed successfully."
-      - name: Install Mistral Model
-        run: |
-          echo "Installing Mistral model..."
-          ollama pull mistral
-          echo "Mistral model installed successfully."
       - name: Set OpenAI API Key
         run: echo "OPENAI_API_KEY=your_openai_api_key" >> $GITHUB_ENV
-      - name: Verify Ollama Installation
-        run: |
-          echo "Verifying Ollama installation..."
-          if ! command -v ollama &> /dev/null; then
-            echo "Ollama command not found. Installation failed.";
-            exit 1;
-          fi
-          echo "Ollama is installed and accessible."
