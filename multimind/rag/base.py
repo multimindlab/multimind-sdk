@@ -8,7 +8,7 @@ from ..models.base import BaseLLM
 
 class BaseRAG(ABC):
     """Abstract base class for RAG implementations."""
-    
+
     def __init__(
         self,
         embedder: BaseLLM,
@@ -18,7 +18,7 @@ class BaseRAG(ABC):
         self.embedder = embedder
         self.vector_store = vector_store
         self.kwargs = kwargs
-        
+
     @abstractmethod
     async def add_documents(
         self,
@@ -28,7 +28,7 @@ class BaseRAG(ABC):
     ) -> None:
         """Add documents to the vector store."""
         pass
-        
+
     @abstractmethod
     async def search(
         self,
@@ -38,7 +38,7 @@ class BaseRAG(ABC):
     ) -> List[Dict[str, Any]]:
         """Search for relevant documents."""
         pass
-        
+
     @abstractmethod
     async def query(
         self,
@@ -48,8 +48,8 @@ class BaseRAG(ABC):
     ) -> str:
         """Query the RAG system with optional context."""
         pass
-        
+
     @abstractmethod
     async def clear(self) -> None:
         """Clear the vector store."""
-        pass 
+        pass

@@ -53,7 +53,8 @@ def test_query_openai(mock_create, wrapper):
 @patch('subprocess.run')
 def test_query_ollama(mock_run, wrapper):
     """Test Ollama query."""
-    mock_run.return_value = MagicMock(stdout="test response")
+    mock_run.return_value.stdout = "test response"
+    mock_run.return_value.returncode = 0
     
     with patch('subprocess.run', return_value=MagicMock(returncode=0)):
         result = wrapper.query_model("ollama", "test prompt")
@@ -66,4 +67,4 @@ def test_query_model_error_handling(wrapper):
     with patch('model_wrapper.ModelWrapper.query_openai', side_effect=Exception("test error")):
         result = wrapper.query_model("openai", "test prompt")
         assert result["status"] == "error"
-        assert result["error"] == "test error" 
+        assert result["error"] == "test error"

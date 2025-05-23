@@ -38,6 +38,10 @@
   <a href="#contributing">Contributing</a>
 </p>
 
+[![💖 Support MultiMind SDK](https://img.shields.io/badge/💖_Support-MultiMind%20SDK-blueviolet?style=for-the-badge)](https://opencollective.com/multimind-sdk)
+
+
+
 ## Why MultiMind SDK?
 
 MultiMind SDK is a comprehensive Python toolkit designed for AI developers and researchers. It provides a unified interface for building advanced AI applications, from fine-tuning models to implementing RAG systems and developing AI agents. Our SDK simplifies complex AI workflows while maintaining flexibility and performance.
@@ -195,6 +199,19 @@ cd multimind-docs
 npm install
 npm start
 ```
+
+## 💖 Support MultiMind SDK
+
+If you find MultiMind SDK helpful, please consider supporting us to sustain development and grow the community.
+
+Your support will help fund:
+
+- ⚙️ Feature development and maintenance
+- 📖 Better documentation and onboarding
+- 🌍 Community outreach and support
+- 🧪 Infrastructure, testing, and CI/CD
+
+👉 <a href="https://opencollective.com/multimind-sdk" aria-label="Join MultiMind SDK Community">Contribute here</a>
 
 ## 📝 License
 

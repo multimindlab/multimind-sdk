@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional, Union, AsyncGenerator
 
 class BaseLLM(ABC):
     """Abstract base class for all LLM implementations."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
@@ -75,4 +75,4 @@ class BaseLLM(ABC):
 
     async def get_latency(self) -> Optional[float]:
         """Get the average latency for this model."""
-        return self.avg_latency 
+        return self.avg_latency

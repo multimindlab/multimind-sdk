@@ -10,17 +10,32 @@ from pathlib import Path
 
 class UsageTracker:
     """Tracks model usage and associated costs."""
-    
+
     def __init__(self, db_path: Optional[str] = None):
-        self.db_path = Path(db_path) if db_path else Path("usage.db")
-        self._init_db()
-        
-    def _init_db(self) -> None:
-        """Initialize SQLite database."""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
-        # Create usage table
+        self.db_path = db_path
+        if db_path == ":memory:":
+            self.conn = sqlite3.connect(db_path)
+        else:
+            self.conn = sqlite3.connect(str(self.db_path))
+        self._initialize_database()
+
+    def _initialize_database(self):
+        """Initialize the database with required tables."""
+        print("Initializing database and creating tables if they do not exist...")
+        cursor = self.conn.cursor()
+
+        # Create costs table if it does not exist
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS costs (
+                model TEXT PRIMARY KEY,
+                input_cost_per_token REAL NOT NULL,
+                output_cost_per_token REAL NOT NULL,
+                last_updated TEXT NOT NULL
+            )
+        """)
+        print("Costs table creation attempted.")
+
+        # Create usage table if it does not exist
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,20 +48,10 @@ class UsageTracker:
                 metadata TEXT
             )
         """)
-        
-        # Create cost table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS costs (
-                model TEXT PRIMARY KEY,
-                input_cost_per_token REAL NOT NULL,
-                output_cost_per_token REAL NOT NULL,
-                last_updated TEXT NOT NULL
-            )
-        """)
-        
-        conn.commit()
-        conn.close()
-        
+        print("Usage table creation attempted.")
+
+        self.conn.commit()
+
     def track_usage(
         self,
         model: str,
@@ -57,19 +62,18 @@ class UsageTracker:
     ) -> None:
         """Track model usage."""
         # Get costs for model
-        input_cost, output_cost = self._get_model_costs(model)
-        
+        input_cost_per_token, output_cost_per_token = self._get_model_costs(model)
+
         # Calculate cost
         cost = 0
         if input_tokens is not None:
-            cost += input_tokens * input_cost
+            cost += input_tokens * input_cost_per_token
         if output_tokens is not None:
-            cost += output_tokens * output_cost
-            
+            cost += output_tokens * output_cost_per_token
+
         # Store usage
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        cursor = self.conn.cursor()
+
         cursor.execute("""
             INSERT INTO usage (
                 timestamp, model, operation, input_tokens,
@@ -84,10 +88,9 @@ class UsageTracker:
             cost,
             json.dumps(metadata) if metadata else None
         ))
-        
-        conn.commit()
-        conn.close()
-        
+
+        self.conn.commit()
+
     def set_model_costs(
         self,
         model: str,
@@ -95,9 +98,7 @@ class UsageTracker:
         output_cost_per_token: float
     ) -> None:
         """Set costs for a model."""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        cursor = self.conn.cursor()
         cursor.execute("""
             INSERT OR REPLACE INTO costs (
                 model, input_cost_per_token, output_cost_per_token, last_updated
@@ -108,29 +109,24 @@ class UsageTracker:
             output_cost_per_token,
             datetime.now().isoformat()
         ))
-        
-        conn.commit()
-        conn.close()
-        
+        self.conn.commit()
+
     def _get_model_costs(self, model: str) -> Tuple[float, float]:
         """Get costs for a model."""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        cursor = self.conn.cursor()
+
         cursor.execute(
             "SELECT input_cost_per_token, output_cost_per_token FROM costs WHERE model = ?",
             (model,)
         )
         result = cursor.fetchone()
-        
-        conn.close()
-        
+
         if result is None:
             # Default costs if not set
             return 0.0, 0.0
-            
+
         return result
-        
+
     def get_usage_summary(
         self,
         start_date: Optional[str] = None,
@@ -138,16 +134,15 @@ class UsageTracker:
         model: Optional[str] = None
     ) -> Dict[str, Any]:
         """Get usage summary for a time period."""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        cursor = self.conn.cursor()
+
         # Build query
         query = "SELECT model, operation, COUNT(*) as count, "
         query += "SUM(input_tokens) as total_input_tokens, "
         query += "SUM(output_tokens) as total_output_tokens, "
         query += "SUM(cost) as total_cost "
         query += "FROM usage WHERE 1=1"
-        
+
         params = []
         if start_date:
             query += " AND timestamp >= ?"
@@ -158,40 +153,39 @@ class UsageTracker:
         if model:
             query += " AND model = ?"
             params.append(model)
-            
+
         query += " GROUP BY model, operation"
-        
+
         cursor.execute(query, params)
         results = cursor.fetchall()
-        
+
         # Format results
         summary = {
             "total_cost": 0,
             "models": {}
         }
-        
+
         for row in results:
             model, operation, count, input_tokens, output_tokens, cost = row
-            
+
             if model not in summary["models"]:
                 summary["models"][model] = {
                     "total_cost": 0,
                     "operations": {}
                 }
-                
+
             summary["models"][model]["operations"][operation] = {
                 "count": count,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
                 "cost": cost
             }
-            
+
             summary["models"][model]["total_cost"] += cost
             summary["total_cost"] += cost
-            
-        conn.close()
+
         return summary
-        
+
     def export_usage(
         self,
         file_path: str,
@@ -200,26 +194,25 @@ class UsageTracker:
         end_date: Optional[str] = None
     ) -> None:
         """Export usage data to file."""
-        conn = sqlite3.connect(str(self.db_path))
-        cursor = conn.cursor()
-        
+        cursor = self.conn.cursor()
+
         # Build query
         query = "SELECT * FROM usage WHERE 1=1"
         params = []
-        
+
         if start_date:
             query += " AND timestamp >= ?"
             params.append(start_date)
         if end_date:
             query += " AND timestamp <= ?"
             params.append(end_date)
-            
+
         cursor.execute(query, params)
         results = cursor.fetchall()
-        
+
         # Get column names
         columns = [description[0] for description in cursor.description]
-        
+
         # Format data
         data = []
         for row in results:
@@ -227,12 +220,10 @@ class UsageTracker:
             if item["metadata"]:
                 item["metadata"] = json.loads(item["metadata"])
             data.append(item)
-            
-        conn.close()
-        
+
         # Export to file
         if format == "json":
             with open(file_path, 'w') as f:
                 json.dump(data, f, indent=2)
         else:
-            raise ValueError(f"Unsupported export format: {format}") 
+            raise ValueError(f"Unsupported export format: {format}")

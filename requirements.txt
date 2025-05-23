@@ -1,11 +1,12 @@
-# Core dependencies
-openai>=1.0.0
+# Extends from requirements-base.txt
+-r requirements-base.txt
+
+# SDK-specific dependencies
+# Core AI dependencies
 aiohttp>=3.8.0
-anthropic>=0.5.0
 transformers>=4.30.0
 torch>=2.0.0
 numpy>=1.24.0
-pydantic>=2.0.0
 
 # RAG dependencies
 faiss-cpu>=1.7.0
@@ -18,22 +19,8 @@ bitsandbytes>=0.41.0
 accelerate>=0.21.0
 datasets>=2.14.0
 
-# CLI dependencies
-click>=8.1.0
-rich>=13.0.0
+# Additional utilities
 pyyaml>=6.0.0
-
-# Development dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-black>=23.0.0
-isort>=5.12.0
-mypy>=1.0.0
-ruff>=0.1.0
-
-# Additional dependencies
 mistralai>=0.0.7
 pandas>=2.0.0
-sqlalchemy>=2.0.0
-python-dotenv>=1.0.0
-typing-extensions>=4.5.0 
+sqlalchemy>=2.0.0 

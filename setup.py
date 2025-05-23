@@ -4,18 +4,39 @@ Setup configuration for the Multimind SDK.
 
 from setuptools import setup, find_packages
 
+# Read requirements from files
+def read_requirements(filename):
+    with open(filename) as f:
+        return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
+# Base requirements
+base_requirements = read_requirements('requirements-base.txt')
+
+# Gateway requirements (excluding base)
+gateway_requirements = [
+    req for req in read_requirements('multimind/gateway/requirements.txt')
+    if not req.startswith('-r')
+]
+
+# SDK requirements (excluding base)
+sdk_requirements = [
+    req for req in read_requirements('requirements.txt')
+    if not req.startswith('-r')
+]
+
+# Define long_description by reading the README.md file
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
     name="multimind-sdk",
     version="0.1.0",
-    author="Multimind Team",
-    author_email="your.email@example.com",
+    author="AI2Innovate Team",
+    author_email="contact@multimind.dev",
     description="A unified interface for multiple LLM providers and local models",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/multimind-sdk",
+    url="https://github.com/multimindlabs/multimind-sdk",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -29,15 +50,7 @@ setup(
         "Programming Language :: Python :: 3.11",
     ],
     python_requires=">=3.8",
-    install_requires=[
-        "openai>=1.0.0",
-        "aiohttp>=3.8.0",
-        "anthropic>=0.5.0",
-        "transformers>=4.30.0",
-        "torch>=2.0.0",
-        "numpy>=1.24.0",
-        "pydantic>=2.0.0",
-    ],
+    install_requires=base_requirements,
     extras_require={
         "dev": [
             "pytest>=7.0.0",
@@ -47,5 +60,12 @@ setup(
             "mypy>=1.0.0",
             "ruff>=0.1.0",
         ],
+        "gateway": gateway_requirements,
+        "full": sdk_requirements + gateway_requirements,
     },
-) 
+    entry_points={
+        'console_scripts': [
+            'multimind=multimind.gateway.cli:main',
+        ],
+    },
+)

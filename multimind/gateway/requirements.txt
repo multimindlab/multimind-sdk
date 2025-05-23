@@ -1,0 +1,15 @@
+# Extends from requirements-base.txt
+-r ../../requirements-base.txt
+
+# Gateway-specific dependencies
+# API/Web server
+fastapi>=0.68.0
+uvicorn>=0.15.0
+
+# Model-specific clients
+groq>=0.3.0
+huggingface-hub>=0.16.0
+
+# Gateway-specific testing
+httpx>=0.23.0
+pytest-cov>=2.12.0 

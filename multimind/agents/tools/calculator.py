@@ -4,12 +4,13 @@ Calculator tool for agents.
 
 import ast
 import operator
-from typing import Any, Dict
+from typing import Any, Dict, Union, Optional
+from numbers import Real
 from multimind.agents.tools.base import BaseTool
 
 class CalculatorTool(BaseTool):
     """A tool for performing mathematical calculations."""
-    
+
     def __init__(self):
         super().__init__(
             name="calculator",
@@ -23,17 +24,21 @@ class CalculatorTool(BaseTool):
             ast.Pow: operator.pow,
             ast.USub: operator.neg
         }
-        
-    async def run(self, expression: str) -> float:
+
+    async def run(self, **kwargs) -> Union[int, float]:
         """Evaluate a mathematical expression."""
-        if not self.validate_parameters(expression=expression):
+        if not self.validate_parameters(**kwargs):
             raise ValueError("Invalid parameters")
-            
+
+        expression = kwargs['expression']
         try:
-            return self._evaluate(expression)
+            result = self._evaluate(expression)
+            if isinstance(result, complex):
+                raise ValueError("Complex numbers are not supported")
+            return float(result)
         except Exception as e:
             raise ValueError(f"Invalid expression: {str(e)}")
-            
+
     def get_parameters(self) -> Dict[str, Any]:
         """Get tool parameters schema."""
         return {
@@ -45,12 +50,15 @@ class CalculatorTool(BaseTool):
                 }
             }
         }
-        
-    def _evaluate(self, expression: str) -> float:
+
+    def _evaluate(self, expression: str) -> Union[int, float]:
         """Safely evaluate a mathematical expression."""
-        def _eval(node):
+        def _eval(node) -> Union[int, float]:
             if isinstance(node, ast.Num):
-                return node.n
+                val = node.n
+                if isinstance(val, complex):
+                    raise ValueError("Complex numbers are not supported")
+                return float(val) if isinstance(val, Real) else val
             elif isinstance(node, ast.BinOp):
                 return self.operators[type(node.op)](
                     _eval(node.left),
@@ -60,6 +68,9 @@ class CalculatorTool(BaseTool):
                 return self.operators[type(node.op)](_eval(node.operand))
             else:
                 raise TypeError(f"Unsupported operation: {type(node)}")
-                
+
         tree = ast.parse(expression, mode='eval')
-        return _eval(tree.body) 
+        result = _eval(tree.body)
+        if isinstance(result, complex):
+            raise ValueError("Complex numbers are not supported")
+        return float(result)

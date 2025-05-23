@@ -3,7 +3,7 @@ import sys
 import os
 import json
 
-# Add YAML support
+# Add YAML suppor
 try:
     import yaml
 except ImportError:
@@ -239,4 +239,4 @@ def completion(shell):
     # TODO: Actually output the completion script for the shell
 
 if __name__ == '__main__':
-    cli() 
+    cli()

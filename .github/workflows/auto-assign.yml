@@ -13,11 +13,5 @@ jobs:
       - name: Auto assign users
         uses: kentaro-m/auto-assign-action@v1.2.4
         with:
-          addAssignees: true
-          addReviewers: true
-          assignees: |
-            your-github-username
-          reviewers: |
-            your-github-username
-          numberOfAssignees: 1
-          numberOfReviewers: 1
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # configuration-path: .github/auto_assign.yml # Uncomment and create this file if you want custom config

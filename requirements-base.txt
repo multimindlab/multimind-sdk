@@ -1,0 +1,25 @@
+# Common dependencies used across MultiMind SDK
+# Core AI dependencies
+openai>=1.0.0
+anthropic>=0.5.0
+pydantic>=2.0.0
+python-dotenv>=1.0.0
+
+# API dependencies
+fastapi>=0.100.0
+python-jose[cryptography]>=3.3.0
+python-multipart>=0.0.6
+
+# Common utilities
+click>=8.1.0
+rich>=13.0.0
+requests>=2.26.0
+typing-extensions>=4.5.0
+
+# Development dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0
+ruff>=0.1.0

@@ -3,12 +3,16 @@ Local model runner for Ollama and other local model implementations.
 """
 
 import aiohttp
-from typing import List, Dict, Any, Optional, AsyncGenerator, Union
+import json
+from typing import List, Dict, Any, Optional, AsyncGenerator, Union, TypeVar, Awaitable
+
 from .base import BaseLLM
+
+T = TypeVar('T')
 
 class LocalRunner(BaseLLM):
     """Runner for local models using Ollama."""
-    
+
     def __init__(
         self,
         model_name: str,
@@ -17,24 +21,31 @@ class LocalRunner(BaseLLM):
     ):
         super().__init__(model_name, **kwargs)
         self.base_url = base_url.rstrip("/")
-        
-    async def _make_request(
+
+    async def _make_request_stream(
         self,
         endpoint: str,
-        data: Dict[str, Any],
-        stream: bool = False
-    ) -> Any:
-        """Make a request to the Ollama API."""
+        data: Dict[str, Any]
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """Make a streaming request to the Ollama API."""
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}/{endpoint}"
             async with session.post(url, json=data) as response:
-                if stream:
-                    async for line in response.content:
-                        if line:
-                            yield line
-                else:
-                    return await response.json()
-                    
+                async for line in response.content:
+                    if line:
+                        yield json.loads(line)
+
+    async def _make_request(
+        self,
+        endpoint: str,
+        data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Make a regular request to the Ollama API."""
+        async with aiohttp.ClientSession() as session:
+            url = f"{self.base_url}/{endpoint}"
+            async with session.post(url, json=data) as response:
+                return await response.json()
+
     async def generate(
         self,
         prompt: str,
@@ -51,10 +62,10 @@ class LocalRunner(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         response = await self._make_request("api/generate", data)
         return response["response"]
-        
+
     async def generate_stream(
         self,
         prompt: str,
@@ -72,11 +83,11 @@ class LocalRunner(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
-        async for chunk in self._make_request("api/generate", data, stream=True):
-            if chunk:
-                yield chunk.decode().strip()
-                
+
+        async for chunk in self._make_request_stream("api/generate", data):
+            if "response" in chunk:
+                yield chunk["response"]
+
     async def chat(
         self,
         messages: List[Dict[str, str]],
@@ -93,10 +104,10 @@ class LocalRunner(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
+
         response = await self._make_request("api/chat", data)
         return response["message"]["content"]
-        
+
     async def chat_stream(
         self,
         messages: List[Dict[str, str]],
@@ -114,11 +125,11 @@ class LocalRunner(BaseLLM):
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
-            
-        async for chunk in self._make_request("api/chat", data, stream=True):
-            if chunk:
-                yield chunk.decode().strip()
-                
+
+        async for chunk in self._make_request_stream("api/chat", data):
+            if "message" in chunk and "content" in chunk["message"]:
+                yield chunk["message"]["content"]
+
     async def embeddings(
         self,
         text: Union[str, List[str]],
@@ -127,13 +138,13 @@ class LocalRunner(BaseLLM):
         """Generate embeddings from the local model."""
         if isinstance(text, str):
             text = [text]
-            
+
         data = {
             "model": self.model_name,
             "prompt": text[0] if len(text) == 1 else text,
             **kwargs
         }
-        
+
         response = await self._make_request("api/embeddings", data)
         embeddings = response["embeddings"]
-        return embeddings[0] if len(text) == 1 else embeddings 
+        return embeddings[0] if len(text) == 1 else embeddings

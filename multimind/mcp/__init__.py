@@ -8,4 +8,4 @@ from multimind.mcp.executor import MCPExecutor
 __all__ = [
     "MCPParser",
     "MCPExecutor",
-] 
+]

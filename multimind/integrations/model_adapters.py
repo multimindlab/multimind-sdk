@@ -2,19 +2,19 @@
 Integration adapters for fine-tuned models to work with various frameworks.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+from typing import List, Dict, Any, Optional, Union, Tuple, Se
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from langchain.llms.base import LLM
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.embeddings.base import Embeddings
-from langchain.schema import Document
+from langchain.schema import Documen
 from lite_llm import LiteLLM
-from superagi.agent import Agent
+from superagi.agent import Agen
 from superagi.tools import Tool
 from semantic_kernel import Kernel, KernelFunction
-from crewai import Agent as CrewAgent
+from crewai import Agent as CrewAgen
 from crewai import Task
 import logging
 from ..fine_tuning import (
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class BaseModelAdapter:
     """Base class for model adapters."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -43,7 +43,7 @@ class BaseModelAdapter:
         self.model = None
         self.tokenizer = None
         self._load_model()
-        
+
     def _load_model(self) -> None:
         """Load model and tokenizer."""
         try:
@@ -57,7 +57,7 @@ class BaseModelAdapter:
         except Exception as e:
             logger.error(f"Failed to load model: {e}")
             raise
-            
+
     def generate(
         self,
         prompt: str,
@@ -68,7 +68,7 @@ class BaseModelAdapter:
     ) -> str:
         """Generate text from prompt."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-        
+
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
@@ -77,23 +77,23 @@ class BaseModelAdapter:
                 top_p=top_p,
                 **kwargs
             )
-            
+
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        
+
     def get_embeddings(self, text: str) -> torch.Tensor:
         """Get embeddings for text."""
         inputs = self.tokenizer(text, return_tensors="pt").to(self.device)
-        
+
         with torch.no_grad():
             outputs = self.model(**inputs, output_hidden_states=True)
             # Use last hidden state as embeddings
             embeddings = outputs.hidden_states[-1].mean(dim=1)
-            
+
         return embeddings
 
 class LangChainAdapter(LLM, BaseModelAdapter):
     """Adapter for LangChain integration."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -103,7 +103,7 @@ class LangChainAdapter(LLM, BaseModelAdapter):
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
-        
+
     def _call(
         self,
         prompt: str,
@@ -116,9 +116,9 @@ class LangChainAdapter(LLM, BaseModelAdapter):
         gen_kwargs = {**self.kwargs, **kwargs}
         if stop:
             gen_kwargs["stop_sequences"] = stop
-            
+
         return self.generate(prompt, **gen_kwargs)
-        
+
     @property
     def _llm_type(self) -> str:
         """Return LLM type."""
@@ -126,7 +126,7 @@ class LangChainAdapter(LLM, BaseModelAdapter):
 
 class LangChainEmbeddings(Embeddings, BaseModelAdapter):
     """Adapter for LangChain embeddings."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -134,7 +134,7 @@ class LangChainEmbeddings(Embeddings, BaseModelAdapter):
         device: str = "cuda" if torch.cuda.is_available() else "cpu"
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
-        
+
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Get embeddings for documents."""
         embeddings = []
@@ -142,7 +142,7 @@ class LangChainEmbeddings(Embeddings, BaseModelAdapter):
             emb = self.get_embeddings(text)
             embeddings.append(emb.cpu().numpy().tolist())
         return embeddings
-        
+
     def embed_query(self, text: str) -> List[float]:
         """Get embedding for query."""
         emb = self.get_embeddings(text)
@@ -150,7 +150,7 @@ class LangChainEmbeddings(Embeddings, BaseModelAdapter):
 
 class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
     """Adapter for LiteLLM integration."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -160,7 +160,7 @@ class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
-        
+
     def completion(
         self,
         prompt: str,
@@ -172,10 +172,10 @@ class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
         # Update generation parameters
         gen_kwargs = {**self.kwargs, **kwargs}
         gen_kwargs["max_length"] = max_tokens
-        
-        # Generate text
+
+        # Generate tex
         generated_text = self.generate(prompt, **gen_kwargs)
-        
+
         # Format response
         return {
             "choices": [{
@@ -191,7 +191,7 @@ class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
 
 class SuperAGIAdapter(Agent, BaseModelAdapter):
     """Adapter for SuperAGI integration."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -203,7 +203,7 @@ class SuperAGIAdapter(Agent, BaseModelAdapter):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.tools = tools or []
         self.kwargs = kwargs
-        
+
     def execute(self, task: str, **kwargs) -> str:
         """Execute task using SuperAGI agent."""
         # Format prompt with tools
@@ -211,7 +211,7 @@ class SuperAGIAdapter(Agent, BaseModelAdapter):
             f"- {tool.name}: {tool.description}"
             for tool in self.tools
         ])
-        
+
         prompt = f"""Available tools:
 {tool_descriptions}
 
@@ -219,17 +219,17 @@ Task: {task}
 
 Think step by step and use the available tools to complete the task.
 """
-        
+
         # Generate response
         response = self.generate(prompt, **{**self.kwargs, **kwargs})
-        
+
         # Parse and execute tool calls
         # Implementation depends on SuperAGI's tool execution interface
         return response
 
 class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
     """Adapter for Semantic Kernel integration."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -239,26 +239,26 @@ class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
-        
+
     def invoke(
         self,
         context: Dict[str, Any],
         **kwargs
     ) -> Dict[str, Any]:
         """Invoke function for Semantic Kernel."""
-        # Get prompt from context
+        # Get prompt from contex
         prompt = context.get("prompt", "")
-        
+
         # Generate response
         response = self.generate(prompt, **{**self.kwargs, **kwargs})
-        
+
         # Update context with response
         context["response"] = response
-        return context
+        return contex
 
 class CrewAIAdapter(CrewAgent, BaseModelAdapter):
     """Adapter for CrewAI integration."""
-    
+
     def __init__(
         self,
         model_path: str,
@@ -274,10 +274,10 @@ class CrewAIAdapter(CrewAgent, BaseModelAdapter):
         self.goal = goal
         self.backstory = backstory
         self.kwargs = kwargs
-        
+
     def execute_task(self, task: Task) -> str:
         """Execute task using CrewAI agent."""
-        # Format prompt with agent context
+        # Format prompt with agent contex
         prompt = f"""Role: {self.role}
 Goal: {self.goal}
 Backstory: {self.backstory}
@@ -286,10 +286,10 @@ Task: {task.description}
 
 Think step by step and complete the task.
 """
-        
+
         # Generate response
         response = self.generate(prompt, **self.kwargs)
-        
+
         # Update task with response
         task.output = response
         return response
@@ -309,12 +309,12 @@ def create_adapter(
         "semantic_kernel": SemanticKernelAdapter,
         "crewai": CrewAIAdapter
     }
-    
+
     if framework not in adapters:
         raise ValueError(f"Unsupported framework: {framework}")
-        
+
     return adapters[framework](
         model_path=model_path,
         model_type=model_type,
         **kwargs
-    ) 
+    )

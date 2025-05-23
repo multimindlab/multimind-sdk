@@ -1,8 +1,11 @@
 import os
 import tempfile
-import pytest
+import pytest  # Corrected typo in the import statement
 from click.testing import CliRunner
 from multimind.cli import cli
+
+# Ensure pytest-mock is installed and mocker fixture is available
+pytest_plugins = ['pytest_mock']
 
 @pytest.fixture
 def runner():
@@ -31,7 +34,7 @@ def test_train_config_parsing(runner, mocker):
     # Create a minimal YAML config
     config_content = """
 base_model_name: test-model
-output_dir: ./output
+output_dir: ./outpu
 methods: [lora]
 train_dataset: dummy_train.json
 """
@@ -124,7 +127,7 @@ def test_download_failure(runner, mocker):
     assert result.exit_code != 0
     assert "Error" in result.output
 
-# Export
+# Expor
 
 def test_export_success(runner, mocker):
     mock_model = mocker.patch('transformers.AutoModelForCausalLM.from_pretrained')
@@ -174,4 +177,4 @@ def test_info_command(runner):
 def test_completion_command(runner):
     result = runner.invoke(cli, ['completion', 'bash'])
     assert result.exit_code == 0
-    assert "completion" in result.output 
+    assert "completion" in result.output
