@@ -40,5 +40,15 @@ jobs:
       - name: Install Ollama
         run: |
           echo "Installing Ollama..."
-          # Add specific installation commands for Ollama here
-          # Example: wget <ollama-download-url> && chmod +x ollama && mv ollama /usr/local/bin/
+          wget https://ollama-download-url/ollama-latest-linux-x64.tar.gz -O ollama.tar.gz
+          tar -xzf ollama.tar.gz
+          chmod +x ollama
+          sudo mv ollama /usr/local/bin/ollama
+          echo "Ollama installed successfully."
+      - name: Install Mistral Model
+        run: |
+          echo "Installing Mistral model..."
+          ollama pull mistral
+          echo "Mistral model installed successfully."
+      - name: Set OpenAI API Key
+        run: echo "OPENAI_API_KEY=your_openai_api_key" >> $GITHUB_ENV

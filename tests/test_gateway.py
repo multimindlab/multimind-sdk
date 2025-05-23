@@ -107,6 +107,7 @@ async def test_cli_chat(mock_model_handler, mock_config):
     # Test single message mode
     await cli.chat("openai", "Hello, world!")
     mock_model_handler.assert_called_once_with("openai")
+    mock_model_handler.return_value.chat.assert_called_once_with("Hello, world!")
 
     # Test interactive mode (simulated)
     with patch("click.prompt") as mock_prompt:
