@@ -11,6 +11,7 @@ Welcome to the MultiMind SDK documentation! This documentation will help you get
 3. [API Reference](api_reference/README.md)
 4. [Examples](examples/README.md)
 5. [Advanced Features](advanced/README.md)
+6. [Implementation status Features](TODO.md)
 
 ## Getting Started
 
@@ -77,4 +78,4 @@ Need help? Here are some resources:
 - [FAQ](faq.md)
 - [Discord Community](https://discord.gg/multimind)
 - [GitHub Issues](https://github.com/your-org/multimind-sdk/issues)
-- [Support Contact](mailto:support@multimind.ai) 
+- [Support Contact](mailto:support@multimind.dev) 

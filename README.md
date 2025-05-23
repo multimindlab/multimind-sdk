@@ -26,7 +26,7 @@
 
 <div align="center">
   <h2>🚧 Project Status: In Active Development 🚧</h2>
-  <p>Join the future of AI development! We're actively building MultiMind SDK and looking for contributors. Connect with our growing community on <a href="https://discord.gg/K64U65je7h" aria-label="Join MultiMind SDK Discord Community">Discord</a> to discuss ideas, get help, and contribute to the project.</p>
+  <p>Join the future of AI development! We're actively building MultiMind SDK and looking for contributors. Check our <a href="docs/TODO.md">TODO list</a> to see what's implemented and what's coming next. Connect with our growing community on <a href="https://discord.gg/K64U65je7h" aria-label="Join MultiMind SDK Discord Community">Discord</a> to discuss ideas, get help, and contribute to the project.</p>
 </div>
 
 <p align="center">
