@@ -46,9 +46,12 @@
 
 MultiMind SDK is a comprehensive Python toolkit designed for AI developers and researchers. It provides a unified interface for building advanced AI applications, from fine-tuning models to implementing RAG systems and developing AI agents. Our SDK simplifies complex AI workflows while maintaining flexibility and performance.
 
+📑 Check out our [Strategic Roadmap](docs/roadmap.md) to see where we're headed!
+
 ### Key Benefits
 
 - **🚀 Unified Interface**: Streamline your AI development with one consistent API
+
 - **💡 Production-Ready**: Enterprise-grade deployment, monitoring, and scaling
 - **🛠️ Framework Agnostic**: Seamless integration with LangChain, CrewAI, and more
 - **🔌 Extensible**: Customizable architecture for your specific needs
@@ -57,24 +60,30 @@ MultiMind SDK is a comprehensive Python toolkit designed for AI developers and r
 ## ✨ Key Features
 
 ### 1. Advanced Fine-Tuning
+
 - **Parameter-Efficient Methods**: LoRA, Adapters, Prefix Tuning, and more
 - **Meta-Learning**: MAML, Reptile, and prototype-based few-shot learning
+
 - **Transfer Learning**: Layer transfer and multi-task optimization
 - **Resource-Aware Training**: Automatic device selection and optimization
 
 ### 2. RAG System
+
 - **Document Processing**: Smart chunking and metadata management
 - **Vector Storage**: Support for FAISS and ChromaDB
 - **Embedding Models**: Integration with OpenAI, HuggingFace, and custom models
+
 - **Query Optimization**: Efficient similarity search and context management
 
 ### 3. Agent Development
+
 - **Tool Integration**: Built-in support for common tools and custom extensions
 - **Memory Management**: Short and long-term memory systems
 - **Task Orchestration**: Complex workflow management and prompt chaining
 - **Model Composition**: Protocol for combining multiple models and tools
 
 ### 4. Framework Integrations
+
 - **LangChain**: Seamless integration with LangChain components
 - **CrewAI**: Support for multi-agent systems
 - **LiteLLM**: Unified model interface
