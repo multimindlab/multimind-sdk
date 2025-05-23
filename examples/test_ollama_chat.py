@@ -4,16 +4,24 @@ import os
 import pytest
 import tempfile
 import json
+from unittest.mock import patch
 from chat_ollama_cli import OllamaChat
 
-def test_ollama_chat_initialization():
+@pytest.fixture
+def mock_ollama_chat():
+    """Mock OllamaChat for tests."""
+    with patch("chat_ollama_cli.OllamaChat.get_available_models", return_value=["mistral"]):
+        with patch("chat_ollama_cli.OllamaChat._verify_model_available"):
+            yield OllamaChat
+
+def test_ollama_chat_initialization(mock_ollama_chat):
     """Test basic initialization of OllamaChat."""
-    chat = OllamaChat()
+    chat = mock_ollama_chat()
     assert chat.model_name == "mistral"
     assert chat.history_file is None
     assert chat.chat_history == []
 
-def test_ollama_chat_with_history():
+def test_ollama_chat_with_history(mock_ollama_chat):
     """Test chat with history file."""
     with tempfile.NamedTemporaryFile(mode='w+', delete=False) as temp_file:
         # Create some test history
@@ -33,7 +41,7 @@ def test_ollama_chat_with_history():
         temp_file.flush()
         
         # Test loading history
-        chat = OllamaChat(history_file=temp_file.name)
+        chat = mock_ollama_chat(history_file=temp_file.name)
         assert len(chat.chat_history) == 2
         assert chat.chat_history[0]["content"] == "Hello"
         assert chat.chat_history[1]["content"] == "Hi there!"
@@ -55,27 +63,24 @@ def test_ollama_chat_with_history():
     # Cleanup
     os.unlink(temp_file.name)
 
-def test_get_available_models():
+def test_get_available_models(mock_ollama_chat):
     """Test getting available models."""
-    chat = OllamaChat()
+    chat = mock_ollama_chat()
     models = chat.get_available_models()
     assert isinstance(models, list)
-    # Note: This test might fail if Ollama is not running
-    # or if no models are installed
+    assert "mistral" in models
 
-def test_chat_streaming():
+def test_chat_streaming(mock_ollama_chat):
     """Test chat with streaming enabled."""
-    chat = OllamaChat()
+    chat = mock_ollama_chat()
     response = chat.chat("Hello, this is a test", stream=True)
     assert isinstance(response, str)
-    # Note: This test requires Ollama to be running
 
-def test_chat_non_streaming():
+def test_chat_non_streaming(mock_ollama_chat):
     """Test chat with streaming disabled."""
-    chat = OllamaChat()
+    chat = mock_ollama_chat()
     response = chat.chat("Hello, this is a test", stream=False)
     assert isinstance(response, str)
-    # Note: This test requires Ollama to be running
 
 def test_show_history():
     """Test showing chat history."""
@@ -95,4 +100,4 @@ def test_show_history():
     # Note: This test only verifies that the method doesn't raise exceptions
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])
