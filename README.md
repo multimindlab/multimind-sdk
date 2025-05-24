@@ -41,9 +41,6 @@
 [![💖 Support MultiMind SDK](https://img.shields.io/badge/💖_Support-MultiMind%20SDK-blueviolet?style=for-the-badge)](https://opencollective.com/multimind-sdk)
 
 
-
-## Why MultiMind SDK?
-
 ## 🚀 Why MultiMind SDK?
 
 > 🧠 **MultiMind SDK is the only open-source toolkit that unifies Fine-Tuning, RAG, and Agent Orchestration** — all in one modular, extensible Python framework.
