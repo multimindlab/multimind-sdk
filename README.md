@@ -18,8 +18,6 @@
 </p>
 
 <p align="center">
-  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/v/multimind-sdk.svg" alt="MultiMind SDK PyPI version"></a>
-  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/pyversions/multimind-sdk.svg" alt="MultiMind SDK Python versions"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
 </p>
