@@ -82,26 +82,39 @@ multimind-sdk/
 ## Core Features
 
 ### Model Support
+
 - **Model Wrappers:**
   - OpenAI (GPT-3.5, GPT-4)
   - Anthropic Claude (Claude-3)
   - Mistral AI (Mistral Medium)
   - HuggingFace (any compatible model)
   - Ollama (local models)
+  - TensorFlow and PyTorch Integration
+    - Custom model integration
+    - Fine-tuning capabilities
+    - Support for CV and NLP models
 - **Unified Interface:** All wrappers support `generate`, `chat`, and `embeddings` (where applicable)
 
 ### Agent System
+
 - **Agent Framework:**
   - Configurable agents with memory and tools
   - Agent configuration loading from MCP files
   - Built-in tools (calculator, web search, file operations)
   - Extensible tool system
+  - Agent collaboration capabilities
+  - Hierarchical multi-agent systems
+  - Advanced inter-agent communication
+  - AutoML for agent configuration
+  - Self-configuring agent systems
 - **Memory Management:**
   - Conversation history tracking
   - Configurable memory size
   - Memory persistence
+  - Advanced memory optimization
 
 ### Orchestration
+
 - **Prompt Chains:**
   - Multi-step reasoning workflows
   - Variable substitution
@@ -113,6 +126,7 @@ multimind-sdk/
   - Parallel execution
 
 ### Model Composition Protocol (MCP)
+
 - **Workflow Definition:**
   - JSON/YAML-based workflow specification
   - Model composition and chaining
@@ -125,23 +139,64 @@ multimind-sdk/
   - Error handling
 
 ### Routing & Strategy
+
 - **Model Router:**
   - Strategy-based routing (cost-aware, latency-aware, hybrid)
   - Fallback chain for robust inference
   - Dynamic model selection
 
 ### Fine-Tuning & PEFT
+
 - **PEFT Methods:**
-  - LoRA, Adapters, Prefix/Prompt Tuning, IA³, BitFit, QLoRA, Compacter, HyperLoRA, UniPELT, MAM
+  - LoRA, Adapters, Prefix/Prompt Tuning
+  - IA³, BitFit, QLoRA, Compacter
+  - HyperLoRA, UniPELT, MAM
+  - AutoML-based parameter tuning
 - **Meta-Learning:**
   - Few-shot (MAML, Reptile, Prototype)
   - Transfer learning
   - Multi-task adaptation
+  - Self-tuning capabilities
 - **RAG (Retrieval-Augmented Generation):**
   - Vector store support (FAISS, Chroma)
   - Embedding and retrieval utilities
+  - Self-tuning indexer with feedback loop
+  - Hybrid search with Knowledge Graph
+
+### Enterprise Integration
+
+- **Compliance Suite:**
+  - GDPR, CCPA, HIPAA support
+  - PII Redaction
+  - Data governance frameworks
+  - Audit logging systems
+- **Edge Deployment:**
+  - Optimized edge device deployment (Jetson, Pi)
+  - Resource efficiency tools
+  - Offline mode capabilities
+  - Edge-specific optimizations
+- **Integration Hub:**
+  - Plugin System (Slack, Notion, Salesforce)
+  - Database connectors (MongoDB, PostgreSQL)
+  - Real-time data integration (Kafka, MQTT)
+  - API connectors and service integrations
+
+### Development Tools
+
+- **Visual Tools:**
+  - Visual workflow builder
+  - Drag-and-drop components
+  - No-code development interface
+  - Enterprise workflow templates
+- **Monitoring Dashboard:**
+  - Live state monitoring
+  - Memory editing capabilities
+  - Workflow visualization
+  - Performance analytics
+  - Real-time insights
 
 ### Logging & Monitoring
+
 - **Usage Tracking:**
   - Token usage monitoring
   - Cost tracking
@@ -156,12 +211,14 @@ multimind-sdk/
   - Cost analysis
 
 ### Configuration
+
 - **Config Management:**
   - YAML/JSON config files
   - `.env` and environment variable support
   - CLI and SDK config sharing
 
 ### CLI & Integration
+
 - **CLI:**
   - Agent management
   - MCP workflow execution
@@ -175,20 +232,21 @@ multimind-sdk/
 
 ## Feature Table
 
-| Category         | Feature/Functionality                                      | Status      |
-|------------------|-----------------------------------------------------------|-------------|
-| Model Wrappers   | OpenAI, Claude, Mistral, HuggingFace, Ollama              | Implemented |
-| Agent System     | Agent framework, memory, tools, configuration loading      | Implemented |
-| Orchestration    | Prompt chains, task runner, workflow management           | Implemented |
-| MCP             | Workflow definition, execution, model composition         | Implemented |
-| Routing         | Strategy, fallback, dynamic selection                     | Implemented |
-| Logging         | Usage tracking, trace logging, reporting                  | Implemented |
-| Config          | YAML/JSON, .env, env vars, validation                     | Implemented |
-| CLI             | Agent, MCP, fine-tuning, monitoring commands              | Implemented |
-| Fine-Tuning     | LoRA, Adapters, Prefix, Prompt, IA³, BitFit, QLoRA       | Implemented |
-| Meta-Learning   | Few-shot, transfer, multi-task                            | Implemented |
-| RAG             | FAISS, Chroma, embedding, retrieval                       | Implemented |
-| Integrations    | LangChain, CrewAI, LiteLLM, SuperAGI                      | Implemented |
+| Category          | Feature/Functionality                                      | Status      |
+|-------------------|----------------------------------------------------------|-------------|
+| Model Wrappers    | OpenAI, Claude, Mistral, HuggingFace, Ollama             | Implemented |
+| TensorFlow/PyTorch| Custom models, CV/NLP support, Fine-tuning               | In Progress |
+| Agent System      | Framework, memory, tools, collaboration                   | Implemented |
+| Agent AutoML      | Self-configuration, optimization                         | In Progress |
+| Orchestration     | Prompt chains, task runner, workflow management          | Implemented |
+| MCP              | Workflow definition, execution, model composition         | Implemented |
+| Routing          | Strategy, fallback, dynamic selection                    | Implemented |
+| Enterprise        | Compliance, Edge deployment, Integration hub             | In Progress |
+| Development Tools | Visual builder, No-code interface, Templates            | In Progress |
+| Fine-Tuning      | PEFT methods, Meta-learning, AutoML                      | In Progress |
+| RAG              | Vector stores, Hybrid search, Self-tuning                | In Progress |
+| Monitoring       | Dashboard, Analytics, Real-time insights                 | In Progress |
+| Integrations     | LangChain, CrewAI, LiteLLM, SuperAGI                    | Implemented |
 
 ---
 
@@ -267,4 +325,4 @@ graph TD
     Trace -->|exports to| Export
 ```
 
-For more details, see the [Architecture Overview](architecture.md) and [Development Guide](development.md). 
+For more details, see the [Architecture Overview](architecture.md) and [Development Guide](development.md)
