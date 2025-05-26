@@ -5,3 +5,4 @@ recursive-include multimind *.py
 recursive-include examples *.py
 recursive-include docs *.md
 recursive-include assets *.*
+include multimind/gateway/requirements.txt
