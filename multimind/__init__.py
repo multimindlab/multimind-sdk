@@ -8,6 +8,7 @@ __version__ = "0.1.0"
 from multimind.config import Config
 from multimind.models.base import BaseLLM
 from multimind.router.router import ModelRouter
+from multimind.core.multimind import MultiMind
 
 # Agent components
 from multimind.agents.agent import Agent
@@ -36,6 +37,7 @@ __all__ = [
     "BaseLLM",
     "ModelRouter",
     "Config",
+    "MultiMind",
 
     # Agents
     "Agent",
