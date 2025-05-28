@@ -21,7 +21,7 @@
   <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
 </p>
-<p>[![Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=Follow%20on%20X&style=social)](https://x.com/multimindsdk)</p>
+[![Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=Follow%20on%20X&style=social)](https://x.com/multimindsdk)
 
 <div align="center">
   <h2>🚧 Project Status: In Active Development 🚧</h2>
