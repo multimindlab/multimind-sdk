@@ -37,6 +37,7 @@
 </p>
 
 [![💖 Support MultiMind SDK](https://img.shields.io/badge/💖_Support-MultiMind%20SDK-blueviolet?style=for-the-badge)](https://opencollective.com/multimind-sdk)
+[![Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=Follow%20on%20X&style=social)](https://x.com/multimindsdk)
 
 
 ## 🚀 Why MultiMind SDK?
