@@ -12,6 +12,9 @@ Welcome to the MultiMind SDK documentation! This documentation will help you get
 4. [Examples](examples/README.md)
 5. [Advanced Features](advanced/README.md)
 6. [Implementation status Features](TODO.md)
+7. [Memory Systems](memory.md)
+8. [Development Guide](development.md)
+9. [Roadmap](roadmap.md)
 
 ## Getting Started
 
@@ -67,9 +70,23 @@ Explore [Advanced Features](advanced/README.md) for:
 - Security considerations
 - Production deployment
 
-## Contributing
+## Memory Systems
 
-We welcome contributions! Please see our [Contributing Guide](../CONTRIBUTING.md) for details.
+The MultiMind SDK implements a comprehensive set of memory systems, from basic to advanced implementations. See the [Memory Systems](memory.md) documentation for detailed information about:
+
+- Implemented memory types
+- Partially implemented memory types
+- Memory types to be implemented
+- Usage examples
+- Best practices
+
+## Development Guide
+
+We welcome contributions! Please see our [Development Guide](development.md) for information on how to contribute.
+
+## License
+
+The MultiMind SDK is licensed under the MIT License. See the LICENSE file for details.
 
 ## Support
 

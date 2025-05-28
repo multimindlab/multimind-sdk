@@ -1,0 +1,21 @@
+streamlit>=1.32.0
+multimind-sdk
+ollama>=0.1.6
+pandas>=2.0.0
+plotly>=5.18.0
+openpyxl>=3.1.0  # For Excel support
+networkx>=3.1
+streamlit-agraph>=0.0.6
+altair>=5.0.0
+numpy>=1.24.0
+pyarrow>=14.0.1
+python-dateutil>=2.8.2
+pytz>=2024.1
+faiss-cpu>=1.7.4
+python-dotenv>=1.0.0
+openai>=1.12.0
+anthropic>=0.18.1
+mmh3>=4.0.0
+redis>=5.0.1
+PyYAML>=6.0.1
+aiohttp>=3.9.3 
