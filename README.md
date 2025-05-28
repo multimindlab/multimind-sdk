@@ -21,6 +21,7 @@
   <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
 </p>
+<p>[![Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=Follow%20on%20X&style=social)](https://x.com/multimindsdk)</p>
 
 <div align="center">
   <h2>🚧 Project Status: In Active Development 🚧</h2>
@@ -37,7 +38,7 @@
 </p>
 
 [![💖 Support MultiMind SDK](https://img.shields.io/badge/💖_Support-MultiMind%20SDK-blueviolet?style=for-the-badge)](https://opencollective.com/multimind-sdk)
-[![Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=Follow%20on%20X&style=social)](https://x.com/multimindsdk)
+
 
 
 ## 🚀 Why MultiMind SDK?
