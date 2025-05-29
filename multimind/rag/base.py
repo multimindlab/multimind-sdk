@@ -53,3 +53,23 @@ class BaseRAG(ABC):
     async def clear(self) -> None:
         """Clear the vector store."""
         pass
+
+    @abstractmethod
+    def evaluate(self, query: str, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Evaluate the quality of results for a given query."""
+        pass
+
+    @abstractmethod
+    def parse_output(self, response: str) -> Union[str, Dict[str, Any]]:
+        """Parse the output from the LLM into structured data or text."""
+        pass
+
+    @abstractmethod
+    def validate_output(self, response: str, schema: Optional[Dict[str, Any]] = None) -> bool:
+        """Validate the output against a schema."""
+        pass
+
+    @abstractmethod
+    def format_output(self, response: str, output_format: str = "text") -> Union[str, Dict[str, Any]]:
+        """Format the output into the specified format (e.g., JSON, XML, Markdown)."""
+        pass
