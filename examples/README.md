@@ -1,10 +1,35 @@
 # MultiMind SDK Examples
 
-This directory contains example scripts demonstrating various features of the MultiMind SDK.
+This directory contains example scripts demonstrating various features of the MultiMind SDK, organized into CLI and API examples.
 
-## Ollama Chat Example
+## Directory Structure
 
-The `chat_ollama_cli.py` script provides an interactive command-line interface for chatting with Ollama models.
+```
+examples/
+├── cli/                    # Command-line interface examples
+│   ├── chat_ollama_cli.py  # Interactive chat with Ollama models
+│   ├── chat_with_gpt.py    # Basic chat with GPT
+│   ├── basic_agent.py      # Simple agent implementation
+│   ├── prompt_chain.py     # Chain of prompts example
+│   ├── task_runner.py      # Task execution with agents
+│   ├── usage_tracking.py   # Track model usage and costs
+│   ├── mcp_workflow.py     # Multi-agent collaboration
+│   └── multi_model_wrapper_cli.py  # CLI for multi-model wrapper
+├── api/                    # API and integration examples
+│   ├── gateway_examples.py # Gateway API usage examples
+│   ├── rag_example.py      # Basic RAG implementation
+│   ├── rag_advanced_example.py  # Advanced RAG with custom configs
+│   ├── multi_model_wrapper_api.py  # API for multi-model wrapper
+│   ├── model_wrapper.py    # Model wrapper implementation
+│   └── test_llm_wrapper.py # Tests for LLM wrapper
+└── streamlit-ui/          # Streamlit-based UI examples
+```
+
+## CLI Examples
+
+### Ollama Chat Example
+
+The `cli/chat_ollama_cli.py` script provides an interactive command-line interface for chatting with Ollama models.
 
 ### Prerequisites
 
@@ -89,23 +114,77 @@ The tests verify:
 - Chat functionality
 - Error handling
 
-## Other Examples
+### Other CLI Examples
+
+1. **Basic Agent** (`cli/basic_agent.py`)
+   - Simple agent implementation
+   - Demonstrates basic agent capabilities
+
+2. **Prompt Chain** (`cli/prompt_chain.py`)
+   - Chain of prompts example
+   - Shows how to create complex prompt workflows
+
+3. **Task Runner** (`cli/task_runner.py`)
+   - Task execution with agents
+   - Demonstrates task management and execution
+
+4. **Usage Tracking** (`cli/usage_tracking.py`)
+   - Track model usage and costs
+   - Monitor API usage and expenses
+
+5. **MCP Workflow** (`cli/mcp_workflow.py`)
+   - Multi-agent collaboration
+   - Complex workflow management
+
+6. **Multi-Model Wrapper** (`cli/multi_model_wrapper_cli.py`)
+   - CLI interface for multi-model wrapper
+   - Demonstrates model composition and switching
+
+## API Examples
+
+### Gateway Examples
+
+The `api/gateway_examples.py` demonstrates how to use the MultiMind Gateway API:
+
+```python
+from multimind.gateway import MultiMindCLI, chat_manager, monitor
+
+# Create a chat session
+session = chat_manager.create_session(
+    model="openai",
+    system_prompt="You are a helpful AI assistant."
+)
+
+# Add messages and get responses
+session.add_message(role="user", content="Hello!")
+response = await handler.generate("Hello!")
+```
 
 ### RAG Examples
-- `rag_example.py` - Basic RAG implementation
-- `rag_advanced_example.py` - Advanced RAG with custom configurations
 
-### Agent Examples
-- `basic_agent.py` - Simple agent implementation
-- `task_runner.py` - Task execution with agents
-- `mcp_workflow.py` - Multi-agent collaboration
+1. **Basic RAG** (`api/rag_example.py`)
+   - Simple RAG implementation
+   - Document processing and retrieval
 
-### Prompt Engineering
-- `prompt_chain.py` - Chain of prompts example
-- `chat_with_gpt.py` - Basic chat with GPT
+2. **Advanced RAG** (`api/rag_advanced_example.py`)
+   - Custom configurations
+   - Advanced retrieval strategies
 
-### Usage Tracking
-- `usage_tracking.py` - Track model usage and costs
+### Multi-Model Wrapper
+
+The multi-model wrapper examples demonstrate how to combine different models:
+
+1. **API Interface** (`api/multi_model_wrapper_api.py`)
+   - API for model composition
+   - Model switching and routing
+
+2. **Model Wrapper** (`api/model_wrapper.py`)
+   - Core wrapper implementation
+   - Model abstraction and management
+
+3. **Tests** (`api/test_llm_wrapper.py`)
+   - Test suite for LLM wrapper
+   - Integration tests
 
 ## Contributing
 
@@ -114,6 +193,7 @@ Feel free to contribute more examples! When adding new examples:
 2. Add appropriate documentation
 3. Include tests if applicable
 4. Update this README with usage instructions
+5. Place files in the appropriate directory (cli/ or api/)
 
 ## Troubleshooting
 

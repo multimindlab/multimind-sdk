@@ -169,6 +169,9 @@ tuner.train(
 )
 ```
 
+
+
+
 ### Agent Development Example
 
 ```python
@@ -200,32 +203,33 @@ response = chain.run("Hello, how are you?")
 print(response)
 ```
 
+
 ## 📚 Documentation
 
 - [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Complete API documentation
-- [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Production-ready code examples
+- [Examples](examples/README.md) - Production-ready code examples
 - [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - Detailed system design
 - [Contributing Guide](CONTRIBUTING.md) - Join our development team
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
 - [Issue Tracker](https://github.com/multimind-dev/multimind-sdk/issues) - Report bugs or request features
 
-### Local Documentation
+### Project Structure
 
-```bash
-# Run documentation locally
-cd multimind-docs
-npm install
-npm start
 ```
-
-## 🎓 Examples
-
-Explore our [examples directory](examples/) for:
-
-- [Basic RAG Usage](examples/rag_basic.py) - Simple RAG implementation
-- [Fine-Tuning](examples/fine_tuning.py) - Model adaptation examples
-- [Agent Development](examples/agent_basic.py) - Building AI agents
-- [Framework Integration](examples/langchain_integration.py) - Using with popular frameworks
+multimind-sdk/
+├── multimind/              # Core SDK package
+│   ├── gateway/           # Gateway implementation
+│   ├── client/            # Client libraries
+│   ├── fine_tuning/       # Fine-tuning modules
+│   └── utils/             # Utility functions
+├── examples/              # Example implementations
+│   ├── cli/              # Command-line examples
+│   ├── api/              # API and integration examples
+│   └── streamlit-ui/     # Streamlit-based UI examples
+├── tests/                # Test suite
+├── docs/                 # Documentation
+└── scripts/              # Development scripts
+```
 
 ## 🤝 Contributing
 
