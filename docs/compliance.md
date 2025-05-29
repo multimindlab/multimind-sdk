@@ -1,313 +1,266 @@
-# MultiMind Compliance Framework
+# MultiMind Compliance
 
-The MultiMind Compliance Framework provides comprehensive support for various regulatory frameworks, standards, and best practices in AI governance and data protection. This document outlines the implemented compliance features and their usage.
+This documentation covers the compliance monitoring and evaluation features in MultiMind.
 
-## Table of Contents
+## Overview
 
-1. [Core Compliance Features](#core-compliance-features)
-2. [Data Protection & Privacy](#data-protection--privacy)
-3. [AI-Specific Compliance](#ai-specific-compliance)
-4. [Cross-Border Data Transfer](#cross-border-data-transfer)
-5. [Accessibility & Anti-Discrimination](#accessibility--anti-discrimination)
-6. [Supply Chain & Third-Party Risk](#supply-chain--third-party-risk)
-7. [Corporate & Internal Requirements](#corporate--internal-requirements)
-8. [Usage Examples](#usage-examples)
+MultiMind provides a comprehensive compliance framework that includes:
+- Real-time compliance monitoring
+- Healthcare-specific compliance checks
+- Interactive compliance dashboard
+- Alert management system
+- Compliance trend analysis
+- Advanced compliance mechanisms (federated shards, ZK proofs, etc.)
 
-## Core Compliance Features
+## Features
 
-The framework is built around a central `GovernanceConfig` that manages compliance settings and regulations. Key features include:
+### Core Compliance Features
+- Run compliance monitoring with custom configurations
+- Generate compliance reports
+- Run example compliance scenarios
+- List available regulations and healthcare use cases
+- Healthcare-specific compliance monitoring
+- Real-time compliance evaluation
+- Compliance recommendations generation
 
-- Configurable regulation enforcement
-- Data retention management
-- Risk assessment thresholds
-- Continuous monitoring
-- Audit logging
-- Policy management
-- Documentation automation
+### Advanced Features
+- Interactive compliance dashboard
+- Alert management and monitoring
+- Compliance trend analysis
+- Federated compliance shards
+- Zero-knowledge proofs
+- Differential privacy feedback loops
+- Self-healing patches
+- Explainable DTOs
+- Model watermarking and fingerprint tracking
+- Adaptive privacy via differentially-private feedback
+- Provable zero-knowledge compliance
+- Dynamic regulatory change detection and auto-patch
+- Federated compliance across jurisdictions
 
-### Basic Configuration
+## Installation
 
-```python
-from multimind.compliance import GovernanceConfig, Regulation
-
-config = GovernanceConfig(
-    organization_id="org_123",
-    organization_name="Example Corp",
-    dpo_email="dpo@example.com",
-    enabled_regulations=[
-        Regulation.GDPR,
-        Regulation.AI_ACT,
-        Regulation.HIPAA
-    ]
-)
+```bash
+pip install multimind[compliance]
 ```
 
-## Data Protection & Privacy
+## Usage
 
-The `PrivacyCompliance` class implements various data protection regulations:
+### Command Line Interface
 
-### Supported Regulations
-- GDPR (General Data Protection Regulation)
-- CCPA (California Consumer Privacy Act)
-- LGPD (Brazilian General Data Protection Law)
-- PIPEDA (Canadian Privacy Law)
-- PDPA (Singapore Personal Data Protection Act)
-- APPI (Japanese Privacy Law)
+The compliance features can be accessed through the MultiMind CLI:
 
-### Key Features
-- Data subject rights management
-- Consent management
-- Data minimization
-- Privacy impact assessments
-- Data breach notification
-- Data retention controls
+```bash
+# Run compliance monitoring
+multimind compliance run --config config.json --output results.json
 
-## AI-Specific Compliance
+# Run example scenarios
+multimind compliance example --type healthcare --use-case medical_diagnosis --output results.json
 
-The `AIFrameworkCompliance` class implements AI governance frameworks:
+# Generate compliance report
+multimind compliance report --config config.json --output report.json
 
-### Supported Frameworks
-- EU AI Act
-- OECD AI Principles
-- UN Guiding Principles
-- UK AI Regulation
-- U.S. AI Bill of Rights
+# Show compliance dashboard
+multimind compliance dashboard --organization-id org_123 --time-range 7d --use-case medical_diagnosis
 
-### Key Features
-- Risk classification
-- Technical documentation
-- Human oversight
-- Transparency requirements
-- Impact assessments
-- Monitoring and reporting
-
-## Cross-Border Data Transfer
-
-The `DataTransferCompliance` class manages international data transfers:
-
-### Supported Frameworks
-- Schrems II
-- Binding Corporate Rules (BCR)
-- Data Localization Requirements
-
-### Key Features
-- Transfer mechanism validation
-- Supplementary measures assessment
-- Documentation requirements
-- Risk assessment
-- Compliance monitoring
-
-## Accessibility & Anti-Discrimination
-
-The `AccessibilityCompliance` class implements accessibility standards:
-
-### Supported Standards
-- WCAG 2.1
-- ADA Title III
-- Equality Act
-
-### Key Features
-- Accessibility testing
-- Reasonable accommodations
-- Digital accessibility
-- Anti-discrimination controls
-- Compliance monitoring
-
-## Supply Chain & Third-Party Risk
-
-The `SupplyChainCompliance` class manages vendor and software risks:
-
-### Supported Frameworks
-- SIG (Standard Information Gathering)
-- CAIQ (Consensus Assessments Initiative Questionnaire)
-- Software Composition Analysis
-
-### Key Features
-- Vendor security assessment
-- Software composition analysis
-- License compliance
-- Vulnerability management
-- Supply chain security
-
-## Corporate & Internal Requirements
-
-The `CorporateCompliance` class implements internal governance:
-
-### Supported Frameworks
-- SOX (Sarbanes-Oxley Act)
-- Business Continuity Planning
-- Internal Audit Management
-
-### Key Features
-- Internal controls assessment
-- Financial reporting compliance
-- Business continuity planning
-- Disaster recovery
-- Audit management
-
-## Usage Examples
-
-### Privacy Compliance
-
-```python
-from multimind.compliance import PrivacyCompliance
-
-privacy = PrivacyCompliance(config)
-
-# Process data subject request
-async def handle_dsar(user_id: str):
-    result = await privacy.process_dsar(user_id)
-    return result
-
-# Validate data processing
-async def validate_processing(data_category: str, purpose: str):
-    result = await privacy.validate_processing(data_category, purpose)
-    return result
+# Manage alerts
+multimind compliance alerts --organization-id org_123 --status active --severity high
+multimind compliance configure-alerts --organization-id org_123 --config alert_rules.json
 ```
 
-### AI Compliance
+### API Endpoints
 
-```python
-from multimind.compliance import AIFrameworkCompliance
+The compliance API is available through the MultiMind Gateway:
 
-ai_compliance = AIFrameworkCompliance(config)
+```bash
+# Start the API server
+multimind gateway start
+```
 
-# Assess AI system compliance
-async def assess_ai_system(system_id: str):
-    # OECD compliance
-    oecd_result = await ai_compliance.assess_oecd_compliance(
-        system_id=system_id,
-        system_metadata={"type": "classification"}
-    )
-    
-    # UK AI regulation
-    uk_result = await ai_compliance.assess_uk_ai_regulation(
-        system_id=system_id,
-        system_metadata={"type": "classification"}
-    )
-    
-    return {
-        "oecd": oecd_result,
-        "uk": uk_result
+#### Available Endpoints
+
+##### POST /v1/compliance/monitor
+Run compliance monitoring with custom configuration.
+
+Request body:
+```json
+{
+    "organization_id": "org_123",
+    "organization_name": "Example Corp",
+    "dpo_email": "dpo@example.com",
+    "enabled_regulations": ["HIPAA", "GDPR"],
+    "compliance_rules": {
+        "privacy_threshold": 0.9,
+        "fairness_threshold": 0.9
+    },
+    "metadata": {
+        "model_type": "healthcare",
+        "data_categories": ["health_data"]
     }
+}
 ```
 
-### Data Transfer Compliance
+##### GET /v1/compliance/dashboard
+Get compliance dashboard metrics.
 
-```python
-from multimind.compliance import DataTransferCompliance
+Parameters:
+- `organization_id`: Organization ID
+- `time_range`: Time range (e.g., 7d, 24h)
+- `use_case`: Specific use case (optional)
 
-transfer = DataTransferCompliance(config)
-
-# Validate cross-border transfer
-async def validate_transfer(
-    source_country: str,
-    destination_country: str,
-    data_categories: List[str]
-):
-    result = await transfer.validate_schrems_ii_compliance(
-        transfer_id="transfer_123",
-        source_country=source_country,
-        destination_country=destination_country,
-        data_categories=data_categories,
-        transfer_mechanism="SCC"
-    )
-    return result
+Response:
+```json
+{
+    "total_checks": 100,
+    "passed_checks": 95,
+    "failed_checks": 5,
+    "compliance_score": 0.95,
+    "recent_issues": [
+        {
+            "description": "Privacy threshold violation",
+            "severity": "high"
+        }
+    ],
+    "trend_data": {
+        "compliance_score": [0.92, 0.93, 0.95],
+        "privacy_score": [0.94, 0.95, 0.96],
+        "fairness_score": [0.91, 0.92, 0.93],
+        "transparency_score": [0.93, 0.94, 0.95]
+    },
+    "alerts": [
+        {
+            "description": "High severity compliance issue detected",
+            "severity": "high"
+        }
+    ]
+}
 ```
 
-### Accessibility Compliance
+##### POST /v1/compliance/alerts/configure
+Configure compliance alert rules.
 
-```python
-from multimind.compliance import AccessibilityCompliance
-
-accessibility = AccessibilityCompliance(config)
-
-# Validate WCAG compliance
-async def validate_accessibility(system_id: str):
-    result = await accessibility.validate_wcag_compliance(
-        assessment_id="wcag_123",
-        system_id=system_id,
-        version="2.1"
-    )
-    return result
+Request body:
+```json
+{
+    "organization_id": "org_123",
+    "alert_rules": {
+        "privacy_threshold": {
+            "threshold": 0.9,
+            "severity": "high",
+            "notification_channels": ["email", "slack"]
+        },
+        "fairness_threshold": {
+            "threshold": 0.9,
+            "severity": "medium",
+            "notification_channels": ["email"]
+        }
+    }
+}
 ```
 
-### Supply Chain Compliance
+##### GET /v1/compliance/alerts
+Get compliance alerts.
 
-```python
-from multimind.compliance import SupplyChainCompliance
+Parameters:
+- `organization_id`: Organization ID
+- `status`: Alert status (active/resolved)
+- `severity`: Alert severity (high/medium/low)
 
-supply_chain = SupplyChainCompliance(config)
+## Configuration
 
-# Assess vendor security
-async def assess_vendor(vendor_id: str, vendor_name: str):
-    result = await supply_chain.assess_vendor_security(
-        vendor_id=vendor_id,
-        vendor_name=vendor_name,
-        assessment_type="SIG"
-    )
-    return result
+### Compliance Rules
+
+Default compliance rules include:
+- Privacy threshold
+- Fairness threshold
+- Transparency threshold
+- Bias threshold
+
+Healthcare-specific rules include:
+- HIPAA compliance
+- Data minimization
+- Audit trail
+- Explainability
+
+### Alert Rules
+
+Alert rules can be configured for:
+- Compliance threshold violations
+- Privacy breaches
+- Fairness issues
+- Transparency concerns
+- Custom compliance checks
+
+Example alert configuration:
+```json
+{
+    "organization_id": "org_123",
+    "alert_rules": {
+        "privacy_threshold": {
+            "threshold": 0.9,
+            "severity": "high",
+            "notification_channels": ["email", "slack"],
+            "cooldown_period": "1h"
+        },
+        "hipaa_compliance": {
+            "threshold": 1.0,
+            "severity": "critical",
+            "notification_channels": ["email", "slack", "pagerduty"],
+            "cooldown_period": "0h"
+        }
+    }
+}
 ```
 
-### Corporate Compliance
+## Advanced Features
 
-```python
-from multimind.compliance import CorporateCompliance
+### Federated Compliance Shards
+- Distributed compliance monitoring
+- Cross-jurisdictional compliance verification
+- Zero-knowledge proofs for privacy
+- Self-healing compliance patches
 
-corporate = CorporateCompliance(config)
+### Adaptive Privacy
+- Differential privacy feedback loops
+- Privacy-preserving compliance checks
+- Dynamic privacy parameter adaptation
+- Privacy-aware model training
 
-# Assess SOX compliance
-async def assess_sox(system_id: str):
-    result = await corporate.assess_sox_compliance(
-        assessment_id="sox_123",
-        system_id=system_id,
-        fiscal_year="2024"
-    )
-    return result
+### Model Watermarking
+- Unique model fingerprints
+- Provenance tracking
+- Compliance verification
+- Model attribution
+
+### Regulatory Change Detection
+- Automated regulatory updates
+- Compliance patch generation
+- Cross-jurisdictional compliance mapping
+- Real-time compliance adaptation
+
+## Development
+
+### Running Tests
+
+```bash
+pytest tests/compliance/
 ```
 
-## Best Practices
+### Building Documentation
 
-1. **Configuration Management**
-   - Regularly update enabled regulations
-   - Configure appropriate retention periods
-   - Set up monitoring thresholds
-
-2. **Risk Assessment**
-   - Conduct regular risk assessments
-   - Monitor compliance status
-   - Document findings and actions
-
-3. **Documentation**
-   - Maintain detailed records
-   - Document compliance decisions
-   - Keep audit trails
-
-4. **Monitoring**
-   - Implement continuous monitoring
-   - Set up alerts for violations
-   - Regular compliance reviews
-
-5. **Training**
-   - Regular staff training
-   - Update procedures
-   - Document training records
+```bash
+cd docs
+make html
+```
 
 ## Contributing
 
-To add new compliance features:
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-1. Identify the regulatory framework
-2. Create appropriate compliance class
-3. Implement required controls
-4. Add documentation
-5. Include usage examples
-6. Update this documentation
+## License
 
-## Support
-
-For questions or issues:
-- Open a GitHub issue
-- Contact the development team
-- Check the documentation
-- Join the community forum 
+This project is licensed under the MIT License - see the LICENSE file for details. 

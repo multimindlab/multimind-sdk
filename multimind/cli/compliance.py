@@ -1,153 +1,221 @@
 """
-Privacy compliance management commands for MultiMind CLI
+Command-line interface for MultiMind compliance features.
 """
 
-import asyncio
 import click
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+import asyncio
+import json
+from pathlib import Path
+from typing import Dict, Any, List
+from datetime import datetime, timedelta
 
-from ..compliance.privacy import (
-    PrivacyCompliance,
-    GovernanceConfig,
-    DataCategory,
-    NotificationType,
-    AuditAction
+from ..compliance.model_training import ComplianceTrainer
+from ..compliance import GovernanceConfig, Regulation
+from ..gateway.compliance_api import (
+    run_compliance_monitoring,
+    generate_compliance_report,
+    get_dashboard_metrics,
+    get_compliance_alerts,
+    save_alert_rules
 )
-
-console = Console()
 
 @click.group()
 def compliance():
-    """Privacy compliance management commands"""
+    """MultiMind compliance management commands."""
     pass
 
 @compliance.command()
-@click.option('--org-id', required=True, help='Organization ID')
-@click.option('--jurisdiction', default='global', help='Jurisdiction')
-@click.option('--regulations', multiple=True, help='Regulations to monitor')
-def init(org_id: str, jurisdiction: str, regulations: List[str]):
-    """Initialize privacy compliance manager"""
-    config = GovernanceConfig(
-        organization_id=org_id,
-        jurisdiction=jurisdiction,
-        regulations=list(regulations)
-    )
-    privacy_manager = PrivacyCompliance(config=config)
-    console.print(f"Initialized privacy compliance manager for {org_id}")
+@click.option('--config', '-c', type=click.Path(exists=True), help='Path to compliance configuration file')
+@click.option('--output', '-o', type=click.Path(), help='Path to save results')
+def run_compliance(config: str, output: str):
+    """Run compliance monitoring."""
+    asyncio.run(_run_compliance(config, output))
 
-@compliance.command()
-@click.option('--purpose-id', required=True, help='Purpose ID')
-@click.option('--name', required=True, help='Purpose name')
-@click.option('--description', required=True, help='Purpose description')
-@click.option('--legal-basis', required=True, help='Legal basis')
-@click.option('--retention-period', required=True, type=int, help='Retention period in days')
-@click.option('--categories', multiple=True, help='Data categories')
-def add_purpose(purpose_id: str, name: str, description: str, legal_basis: str, 
-                retention_period: int, categories: List[str]):
-    """Add a new data purpose"""
-    data_categories = {DataCategory[cat.upper()] for cat in categories}
+async def _run_compliance(config_path: str, output_path: str):
+    """Run compliance monitoring with configuration."""
+    # Load configuration
+    with open(config_path) as f:
+        config = json.load(f)
     
-    result = asyncio.run(privacy_manager.add_data_purpose(
-        purpose_id=purpose_id,
-        name=name,
-        description=description,
-        legal_basis=legal_basis,
-        retention_period=retention_period,
-        data_categories=data_categories
-    ))
-    console.print(f"Added data purpose: {name}")
+    # Initialize governance config
+    governance_config = GovernanceConfig(
+        organization_id=config["organization_id"],
+        organization_name=config["organization_name"],
+        dpo_email=config["dpo_email"],
+        enabled_regulations=[Regulation[r] for r in config["enabled_regulations"]]
+    )
+    
+    # Run compliance monitoring
+    results = await run_compliance_monitoring(config)
+    
+    # Save results
+    if output_path:
+        with open(output_path, 'w') as f:
+            json.dump(results, f, indent=2)
+    
+    # Print results
+    print("\nCompliance Evaluation Results:")
+    print(json.dumps(results["final_evaluation"], indent=2))
+    
+    print("\nRecommendations:")
+    for rec in results["final_evaluation"]["recommendations"]:
+        print(f"- {rec['action']} (Priority: {rec['priority']})")
 
 @compliance.command()
-@click.option('--entity-id', required=True, help='Entity ID')
-@click.option('--entity-type', default='system', help='Entity type')
-def calculate_risk(entity_id: str, entity_type: str):
-    """Calculate risk score for an entity"""
-    risk_score = asyncio.run(privacy_manager.calculate_risk_score(
-        entity_id=entity_id,
-        entity_type=entity_type
-    ))
-    console.print(f"Risk score for {entity_id}: {risk_score.score} ({risk_score.level})")
+@click.option('--type', '-t', type=click.Choice(['healthcare', 'general']), required=True, help='Type of compliance monitoring')
+@click.option('--use-case', '-u', type=str, help='Specific use case for healthcare compliance')
+@click.option('--output', '-o', type=click.Path(), help='Path to save results')
+def run_example(type: str, use_case: str, output: str):
+    """Run compliance example."""
+    asyncio.run(_run_example(type, use_case, output))
+
+async def _run_example(type: str, use_case: str, output: str):
+    """Run compliance example."""
+    if type == 'healthcare':
+        from examples.compliance.healthcare_compliance_example import main as run_healthcare
+        results = await run_healthcare()
+    else:
+        from examples.compliance.compliance_training_example import main as run_general
+        results = await run_general()
+    
+    # Save results
+    if output:
+        with open(output, 'w') as f:
+            json.dump(results, f, indent=2)
+    
+    # Print results
+    print("\nCompliance Evaluation Results:")
+    print(json.dumps(results["final_evaluation"], indent=2))
+    
+    print("\nRecommendations:")
+    for rec in results["final_evaluation"]["recommendations"]:
+        print(f"- {rec['action']} (Priority: {rec['priority']})")
 
 @compliance.command()
-@click.option('--dashboard-id', required=True, help='Dashboard ID')
-@click.option('--name', required=True, help='Dashboard name')
-@click.option('--description', required=True, help='Dashboard description')
-@click.option('--refresh-interval', default=3600, help='Refresh interval in seconds')
-def create_dashboard(dashboard_id: str, name: str, description: str, refresh_interval: int):
-    """Create a new compliance dashboard"""
-    dashboard = asyncio.run(privacy_manager.create_compliance_dashboard(
-        dashboard_id=dashboard_id,
-        name=name,
-        description=description,
-        refresh_interval=refresh_interval
-    ))
-    console.print(f"Created dashboard: {name}")
+@click.option('--config', '-c', type=click.Path(exists=True), help='Path to compliance configuration file')
+@click.option('--output', '-o', type=click.Path(), help='Path to save report')
+def generate_report(config: str, output: str):
+    """Generate compliance report."""
+    asyncio.run(_generate_report(config, output))
+
+async def _generate_report(config_path: str, output_path: str):
+    """Generate compliance report."""
+    # Load configuration
+    with open(config_path) as f:
+        config = json.load(f)
+    
+    # Generate report
+    report = await generate_compliance_report(config)
+    
+    # Save report
+    if output_path:
+        with open(output_path, 'w') as f:
+            json.dump(report, f, indent=2)
+    
+    # Print report
+    print("\nCompliance Report:")
+    print(json.dumps(report, indent=2))
 
 @compliance.command()
-@click.option('--template-id', required=True, help='Template ID')
-@click.option('--name', required=True, help='Template name')
-@click.option('--regulation', required=True, help='Regulation')
-@click.option('--jurisdiction', required=True, help='Jurisdiction')
-def create_report_template(template_id: str, name: str, regulation: str, jurisdiction: str):
-    """Create a new compliance report template"""
-    template = asyncio.run(privacy_manager.create_report_template(
-        template_id=template_id,
-        name=name,
-        description=f"Compliance report for {regulation}",
-        regulation=regulation,
-        jurisdiction=jurisdiction,
-        sections=[
-            {
-                "id": "compliance_status",
-                "type": "compliance_status",
-                "title": "Compliance Status"
-            },
-            {
-                "id": "risk_assessment",
-                "type": "risk_assessment",
-                "title": "Risk Assessment"
-            }
-        ]
-    ))
-    console.print(f"Created report template: {name}")
+@click.option('--organization-id', '-o', required=True, help='Organization ID')
+@click.option('--time-range', '-t', default='7d', help='Time range (e.g., 7d, 24h)')
+@click.option('--use-case', '-u', help='Specific use case')
+@click.option('--output', '-o', type=click.Path(), help='Path to save dashboard data')
+def dashboard(organization_id: str, time_range: str, use_case: str, output: str):
+    """Show compliance dashboard."""
+    asyncio.run(_show_dashboard(organization_id, time_range, use_case, output))
+
+async def _show_dashboard(organization_id: str, time_range: str, use_case: str, output: str):
+    """Show compliance dashboard."""
+    # Get dashboard metrics
+    metrics = await get_dashboard_metrics(
+        organization_id=organization_id,
+        time_range=time_range,
+        use_case=use_case
+    )
+    
+    # Save metrics if output path provided
+    if output:
+        with open(output, 'w') as f:
+            json.dump(metrics.dict(), f, indent=2)
+    
+    # Print dashboard
+    print("\nCompliance Dashboard")
+    print("===================")
+    print(f"Organization: {organization_id}")
+    print(f"Time Range: {time_range}")
+    if use_case:
+        print(f"Use Case: {use_case}")
+    
+    print("\nCompliance Overview")
+    print(f"Total Checks: {metrics.total_checks}")
+    print(f"Passed Checks: {metrics.passed_checks}")
+    print(f"Failed Checks: {metrics.failed_checks}")
+    print(f"Compliance Score: {metrics.compliance_score:.2%}")
+    
+    print("\nRecent Issues")
+    for issue in metrics.recent_issues:
+        print(f"- {issue['description']} (Severity: {issue['severity']})")
+    
+    print("\nActive Alerts")
+    for alert in metrics.alerts:
+        print(f"- {alert['description']} (Severity: {alert['severity']})")
 
 @compliance.command()
-@click.option('--training-id', required=True, help='Training ID')
-@click.option('--title', required=True, help='Training title')
-@click.option('--description', required=True, help='Training description')
-@click.option('--duration', required=True, type=int, help='Duration in minutes')
-def create_training(training_id: str, title: str, description: str, duration: int):
-    """Create a new compliance training"""
-    training = asyncio.run(privacy_manager.create_compliance_training(
-        training_id=training_id,
-        title=title,
-        description=description,
-        modules=[
-            {
-                "id": "module_1",
-                "title": "Overview",
-                "duration": duration // 2
-            },
-            {
-                "id": "module_2",
-                "title": "Best Practices",
-                "duration": duration // 2
-            }
-        ],
-        target_audience=["employees"],
-        duration=duration,
-        completion_criteria={
-            "required_modules": ["module_1", "module_2"],
-            "minimum_percentage": 80
-        }
-    ))
-    console.print(f"Created training: {title}")
+@click.option('--organization-id', '-o', required=True, help='Organization ID')
+@click.option('--status', '-s', default='active', help='Alert status (active/resolved)')
+@click.option('--severity', '-v', help='Alert severity (high/medium/low)')
+@click.option('--output', '-o', type=click.Path(), help='Path to save alerts')
+def alerts(organization_id: str, status: str, severity: str, output: str):
+    """Show compliance alerts."""
+    asyncio.run(_show_alerts(organization_id, status, severity, output))
+
+async def _show_alerts(organization_id: str, status: str, severity: str, output: str):
+    """Show compliance alerts."""
+    # Get alerts
+    alerts = await get_compliance_alerts(
+        organization_id=organization_id,
+        status=status,
+        severity=severity
+    )
+    
+    # Save alerts if output path provided
+    if output:
+        with open(output, 'w') as f:
+            json.dump(alerts, f, indent=2)
+    
+    # Print alerts
+    print("\nCompliance Alerts")
+    print("================")
+    print(f"Organization: {organization_id}")
+    print(f"Status: {status}")
+    if severity:
+        print(f"Severity: {severity}")
+    
+    for alert in alerts:
+        print(f"\n- {alert['description']}")
+        print(f"  Severity: {alert['severity']}")
+        print(f"  Created: {alert['created_at']}")
+        if alert.get('resolved_at'):
+            print(f"  Resolved: {alert['resolved_at']}")
 
 @compliance.command()
-def detect_anomalies():
-    """Detect anomalies in system behavior"""
-    anomalies = asyncio.run(privacy_manager.detect_anomalies())
-    for anomaly in anomalies:
-        console.print(f"Anomaly detected: {anomaly.description} (Severity: {anomaly.severity})") 
+@click.option('--organization-id', '-o', required=True, help='Organization ID')
+@click.option('--config', '-c', type=click.Path(exists=True), help='Path to alert rules configuration')
+def configure_alerts(organization_id: str, config: str):
+    """Configure compliance alert rules."""
+    asyncio.run(_configure_alerts(organization_id, config))
+
+async def _configure_alerts(organization_id: str, config_path: str):
+    """Configure compliance alert rules."""
+    # Load alert rules
+    with open(config_path) as f:
+        alert_rules = json.load(f)
+    
+    # Configure alerts
+    await save_alert_rules(organization_id, alert_rules)
+    print("Alert rules configured successfully")
+
+def main():
+    """Main entry point for CLI."""
+    compliance() 

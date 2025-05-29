@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import time
 from datetime import datetime
+import uvicorn
 
 from ..core.config import config
 from ..core.models import ModelResponse, get_model_handler
@@ -21,6 +22,7 @@ from ..compliance.privacy import (
     NotificationType,
     AuditAction
 )
+from .compliance_api import init_app as init_compliance_app
 
 # Configure logging
 logging.basicConfig(
@@ -31,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="MultiMind Gateway API",
-    description="Unified API Gateway for multiple AI models",
-    version="0.1.0"
+    title="MultiMind API",
+    description="API Gateway for MultiMind Services",
+    version="1.0.0"
 )
 
 # Add CORS middleware
@@ -44,6 +46,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize compliance routes
+init_compliance_app(app)
 
 # Pydantic models for request/response
 class ChatMessage(BaseModel):
@@ -145,8 +150,8 @@ async def validate_model_config():
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "MultiMind Gateway API",
-        "version": "0.1.0",
+        "name": "MultiMind API",
+        "version": "1.0.0",
         "models": list(config.validate(value={}).keys())
     }
 
@@ -440,7 +445,9 @@ class MultiMindAPI:
         async def health_check():
             return {"status": "healthy"}
 
-def start_api(host: str = "0.0.0.0", port: int = 8000):
-    """Start the API server"""
-    import uvicorn
-    uvicorn.run(app, host=host, port=port)
+def start():
+    """Start the API server."""
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+if __name__ == "__main__":
+    start()
