@@ -21,7 +21,6 @@
   <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
   <a href="https://github.com/multimind-dev/multimind-sdk/actions"><img src="https://img.shields.io/github/actions/workflow/status/multimind-dev/multimind-sdk/ci.yml" alt="CI Status"></a>
-  <a href="https://discord.gg/K64U65je7h"><img src="https://img.shields.io/discord/1234567890?label=Discord&logo=discord" alt="Discord"></a>
 </p>
 
 <div align="center">
