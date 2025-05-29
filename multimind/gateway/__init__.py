@@ -1,17 +1,15 @@
 """
-MultiMind Gateway - Unified API Gateway for Multi-Model Support
+MultiMind Gateway Package.
+Provides a unified interface for all MultiMind services.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
-from .api import MultiMindAPI, app
-from ..core.models import ModelHandler, ModelResponse
-from ..core.config import GatewayConfig
+from .api import app, start
+from .compliance_api import router as compliance_router
 
 __all__ = [
-    "MultiMindAPI",
     "app",
-    "ModelHandler",
-    "ModelResponse",
-    "GatewayConfig"
+    "start",
+    "compliance_router"
 ]
