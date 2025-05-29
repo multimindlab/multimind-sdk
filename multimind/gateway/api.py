@@ -10,10 +10,17 @@ from pydantic import BaseModel, Field
 import time
 from datetime import datetime
 
-from .config import config
-from .models import ModelResponse, get_model_handler
-from .monitoring import monitor, ModelHealth
-from .chat import chat_manager, ChatSession, ChatMessage
+from ..core.config import config
+from ..core.models import ModelResponse, get_model_handler
+from ..core.monitoring import monitor, ModelHealth
+from ..core.chat import chat_manager, ChatSession, ChatMessage
+from ..compliance.privacy import (
+    PrivacyCompliance,
+    GovernanceConfig,
+    DataCategory,
+    NotificationType,
+    AuditAction
+)
 
 # Configure logging
 logging.basicConfig(
@@ -65,16 +72,10 @@ class CompareRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.7, description="Sampling temperature")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
 
-class ModelResponse(BaseModel):
-    content: str
-    model: str
-    usage: Optional[Dict[str, int]] = None
-    finish_reason: Optional[str] = None
-
 class CompareResponse(BaseModel):
     responses: Dict[str, ModelResponse]
 
-# New Pydantic models for monitoring and cha
+# New Pydantic models for monitoring and chat
 class MetricsResponse(BaseModel):
     """Response model for metrics endpoint"""
     metrics: Dict[str, Any]
@@ -93,6 +94,42 @@ class SessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+
+# Privacy Compliance Pydantic models
+class DataPurposeRequest(BaseModel):
+    purpose_id: str = Field(..., description="Unique identifier for the purpose")
+    name: str = Field(..., description="Name of the purpose")
+    description: str = Field(..., description="Description of the purpose")
+    legal_basis: str = Field(..., description="Legal basis for data processing")
+    retention_period: int = Field(..., description="Retention period in days")
+    data_categories: List[str] = Field(..., description="List of data categories")
+
+class RiskScoreRequest(BaseModel):
+    entity_id: str = Field(..., description="Entity identifier")
+    entity_type: str = Field(default="system", description="Type of entity")
+
+class DashboardRequest(BaseModel):
+    dashboard_id: str = Field(..., description="Dashboard identifier")
+    name: str = Field(..., description="Dashboard name")
+    description: str = Field(..., description="Dashboard description")
+    refresh_interval: int = Field(default=3600, description="Refresh interval in seconds")
+
+class ReportTemplateRequest(BaseModel):
+    template_id: str = Field(..., description="Template identifier")
+    name: str = Field(..., description="Template name")
+    description: str = Field(..., description="Template description")
+    regulation: str = Field(..., description="Regulation name")
+    jurisdiction: str = Field(..., description="Jurisdiction")
+    sections: List[Dict[str, Any]] = Field(..., description="Report sections")
+
+class TrainingRequest(BaseModel):
+    training_id: str = Field(..., description="Training identifier")
+    title: str = Field(..., description="Training title")
+    description: str = Field(..., description="Training description")
+    modules: List[Dict[str, Any]] = Field(..., description="Training modules")
+    target_audience: List[str] = Field(..., description="Target audience")
+    duration: int = Field(..., description="Duration in minutes")
+    completion_criteria: Dict[str, Any] = Field(..., description="Completion criteria")
 
 # Dependency to validate model configuration
 async def validate_model_config():
@@ -150,7 +187,7 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
                 max_tokens=request.max_tokens
             )
 
-            # Track successful reques
+            # Track successful request
             await monitor.track_request(
                 model=request.model,
                 tokens=response.usage.get("total_tokens", 0) if response.usage else 0,
@@ -162,7 +199,7 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
             return response
 
         except Exception as e:
-            # Track failed reques
+            # Track failed request
             await monitor.track_request(
                 model=request.model,
                 tokens=0,
@@ -205,29 +242,18 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
     """Compare responses from multiple models"""
     try:
         responses = {}
-
         for model in request.models:
             if model not in status or not status[model]:
-                responses[model] = ModelResponse(
-                    content=f"Error: Model {model} is not available",
-                    model=model
-                )
+                logger.warning(f"Model {model} is not available, skipping")
                 continue
 
-            try:
-                handler = get_model_handler(model)
-                response = await handler.generate(
-                    request.prompt,
-                    temperature=request.temperature,
-                    max_tokens=request.max_tokens
-                )
-                responses[model] = response
-            except Exception as e:
-                logger.error(f"Error with {model}: {str(e)}")
-                responses[model] = ModelResponse(
-                    content=f"Error: {str(e)}",
-                    model=model
-                )
+            handler = get_model_handler(model)
+            response = await handler.generate(
+                request.prompt,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens
+            )
+            responses[model] = response
 
         return CompareResponse(responses=responses)
 
@@ -237,19 +263,22 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
 
 @app.get("/v1/metrics", response_model=MetricsResponse)
 async def get_metrics(model: Optional[str] = None):
-    """Get metrics and health status for models"""
+    """Get metrics for models"""
     try:
         metrics = await monitor.get_metrics(model)
-        return MetricsResponse(metrics=metrics, health=monitor.health)
+        return MetricsResponse(
+            metrics=metrics,
+            health={model: health for model, health in monitor.health.items()}
+        )
     except Exception as e:
-        logger.error(f"Error getting metrics: {e}")
+        logger.error(f"Error getting metrics: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/sessions", response_model=SessionResponse)
 async def create_session(request: SessionCreate):
     """Create a new chat session"""
     try:
-        session = chat_manager.create_session(
+        session = await chat_manager.create_session(
             model=request.model,
             system_prompt=request.system_prompt,
             metadata=request.metadata
@@ -262,32 +291,55 @@ async def create_session(request: SessionCreate):
             message_count=len(session.messages)
         )
     except Exception as e:
-        logger.error(f"Error creating session: {e}")
+        logger.error(f"Error creating session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/v1/sessions", response_model=List[SessionResponse])
 async def list_sessions():
-    """List all active chat sessions"""
+    """List all chat sessions"""
     try:
-        return chat_manager.list_sessions()
+        sessions = await chat_manager.list_sessions()
+        return [
+            SessionResponse(
+                session_id=session.session_id,
+                model=session.model,
+                created_at=session.created_at,
+                updated_at=session.updated_at,
+                message_count=len(session.messages)
+            )
+            for session in sessions
+        ]
     except Exception as e:
-        logger.error(f"Error listing sessions: {e}")
+        logger.error(f"Error listing sessions: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/v1/sessions/{session_id}")
 async def get_session(session_id: str):
     """Get a specific chat session"""
     try:
-        session = chat_manager.get_session(session_id)
-        if not session:
-            session = chat_manager.load_session(session_id)
+        session = await chat_manager.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
-        return session
+        return {
+            "session_id": session.session_id,
+            "model": session.model,
+            "created_at": session.created_at,
+            "updated_at": session.updated_at,
+            "messages": [
+                {
+                    "role": msg.role,
+                    "content": msg.content,
+                    "model": msg.model,
+                    "timestamp": msg.timestamp,
+                    "metadata": msg.metadata
+                }
+                for msg in session.messages
+            ]
+        }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting session: {e}")
+        logger.error(f"Error getting session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/sessions/{session_id}/messages")
@@ -298,46 +350,62 @@ async def add_message(
 ):
     """Add a message to a chat session"""
     try:
-        session = chat_manager.get_session(session_id)
-        if not session:
-            session = chat_manager.load_session(session_id)
+        session = await chat_manager.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        # Add message to session
-        if message.model is None:
-            model = "default_model"
-        else:
-            model = message.model
-
-        session.add_message(
+        # Add user message
+        await session.add_message(
             role=message.role,
             content=message.content,
-            model=model,
+            model=message.model,
             metadata=message.metadata
         )
 
-        # Save session in background
-        background_tasks.add_task(chat_manager.save_session, session_id)
+        # Get model response in background
+        async def get_model_response():
+            try:
+                handler = get_model_handler(session.model)
+                response = await handler.chat(
+                    [{"role": msg.role, "content": msg.content} for msg in session.messages],
+                    temperature=0.7
+                )
+                await session.add_message(
+                    role="assistant",
+                    content=response.content,
+                    model=session.model,
+                    metadata={"usage": response.usage}
+                )
+            except Exception as e:
+                logger.error(f"Error getting model response: {str(e)}")
+                await session.add_message(
+                    role="assistant",
+                    content="Sorry, I encountered an error while processing your request.",
+                    model=session.model,
+                    metadata={"error": str(e)}
+                )
 
-        return {"status": "success", "message_count": len(session.messages)}
+        background_tasks.add_task(get_model_response)
+        return {"status": "message added, processing response"}
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding message: {e}")
+        logger.error(f"Error adding message: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/v1/sessions/{session_id}")
 async def delete_session(session_id: str):
     """Delete a chat session"""
     try:
-        if chat_manager.delete_session(session_id):
-            return {"status": "success"}
-        raise HTTPException(status_code=404, detail="Session not found")
+        success = await chat_manager.delete_session(session_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return {"status": "session deleted"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting session: {e}")
+        logger.error(f"Error deleting session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/v1/health/check")
@@ -348,36 +416,31 @@ async def check_health(model: Optional[str] = None):
             handler = get_model_handler(model)
             health = await monitor.check_health(model, handler)
             return {model: health}
-
-        # Check all configured models
-        health_status = {}
-        for model_name in config.validate(value={}).keys():
-            if config.validate(value={})[model_name]:
-                handler = get_model_handler(model_name)
-                health = await monitor.check_health(model_name, handler)
-                health_status[model_name] = health
-        return health_status
+        else:
+            health_status = {}
+            for model_name in config.validate(value={}).keys():
+                if config.validate(value={})[model_name]:
+                    handler = get_model_handler(model_name)
+                    health = await monitor.check_health(model_name, handler)
+                    health_status[model_name] = health
+            return health_status
     except Exception as e:
-        logger.error(f"Error checking health: {e}")
+        logger.error(f"Error checking health: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 class MultiMindAPI:
-    """API Gateway for MultiMind"""
+    """Main API class for MultiMind Gateway"""
+
     def __init__(self):
-        self.app = FastAPI()
-        self.configure_routes()
+        self.app = app
 
     def configure_routes(self):
+        """Configure API routes"""
         @self.app.get("/health")
         async def health_check():
             return {"status": "healthy"}
 
-        # Add more routes as needed
-
-# Export the MultiMindAPI instance
-api = MultiMindAPI()
-
 def start_api(host: str = "0.0.0.0", port: int = 8000):
-    """Start the FastAPI server"""
+    """Start the API server"""
     import uvicorn
     uvicorn.run(app, host=host, port=port)
