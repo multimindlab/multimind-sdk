@@ -108,6 +108,12 @@ pip install multimind-sdk
 # With development dependencies
 pip install multimind-sdk[dev]
 
+# With gateway support
+pip install multimind-sdk[gateway]
+
+# Full installation with all features
+pip install multimind-sdk[all]
+
 # With specific framework support
 pip install multimind-sdk[langchain,lite-llm,superagi]
 ```
@@ -163,28 +169,40 @@ tuner.train(
 )
 ```
 
-## 🎓 Examples
 
-Explore our examples directory for comprehensive demonstrations of MultiMind SDK features:
 
-### CLI Examples
-- [Chat with Ollama](examples/cli/chat_ollama_cli.py) - Interactive chat interface
-- [Basic Agent](examples/cli/basic_agent.py) - Simple agent implementation
-- [Prompt Chain](examples/cli/prompt_chain.py) - Chain of prompts example
-- [Task Runner](examples/cli/task_runner.py) - Task execution with agents
-- [Usage Tracking](examples/cli/usage_tracking.py) - Track model usage and costs
-- [MCP Workflow](examples/cli/mcp_workflow.py) - Multi-agent collaboration
-- [Multi-Model Wrapper CLI](examples/cli/multi_model_wrapper_cli.py) - CLI for model composition
 
-### API Examples
-- [Gateway Examples](examples/api/gateway_examples.py) - Gateway API usage
-- [Basic RAG](examples/api/rag_example.py) - Simple RAG implementation
-- [Advanced RAG](examples/api/rag_advanced_example.py) - Advanced RAG with custom configs
-- [Multi-Model Wrapper API](examples/api/multi_model_wrapper_api.py) - API for model composition
-- [Model Wrapper](examples/api/model_wrapper.py) - Model wrapper implementation
-- [LLM Wrapper Tests](examples/api/test_llm_wrapper.py) - Test suite for LLM wrapper
+### Agent Development Example
 
-For detailed usage instructions and more examples, check our [Examples Documentation](examples/README.md).
+```python
+from multimind.agents import Agent
+
+# Initialize an agent
+agent = Agent(name="ExampleAgent")
+
+# Add tools and memory
+agent.add_tool("search", tool_function=search_tool)
+agent.add_memory("short_term", memory_capacity=10)
+
+# Run the agent
+response = agent.run("What is the capital of France?")
+print(response)
+```
+
+### Framework Integration Example
+
+```python
+from multimind.integrations.langchain import LangChainIntegration
+
+# Initialize LangChain integration
+lc_integration = LangChainIntegration()
+
+# Use LangChain components
+chain = lc_integration.create_chain(prompt="Translate to French:", model_name="gpt-3.5-turbo")
+response = chain.run("Hello, how are you?")
+print(response)
+```
+
 
 ## 📚 Documentation
 
