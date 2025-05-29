@@ -1,98 +1,94 @@
 # MultiMind SDK Documentation
 
-Welcome to the MultiMind SDK documentation! This documentation will help you get started with the MultiMind SDK and explore its features.
+Welcome to the MultiMind SDK documentation. This documentation provides comprehensive information about the MultiMind SDK, its features, and how to use it effectively.
 
 ## Table of Contents
 
-1. [Quickstart Guide](quickstart.md)
-2. [RAG System](rag.md)
-   - [RAG API Reference](api_reference/rag_api.md)
-   - [RAG Client Library](api_reference/rag.md#client-library)
-3. [API Reference](api_reference/README.md)
-4. [Examples](examples/README.md)
-5. [Advanced Features](advanced/README.md)
-6. [Implementation status Features](TODO.md)
-7. [Memory Systems](memory.md)
-8. [Development Guide](development.md)
-9. [Roadmap](roadmap.md)
+1. [Quick Start Guide](quickstart.md)
+2. [Installation Guide](installation.md)
+3. [Features Overview](features.md)
+4. [Architecture](architecture.md)
+5. [Configuration](configuration.md)
+6. [Usage Guide](usage.md)
+7. [RAG Implementation](rag.md)
+8. [Memory Management](memory.md)
+9. [Compliance Framework](compliance.md)
+   - [Compliance Quickstart](compliance_quickstart.md)
+10. [Development Guide](development.md)
+11. [API Reference](api_reference/)
+12. [Roadmap](roadmap.md)
+
+## Key Features
+
+- Advanced RAG (Retrieval-Augmented Generation)
+- Memory Management
+- Compliance Framework
+- Configuration Management
+- API Integration
+- Development Tools
 
 ## Getting Started
 
-The [Quickstart Guide](quickstart.md) provides a comprehensive introduction to getting started with the MultiMind SDK, including:
+For a quick start, see our [Quick Start Guide](quickstart.md). This guide will help you get up and running with the MultiMind SDK in minutes.
 
-- Basic usage examples
-- Common patterns
-- Best practices
-- Getting help
+## Installation
 
-## RAG System
+Detailed installation instructions can be found in the [Installation Guide](installation.md).
 
-The MultiMind SDK includes a powerful Retrieval Augmented Generation (RAG) system that allows you to:
+## Features
 
-- Process and index documents
-- Perform semantic search
-- Generate context-aware responses
-- Manage document collections
-- Integrate with various embedding models and vector stores
+Explore the full range of features in our [Features Overview](features.md).
 
-For detailed information about the RAG system, see:
-- [RAG System Documentation](rag.md): Overview, components, and usage
-- [RAG API Reference](api_reference/rag_api.md): API endpoints and authentication
-- [RAG Client Library](api_reference/rag.md#client-library): Python client for easy integration
+## Architecture
+
+Learn about the SDK's architecture in the [Architecture Guide](architecture.md).
+
+## Configuration
+
+Configure the SDK to your needs using the [Configuration Guide](configuration.md).
+
+## Usage
+
+Learn how to use the SDK effectively in our [Usage Guide](usage.md).
+
+## RAG Implementation
+
+Understand our RAG implementation in the [RAG Guide](rag.md).
+
+## Memory Management
+
+Learn about memory management in the [Memory Guide](memory.md).
+
+## Compliance Framework
+
+Explore our comprehensive compliance framework in the [Compliance Guide](compliance.md). For a quick introduction, see the [Compliance Quickstart Guide](compliance_quickstart.md). This includes:
+- Data Protection & Privacy
+- AI-Specific Compliance
+- Cross-Border Data Transfer
+- Accessibility & Anti-Discrimination
+- Supply Chain & Third-Party Risk
+- Corporate & Internal Requirements
+
+## Development
+
+For developers, check out our [Development Guide](development.md).
 
 ## API Reference
 
-The [API Reference](api_reference/README.md) provides detailed documentation for all SDK components, including:
+Detailed API documentation is available in the [API Reference](api_reference/).
 
-- Models and embeddings
-- Agents and tools
-- Prompt chains
-- Task runners
-- RAG system
-- Client libraries
+## Roadmap
 
-## Examples
+See our future plans in the [Roadmap](roadmap.md).
 
-Check out the [Examples](examples/README.md) directory for:
+## Contributing
 
-- Code samples
-- Use cases
-- Integration examples
-- Best practices
-
-## Advanced Features
-
-Explore [Advanced Features](advanced/README.md) for:
-
-- Custom model integration
-- Advanced agent configurations
-- Performance optimization
-- Security considerations
-- Production deployment
-
-## Memory Systems
-
-The MultiMind SDK implements a comprehensive set of memory systems, from basic to advanced implementations. See the [Memory Systems](memory.md) documentation for detailed information about:
-
-- Implemented memory types
-- Partially implemented memory types
-- Memory types to be implemented
-- Usage examples
-- Best practices
-
-## Development Guide
-
-We welcome contributions! Please see our [Development Guide](development.md) for information on how to contribute.
-
-## License
-
-The MultiMind SDK is licensed under the MIT License. See the LICENSE file for details.
+We welcome contributions! Please see our [Development Guide](development.md) for details on how to contribute.
 
 ## Support
 
-Need help? Here are some resources:
-
-- [FAQ](faq.md)
-- [Discord Community](https://discord.gg/multimind)
-- [GitHub Issues](https://github.com/your-org/multimind-sdk/issues)
-- [Support Contact](mailto:support@multimind.dev) 
+For support:
+- Open a GitHub issue
+- Contact the development team
+- Check the documentation
+- Join the community forum 

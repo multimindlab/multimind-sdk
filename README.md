@@ -163,32 +163,55 @@ tuner.train(
 )
 ```
 
+## 🎓 Examples
+
+Explore our examples directory for comprehensive demonstrations of MultiMind SDK features:
+
+### CLI Examples
+- [Chat with Ollama](examples/cli/chat_ollama_cli.py) - Interactive chat interface
+- [Basic Agent](examples/cli/basic_agent.py) - Simple agent implementation
+- [Prompt Chain](examples/cli/prompt_chain.py) - Chain of prompts example
+- [Task Runner](examples/cli/task_runner.py) - Task execution with agents
+- [Usage Tracking](examples/cli/usage_tracking.py) - Track model usage and costs
+- [MCP Workflow](examples/cli/mcp_workflow.py) - Multi-agent collaboration
+- [Multi-Model Wrapper CLI](examples/cli/multi_model_wrapper_cli.py) - CLI for model composition
+
+### API Examples
+- [Gateway Examples](examples/api/gateway_examples.py) - Gateway API usage
+- [Basic RAG](examples/api/rag_example.py) - Simple RAG implementation
+- [Advanced RAG](examples/api/rag_advanced_example.py) - Advanced RAG with custom configs
+- [Multi-Model Wrapper API](examples/api/multi_model_wrapper_api.py) - API for model composition
+- [Model Wrapper](examples/api/model_wrapper.py) - Model wrapper implementation
+- [LLM Wrapper Tests](examples/api/test_llm_wrapper.py) - Test suite for LLM wrapper
+
+For detailed usage instructions and more examples, check our [Examples Documentation](examples/README.md).
+
 ## 📚 Documentation
 
 - [API Reference](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/api_reference/README.md) - Complete API documentation
-- [Examples](https://github.com/multimindlabs/multimind-sdk/blob/develop/examples/README.md) - Production-ready code examples
+- [Examples](examples/README.md) - Production-ready code examples
 - [Architecture](https://github.com/multimindlabs/multimind-sdk/blob/develop/docs/architecture.md) - Detailed system design
 - [Contributing Guide](CONTRIBUTING.md) - Join our development team
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
 - [Issue Tracker](https://github.com/multimind-dev/multimind-sdk/issues) - Report bugs or request features
 
-### Local Documentation
+### Project Structure
 
-```bash
-# Run documentation locally
-cd multimind-docs
-npm install
-npm start
 ```
-
-## 🎓 Examples
-
-Explore our [examples directory](examples/) for:
-
-- [Basic RAG Usage](examples/rag_basic.py) - Simple RAG implementation
-- [Fine-Tuning](examples/fine_tuning.py) - Model adaptation examples
-- [Agent Development](examples/agent_basic.py) - Building AI agents
-- [Framework Integration](examples/langchain_integration.py) - Using with popular frameworks
+multimind-sdk/
+├── multimind/              # Core SDK package
+│   ├── gateway/           # Gateway implementation
+│   ├── client/            # Client libraries
+│   ├── fine_tuning/       # Fine-tuning modules
+│   └── utils/             # Utility functions
+├── examples/              # Example implementations
+│   ├── cli/              # Command-line examples
+│   ├── api/              # API and integration examples
+│   └── streamlit-ui/     # Streamlit-based UI examples
+├── tests/                # Test suite
+├── docs/                 # Documentation
+└── scripts/              # Development scripts
+```
 
 ## 🤝 Contributing
 
