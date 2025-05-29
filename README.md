@@ -108,6 +108,12 @@ pip install multimind-sdk
 # With development dependencies
 pip install multimind-sdk[dev]
 
+# With gateway support
+pip install multimind-sdk[gateway]
+
+# Full installation with all features
+pip install multimind-sdk[all]
+
 # With specific framework support
 pip install multimind-sdk[langchain,lite-llm,superagi]
 ```
@@ -161,6 +167,37 @@ tuner.train(
     train_dataset=your_dataset,
     eval_dataset=your_eval_dataset
 )
+```
+
+### Agent Development Example
+
+```python
+from multimind.agents import Agent
+
+# Initialize an agent
+agent = Agent(name="ExampleAgent")
+
+# Add tools and memory
+agent.add_tool("search", tool_function=search_tool)
+agent.add_memory("short_term", memory_capacity=10)
+
+# Run the agent
+response = agent.run("What is the capital of France?")
+print(response)
+```
+
+### Framework Integration Example
+
+```python
+from multimind.integrations.langchain import LangChainIntegration
+
+# Initialize LangChain integration
+lc_integration = LangChainIntegration()
+
+# Use LangChain components
+chain = lc_integration.create_chain(prompt="Translate to French:", model_name="gpt-3.5-turbo")
+response = chain.run("Hello, how are you?")
+print(response)
 ```
 
 ## 📚 Documentation

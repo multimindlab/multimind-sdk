@@ -1,0 +1,75 @@
+name: Sync TODO.md to GitHub Project
+
+on:
+  push:
+    paths:
+      - 'docs/TODO.md'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Install GitHub CLI & jq
+      run: sudo apt update && sudo apt install -y gh jq
+
+    - name: Authenticate GH CLI
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: echo "${GH_TOKEN}" | gh auth login --with-token
+
+    - name: Sync TODO.md with GitHub Project
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        PROJECT_ID: PVT_kwHOCUezpM4AnNEG           
+        STATUS_FIELD_ID: PVTSSF_lAHOCUezpM4AnNEGzge-joE    
+        TO_DO_OPTION_ID: f75ad846         
+        IN_PROGRESS_OPTION_ID: 47fc9ee4    
+        DONE_OPTION_ID: 98236657           
+      run: |
+        while IFS= read -r line; do
+          if [[ "$line" =~ "- \[ \] (.*)" ]]; then
+            TITLE="${BASH_REMATCH[1]}"
+            echo "📌 Adding: $TITLE"
+            gh api graphql --field query="mutation {
+              addProjectV2ItemByTitle(input: {
+                projectId: \"$PROJECT_ID\",
+                title: \"$TITLE\"
+              }) {
+                item { id }
+              }
+            }"
+          elif [[ "$line" =~ "- \[x\] (.*)" ]]; then
+            TITLE="${BASH_REMATCH[1]}"
+            echo "✅ Marking as Done: $TITLE"
+            ITEM_ID=$(gh project item-list "$PROJECT_ID" --format json | jq -r --arg title "$TITLE" '.items[] | select(.title==$title) | .id')
+            if [[ -n "$ITEM_ID" ]]; then
+              gh api graphql --field query="mutation {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: \"$PROJECT_ID\",
+                  itemId: \"$ITEM_ID\",
+                  fieldId: \"$STATUS_FIELD_ID\",
+                  value: { singleSelectOptionId: \"$DONE_OPTION_ID\" }
+                }) { clientMutationId }
+              }"
+            fi
+          elif [[ "$line" =~ "- \[\-\] (.*)" ]]; then
+            TITLE="${BASH_REMATCH[1]}"
+            echo "🔄 Marking as In Progress: $TITLE"
+            ITEM_ID=$(gh project item-list "$PROJECT_ID" --format json | jq -r --arg title "$TITLE" '.items[] | select(.title==$title) | .id')
+            if [[ -n "$ITEM_ID" ]]; then
+              gh api graphql --field query="mutation {
+                updateProjectV2ItemFieldValue(input: {
+                  projectId: \"$PROJECT_ID\",
+                  itemId: \"$ITEM_ID\",
+                  fieldId: \"$STATUS_FIELD_ID\",
+                  value: { singleSelectOptionId: \"$IN_PROGRESS_OPTION_ID\" }
+                }) { clientMutationId }
+              }"
+            fi
+          fi
+        done < docs/TODO.md
