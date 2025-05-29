@@ -191,6 +191,30 @@ This document provides an overview of all memory implementations in the MultiMin
     - Supports sequence prediction
     - Uses sparse distributed representations
 
+46. **Quantum Random-Access Memory** (`QRAM`)
+    - Implements quantum memory using bucket-brigade design
+    - Supports coherent memory access
+    - Uses quantum state for addressing
+    - Features error correction and coherence tracking
+
+47. **Quantum Associative Memory** (`QAM`)
+    - Implements quantum Hopfield network
+    - Supports pattern-based memory retrieval
+    - Uses quantum energy landscape
+    - Features pattern diversity tracking
+
+48. **Topological Quantum Memory** (`TopologicalMemory`)
+    - Implements topological quantum memory using anyons
+    - Supports braiding operations for memory access
+    - Uses logical qubits for error protection
+    - Features anyon-based encoding and decoding
+
+49. **Quantum-Classical Hybrid Memory** (`QuantumClassicalHybridMemory`)
+    - Implements hybrid quantum-classical memory
+    - Supports both quantum and classical storage
+    - Uses quantum enhancement for classical data
+    - Features adaptive encoding selection
+
 ## Partially Implemented Memory Types
 
 1. **Neuromorphic Spiking Memory**
@@ -203,29 +227,34 @@ This document provides an overview of all memory implementations in the MultiMin
    - Needs completion of Bayesian inference
    - Requires optimization of hyperparameters
 
+3. **Topological Quantum Memory**
+   - Basic structure implemented
+   - Needs completion of error protection
+   - Requires integration with quantum hardware
+
+4. **Neuromorphic Quantum Memory**
+   - Basic structure implemented
+   - Needs completion of quantum spike timing
+   - Requires integration with neuromorphic hardware
+
 ## Memory Types To Be Implemented
 
-1. **Quantum Memory**
-   - Quantum state storage
-   - Quantum entanglement for memory
-   - Quantum error correction
-
-2. **Holographic Memory**
+1. **Holographic Memory**
    - Holographic storage
    - Interference patterns
    - Distributed memory representation
 
-3. **DNA Memory**
+2. **DNA Memory**
    - DNA-based storage
    - Molecular memory encoding
    - Biological memory systems
 
-4. **Quantum-Classical Hybrid Memory**
+3. **Quantum-Classical Hybrid Memory**
    - Quantum-classical interface
    - Hybrid state storage
    - Quantum-enhanced classical memory
 
-5. **Neuromorphic Quantum Memory**
+4. **Neuromorphic Quantum Memory**
    - Quantum neuromorphic computing
    - Quantum neural networks
    - Quantum spike timing
@@ -239,7 +268,11 @@ from multimind.memory import (
     HybridMemory,
     FastWeightMemory,
     AdapterMemory,
-    HTMMemory
+    HTMMemory,
+    QRAM,
+    QAM,
+    TopologicalMemory,
+    QuantumClassicalHybridMemory
 )
 
 # Create a conversation memory
@@ -271,6 +304,34 @@ htm_memory = HTMMemory(
     num_columns=2048
 )
 
+# Create a quantum random-access memory
+qram = QRAM(
+    num_qubits=8,
+    memory_size=256,
+    error_rate=0.01
+)
+
+# Create a quantum associative memory
+qam = QAM(
+    num_qubits=8,
+    num_patterns=16,
+    learning_rate=0.1
+)
+
+# Create a topological quantum memory
+topological_memory = TopologicalMemory(
+    num_qubits=8,
+    surface_size=32,
+    error_threshold=0.1
+)
+
+# Create a quantum-classical hybrid memory
+quantum_hybrid_memory = QuantumClassicalHybridMemory(
+    num_qubits=8,
+    classical_size=1024,
+    hybrid_threshold=0.5
+)
+
 # Add memory
 await hybrid_memory.add_memory(
     memory_id="example",
@@ -278,8 +339,48 @@ await hybrid_memory.add_memory(
     metadata={"type": "example"}
 )
 
+# Add memory to QRAM
+await qram.add_memory(
+    memory_id="quantum_example",
+    content="This is a quantum memory example",
+    metadata={"type": "quantum"}
+)
+
+# Add pattern to QAM
+await qam.add_memory(
+    memory_id="quantum_pattern",
+    content="This is a quantum pattern",
+    metadata={"type": "pattern"}
+)
+
+# Add memory to topological memory
+await topological_memory.add_memory(
+    memory_id="topological_example",
+    content="This is a topological memory example",
+    metadata={"type": "topological"}
+)
+
+# Add memory to hybrid memory
+await quantum_hybrid_memory.add_memory(
+    memory_id="hybrid_example",
+    content="This is a hybrid memory example",
+    metadata={"type": "hybrid"}
+)
+
 # Retrieve memory
 memory = await hybrid_memory.get_memory("example")
+
+# Retrieve from QRAM
+qram_memory = await qram.get_memory("quantum_example")
+
+# Retrieve from QAM
+qam_memory = await qam.get_memory("quantum_pattern")
+
+# Retrieve from topological memory
+topological_result = await topological_memory.get_memory("topological_example")
+
+# Retrieve from hybrid memory
+hybrid_result = await quantum_hybrid_memory.get_memory("hybrid_example")
 ```
 
 ## Best Practices
@@ -299,6 +400,22 @@ memory = await hybrid_memory.get_memory("example")
    - Handle memory errors
    - Monitor memory statistics
 
+4. **Quantum Memory Considerations**
+   - Monitor coherence times
+   - Track error rates
+   - Implement error correction
+   - Consider quantum-classical interfaces
+   - Handle anyon braiding operations
+   - Manage hybrid memory allocation
+
+5. **Quantum Memory Considerations**
+   - Monitor coherence times
+   - Track error rates
+   - Implement error correction
+   - Consider quantum-classical interfaces
+   - Handle anyon braiding operations
+   - Manage hybrid memory allocation
+
 ## Contributing
 
 To contribute new memory implementations:
@@ -317,4 +434,10 @@ To contribute new memory implementations:
 3. [Distributed Memory Systems](https://example.com)
 4. [Hierarchical Temporal Memory](https://example.com)
 5. [Fast-Weight Networks](https://example.com)
-6. [Adapter-Based Learning](https://example.com) 
+6. [Adapter-Based Learning](https://example.com)
+7. [Quantum Random-Access Memory](https://example.com)
+8. [Quantum Associative Memory](https://example.com)
+9. [Quantum Error Correction](https://example.com)
+10. [Topological Quantum Computing](https://example.com)
+11. [Quantum-Classical Hybrid Systems](https://example.com)
+12. [Anyon Braiding](https://example.com) 
