@@ -13,6 +13,7 @@ class OpenAIEmbedder(BaseLLM):
         self,
         model: str = "text-embedding-ada-002",
         batch_size: int = 100,
+        cache_enabled: bool = True,
         **kwargs
     ):
         """Initialize OpenAI embedder.
@@ -20,6 +21,7 @@ class OpenAIEmbedder(BaseLLM):
         Args:
             model: OpenAI embedding model name
             batch_size: Number of texts to embed in one batch
+            cache_enabled: Whether to enable caching of embeddings
             **kwargs: Additional arguments for OpenAI API
         """
         try:
@@ -31,8 +33,10 @@ class OpenAIEmbedder(BaseLLM):
 
         self.model = model
         self.batch_size = batch_size
+        self.cache_enabled = cache_enabled
         self.client = openai.AsyncOpenAI()
         self.kwargs = kwargs
+        self.cache = {} if cache_enabled else None
 
     async def embed(
         self,
@@ -68,6 +72,29 @@ class OpenAIEmbedder(BaseLLM):
             all_embeddings.extend(batch_embeddings)
 
         return all_embeddings
+
+    def embeddings(self, texts: List[str], reduce_dimensionality: bool = False) -> List[List[float]]:
+        """Generate embeddings with optional caching and dimensionality reduction."""
+        if self.cache_enabled:
+            uncached_texts = [text for text in texts if text not in self.cache]
+            uncached_embeddings = self._generate_embeddings(uncached_texts)
+            for text, embedding in zip(uncached_texts, uncached_embeddings):
+                self.cache[text] = embedding
+            embeddings = [self.cache[text] for text in texts]
+        else:
+            embeddings = self._generate_embeddings(texts)
+
+        if reduce_dimensionality:
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=50)  # Example: Reduce to 50 dimensions
+            embeddings = pca.fit_transform(embeddings).tolist()
+
+        return embeddings
+
+    def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Actual embedding generation logic."""
+        # Implement embedding generation logic here
+        pass
 
 class HuggingFaceEmbedder(BaseLLM):
     """HuggingFace embedding model implementation."""
@@ -210,6 +237,35 @@ class SentenceT5Embedder(BaseLLM):
             all_embeddings.extend(batch_embeddings.tolist())
 
         return all_embeddings
+
+from PIL import Image
+from transformers import CLIPProcessor, CLIPModel
+
+class ImageEmbedder(BaseLLM):
+    """Image embedding model implementation."""
+
+    def __init__(self, model_name: str = "openai/clip-vit-base-patch32"):
+        """Initialize Image embedder.
+
+        Args:
+            model_name: Name of the pre-trained image embedding model.
+        """
+        self.model_name = model_name
+        self.model = CLIPModel.from_pretrained(model_name)
+        self.processor = CLIPProcessor.from_pretrained(model_name)
+
+    def embed(self, images: List[Image.Image]) -> List[List[float]]:
+        """Generate embeddings for a list of images.
+
+        Args:
+            images: List of PIL Image objects to embed.
+
+        Returns:
+            List of embedding vectors.
+        """
+        inputs = self.processor(images=images, return_tensors="pt", padding=True)
+        outputs = self.model.get_image_features(**inputs)
+        return outputs.detach().numpy().tolist()
 
 def get_embedder(
     embedder_type: str,

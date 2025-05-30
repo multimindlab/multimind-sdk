@@ -23,4 +23,9 @@ datasets>=2.14.0
 pyyaml>=6.0.0
 mistralai>=0.0.7
 pandas>=2.0.0
-sqlalchemy>=2.0.0 
+sqlalchemy>=2.0.0
+PyPDF2
+pytesseract
+pdf2image
+ebooklib
+scikit-learn
