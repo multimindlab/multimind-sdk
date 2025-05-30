@@ -218,3 +218,71 @@ class DocumentProcessor:
         text = re.sub(r"[^\w\s.,!?-]", "", text)
 
         return text.strip()
+
+    def process_file(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+        """Process a file and return a list of Document objects."""
+        extension = Path(file_path).suffix.lower()
+        if extension == ".pdf":
+            return self._process_pdf(file_path, metadata)
+        elif extension in [".docx", ".txt", ".csv", ".json"]:
+            return self._process_text_file(file_path, metadata)
+        else:
+            raise ValueError(f"Unsupported file format: {extension}")
+
+    def _process_pdf(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+        """Process a PDF file, including OCR for image-based PDFs."""
+        try:
+            import PyPDF2
+            from pytesseract import image_to_string
+            from pdf2image import convert_from_path
+        except ImportError:
+            raise ImportError(
+                "PyPDF2, pytesseract, and pdf2image are required for PDF processing. "
+                "Install with: pip install PyPDF2 pytesseract pdf2image"
+            )
+
+        text = ""
+        with open(file_path, "rb") as f:
+            pdf = PyPDF2.PdfReader(f)
+            for page in pdf.pages:
+                extracted_text = page.extract_text()
+                if extracted_text.strip():
+                    text += extracted_text + "\n"
+                else:
+                    # Perform OCR on image-based PDFs
+                    images = convert_from_path(file_path)
+                    for image in images:
+                        text += image_to_string(image) + "\n"
+
+        return self.process_document(text, metadata)
+
+    def _process_text_file(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+        """Process text-based files like TXT, CSV, JSON, XML, and EPUB."""
+        extension = Path(file_path).suffix.lower()
+        if extension == ".txt":
+            with open(file_path, "r", encoding="utf-8") as f:
+                text = f.read()
+        elif extension == ".csv":
+            import csv
+            with open(file_path, "r", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                text = "\n".join([", ".join(row) for row in reader])
+        elif extension == ".json":
+            import json
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                text = json.dumps(data, indent=2)
+        elif extension == ".xml":
+            from xml.etree import ElementTree as ET
+            tree = ET.parse(file_path)
+            root = tree.getroot()
+            text = ET.tostring(root, encoding="unicode")
+        elif extension == ".epub":
+            import ebooklib
+            from ebooklib import epub
+            book = epub.read_epub(file_path)
+            text = "\n".join([item.get_body_content().decode("utf-8") for item in book.items if item.get_type() == ebooklib.ITEM_DOCUMENT])
+        else:
+            raise ValueError(f"Unsupported text file format: {extension}")
+
+        return self.process_document(text, metadata)
