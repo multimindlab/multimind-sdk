@@ -337,6 +337,5 @@ MultiMind SDK is developed and maintained by the AI2Innovate team, dedicated to 
   <p>
     <a href="docs/compliance.md" class="button">🔒 Learn About Compliance</a>
     <a href="docs/examples.md" class="button">📚 View Examples</a>
-    <a href="https://opencollective.com/multimind-sdk" class="button">💖 Support Us</a>
   </p>
 </div>
