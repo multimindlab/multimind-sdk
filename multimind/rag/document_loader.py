@@ -1,0 +1,356 @@
+"""
+Enhanced document loading with support for multiple formats and sources.
+"""
+
+from typing import List, Dict, Any, Optional, Union, Protocol, runtime_checkable
+from pathlib import Path
+import asyncio
+import aiohttp
+from dataclasses import dataclass
+from enum import Enum
+import json
+import logging
+from bs4 import BeautifulSoup
+import PyPDF2
+import docx
+import pandas as pd
+from unstructured.partition.auto import partition
+from ..models.base import BaseLLM
+
+@dataclass
+class DocumentMetadata:
+    """Metadata for loaded documents."""
+    source: str
+    format: str
+    created_at: Optional[str] = None
+    modified_at: Optional[str] = None
+    author: Optional[str] = None
+    title: Optional[str] = None
+    page_number: Optional[int] = None
+    custom_metadata: Optional[Dict[str, Any]] = None
+
+@dataclass
+class LoadedDocument:
+    """Represents a loaded document with content and metadata."""
+    content: str
+    metadata: DocumentMetadata
+    raw_content: Optional[Any] = None  # Original format content
+
+class DocumentFormat(Enum):
+    """Supported document formats."""
+    PDF = "pdf"
+    DOCX = "docx"
+    TXT = "txt"
+    HTML = "html"
+    JSON = "json"
+    CSV = "csv"
+    MARKDOWN = "md"
+    UNSTRUCTURED = "unstructured"
+
+class DocumentSource(Enum):
+    """Supported document sources."""
+    LOCAL = "local"
+    URL = "url"
+    DATABASE = "database"
+    API = "api"
+    STREAM = "stream"
+
+@runtime_checkable
+class DocumentConnector(Protocol):
+    """Protocol for document connectors."""
+    async def connect(self) -> None:
+        """Establish connection to the document source."""
+        ...
+    
+    async def disconnect(self) -> None:
+        """Close connection to the document source."""
+        ...
+    
+    async def fetch_documents(self, **kwargs) -> List[LoadedDocument]:
+        """Fetch documents from the source."""
+        ...
+
+class BaseDocumentLoader:
+    """Base class for document loaders."""
+
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
+        self._semaphore = asyncio.Semaphore(kwargs.get('max_concurrent_operations', 10))
+
+    async def _execute_with_semaphore(self, coro):
+        """Execute coroutine with semaphore for rate limiting."""
+        async with self._semaphore:
+            return await coro
+
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        """Load a single document."""
+        raise NotImplementedError
+
+    async def load_documents(self, sources: List[str], **kwargs) -> List[LoadedDocument]:
+        """Load multiple documents in parallel."""
+        tasks = [self.load_document(source, **kwargs) for source in sources]
+        return await asyncio.gather(*tasks)
+
+class LocalDocumentLoader(BaseDocumentLoader):
+    """Loader for local documents."""
+
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        """Load a document from local filesystem."""
+        try:
+            path = Path(source)
+            if not path.exists():
+                raise FileNotFoundError(f"Document not found: {source}")
+
+            format = DocumentFormat(path.suffix[1:].lower())
+            metadata = DocumentMetadata(
+                source=str(path),
+                format=format.value,
+                created_at=str(path.stat().st_ctime),
+                modified_at=str(path.stat().st_mtime)
+            )
+
+            if format == DocumentFormat.PDF:
+                content, raw = await self._load_pdf(path)
+            elif format == DocumentFormat.DOCX:
+                content, raw = await self._load_docx(path)
+            elif format == DocumentFormat.TXT:
+                content, raw = await self._load_txt(path)
+            elif format == DocumentFormat.HTML:
+                content, raw = await self._load_html(path)
+            elif format == DocumentFormat.JSON:
+                content, raw = await self._load_json(path)
+            elif format == DocumentFormat.CSV:
+                content, raw = await self._load_csv(path)
+            elif format == DocumentFormat.MARKDOWN:
+                content, raw = await self._load_markdown(path)
+            else:
+                content, raw = await self._load_unstructured(path)
+
+            return LoadedDocument(
+                content=content,
+                metadata=metadata,
+                raw_content=raw
+            )
+
+        except Exception as e:
+            logging.error(f"Error loading document {source}: {str(e)}")
+            raise
+
+    async def _load_pdf(self, path: Path) -> Tuple[str, Any]:
+        """Load PDF document."""
+        with open(path, 'rb') as f:
+            pdf = PyPDF2.PdfReader(f)
+            content = []
+            raw = pdf
+            for page in pdf.pages:
+                content.append(page.extract_text())
+            return "\n".join(content), raw
+
+    async def _load_docx(self, path: Path) -> Tuple[str, Any]:
+        """Load DOCX document."""
+        doc = docx.Document(path)
+        content = []
+        raw = doc
+        for para in doc.paragraphs:
+            content.append(para.text)
+        return "\n".join(content), raw
+
+    async def _load_txt(self, path: Path) -> Tuple[str, Any]:
+        """Load text document."""
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            return content, content
+
+    async def _load_html(self, path: Path) -> Tuple[str, Any]:
+        """Load HTML document."""
+        with open(path, 'r', encoding='utf-8') as f:
+            soup = BeautifulSoup(f.read(), 'html.parser')
+            content = soup.get_text(separator='\n')
+            return content, soup
+
+    async def _load_json(self, path: Path) -> Tuple[str, Any]:
+        """Load JSON document."""
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            content = json.dumps(data, indent=2)
+            return content, data
+
+    async def _load_csv(self, path: Path) -> Tuple[str, Any]:
+        """Load CSV document."""
+        df = pd.read_csv(path)
+        content = df.to_string()
+        return content, df
+
+    async def _load_markdown(self, path: Path) -> Tuple[str, Any]:
+        """Load Markdown document."""
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+            return content, content
+
+    async def _load_unstructured(self, path: Path) -> Tuple[str, Any]:
+        """Load document using unstructured."""
+        elements = partition(str(path))
+        content = "\n".join([str(el) for el in elements])
+        return content, elements
+
+class WebDocumentLoader(BaseDocumentLoader):
+    """Loader for web documents."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.session = None
+
+    async def _ensure_session(self):
+        """Ensure aiohttp session exists."""
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+
+    async def load_document(self, url: str, **kwargs) -> LoadedDocument:
+        """Load a document from URL."""
+        try:
+            await self._ensure_session()
+            async with self.session.get(url) as response:
+                if response.status != 200:
+                    raise ValueError(f"Failed to fetch document: {url}")
+
+                content_type = response.headers.get('content-type', '')
+                if 'application/pdf' in content_type:
+                    content, raw = await self._load_pdf_from_url(response)
+                elif 'application/json' in content_type:
+                    content, raw = await self._load_json_from_url(response)
+                elif 'text/html' in content_type:
+                    content, raw = await self._load_html_from_url(response)
+                else:
+                    content, raw = await self._load_text_from_url(response)
+
+                metadata = DocumentMetadata(
+                    source=url,
+                    format=content_type.split(';')[0],
+                    modified_at=response.headers.get('last-modified')
+                )
+
+                return LoadedDocument(
+                    content=content,
+                    metadata=metadata,
+                    raw_content=raw
+                )
+
+        except Exception as e:
+            logging.error(f"Error loading document from {url}: {str(e)}")
+            raise
+
+    async def _load_pdf_from_url(self, response: aiohttp.ClientResponse) -> Tuple[str, Any]:
+        """Load PDF from URL."""
+        content = await response.read()
+        pdf = PyPDF2.PdfReader(io.BytesIO(content))
+        text_content = []
+        for page in pdf.pages:
+            text_content.append(page.extract_text())
+        return "\n".join(text_content), pdf
+
+    async def _load_json_from_url(self, response: aiohttp.ClientResponse) -> Tuple[str, Any]:
+        """Load JSON from URL."""
+        data = await response.json()
+        return json.dumps(data, indent=2), data
+
+    async def _load_html_from_url(self, response: aiohttp.ClientResponse) -> Tuple[str, Any]:
+        """Load HTML from URL."""
+        html = await response.text()
+        soup = BeautifulSoup(html, 'html.parser')
+        return soup.get_text(separator='\n'), soup
+
+    async def _load_text_from_url(self, response: aiohttp.ClientResponse) -> Tuple[str, Any]:
+        """Load text from URL."""
+        content = await response.text()
+        return content, content
+
+    async def __aenter__(self):
+        """Context manager entry."""
+        await self._ensure_session()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        if self.session:
+            await self.session.close()
+            self.session = None
+
+class DatabaseDocumentLoader(BaseDocumentLoader):
+    """Loader for database documents."""
+
+    def __init__(self, connector: DocumentConnector, **kwargs):
+        super().__init__(**kwargs)
+        self.connector = connector
+
+    async def load_documents(self, **kwargs) -> List[LoadedDocument]:
+        """Load documents from database."""
+        try:
+            await self.connector.connect()
+            return await self.connector.fetch_documents(**kwargs)
+        finally:
+            await self.connector.disconnect()
+
+class StreamDocumentLoader(BaseDocumentLoader):
+    """Loader for streaming documents."""
+
+    def __init__(self, stream_connector: DocumentConnector, **kwargs):
+        super().__init__(**kwargs)
+        self.connector = stream_connector
+        self._stream_task = None
+
+    async def start_streaming(self, callback: Callable[[LoadedDocument], None], **kwargs):
+        """Start streaming documents."""
+        try:
+            await self.connector.connect()
+            self._stream_task = asyncio.create_task(
+                self._stream_documents(callback, **kwargs)
+            )
+        except Exception as e:
+            logging.error(f"Error starting stream: {str(e)}")
+            raise
+
+    async def stop_streaming(self):
+        """Stop streaming documents."""
+        if self._stream_task:
+            self._stream_task.cancel()
+            try:
+                await self._stream_task
+            except asyncio.CancelledError:
+                pass
+            finally:
+                await self.connector.disconnect()
+
+    async def _stream_documents(
+        self,
+        callback: Callable[[LoadedDocument], None],
+        **kwargs
+    ):
+        """Stream documents to callback."""
+        try:
+            async for doc in self.connector.stream_documents(**kwargs):
+                await callback(doc)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logging.error(f"Error streaming documents: {str(e)}")
+            raise
+
+class DocumentLoaderFactory:
+    """Factory for creating document loaders."""
+
+    @staticmethod
+    def create_loader(
+        source_type: DocumentSource,
+        **kwargs
+    ) -> BaseDocumentLoader:
+        """Create appropriate document loader."""
+        if source_type == DocumentSource.LOCAL:
+            return LocalDocumentLoader(**kwargs)
+        elif source_type == DocumentSource.URL:
+            return WebDocumentLoader(**kwargs)
+        elif source_type == DocumentSource.DATABASE:
+            return DatabaseDocumentLoader(kwargs.pop('connector'), **kwargs)
+        elif source_type == DocumentSource.STREAM:
+            return StreamDocumentLoader(kwargs.pop('connector'), **kwargs)
+        else:
+            raise ValueError(f"Unsupported source type: {source_type}") 
