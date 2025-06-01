@@ -1,35 +1,35 @@
-name: Deploy Docusaurus to GitHub Pages
+# name: Deploy Docusaurus to GitHub Pages
 
-on:
-  push:
-    branches: [develop]
+# on:
+#   push:
+#     branches: [develop]
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'v18.20.4'
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 'v18.20.4'
 
-      - name: Install dependencies
-        run: |
-          cd multimind-docs
-          npm install
+#       - name: Install dependencies
+#         run: |
+#           cd multimind-docs
+#           npm install
 
-      - name: Build Docusaurus site
-        run: |
-          cd multimind-docs
-          npm run build
+#       - name: Build Docusaurus site
+#         run: |
+#           cd multimind-docs
+#           npm run build
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: multimind-docs/build
-          publish_branch: gh-pages
-          cname: '' # Set if you use a custom domain
+#       - name: Deploy to GitHub Pages
+#         uses: peaceiris/actions-gh-pages@v4
+#         with:
+#           github_token: ${{ secrets.GITHUB_TOKEN }}
+#           publish_dir: multimind-docs/build
+#           publish_branch: gh-pages
+#           cname: '' # Set if you use a custom domain
