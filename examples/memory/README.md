@@ -88,12 +88,3 @@ python multimodal_memory.py
 8. Monitor and log memory operations for debugging
 9. Implement proper conflict resolution strategies
 10. Use event hooks for reactive system design
-
-## Additional Resources
-
-- [MultiMind Documentation](https://multimind.ai/docs)
-- [Memory Types Guide](https://multimind.ai/docs/memory)
-- [LLM Integration Guide](https://multimind.ai/docs/llm)
-- [Quantum Memory Guide](https://multimind.ai/docs/quantum)
-- [Advanced Memory Management](https://multimind.ai/docs/advanced-memory)
-- [Multi-modal Memory Guide](https://multimind.ai/docs/multimodal-memory) 
