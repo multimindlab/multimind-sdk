@@ -1,94 +1,84 @@
-# MultiMind SDK Documentation
+# MultiMind Documentation
 
-Welcome to the MultiMind SDK documentation. This documentation provides comprehensive information about the MultiMind SDK, its features, and how to use it effectively.
+Welcome to the MultiMind documentation! This documentation will help you understand and use the MultiMind SDK effectively.
 
 ## Table of Contents
 
-1. [Quick Start Guide](quickstart.md)
-2. [Installation Guide](installation.md)
-3. [Features Overview](features.md)
-4. [Architecture](architecture.md)
-5. [Configuration](configuration.md)
-6. [Usage Guide](usage.md)
-7. [RAG Implementation](rag.md)
-8. [Memory Management](memory.md)
-9. [Compliance Framework](compliance.md)
-   - [Compliance Quickstart](compliance_quickstart.md)
-10. [Development Guide](development.md)
-11. [API Reference](api_reference/)
-12. [Roadmap](roadmap.md)
+1. [Getting Started](getting_started.md)
+2. [Core Concepts](core_concepts.md)
+3. [Pipeline System](pipeline.md)
+4. [Ensemble System](ensemble.md)
+5. [CLI Interface](cli.md)
+6. [API Reference](api_reference/README.md)
+   - [REST API](api_reference/rest_api.md)
+   - [Python API](api_reference/python_api.md)
+   - [WebSocket API](api_reference/websocket_api.md)
+   - [Authentication](api_reference/authentication.md)
+   - [Rate Limiting](api_reference/rate_limiting.md)
+   - [Error Codes](api_reference/error_codes.md)
+   - [Data Types](api_reference/data_types.md)
+   - [Webhooks](api_reference/webhooks.md)
+   - [SDKs](api_reference/sdks.md)
+7. [Examples](examples.md)
+8. [Configuration](configuration.md)
+9. [Troubleshooting](troubleshooting.md)
+
+## Quick Links
+
+- [Installation Guide](getting_started.md#installation)
+- [Basic Usage](getting_started.md#basic-usage)
+- [Pipeline Examples](pipeline.md#examples)
+- [Ensemble Examples](ensemble.md#examples)
+- [CLI Commands](cli.md#available-commands)
+- [REST API Endpoints](api_reference/rest_api.md#available-endpoints)
+
+## Overview
+
+MultiMind is a powerful SDK that provides a unified interface for working with multiple AI models and providers. It offers:
+
+- A flexible pipeline system for complex AI workflows
+- An ensemble system for combining results from multiple providers
+- Command-line interface for quick access to functionality
+- REST API for integration with other systems
+- Support for various AI tasks and providers
 
 ## Key Features
 
-- Advanced RAG (Retrieval-Augmented Generation)
-- Memory Management
-- Compliance Framework
-- Configuration Management
-- API Integration
-- Development Tools
+### Pipeline System
+- Define and execute complex AI workflows
+- Support for multiple task types
+- Flexible configuration and customization
+- Error handling and retry mechanisms
 
-## Getting Started
+### Ensemble System
+- Combine results from multiple AI providers
+- Various ensemble methods (weighted voting, confidence cascade, etc.)
+- Configurable provider weights and confidence thresholds
+- Detailed confidence scoring and explanations
 
-For a quick start, see our [Quick Start Guide](quickstart.md). This guide will help you get up and running with the MultiMind SDK in minutes.
+### CLI Interface
+- Easy-to-use command-line tools
+- Support for all major features
+- JSON output format
+- Comprehensive error handling
 
-## Installation
+### API Interface
+- RESTful API endpoints
+- Swagger/OpenAPI documentation
+- Support for all features
+- Easy integration with other systems
 
-Detailed installation instructions can be found in the [Installation Guide](installation.md).
+## Getting Help
 
-## Features
-
-Explore the full range of features in our [Features Overview](features.md).
-
-## Architecture
-
-Learn about the SDK's architecture in the [Architecture Guide](architecture.md).
-
-## Configuration
-
-Configure the SDK to your needs using the [Configuration Guide](configuration.md).
-
-## Usage
-
-Learn how to use the SDK effectively in our [Usage Guide](usage.md).
-
-## RAG Implementation
-
-Understand our RAG implementation in the [RAG Guide](rag.md).
-
-## Memory Management
-
-Learn about memory management in the [Memory Guide](memory.md).
-
-## Compliance Framework
-
-Explore our comprehensive compliance framework in the [Compliance Guide](compliance.md). For a quick introduction, see the [Compliance Quickstart Guide](compliance_quickstart.md). This includes:
-- Data Protection & Privacy
-- AI-Specific Compliance
-- Cross-Border Data Transfer
-- Accessibility & Anti-Discrimination
-- Supply Chain & Third-Party Risk
-- Corporate & Internal Requirements
-
-## Development
-
-For developers, check out our [Development Guide](development.md).
-
-## API Reference
-
-Detailed API documentation is available in the [API Reference](api_reference/).
-
-## Roadmap
-
-See our future plans in the [Roadmap](roadmap.md).
+- Check the [Troubleshooting](troubleshooting.md) guide for common issues
+- Review the [Examples](examples.md) for usage patterns
+- Visit our [GitHub repository](https://github.com/your-repo/multimind) for updates
+- Join our [Discord community](https://discord.gg/your-server) for support
 
 ## Contributing
 
-We welcome contributions! Please see our [Development Guide](development.md) for details on how to contribute.
+We welcome contributions! Please see our [Contributing Guide](contributing.md) for details.
 
-## Support
+## License
 
-For support:
-- Open a GitHub issue
-- Contact the development team
-- Check the documentation
-- Join the community forum 
+MultiMind is licensed under the [MIT License](LICENSE). 

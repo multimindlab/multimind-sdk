@@ -1,6 +1,18 @@
-# API Reference
+# MultiMind API Reference
 
-Welcome to the MultiMind SDK API Reference. This documentation provides detailed information about all the components, classes, and functions available in the SDK.
+This directory contains the complete API reference documentation for the MultiMind SDK.
+
+## Contents
+
+1. [REST API](rest_api.md) - Documentation for the REST API interface
+2. [Python API](python_api.md) - Documentation for the Python API
+3. [WebSocket API](websocket_api.md) - Documentation for the WebSocket API
+4. [Authentication](authentication.md) - API authentication and security
+5. [Rate Limiting](rate_limiting.md) - API rate limits and quotas
+6. [Error Codes](error_codes.md) - API error codes and handling
+7. [Data Types](data_types.md) - API data types and schemas
+8. [Webhooks](webhooks.md) - Webhook integration
+9. [SDKs](sdks.md) - Official SDKs and client libraries
 
 ## Table of Contents
 
