@@ -23,6 +23,16 @@ graph TB
         Monitoring[Monitoring System]
     end
 
+    subgraph "Model Providers"
+        OpenAI[OpenAI]
+        Claude[Claude]
+        Mistral[Mistral]
+        Ollama[Ollama]
+        HuggingFace[HuggingFace]
+        Groq[Groq]
+        Local[Local Models]
+    end
+
     subgraph "Core Components"
         Models[Model Wrappers]
         Agents[Agent System]
@@ -152,6 +162,14 @@ graph TB
     Providers --> Voting
     Voting --> Ensemble
 
+    OpenAI --> Providers
+    Claude --> Providers
+    Mistral --> Providers
+    Ollama --> Providers
+    HuggingFace --> Providers
+    Groq --> Providers
+    Local --> Providers
+
     Tasks --> Chains
     Chains --> Workflows
     Workflows --> Pipeline
@@ -215,6 +233,58 @@ graph TB
     API --> Core
     WS --> Core
 ```
+
+## Model Providers
+
+The MultiMind SDK supports the following model providers:
+
+### OpenAI
+- GPT-3.5 Turbo
+- GPT-4
+- GPT-4 Vision
+- Text Embedding Models
+
+### Claude
+- Claude 3 Opus
+- Claude 3 Sonnet
+- Claude 3 Haiku
+- Claude Instant
+
+### Mistral
+- Mistral 7B
+- Mixtral 8x7B
+- Mistral Small
+- Mistral Medium
+
+### Ollama
+- Local model hosting
+- Custom model support
+- Model management
+- Inference API
+
+### HuggingFace
+- Open source models
+- Custom model hosting
+- Model fine-tuning
+- Model deployment
+
+### Groq
+- Mixtral 8x7B
+- High-performance inference
+- Low latency
+- Cost-effective
+
+### Local Models
+- Custom model support
+- Local deployment
+- Offline capabilities
+- Resource optimization
+
+Each provider is integrated through a standardized interface, allowing for:
+- Consistent API access
+- Unified error handling
+- Standardized response formats
+- Provider-specific optimizations
 
 ## Component Details
 
