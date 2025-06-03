@@ -1,5 +1,5 @@
 """
-QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
+SSF (Scaling and Shifting Features) implementation for efficient fine-tuning.
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple
@@ -13,49 +13,65 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-    TaskType
-)
-import bitsandbytes as bnb
 import logging
 from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 
-class QLoraTuner:
-    """QLoRA implementation for memory-efficient fine-tuning."""
+class SSFLayer(nn.Module):
+    """SSF layer that applies scaling and shifting to features."""
+
+    def __init__(
+        self,
+        hidden_size: int,
+        init_scale: float = 1.0,
+        init_shift: float = 0.0,
+        dropout: float = 0.1,
+        **kwargs
+    ):
+        super().__init__()
+        self.hidden_size = hidden_size
+
+        # Initialize scaling and shifting parameters
+        self.scale = nn.Parameter(torch.ones(hidden_size) * init_scale)
+        self.shift = nn.Parameter(torch.zeros(hidden_size) * init_shift)
+
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(hidden_size)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Layer normalization
+        x_norm = self.layer_norm(x)
+
+        # Apply scaling and shifting
+        x_scaled = x_norm * self.scale
+        x_shifted = x_scaled + self.shift
+
+        # Apply dropout
+        output = self.dropout(x_shifted)
+
+        return output
+
+class SSFTuner:
+    """SSF implementation for fine-tuning."""
 
     def __init__(
         self,
         base_model_name: str,
         output_dir: str,
-        lora_config: Optional[Dict[str, Any]] = None,
+        ssf_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        quantization_config: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
 
-        # Default LoRA configuration
-        self.lora_config = lora_config or {
-            "r": 8,
-            "lora_alpha": 32,
-            "target_modules": ["q_proj", "v_proj"],
-            "lora_dropout": 0.05,
-            "bias": "none",
-            "task_type": TaskType.CAUSAL_LM
-        }
-
-        # Default quantization configuration
-        self.quantization_config = quantization_config or {
-            "load_in_4bit": True,
-            "bnb_4bit_compute_dtype": torch.float16,
-            "bnb_4bit_use_double_quant": True,
-            "bnb_4bit_quant_type": "nf4"
+        # Default SSF configuration
+        self.ssf_config = ssf_config or {
+            "init_scale": 1.0,
+            "init_shift": 0.0,
+            "dropout": 0.1
         }
 
         # Default training arguments
@@ -64,7 +80,7 @@ class QLoraTuner:
             "num_train_epochs": 3,
             "per_device_train_batch_size": 4,
             "gradient_accumulation_steps": 4,
-            "learning_rate": 2e-4,
+            "learning_rate": 1e-3,
             "fp16": True,
             "logging_steps": 10,
             "save_strategy": "epoch",
@@ -77,18 +93,13 @@ class QLoraTuner:
         self.trainer = None
 
     def _prepare_model(self) -> None:
-        """Prepare the model for QLoRA fine-tuning."""
-        # Load base model with quantization
+        """Prepare the model for SSF fine-tuning."""
+        # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
-
-        # Prepare model for k-bit training
-        self.model = prepare_model_for_kbit_training(self.model)
-
-        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_name,
             padding_side="right"
@@ -98,9 +109,21 @@ class QLoraTuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Configure LoRA
-        lora_config = LoraConfig(**self.lora_config)
-        self.model = get_peft_model(self.model, lora_config)
+        # Add SSF layers after each transformer layer
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.LayerNorm):
+                parent_name = ".".join(name.split(".")[:-1])
+                parent = self.model.get_submodule(parent_name)
+                child_name = name.split(".")[-1]
+
+                # Create SSF layer
+                ssf_layer = SSFLayer(
+                    hidden_size=module.normalized_shape[0],
+                    **self.ssf_config
+                )
+
+                # Insert SSF layer after LayerNorm
+                setattr(parent, f"{child_name}_ssf", ssf_layer)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -138,7 +161,7 @@ class QLoraTuner:
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
         **kwargs
     ) -> None:
-        """Train the model using QLoRA."""
+        """Train the model using SSF."""
         if self.model is None:
             self._prepare_model()
 
@@ -162,7 +185,7 @@ class QLoraTuner:
         )
 
         # Train
-        logger.info("Starting QLoRA fine-tuning...")
+        logger.info("Starting SSF fine-tuning")
         self.trainer.train()
 
         # Save the model
@@ -184,7 +207,7 @@ class QLoraTuner:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
@@ -199,4 +222,4 @@ class QLoraTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params
+        return params 

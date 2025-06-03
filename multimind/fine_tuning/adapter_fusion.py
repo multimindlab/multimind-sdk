@@ -1,5 +1,5 @@
 """
-QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
+AdapterFusion implementation for combining multiple adapters through a fusion layer.
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple
@@ -14,48 +14,101 @@ from transformers import (
     DataCollatorForLanguageModeling
 )
 from peft import (
-    LoraConfig,
+    AdapterConfig,
     get_peft_model,
-    prepare_model_for_kbit_training,
     TaskType
 )
-import bitsandbytes as bnb
 import logging
 from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 
-class QLoraTuner:
-    """QLoRA implementation for memory-efficient fine-tuning."""
+class AdapterFusionLayer(nn.Module):
+    """AdapterFusion layer that combines multiple adapters through attention."""
+
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        num_adapters: int,
+        adapter_size: int = 64,
+        attention_dropout: float = 0.1,
+        **kwargs
+    ):
+        super().__init__()
+        self.num_adapters = num_adapters
+        self.adapter_size = adapter_size
+
+        # Query, Key, Value projections for attention
+        self.query = nn.Linear(in_features, adapter_size)
+        self.key = nn.Linear(adapter_size, adapter_size)
+        self.value = nn.Linear(adapter_size, adapter_size)
+
+        # Output projection
+        self.output = nn.Linear(adapter_size, out_features)
+
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(in_features)
+        self.attention_dropout = nn.Dropout(attention_dropout)
+
+    def forward(self, x: torch.Tensor, adapter_outputs: List[torch.Tensor]) -> torch.Tensor:
+        # Layer normalization
+        x_norm = self.layer_norm(x)
+
+        # Project query
+        query = self.query(x_norm)  # [batch_size, seq_len, adapter_size]
+
+        # Stack adapter outputs
+        adapter_outputs = torch.stack(adapter_outputs, dim=1)  # [batch_size, num_adapters, seq_len, adapter_size]
+
+        # Project keys and values
+        keys = self.key(adapter_outputs)  # [batch_size, num_adapters, seq_len, adapter_size]
+        values = self.value(adapter_outputs)  # [batch_size, num_adapters, seq_len, adapter_size]
+
+        # Compute attention scores
+        attention_scores = torch.matmul(
+            query.unsqueeze(1),  # [batch_size, 1, seq_len, adapter_size]
+            keys.transpose(-2, -1)  # [batch_size, num_adapters, adapter_size, seq_len]
+        )  # [batch_size, num_adapters, seq_len, seq_len]
+
+        # Apply softmax and dropout
+        attention_probs = F.softmax(attention_scores, dim=-1)
+        attention_probs = self.attention_dropout(attention_probs)
+
+        # Compute weighted sum of values
+        context = torch.matmul(
+            attention_probs,  # [batch_size, num_adapters, seq_len, seq_len]
+            values  # [batch_size, num_adapters, seq_len, adapter_size]
+        )  # [batch_size, num_adapters, seq_len, adapter_size]
+
+        # Sum over adapters
+        context = context.sum(dim=1)  # [batch_size, seq_len, adapter_size]
+
+        # Project to output dimension
+        output = self.output(context)  # [batch_size, seq_len, out_features]
+
+        return output
+
+class AdapterFusionTuner:
+    """AdapterFusion implementation for fine-tuning."""
 
     def __init__(
         self,
         base_model_name: str,
         output_dir: str,
-        lora_config: Optional[Dict[str, Any]] = None,
+        adapter_configs: List[Dict[str, Any]],
+        fusion_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        quantization_config: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
+        self.adapter_configs = adapter_configs
 
-        # Default LoRA configuration
-        self.lora_config = lora_config or {
-            "r": 8,
-            "lora_alpha": 32,
-            "target_modules": ["q_proj", "v_proj"],
-            "lora_dropout": 0.05,
-            "bias": "none",
-            "task_type": TaskType.CAUSAL_LM
-        }
-
-        # Default quantization configuration
-        self.quantization_config = quantization_config or {
-            "load_in_4bit": True,
-            "bnb_4bit_compute_dtype": torch.float16,
-            "bnb_4bit_use_double_quant": True,
-            "bnb_4bit_quant_type": "nf4"
+        # Default fusion configuration
+        self.fusion_config = fusion_config or {
+            "adapter_size": 64,
+            "attention_dropout": 0.1
         }
 
         # Default training arguments
@@ -64,7 +117,7 @@ class QLoraTuner:
             "num_train_epochs": 3,
             "per_device_train_batch_size": 4,
             "gradient_accumulation_steps": 4,
-            "learning_rate": 2e-4,
+            "learning_rate": 1e-3,
             "fp16": True,
             "logging_steps": 10,
             "save_strategy": "epoch",
@@ -75,20 +128,16 @@ class QLoraTuner:
         self.model = None
         self.tokenizer = None
         self.trainer = None
+        self.adapters = []
 
     def _prepare_model(self) -> None:
-        """Prepare the model for QLoRA fine-tuning."""
-        # Load base model with quantization
+        """Prepare the model for AdapterFusion fine-tuning."""
+        # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
-
-        # Prepare model for k-bit training
-        self.model = prepare_model_for_kbit_training(self.model)
-
-        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_name,
             padding_side="right"
@@ -98,9 +147,29 @@ class QLoraTuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Configure LoRA
-        lora_config = LoraConfig(**self.lora_config)
-        self.model = get_peft_model(self.model, lora_config)
+        # Add adapters
+        for i, config in enumerate(self.adapter_configs):
+            adapter_config = AdapterConfig(
+                **config,
+                task_type=TaskType.CAUSAL_LM
+            )
+            self.model.add_adapter(f"adapter_{i}", adapter_config)
+            self.adapters.append(f"adapter_{i}")
+
+        # Add fusion layers
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.Linear):
+                parent_name = ".".join(name.split(".")[:-1])
+                parent = self.model.get_submodule(parent_name)
+                child_name = name.split(".")[-1]
+
+                new_module = AdapterFusionLayer(
+                    in_features=module.in_features,
+                    out_features=module.out_features,
+                    num_adapters=len(self.adapters),
+                    **self.fusion_config
+                )
+                setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -138,7 +207,7 @@ class QLoraTuner:
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
         **kwargs
     ) -> None:
-        """Train the model using QLoRA."""
+        """Train the model using AdapterFusion."""
         if self.model is None:
             self._prepare_model()
 
@@ -162,7 +231,7 @@ class QLoraTuner:
         )
 
         # Train
-        logger.info("Starting QLoRA fine-tuning...")
+        logger.info(f"Starting AdapterFusion fine-tuning with {len(self.adapters)} adapters")
         self.trainer.train()
 
         # Save the model
@@ -184,7 +253,7 @@ class QLoraTuner:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
@@ -199,4 +268,4 @@ class QLoraTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params
+        return params 

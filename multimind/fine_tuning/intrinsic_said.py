@@ -1,5 +1,5 @@
 """
-QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
+Intrinsic SAID (Structured Adaptation in the Intrinsic Dimension) implementation.
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple
@@ -13,49 +13,83 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-    TaskType
-)
-import bitsandbytes as bnb
 import logging
 from datasets import Dataset as HFDataset
+import numpy as np
+from scipy.linalg import svd
 
 logger = logging.getLogger(__name__)
 
-class QLoraTuner:
-    """QLoRA implementation for memory-efficient fine-tuning."""
+class IntrinsicSAIDLayer(nn.Module):
+    """Intrinsic SAID layer that adapts in the intrinsic dimension."""
+
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        intrinsic_dim: int,
+        rank: int = 8,
+        dropout: float = 0.1,
+        **kwargs
+    ):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.intrinsic_dim = intrinsic_dim
+        self.rank = rank
+
+        # Initialize projection matrices
+        self.U = nn.Parameter(torch.randn(in_features, intrinsic_dim))
+        self.V = nn.Parameter(torch.randn(intrinsic_dim, out_features))
+
+        # Initialize low-rank adaptation
+        self.A = nn.Parameter(torch.randn(intrinsic_dim, rank))
+        self.B = nn.Parameter(torch.randn(rank, intrinsic_dim))
+
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(in_features)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Layer normalization
+        x_norm = self.layer_norm(x)
+
+        # Project to intrinsic dimension
+        x_intrinsic = torch.matmul(x_norm, self.U)  # [batch_size, seq_len, intrinsic_dim]
+
+        # Apply low-rank adaptation
+        adaptation = torch.matmul(
+            torch.matmul(x_intrinsic, self.A),  # [batch_size, seq_len, rank]
+            self.B  # [rank, intrinsic_dim]
+        )  # [batch_size, seq_len, intrinsic_dim]
+
+        # Add adaptation
+        x_intrinsic = x_intrinsic + self.dropout(adaptation)
+
+        # Project back to output dimension
+        output = torch.matmul(x_intrinsic, self.V)  # [batch_size, seq_len, out_features]
+
+        return output
+
+class IntrinsicSAIDTuner:
+    """Intrinsic SAID implementation for fine-tuning."""
 
     def __init__(
         self,
         base_model_name: str,
         output_dir: str,
-        lora_config: Optional[Dict[str, Any]] = None,
+        intrinsic_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        quantization_config: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
 
-        # Default LoRA configuration
-        self.lora_config = lora_config or {
-            "r": 8,
-            "lora_alpha": 32,
-            "target_modules": ["q_proj", "v_proj"],
-            "lora_dropout": 0.05,
-            "bias": "none",
-            "task_type": TaskType.CAUSAL_LM
-        }
-
-        # Default quantization configuration
-        self.quantization_config = quantization_config or {
-            "load_in_4bit": True,
-            "bnb_4bit_compute_dtype": torch.float16,
-            "bnb_4bit_use_double_quant": True,
-            "bnb_4bit_quant_type": "nf4"
+        # Default intrinsic configuration
+        self.intrinsic_config = intrinsic_config or {
+            "intrinsic_dim": 64,
+            "rank": 8,
+            "dropout": 0.1
         }
 
         # Default training arguments
@@ -64,7 +98,7 @@ class QLoraTuner:
             "num_train_epochs": 3,
             "per_device_train_batch_size": 4,
             "gradient_accumulation_steps": 4,
-            "learning_rate": 2e-4,
+            "learning_rate": 1e-3,
             "fp16": True,
             "logging_steps": 10,
             "save_strategy": "epoch",
@@ -76,19 +110,31 @@ class QLoraTuner:
         self.tokenizer = None
         self.trainer = None
 
+    def _compute_intrinsic_dimension(self, weight_matrix: torch.Tensor) -> int:
+        """Compute the intrinsic dimension of a weight matrix using SVD."""
+        # Convert to numpy for SVD
+        weight_np = weight_matrix.detach().cpu().numpy()
+        
+        # Compute SVD
+        U, S, V = svd(weight_np)
+        
+        # Compute cumulative variance explained
+        total_var = np.sum(S ** 2)
+        cum_var = np.cumsum(S ** 2) / total_var
+        
+        # Find dimension that explains 95% of variance
+        intrinsic_dim = np.argmax(cum_var >= 0.95) + 1
+        
+        return min(intrinsic_dim, self.intrinsic_config["intrinsic_dim"])
+
     def _prepare_model(self) -> None:
-        """Prepare the model for QLoRA fine-tuning."""
-        # Load base model with quantization
+        """Prepare the model for Intrinsic SAID fine-tuning."""
+        # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
-
-        # Prepare model for k-bit training
-        self.model = prepare_model_for_kbit_training(self.model)
-
-        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_name,
             padding_side="right"
@@ -98,9 +144,23 @@ class QLoraTuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Configure LoRA
-        lora_config = LoraConfig(**self.lora_config)
-        self.model = get_peft_model(self.model, lora_config)
+        # Replace linear layers with Intrinsic SAID layers
+        for name, module in self.model.named_modules():
+            if isinstance(module, nn.Linear):
+                parent_name = ".".join(name.split(".")[:-1])
+                parent = self.model.get_submodule(parent_name)
+                child_name = name.split(".")[-1]
+
+                # Compute intrinsic dimension for this layer
+                intrinsic_dim = self._compute_intrinsic_dimension(module.weight)
+
+                new_module = IntrinsicSAIDLayer(
+                    in_features=module.in_features,
+                    out_features=module.out_features,
+                    intrinsic_dim=intrinsic_dim,
+                    **self.intrinsic_config
+                )
+                setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -138,7 +198,7 @@ class QLoraTuner:
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
         **kwargs
     ) -> None:
-        """Train the model using QLoRA."""
+        """Train the model using Intrinsic SAID."""
         if self.model is None:
             self._prepare_model()
 
@@ -162,7 +222,7 @@ class QLoraTuner:
         )
 
         # Train
-        logger.info("Starting QLoRA fine-tuning...")
+        logger.info("Starting Intrinsic SAID fine-tuning")
         self.trainer.train()
 
         # Save the model
@@ -184,7 +244,7 @@ class QLoraTuner:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
@@ -199,4 +259,4 @@ class QLoraTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params
+        return params 
