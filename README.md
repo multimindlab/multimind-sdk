@@ -2,7 +2,7 @@
   MultiMind SDK - Unified AI Development Toolkit
   Description: A powerful Python SDK for fine-tuning, RAG systems, and AI agent development with enterprise-grade compliance
   Keywords: AI development, fine-tuning, RAG, LLM, machine learning, Python SDK, LangChain, CrewAI, LiteLLM, SuperAGI, AI compliance, healthcare compliance, GDPR, HIPAA
-  Author: AI2Innovate Team
+  Author: MultimindLAB Team
   Version: 0.1.0
 -->
 
@@ -318,12 +318,12 @@ For more information about the Apache License 2.0, visit [apache.org/licenses/LI
 
 ## 📣 About
 
-MultiMind SDK is developed and maintained by the AI2Innovate team, dedicated to simplifying AI development for everyone. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to democratize AI development.
+MultiMind SDK is developed and maintained by the MultimindLAB team, dedicated to simplifying AI development for everyone. Visit [multimind.dev](https://www.multimind.dev) to learn more about our mission to democratize AI development.
 
 ---
 
 <p align="center">
-  Made with ❤️ by the AI2Innovate Team | <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE">License</a>
+  Made with ❤️ by the AI2Innovate & MultimindLAB Team | <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE">License</a>
 </p>
 
 <!-- SEO CTAs -->
