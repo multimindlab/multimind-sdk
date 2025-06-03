@@ -291,6 +291,120 @@ npm install
 npm start
 ```
 
+
+## Docker Setup
+
+The MultiMind SDK can be run using Docker and Docker Compose. This setup includes:
+- The main MultiMind SDK service
+- Redis for caching and session management
+- Chroma for vector storage
+- Ollama for local model support
+
+### Prerequisites
+
+1. Install Docker and Docker Compose
+2. Set up your environment variables in a `.env` file:
+```bash
+# API Keys
+OPENAI_API_KEY=your_openai_api_key_here
+CLAUDE_API_KEY=your_claude_api_key_here
+HF_TOKEN=your_huggingface_token_here
+
+# Redis Configuration
+REDIS_HOST=redis
+REDIS_PORT=6379
+
+# Chroma Configuration
+CHROMA_HOST=chroma
+CHROMA_PORT=8000
+
+# Application Configuration
+APP_HOST=0.0.0.0
+APP_PORT=8000
+DEBUG=false
+LOG_LEVEL=INFO
+
+# Model Configuration
+DEFAULT_MODEL=gpt-3.5-turbo
+EMBEDDING_MODEL=text-embedding-ada-002
+VISION_MODEL=gpt-4-vision-preview
+
+# RAG Configuration
+CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+TOP_K=3
+```
+
+### Running with Docker
+
+1. Build and start the services:
+```bash
+docker-compose up --build
+```
+
+2. Access the services:
+- MultiMind API: http://localhost:8000
+- Chroma API: http://localhost:8001
+- Redis: localhost:6379
+
+3. Stop the services:
+```bash
+docker-compose down
+```
+
+### Development with Docker
+
+For development, the project files are mounted as a volume, so changes to the code will be reflected immediately. The setup includes:
+
+- Hot reloading for Python code
+- Persistent storage for Redis and Chroma
+- Ollama model persistence
+- Environment variable management
+
+### Services
+
+1. **MultiMind Service**
+   - Main API and SDK functionality
+   - Port: 8000
+   - Hot reloading enabled
+   - Mounts local Ollama models
+
+2. **Redis**
+   - Caching and session management
+   - Port: 6379
+   - Persistent storage
+   - AOF enabled for data durability
+
+3. **Chroma**
+   - Vector storage for RAG
+   - Port: 8001
+   - Persistent storage
+   - Telemetry disabled
+
+### Volumes
+
+- `redis_data`: Persistent Redis storage
+- `chroma_data`: Persistent Chroma storage
+- `~/.ollama`: Local Ollama models
+
+### Building Custom Images
+
+To build a custom image:
+
+```bash
+docker build -t multimind-sdk:custom .
+```
+
+To use a custom image in docker-compose:
+
+```yaml
+services:
+  multimind:
+    image: multimind-sdk:custom
+    # ... other configuration
+```
+
+
 ## 💖 Support MultiMind SDK
 
 If you find MultiMind SDK helpful, please consider supporting us to sustain development and grow the community.
