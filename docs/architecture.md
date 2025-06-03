@@ -12,6 +12,15 @@ graph TB
         Pipeline[Pipeline System]
         Compliance[Compliance & Governance]
         Interfaces[Interfaces]
+        RAG[RAG System]
+        FineTuning[Fine-tuning System]
+        MCP[Model Control Plane]
+        Memory[Memory System]
+        Orchestration[Orchestration Engine]
+        Gateway[API Gateway]
+        Router[Model Router]
+        Tools[Tool System]
+        Monitoring[Monitoring System]
     end
 
     subgraph "Core Components"
@@ -19,6 +28,7 @@ graph TB
         Agents[Agent System]
         Memory[Memory Management]
         Tools[Tool System]
+        Config[Configuration]
     end
 
     subgraph "Ensemble System"
@@ -37,6 +47,80 @@ graph TB
         Privacy[Privacy Management]
         Audit[Audit System]
         Policy[Policy Engine]
+        Training[Compliance Training]
+        Risk[Risk Assessment]
+    end
+
+    subgraph "RAG System"
+        Indexing[Document Indexing]
+        Retrieval[Vector Retrieval]
+        Augmentation[Context Augmentation]
+        Storage[Vector Storage]
+        Embedding[Embedding Models]
+    end
+
+    subgraph "Fine-tuning System"
+        Training[Model Training]
+        Evaluation[Model Evaluation]
+        Versioning[Model Versioning]
+        Deployment[Model Deployment]
+        LoRA[LoRA Training]
+        QLoRA[QLoRA Training]
+    end
+
+    subgraph "Model Control Plane"
+        Monitoring[Model Monitoring]
+        Scaling[Auto Scaling]
+        Routing[Request Routing]
+        LoadBalancing[Load Balancing]
+        Executor[MCP Executor]
+        Parser[MCP Parser]
+    end
+
+    subgraph "Memory System"
+        ShortTerm[Short-term Memory]
+        LongTerm[Long-term Memory]
+        WorkingMemory[Working Memory]
+        Episodic[Episodic Memory]
+        Buffer[Memory Buffer]
+    end
+
+    subgraph "Orchestration Engine"
+        TaskScheduler[Task Scheduler]
+        ResourceManager[Resource Manager]
+        StateManager[State Manager]
+        EventBus[Event Bus]
+        WorkflowEngine[Workflow Engine]
+    end
+
+    subgraph "API Gateway"
+        Auth[Authentication]
+        RateLimit[Rate Limiting]
+        Routing[Request Routing]
+        Metrics[Metrics Collection]
+        Session[Session Management]
+    end
+
+    subgraph "Model Router"
+        Strategy[Routing Strategy]
+        Fallback[Fallback Handler]
+        LoadBalancer[Load Balancer]
+        Metrics[Performance Metrics]
+    end
+
+    subgraph "Tool System"
+        Calculator[Calculator Tool]
+        WebSearch[Web Search Tool]
+        FileOps[File Operations]
+        CustomTools[Custom Tools]
+    end
+
+    subgraph "Monitoring System"
+        Usage[Usage Tracker]
+        Trace[Trace Logger]
+        Metrics[Metrics Collector]
+        Alerts[Alert System]
+        Reports[Report Generator]
     end
 
     subgraph "Interfaces"
@@ -49,6 +133,15 @@ graph TB
     Core --> Pipeline
     Core --> Compliance
     Core --> Interfaces
+    Core --> RAG
+    Core --> FineTuning
+    Core --> MCP
+    Core --> Memory
+    Core --> Orchestration
+    Core --> Gateway
+    Core --> Router
+    Core --> Tools
+    Core --> Monitoring
 
     Models --> Providers
     Agents --> Tools
@@ -66,6 +159,57 @@ graph TB
     Privacy --> Audit
     Policy --> Privacy
     Audit --> Compliance
+    Training --> Compliance
+    Risk --> Compliance
+
+    Indexing --> Storage
+    Retrieval --> Storage
+    Augmentation --> Retrieval
+    Embedding --> Indexing
+
+    Training --> Evaluation
+    Evaluation --> Versioning
+    Versioning --> Deployment
+    LoRA --> Training
+    QLoRA --> Training
+
+    Monitoring --> Scaling
+    Scaling --> Routing
+    Routing --> LoadBalancing
+    Executor --> MCP
+    Parser --> MCP
+
+    ShortTerm --> WorkingMemory
+    LongTerm --> WorkingMemory
+    Episodic --> WorkingMemory
+    Buffer --> WorkingMemory
+
+    TaskScheduler --> ResourceManager
+    ResourceManager --> StateManager
+    StateManager --> EventBus
+    WorkflowEngine --> TaskScheduler
+
+    Auth --> Gateway
+    RateLimit --> Gateway
+    Routing --> Gateway
+    Metrics --> Gateway
+    Session --> Gateway
+
+    Strategy --> Router
+    Fallback --> Router
+    LoadBalancer --> Router
+    Metrics --> Router
+
+    Calculator --> Tools
+    WebSearch --> Tools
+    FileOps --> Tools
+    CustomTools --> Tools
+
+    Usage --> Monitoring
+    Trace --> Monitoring
+    Metrics --> Monitoring
+    Alerts --> Monitoring
+    Reports --> Monitoring
 
     CLI --> Core
     API --> Core
@@ -253,6 +397,187 @@ classDiagram
     Interface --> WebSocket
 ```
 
+### RAG System
+
+```mermaid
+classDiagram
+    class RAGSystem {
+        +index_documents()
+        +retrieve_context()
+        +augment_prompt()
+    }
+    
+    class DocumentIndexer {
+        +chunk_documents()
+        +create_embeddings()
+        +store_vectors()
+    }
+    
+    class VectorRetriever {
+        +search_vectors()
+        +rank_results()
+        +filter_results()
+    }
+    
+    class ContextAugmenter {
+        +combine_context()
+        +format_prompt()
+        +validate_context()
+    }
+    
+    RAGSystem --> DocumentIndexer
+    RAGSystem --> VectorRetriever
+    RAGSystem --> ContextAugmenter
+```
+
+### Fine-tuning System
+
+```mermaid
+classDiagram
+    class FineTuningSystem {
+        +prepare_data()
+        +train_model()
+        +evaluate_model()
+        +deploy_model()
+    }
+    
+    class ModelTrainer {
+        +train()
+        +validate()
+        +save_checkpoint()
+    }
+    
+    class ModelEvaluator {
+        +evaluate()
+        +compare_models()
+        +generate_metrics()
+    }
+    
+    class ModelDeployer {
+        +deploy()
+        +rollback()
+        +monitor()
+    }
+    
+    FineTuningSystem --> ModelTrainer
+    FineTuningSystem --> ModelEvaluator
+    FineTuningSystem --> ModelDeployer
+```
+
+### Model Control Plane
+
+```mermaid
+classDiagram
+    class ModelControlPlane {
+        +monitor_models()
+        +scale_resources()
+        +route_requests()
+        +balance_load()
+    }
+    
+    class ModelMonitor {
+        +track_metrics()
+        +detect_anomalies()
+        +generate_alerts()
+    }
+    
+    class ResourceScaler {
+        +scale_up()
+        +scale_down()
+        +optimize_resources()
+    }
+    
+    class RequestRouter {
+        +route_request()
+        +load_balance()
+        +failover()
+    }
+    
+    ModelControlPlane --> ModelMonitor
+    ModelControlPlane --> ResourceScaler
+    ModelControlPlane --> RequestRouter
+```
+
+### Memory System
+
+```mermaid
+classDiagram
+    class MemorySystem {
+        +store_memory()
+        +retrieve_memory()
+        +update_memory()
+    }
+    
+    class ShortTermMemory {
+        +buffer_size
+        +add_to_buffer()
+        +clear_buffer()
+    }
+    
+    class LongTermMemory {
+        +store_permanent()
+        +retrieve_permanent()
+        +update_permanent()
+    }
+    
+    class WorkingMemory {
+        +current_context
+        +update_context()
+        +clear_context()
+    }
+    
+    class EpisodicMemory {
+        +store_episode()
+        +retrieve_episode()
+        +link_episodes()
+    }
+    
+    MemorySystem --> ShortTermMemory
+    MemorySystem --> LongTermMemory
+    MemorySystem --> WorkingMemory
+    MemorySystem --> EpisodicMemory
+```
+
+### Orchestration Engine
+
+```mermaid
+classDiagram
+    class OrchestrationEngine {
+        +schedule_tasks()
+        +manage_resources()
+        +handle_events()
+    }
+    
+    class TaskScheduler {
+        +schedule()
+        +prioritize()
+        +reschedule()
+    }
+    
+    class ResourceManager {
+        +allocate()
+        +deallocate()
+        +optimize()
+    }
+    
+    class StateManager {
+        +track_state()
+        +update_state()
+        +recover_state()
+    }
+    
+    class EventBus {
+        +publish()
+        +subscribe()
+        +handle_event()
+    }
+    
+    OrchestrationEngine --> TaskScheduler
+    OrchestrationEngine --> ResourceManager
+    OrchestrationEngine --> StateManager
+    OrchestrationEngine --> EventBus
+```
+
 ## Data Flow
 
 ```mermaid
@@ -260,14 +585,20 @@ sequenceDiagram
     participant User
     participant Interface
     participant Core
+    participant RAG
     participant Ensemble
+    participant MCP
     participant Provider
     
     User->>Interface: Request
     Interface->>Core: Process Request
+    Core->>RAG: Get Context
+    RAG-->>Core: Context
     Core->>Ensemble: Get Ensemble Result
-    Ensemble->>Provider: Query Providers
-    Provider-->>Ensemble: Provider Results
+    Ensemble->>MCP: Route Request
+    MCP->>Provider: Query Providers
+    Provider-->>MCP: Provider Results
+    MCP-->>Ensemble: Routed Results
     Ensemble-->>Core: Combined Result
     Core-->>Interface: Processed Response
     Interface-->>User: Final Response
