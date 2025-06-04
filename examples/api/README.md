@@ -120,6 +120,105 @@ Error response:
 }
 ```
 
+## Pipeline Examples
+
+The SDK provides a powerful pipeline system for building complex AI workflows. Here are examples of available pipelines:
+
+### Available Pipelines
+
+1. **QA Retrieval Pipeline**
+   ```python
+   from multimind import Router, PipelineBuilder
+   
+   router = Router()
+   builder = PipelineBuilder(router)
+   pipeline = builder.qa_retrieval()
+   result = await pipeline.run("What is machine learning?")
+   ```
+
+2. **Code Review Pipeline**
+   ```python
+   pipeline = builder.code_review()
+   result = await pipeline.run(code_snippet)
+   ```
+
+3. **Image Analysis Pipeline**
+   ```python
+   pipeline = builder.image_analysis()
+   with open("image.jpg", "rb") as f:
+       result = await pipeline.run(f.read())
+   ```
+
+4. **Text Summarization Pipeline**
+   ```python
+   pipeline = builder.text_summarization()
+   result = await pipeline.run(long_text)
+   ```
+
+5. **Content Generation Pipeline**
+   ```python
+   pipeline = builder.content_generation()
+   result = await pipeline.run("The Future of AI")
+   ```
+
+6. **Data Analysis Pipeline**
+   ```python
+   pipeline = builder.data_analysis()
+   result = await pipeline.run(dataset)
+   ```
+
+7. **Multi-Modal QA Pipeline**
+   ```python
+   pipeline = builder.multi_modal_qa()
+   result = await pipeline.run({
+       "query": "What's in this image?",
+       "image": image_data
+   })
+   ```
+
+8. **Code Generation Pipeline**
+   ```python
+   pipeline = builder.code_generation()
+   result = await pipeline.run(requirements)
+   ```
+
+9. **Sentiment Analysis Pipeline**
+   ```python
+   pipeline = builder.sentiment_analysis()
+   result = await pipeline.run(text)
+   ```
+
+10. **Document Processing Pipeline**
+    ```python
+    pipeline = builder.document_processing()
+    result = await pipeline.run(document)
+    ```
+
+11. **Translation Pipeline**
+    ```python
+    pipeline = builder.translation_pipeline()
+    result = await pipeline.run({
+        "text": text,
+        "target_language": "Spanish"
+    })
+    ```
+
+12. **Research Assistant Pipeline**
+    ```python
+    pipeline = builder.research_assistant()
+    result = await pipeline.run(research_query)
+    ```
+
+### Pipeline Features
+
+- **Error Handling**: Each pipeline includes built-in error handling and retry mechanisms
+- **Customization**: Pipelines can be customized with different models and parameters
+- **Async Support**: All pipelines support asynchronous execution
+- **Context Management**: Pipelines maintain context between stages
+- **Type Safety**: Full type hints and validation using Pydantic
+
+For more detailed examples, see `pipeline_examples.py` in the api directory.
+
 ## Architecture
 
 The wrapper is organized into several components:

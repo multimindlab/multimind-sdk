@@ -1,5 +1,5 @@
 """
-QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
+Prefix/Prompt Pooling implementation for efficient fine-tuning.
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple
@@ -14,48 +14,112 @@ from transformers import (
     DataCollatorForLanguageModeling
 )
 from peft import (
-    LoraConfig,
+    PromptTuningConfig,
+    PrefixTuningConfig,
     get_peft_model,
-    prepare_model_for_kbit_training,
     TaskType
 )
-import bitsandbytes as bnb
 import logging
 from datasets import Dataset as HFDataset
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
-class QLoraTuner:
-    """QLoRA implementation for memory-efficient fine-tuning."""
+class PromptPoolingLayer(nn.Module):
+    """Prompt Pooling layer that uses a pool of prompts/prefixes."""
+
+    def __init__(
+        self,
+        num_virtual_tokens: int,
+        token_dim: int,
+        pool_size: int,
+        method: str = "prompt",  # "prompt" or "prefix"
+        attention_dropout: float = 0.1,
+        **kwargs
+    ):
+        super().__init__()
+        self.num_virtual_tokens = num_virtual_tokens
+        self.token_dim = token_dim
+        self.pool_size = pool_size
+        self.method = method
+
+        # Initialize prompt/prefix pool
+        if method == "prompt":
+            self.pool = nn.Parameter(
+                torch.randn(pool_size, num_virtual_tokens, token_dim)
+            )
+        else:  # prefix
+            self.pool = nn.Parameter(
+                torch.randn(pool_size, num_virtual_tokens, token_dim)
+            )
+            self.prefix_projection = nn.Linear(token_dim, token_dim)
+
+        # Attention for selecting from pool
+        self.query = nn.Linear(token_dim, token_dim)
+        self.key = nn.Linear(token_dim, token_dim)
+        self.value = nn.Linear(token_dim, token_dim)
+        self.attention_dropout = nn.Dropout(attention_dropout)
+
+        # Layer normalization
+        self.layer_norm = nn.LayerNorm(token_dim)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # Layer normalization
+        x_norm = self.layer_norm(x)
+
+        # Project query
+        query = self.query(x_norm)  # [batch_size, seq_len, token_dim]
+
+        # Project keys and values from pool
+        keys = self.key(self.pool)  # [pool_size, num_virtual_tokens, token_dim]
+        values = self.value(self.pool)  # [pool_size, num_virtual_tokens, token_dim]
+
+        # Compute attention scores
+        attention_scores = torch.matmul(
+            query.unsqueeze(1),  # [batch_size, 1, seq_len, token_dim]
+            keys.transpose(-2, -1)  # [pool_size, token_dim, num_virtual_tokens]
+        )  # [batch_size, pool_size, seq_len, num_virtual_tokens]
+
+        # Apply softmax and dropout
+        attention_probs = F.softmax(attention_scores, dim=-1)
+        attention_probs = self.attention_dropout(attention_probs)
+
+        # Compute weighted sum of values
+        context = torch.matmul(
+            attention_probs,  # [batch_size, pool_size, seq_len, num_virtual_tokens]
+            values  # [pool_size, num_virtual_tokens, token_dim]
+        )  # [batch_size, pool_size, seq_len, token_dim]
+
+        # Sum over pool
+        context = context.sum(dim=1)  # [batch_size, seq_len, token_dim]
+
+        if self.method == "prefix":
+            # Project prefix
+            context = self.prefix_projection(context)
+
+        return context
+
+class PromptPoolingTuner:
+    """Prompt/Prefix Pooling implementation for fine-tuning."""
 
     def __init__(
         self,
         base_model_name: str,
         output_dir: str,
-        lora_config: Optional[Dict[str, Any]] = None,
+        method: str = "prompt",  # "prompt" or "prefix"
+        pool_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        quantization_config: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
+        self.method = method
 
-        # Default LoRA configuration
-        self.lora_config = lora_config or {
-            "r": 8,
-            "lora_alpha": 32,
-            "target_modules": ["q_proj", "v_proj"],
-            "lora_dropout": 0.05,
-            "bias": "none",
-            "task_type": TaskType.CAUSAL_LM
-        }
-
-        # Default quantization configuration
-        self.quantization_config = quantization_config or {
-            "load_in_4bit": True,
-            "bnb_4bit_compute_dtype": torch.float16,
-            "bnb_4bit_use_double_quant": True,
-            "bnb_4bit_quant_type": "nf4"
+        # Default pool configuration
+        self.pool_config = pool_config or {
+            "num_virtual_tokens": 20,
+            "pool_size": 10,
+            "attention_dropout": 0.1
         }
 
         # Default training arguments
@@ -64,7 +128,7 @@ class QLoraTuner:
             "num_train_epochs": 3,
             "per_device_train_batch_size": 4,
             "gradient_accumulation_steps": 4,
-            "learning_rate": 2e-4,
+            "learning_rate": 1e-3,
             "fp16": True,
             "logging_steps": 10,
             "save_strategy": "epoch",
@@ -77,18 +141,13 @@ class QLoraTuner:
         self.trainer = None
 
     def _prepare_model(self) -> None:
-        """Prepare the model for QLoRA fine-tuning."""
-        # Load base model with quantization
+        """Prepare the model for Prompt/Prefix Pooling fine-tuning."""
+        # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
-
-        # Prepare model for k-bit training
-        self.model = prepare_model_for_kbit_training(self.model)
-
-        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_name,
             padding_side="right"
@@ -98,9 +157,36 @@ class QLoraTuner:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Configure LoRA
-        lora_config = LoraConfig(**self.lora_config)
-        self.model = get_peft_model(self.model, lora_config)
+        # Configure prompt/prefix tuning
+        if self.method == "prompt":
+            config = PromptTuningConfig(
+                num_virtual_tokens=self.pool_config["num_virtual_tokens"],
+                task_type=TaskType.CAUSAL_LM
+            )
+        else:  # prefix
+            config = PrefixTuningConfig(
+                num_virtual_tokens=self.pool_config["num_virtual_tokens"],
+                task_type=TaskType.CAUSAL_LM
+            )
+
+        # Get the model
+        self.model = get_peft_model(self.model, config)
+
+        # Replace prompt/prefix layers with pooling layers
+        for name, module in self.model.named_modules():
+            if isinstance(module, (PromptTuningConfig, PrefixTuningConfig)):
+                parent_name = ".".join(name.split(".")[:-1])
+                parent = self.model.get_submodule(parent_name)
+                child_name = name.split(".")[-1]
+
+                new_module = PromptPoolingLayer(
+                    num_virtual_tokens=self.pool_config["num_virtual_tokens"],
+                    token_dim=self.model.config.hidden_size,
+                    pool_size=self.pool_config["pool_size"],
+                    method=self.method,
+                    **self.pool_config
+                )
+                setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
@@ -138,7 +224,7 @@ class QLoraTuner:
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
         **kwargs
     ) -> None:
-        """Train the model using QLoRA."""
+        """Train the model using Prompt/Prefix Pooling."""
         if self.model is None:
             self._prepare_model()
 
@@ -162,7 +248,7 @@ class QLoraTuner:
         )
 
         # Train
-        logger.info("Starting QLoRA fine-tuning...")
+        logger.info(f"Starting {self.method.capitalize()} Pooling fine-tuning")
         self.trainer.train()
 
         # Save the model
@@ -184,7 +270,7 @@ class QLoraTuner:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            quantization_config=self.quantization_config,
+            torch_dtype=torch.float16,
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
@@ -199,4 +285,4 @@ class QLoraTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params
+        return params 

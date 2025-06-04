@@ -1,329 +1,763 @@
-# MultiMind RAG System Architecture
+# MultiMind Architecture
+
+This document provides a comprehensive overview of the MultiMind SDK architecture, including its core components, interfaces, and data flow.
 
 ## System Overview
 
-The MultiMind RAG system is built with a modular architecture that separates concerns and allows for easy extension. The system consists of several key components that work together to provide a complete RAG solution.
-
-## Architecture Diagram
-
 ```mermaid
 graph TB
-    subgraph Client Layer
-        CL[Client Library]
-        API[API Client]
-    end
-
-    subgraph API Layer
-        AUTH[Authentication]
-        EP[API Endpoints]
-        MID[Middleware]
-    end
-
-    subgraph Core Layer
+    subgraph "MultiMind SDK"
+        Core[Core Components]
+        Ensemble[Ensemble System]
+        Pipeline[Pipeline System]
+        Compliance[Compliance & Governance]
+        Interfaces[Interfaces]
         RAG[RAG System]
-        DOC[Document Processor]
-        EMB[Embedding System]
-        VS[Vector Store]
-        GEN[Generator]
+        FineTuning[Fine-tuning System]
+        MCP[Model Control Plane]
+        Memory[Memory System]
+        Orchestration[Orchestration Engine]
+        Gateway[API Gateway]
+        Router[Model Router]
+        Tools[Tool System]
+        Monitoring[Monitoring System]
     end
 
-    subgraph External Services
-        OAI[OpenAI]
-        ANT[Anthropic]
-        HF[HuggingFace]
+    subgraph "Model Providers"
+        OpenAI[OpenAI]
+        Claude[Claude]
+        Mistral[Mistral]
+        Ollama[Ollama]
+        HuggingFace[HuggingFace]
+        Groq[Groq]
+        Local[Local Models]
     end
 
-    %% Client to API connections
-    CL -->|HTTP| API
-    API -->|Auth| AUTH
-    API -->|Requests| EP
+    subgraph "Core Components"
+        Models[Model Wrappers]
+        Agents[Agent System]
+        Memory[Memory Management]
+        Tools[Tool System]
+        Config[Configuration]
+    end
 
-    %% API to Core connections
-    EP -->|Process| RAG
-    AUTH -->|Validate| EP
-    MID -->|Log/Monitor| EP
+    subgraph "Ensemble System"
+        Methods[Ensemble Methods]
+        Providers[Model Providers]
+        Voting[Voting System]
+    end
 
-    %% Core component connections
-    RAG -->|Process| DOC
-    RAG -->|Embed| EMB
-    RAG -->|Store| VS
-    RAG -->|Generate| GEN
+    subgraph "Pipeline System"
+        Tasks[Task Management]
+        Chains[Prompt Chains]
+        Workflows[Workflow Engine]
+    end
 
-    %% External service connections
-    EMB -->|Embed| OAI
-    EMB -->|Embed| HF
-    GEN -->|Generate| OAI
-    GEN -->|Generate| ANT
+    subgraph "Compliance & Governance"
+        Privacy[Privacy Management]
+        Audit[Audit System]
+        Policy[Policy Engine]
+        Training[Compliance Training]
+        Risk[Risk Assessment]
+    end
+
+    subgraph "RAG System"
+        Indexing[Document Indexing]
+        Retrieval[Vector Retrieval]
+        Augmentation[Context Augmentation]
+        Storage[Vector Storage]
+        Embedding[Embedding Models]
+    end
+
+    subgraph "Fine-tuning System"
+        Training[Model Training]
+        Evaluation[Model Evaluation]
+        Versioning[Model Versioning]
+        Deployment[Model Deployment]
+        LoRA[LoRA Training]
+        QLoRA[QLoRA Training]
+    end
+
+    subgraph "Model Control Plane"
+        Monitoring[Model Monitoring]
+        Scaling[Auto Scaling]
+        Routing[Request Routing]
+        LoadBalancing[Load Balancing]
+        Executor[MCP Executor]
+        Parser[MCP Parser]
+    end
+
+    subgraph "Memory System"
+        ShortTerm[Short-term Memory]
+        LongTerm[Long-term Memory]
+        WorkingMemory[Working Memory]
+        Episodic[Episodic Memory]
+        Buffer[Memory Buffer]
+    end
+
+    subgraph "Orchestration Engine"
+        TaskScheduler[Task Scheduler]
+        ResourceManager[Resource Manager]
+        StateManager[State Manager]
+        EventBus[Event Bus]
+        WorkflowEngine[Workflow Engine]
+    end
+
+    subgraph "API Gateway"
+        Auth[Authentication]
+        RateLimit[Rate Limiting]
+        Routing[Request Routing]
+        Metrics[Metrics Collection]
+        Session[Session Management]
+    end
+
+    subgraph "Model Router"
+        Strategy[Routing Strategy]
+        Fallback[Fallback Handler]
+        LoadBalancer[Load Balancer]
+        Metrics[Performance Metrics]
+    end
+
+    subgraph "Tool System"
+        Calculator[Calculator Tool]
+        WebSearch[Web Search Tool]
+        FileOps[File Operations]
+        CustomTools[Custom Tools]
+    end
+
+    subgraph "Monitoring System"
+        Usage[Usage Tracker]
+        Trace[Trace Logger]
+        Metrics[Metrics Collector]
+        Alerts[Alert System]
+        Reports[Report Generator]
+    end
+
+    subgraph "Interfaces"
+        CLI[Command Line Interface]
+        API[REST API]
+        WS[WebSocket API]
+    end
+
+    Core --> Ensemble
+    Core --> Pipeline
+    Core --> Compliance
+    Core --> Interfaces
+    Core --> RAG
+    Core --> FineTuning
+    Core --> MCP
+    Core --> Memory
+    Core --> Orchestration
+    Core --> Gateway
+    Core --> Router
+    Core --> Tools
+    Core --> Monitoring
+
+    Models --> Providers
+    Agents --> Tools
+    Memory --> Agents
+    Tools --> Agents
+
+    Methods --> Voting
+    Providers --> Voting
+    Voting --> Ensemble
+
+    OpenAI --> Providers
+    Claude --> Providers
+    Mistral --> Providers
+    Ollama --> Providers
+    HuggingFace --> Providers
+    Groq --> Providers
+    Local --> Providers
+
+    Tasks --> Chains
+    Chains --> Workflows
+    Workflows --> Pipeline
+
+    Privacy --> Audit
+    Policy --> Privacy
+    Audit --> Compliance
+    Training --> Compliance
+    Risk --> Compliance
+
+    Indexing --> Storage
+    Retrieval --> Storage
+    Augmentation --> Retrieval
+    Embedding --> Indexing
+
+    Training --> Evaluation
+    Evaluation --> Versioning
+    Versioning --> Deployment
+    LoRA --> Training
+    QLoRA --> Training
+
+    Monitoring --> Scaling
+    Scaling --> Routing
+    Routing --> LoadBalancing
+    Executor --> MCP
+    Parser --> MCP
+
+    ShortTerm --> WorkingMemory
+    LongTerm --> WorkingMemory
+    Episodic --> WorkingMemory
+    Buffer --> WorkingMemory
+
+    TaskScheduler --> ResourceManager
+    ResourceManager --> StateManager
+    StateManager --> EventBus
+    WorkflowEngine --> TaskScheduler
+
+    Auth --> Gateway
+    RateLimit --> Gateway
+    Routing --> Gateway
+    Metrics --> Gateway
+    Session --> Gateway
+
+    Strategy --> Router
+    Fallback --> Router
+    LoadBalancer --> Router
+    Metrics --> Router
+
+    Calculator --> Tools
+    WebSearch --> Tools
+    FileOps --> Tools
+    CustomTools --> Tools
+
+    Usage --> Monitoring
+    Trace --> Monitoring
+    Metrics --> Monitoring
+    Alerts --> Monitoring
+    Reports --> Monitoring
+
+    CLI --> Core
+    API --> Core
+    WS --> Core
 ```
 
-## Component Flow
+## Model Providers
 
-### 1. Document Processing Flow
+The MultiMind SDK supports the following model providers:
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API as API Layer
-    participant DP as Document Processor
-    participant RAG as RAG System
-    participant VS as Vector Store
+### OpenAI
+- GPT-3.5 Turbo
+- GPT-4
+- GPT-4 Vision
+- Text Embedding Models
 
-    C->>API: Add Document(s)
-    API->>DP: Process Document
-    DP->>DP: Chunk Text
-    DP->>DP: Add Metadata
-    DP->>RAG: Processed Chunks
-    RAG->>RAG: Generate Embeddings
-    RAG->>VS: Store Vectors
-    VS-->>RAG: Confirmation
-    RAG-->>API: Success
-    API-->>C: Response
-```
+### Claude
+- Claude 3 Opus
+- Claude 3 Sonnet
+- Claude 3 Haiku
+- Claude Instant
 
-### 2. Query and Generation Flow
+### Mistral
+- Mistral 7B
+- Mixtral 8x7B
+- Mistral Small
+- Mistral Medium
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API as API Layer
-    participant RAG as RAG System
-    participant VS as Vector Store
-    participant GEN as Generator
-    participant LLM as Language Model
+### Ollama
+- Local model hosting
+- Custom model support
+- Model management
+- Inference API
 
-    C->>API: Query Request
-    API->>RAG: Process Query
-    RAG->>RAG: Generate Query Embedding
-    RAG->>VS: Search Similar
-    VS-->>RAG: Relevant Documents
-    RAG->>GEN: Generate Response
-    GEN->>LLM: Generate with Context
-    LLM-->>GEN: Generated Text
-    GEN-->>RAG: Response
-    RAG-->>API: Formatted Response
-    API-->>C: Final Response
-```
+### HuggingFace
+- Open source models
+- Custom model hosting
+- Model fine-tuning
+- Model deployment
 
-### 3. Authentication Flow
+### Groq
+- Mixtral 8x7B
+- High-performance inference
+- Low latency
+- Cost-effective
 
-```mermaid
-sequenceDiagram
-    participant C as Client
-    participant API as API Layer
-    participant AUTH as Auth System
-    participant DB as User DB
+### Local Models
+- Custom model support
+- Local deployment
+- Offline capabilities
+- Resource optimization
 
-    C->>API: Login Request
-    API->>AUTH: Validate Credentials
-    AUTH->>DB: Check User
-    DB-->>AUTH: User Data
-    AUTH->>AUTH: Generate Token
-    AUTH-->>API: Token
-    API-->>C: Auth Response
-
-    Note over C,API: Subsequent Requests
-    C->>API: Request with Token
-    API->>AUTH: Validate Token
-    AUTH-->>API: Token Valid
-    API->>API: Process Request
-    API-->>C: Response
-```
+Each provider is integrated through a standardized interface, allowing for:
+- Consistent API access
+- Unified error handling
+- Standardized response formats
+- Provider-specific optimizations
 
 ## Component Details
 
-### 1. Client Layer
-- **Client Library**
-  - Async Python client
-  - Type-safe interfaces
-  - Error handling
-  - Authentication management
-- **API Client**
-  - HTTP request handling
-  - Response parsing
-  - Connection management
+### Core Components
 
-### 2. API Layer
-- **Authentication**
-  - JWT validation
-  - API key management
-  - Scope checking
-  - User management
-- **Endpoints**
-  - Document management
-  - Query and generation
-  - Model management
-  - Health monitoring
-- **Middleware**
-  - Request logging
-  - Error handling
-  - Rate limiting
-  - CORS management
+```mermaid
+classDiagram
+    class ModelWrapper {
+        +query_model()
+        +available_models()
+        +load_environment()
+    }
+    
+    class Agent {
+        +model
+        +memory
+        +tools
+        +system_prompt
+        +run()
+        +chat()
+    }
+    
+    class AgentMemory {
+        +max_history
+        +add_message()
+        +get_history()
+        +clear()
+    }
+    
+    class Tool {
+        +name
+        +description
+        +execute()
+    }
+    
+    ModelWrapper <|-- OpenAIModel
+    ModelWrapper <|-- ClaudeModel
+    ModelWrapper <|-- MistralModel
+    Agent --> ModelWrapper
+    Agent --> AgentMemory
+    Agent --> Tool
+```
 
-### 3. Core Layer
-- **RAG System**
-  - Document processing
-  - Embedding management
-  - Vector storage
-  - Response generation
-- **Document Processor**
-  - Text chunking
-  - Metadata management
-  - Format handling
-- **Embedding System**
-  - Model management
-  - Batch processing
-  - Caching
-- **Vector Store**
-  - Similarity search
-  - Document storage
-  - Metadata indexing
-- **Generator**
-  - Context management
-  - Model integration
-  - Response formatting
+### Ensemble System
 
-### 4. External Services
-- **OpenAI**
-  - Embedding models
-  - Generation models
-- **Anthropic**
-  - Generation models
-- **HuggingFace**
-  - Embedding models
-  - Custom models
+```mermaid
+classDiagram
+    class Ensemble {
+        +providers
+        +method
+        +weights
+        +combine_results()
+    }
+    
+    class EnsembleMethod {
+        +weighted_voting()
+        +confidence_cascade()
+        +parallel_voting()
+        +majority_voting()
+        +rank_based()
+    }
+    
+    class Provider {
+        +name
+        +weight
+        +confidence
+        +query()
+    }
+    
+    Ensemble --> EnsembleMethod
+    Ensemble --> Provider
+    Provider <|-- OpenAIProvider
+    Provider <|-- AnthropicProvider
+    Provider <|-- OllamaProvider
+```
+
+### Pipeline System
+
+```mermaid
+classDiagram
+    class Pipeline {
+        +tasks
+        +chains
+        +workflows
+        +run()
+    }
+    
+    class Task {
+        +name
+        +type
+        +config
+        +execute()
+    }
+    
+    class Chain {
+        +steps
+        +dependencies
+        +run()
+    }
+    
+    class Workflow {
+        +name
+        +tasks
+        +schedule
+        +execute()
+    }
+    
+    Pipeline --> Task
+    Pipeline --> Chain
+    Pipeline --> Workflow
+    Chain --> Task
+    Workflow --> Task
+```
+
+### Compliance & Governance
+
+```mermaid
+classDiagram
+    class Compliance {
+        +privacy
+        +audit
+        +policy
+        +check_compliance()
+    }
+    
+    class PrivacyCompliance {
+        +config
+        +export_user_data()
+        +erase_user_data()
+        +request_model_approval()
+    }
+    
+    class AuditSystem {
+        +verify_log_chain()
+        +track_changes()
+        +generate_report()
+    }
+    
+    class PolicyEngine {
+        +publish_policy()
+        +validate_compliance()
+        +enforce_rules()
+    }
+    
+    Compliance --> PrivacyCompliance
+    Compliance --> AuditSystem
+    Compliance --> PolicyEngine
+```
+
+### Interfaces
+
+```mermaid
+classDiagram
+    class Interface {
+        +cli
+        +api
+        +websocket
+    }
+    
+    class CLI {
+        +ensemble_commands()
+        +model_commands()
+        +compliance_commands()
+    }
+    
+    class API {
+        +rest_endpoints()
+        +websocket_endpoints()
+        +authentication()
+    }
+    
+    class WebSocket {
+        +connect()
+        +subscribe()
+        +publish()
+    }
+    
+    Interface --> CLI
+    Interface --> API
+    Interface --> WebSocket
+```
+
+### RAG System
+
+```mermaid
+classDiagram
+    class RAGSystem {
+        +index_documents()
+        +retrieve_context()
+        +augment_prompt()
+    }
+    
+    class DocumentIndexer {
+        +chunk_documents()
+        +create_embeddings()
+        +store_vectors()
+    }
+    
+    class VectorRetriever {
+        +search_vectors()
+        +rank_results()
+        +filter_results()
+    }
+    
+    class ContextAugmenter {
+        +combine_context()
+        +format_prompt()
+        +validate_context()
+    }
+    
+    RAGSystem --> DocumentIndexer
+    RAGSystem --> VectorRetriever
+    RAGSystem --> ContextAugmenter
+```
+
+### Fine-tuning System
+
+```mermaid
+classDiagram
+    class FineTuningSystem {
+        +prepare_data()
+        +train_model()
+        +evaluate_model()
+        +deploy_model()
+    }
+    
+    class ModelTrainer {
+        +train()
+        +validate()
+        +save_checkpoint()
+    }
+    
+    class ModelEvaluator {
+        +evaluate()
+        +compare_models()
+        +generate_metrics()
+    }
+    
+    class ModelDeployer {
+        +deploy()
+        +rollback()
+        +monitor()
+    }
+    
+    FineTuningSystem --> ModelTrainer
+    FineTuningSystem --> ModelEvaluator
+    FineTuningSystem --> ModelDeployer
+```
+
+### Model Control Plane
+
+```mermaid
+classDiagram
+    class ModelControlPlane {
+        +monitor_models()
+        +scale_resources()
+        +route_requests()
+        +balance_load()
+    }
+    
+    class ModelMonitor {
+        +track_metrics()
+        +detect_anomalies()
+        +generate_alerts()
+    }
+    
+    class ResourceScaler {
+        +scale_up()
+        +scale_down()
+        +optimize_resources()
+    }
+    
+    class RequestRouter {
+        +route_request()
+        +load_balance()
+        +failover()
+    }
+    
+    ModelControlPlane --> ModelMonitor
+    ModelControlPlane --> ResourceScaler
+    ModelControlPlane --> RequestRouter
+```
+
+### Memory System
+
+```mermaid
+classDiagram
+    class MemorySystem {
+        +store_memory()
+        +retrieve_memory()
+        +update_memory()
+    }
+    
+    class ShortTermMemory {
+        +buffer_size
+        +add_to_buffer()
+        +clear_buffer()
+    }
+    
+    class LongTermMemory {
+        +store_permanent()
+        +retrieve_permanent()
+        +update_permanent()
+    }
+    
+    class WorkingMemory {
+        +current_context
+        +update_context()
+        +clear_context()
+    }
+    
+    class EpisodicMemory {
+        +store_episode()
+        +retrieve_episode()
+        +link_episodes()
+    }
+    
+    MemorySystem --> ShortTermMemory
+    MemorySystem --> LongTermMemory
+    MemorySystem --> WorkingMemory
+    MemorySystem --> EpisodicMemory
+```
+
+### Orchestration Engine
+
+```mermaid
+classDiagram
+    class OrchestrationEngine {
+        +schedule_tasks()
+        +manage_resources()
+        +handle_events()
+    }
+    
+    class TaskScheduler {
+        +schedule()
+        +prioritize()
+        +reschedule()
+    }
+    
+    class ResourceManager {
+        +allocate()
+        +deallocate()
+        +optimize()
+    }
+    
+    class StateManager {
+        +track_state()
+        +update_state()
+        +recover_state()
+    }
+    
+    class EventBus {
+        +publish()
+        +subscribe()
+        +handle_event()
+    }
+    
+    OrchestrationEngine --> TaskScheduler
+    OrchestrationEngine --> ResourceManager
+    OrchestrationEngine --> StateManager
+    OrchestrationEngine --> EventBus
+```
 
 ## Data Flow
 
-### 1. Document Ingestion
-1. Client sends document(s)
-2. API validates request
-3. Document processor chunks text
-4. Embeddings generated
-5. Vectors stored
-6. Response returned
-
-### 2. Query Processing
-1. Client sends query
-2. API validates request
-3. Query embedded
-4. Similar documents retrieved
-5. Context prepared
-6. Response generated
-7. Result returned
-
-### 3. Model Management
-1. Client requests model switch
-2. API validates request
-3. Model initialized
-4. System updated
-5. Confirmation returned
-
-## Security Architecture
-
 ```mermaid
-graph TB
-    subgraph Security Layer
-        AUTH[Authentication]
-        RBAC[Role-Based Access]
-        RATE[Rate Limiting]
-        VAL[Input Validation]
-    end
-
-    subgraph API Layer
-        EP[Endpoints]
-        MID[Middleware]
-    end
-
-    subgraph Data Layer
-        DB[User Database]
-        VS[Vector Store]
-    end
-
-    AUTH -->|Validate| EP
-    RBAC -->|Check| EP
-    RATE -->|Limit| EP
-    VAL -->|Sanitize| EP
-    EP -->|Store| DB
-    EP -->|Access| VS
+sequenceDiagram
+    participant User
+    participant Interface
+    participant Core
+    participant RAG
+    participant Ensemble
+    participant MCP
+    participant Provider
+    
+    User->>Interface: Request
+    Interface->>Core: Process Request
+    Core->>RAG: Get Context
+    RAG-->>Core: Context
+    Core->>Ensemble: Get Ensemble Result
+    Ensemble->>MCP: Route Request
+    MCP->>Provider: Query Providers
+    Provider-->>MCP: Provider Results
+    MCP-->>Ensemble: Routed Results
+    Ensemble-->>Core: Combined Result
+    Core-->>Interface: Processed Response
+    Interface-->>User: Final Response
 ```
 
 ## Deployment Architecture
 
 ```mermaid
 graph TB
-    subgraph Client
-        WEB[Web Client]
+    subgraph "Client Layer"
         CLI[CLI Client]
-        LIB[Python Library]
+        API[API Client]
+        WS[WebSocket Client]
     end
-
-    subgraph API Server
-        LB[Load Balancer]
-        API[API Servers]
-        CACHE[Cache]
+    
+    subgraph "Application Layer"
+        Server[MultiMind Server]
+        Redis[(Redis Cache)]
+        Chroma[(Chroma DB)]
     end
-
-    subgraph Processing
-        WORK[Worker Pool]
-        QUEUE[Task Queue]
+    
+    subgraph "Model Layer"
+        OpenAI[OpenAI API]
+        Anthropic[Anthropic API]
+        Ollama[Ollama Service]
+        HF[HuggingFace API]
     end
-
-    subgraph Storage
-        DB[(Database)]
-        VS[(Vector Store)]
-        CACHE[(Cache)]
-    end
-
-    WEB -->|HTTP| LB
-    CLI -->|HTTP| LB
-    LIB -->|HTTP| LB
-    LB -->|Route| API
-    API -->|Queue| QUEUE
-    QUEUE -->|Process| WORK
-    WORK -->|Store| DB
-    WORK -->|Store| VS
-    API -->|Cache| CACHE
-    API -->|Read| DB
-    API -->|Query| VS
+    
+    CLI --> Server
+    API --> Server
+    WS --> Server
+    
+    Server --> Redis
+    Server --> Chroma
+    
+    Server --> OpenAI
+    Server --> Anthropic
+    Server --> Ollama
+    Server --> HF
 ```
 
-## Performance Considerations
+## Configuration
 
-1. **Caching Strategy**
-   - Embedding cache
-   - Query result cache
-   - Model response cache
-   - User session cache
+The architecture supports various configuration options through environment variables and configuration files:
 
-2. **Scaling Strategy**
-   - Horizontal scaling of API servers
-   - Worker pool for processing
-   - Distributed vector store
-   - Load balancing
+```mermaid
+graph LR
+    subgraph "Configuration Sources"
+        Env[Environment Variables]
+        Config[Config Files]
+        Secrets[Secret Management]
+    end
+    
+    subgraph "Configuration Types"
+        API[API Keys]
+        Model[Model Settings]
+        System[System Settings]
+        Compliance[Compliance Rules]
+    end
+    
+    Env --> API
+    Config --> Model
+    Config --> System
+    Secrets --> API
+    Config --> Compliance
+```
 
-3. **Resource Management**
-   - Connection pooling
-   - Memory management
-   - Batch processing
-   - Async operations
+## Security Architecture
 
-## Monitoring and Logging
+```mermaid
+graph TB
+    subgraph "Security Layers"
+        Auth[Authentication]
+        Authz[Authorization]
+        Audit[Audit Logging]
+        Privacy[Privacy Controls]
+    end
+    
+    subgraph "Security Features"
+        API[API Key Management]
+        RBAC[Role-Based Access]
+        Logging[Secure Logging]
+        Encryption[Data Encryption]
+    end
+    
+    Auth --> API
+    Authz --> RBAC
+    Audit --> Logging
+    Privacy --> Encryption
+```
 
-1. **Metrics**
-   - Request latency
-   - Processing time
-   - Cache hit rates
-   - Error rates
-   - Resource usage
-
-2. **Logging**
-   - Request logs
-   - Error logs
-   - Access logs
-   - Performance logs
-
-3. **Alerts**
-   - Error thresholds
-   - Performance degradation
-   - Resource exhaustion
-   - Security events 
+This architecture documentation provides a comprehensive overview of the MultiMind SDK's structure and components. Each diagram illustrates different aspects of the system, from high-level overview to detailed component interactions. 
