@@ -1,29 +1,32 @@
 """
-QLoRA (Quantized LoRA) trainer for memory-efficient fine-tuning.
+QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Tuple
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    TrainingArguments,
     Trainer,
-    DataCollatorForLanguageModeling,
-    BitsAndBytesConfig
+    TrainingArguments,
+    DataCollatorForLanguageModeling
 )
 from peft import (
     LoraConfig,
     get_peft_model,
-    prepare_model_for_kbit_training
+    prepare_model_for_kbit_training,
+    TaskType
 )
-from datasets import Dataset as HFDatase
+import bitsandbytes as bnb
 import logging
+from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 
-class QLoRATrainer:
-    """QLoRA trainer for memory-efficient fine-tuning of language models."""
+class QLoraTuner:
+    """QLoRA implementation for memory-efficient fine-tuning."""
 
     def __init__(
         self,
@@ -44,7 +47,7 @@ class QLoRATrainer:
             "target_modules": ["q_proj", "v_proj"],
             "lora_dropout": 0.05,
             "bias": "none",
-            "task_type": "CAUSAL_LM"
+            "task_type": TaskType.CAUSAL_LM
         }
 
         # Default quantization configuration
@@ -65,9 +68,8 @@ class QLoRATrainer:
             "fp16": True,
             "logging_steps": 10,
             "save_strategy": "epoch",
-            "warmup_ratio": 0.03,
-            "lr_scheduler_type": "cosine",
-            "gradient_checkpointing": True  # Enable for memory efficiency
+            "warmup_ratio": 0.1,
+            "lr_scheduler_type": "cosine"
         }
 
         self.model = None
@@ -76,15 +78,17 @@ class QLoRATrainer:
 
     def _prepare_model(self) -> None:
         """Prepare the model for QLoRA fine-tuning."""
-        # Configure quantization
-        bnb_config = BitsAndBytesConfig(**self.quantization_config)
-
-        # Load base model and tokenizer
+        # Load base model with quantization
         self.model = AutoModelForCausalLM.from_pretrained(
             self.base_model_name,
-            quantization_config=bnb_config,
+            quantization_config=self.quantization_config,
             device_map="auto"
         )
+
+        # Prepare model for k-bit training
+        self.model = prepare_model_for_kbit_training(self.model)
+
+        # Load tokenizer
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.base_model_name,
             padding_side="right"
@@ -94,15 +98,14 @@ class QLoRATrainer:
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        # Prepare model for k-bit training
-        self.model = prepare_model_for_kbit_training(self.model)
-
         # Configure LoRA
-        peft_config = LoraConfig(**self.lora_config)
-        self.model = get_peft_model(self.model, peft_config)
+        lora_config = LoraConfig(**self.lora_config)
+        self.model = get_peft_model(self.model, lora_config)
 
         # Print trainable parameters
-        self.model.print_trainable_parameters()
+        trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
+        total_params = sum(p.numel() for p in self.model.parameters())
+        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
 
     def prepare_dataset(
         self,
@@ -119,7 +122,7 @@ class QLoRATrainer:
                 padding="max_length"
             )
 
-        # Create datase
+        # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
             tokenize_function,
@@ -127,7 +130,7 @@ class QLoRATrainer:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -159,7 +162,7 @@ class QLoRATrainer:
         )
 
         # Train
-        logger.info("Starting QLoRA training...")
+        logger.info("Starting QLoRA fine-tuning...")
         self.trainer.train()
 
         # Save the model
@@ -179,26 +182,21 @@ class QLoRATrainer:
 
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
-        # Configure quantization for inference
-        bnb_config = BitsAndBytesConfig(**self.quantization_config)
-
         self.model = AutoModelForCausalLM.from_pretrained(
             path,
-            quantization_config=bnb_config,
+            quantization_config=self.quantization_config,
             device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
 
-    def merge_and_save(self, output_path: str) -> None:
-        """Merge LoRA weights with base model and save."""
+    def get_trainable_parameters(self) -> Dict[str, torch.Tensor]:
+        """Get all trainable parameters from the model."""
         if self.model is None:
-            raise ValueError("No model to merge. Train first.")
+            raise ValueError("No model loaded. Load or train first.")
 
-        # Merge LoRA weights with base model
-        self.model = self.model.merge_and_unload()
-
-        # Save the merged model
-        self.model.save_pretrained(output_path)
-        self.tokenizer.save_pretrained(output_path)
-        logger.info(f"Merged model saved to {output_path}")
+        params = {}
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                params[name] = param.data.clone()
+        return params
