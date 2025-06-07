@@ -101,6 +101,17 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 - **Alert Management**: Configurable alerts and notifications
 - **Compliance Dashboard**: Interactive monitoring and reporting
 
+### 6. Model Conversion
+
+- **Format Support**: PyTorch, TensorFlow, ONNX, GGUF, TFLite, Safetensors
+- **Optimization**: Quantization, pruning, graph optimization
+- **Hardware Acceleration**: CUDA, CPU, Neural Engine support
+- **Conversion Pipeline**: Validation, optimization, and verification
+- **Custom Converters**: Extensible converter architecture
+- **Enterprise Features**: Batch processing, streaming, and monitoring
+
+[Learn more about model conversion →](examples/model_conversion/README.md)
+
 ## 🔒 Compliance Features
 
 MultiMind SDK provides comprehensive compliance support for enterprise AI applications:
@@ -239,6 +250,7 @@ dashboard = await monitor.get_dashboard_metrics(
 
 - [API Reference](docs/api_reference/README.md) - Complete API documentation
 - [Compliance Guide](docs/compliance.md) - Enterprise compliance features
+- [Model Conversion Guide](examples/model_conversion/README.md) - Model format conversion
 - [Examples](examples/README.md) - Production-ready code examples
 - [Architecture](docs/architecture.md) - Detailed system design
 - [Contributing Guide](CONTRIBUTING.md) - Join our development team
@@ -249,19 +261,68 @@ dashboard = await monitor.get_dashboard_metrics(
 
 ```
 multimind-sdk/
-├── multimind/              # Core SDK package
-│   ├── gateway/           # Gateway implementation
-│   ├── client/            # Client libraries
-│   ├── fine_tuning/       # Fine-tuning modules
-│   ├── compliance/        # Compliance features
-│   └── utils/             # Utility functions
-├── examples/              # Example implementations
-│   ├── cli/              # Command-line examples
-│   ├── api/              # API and integration examples
-│   └── streamlit-ui/     # Streamlit-based UI examples
-├── tests/                # Test suite
-├── docs/                 # Documentation
-└── scripts/              # Development scripts
+├── multimind/                    # Core SDK package
+│   ├── gateway/                 # Gateway implementation
+│   │   ├── api/                # API endpoints
+│   │   ├── middleware/         # Request/response middleware
+│   │   └── utils/              # Gateway utilities
+│   ├── client/                 # Client libraries
+│   │   ├── rag_client.py      # RAG system client
+│   │   ├── agent_client.py    # Agent system client
+│   │   └── compliance_client.py # Compliance client
+│   ├── fine_tuning/           # Fine-tuning modules
+│   │   ├── methods/           # Fine-tuning methods
+│   │   ├── optimizers/        # Optimization strategies
+│   │   └── trainers/          # Training implementations
+│   ├── model_conversion/      # Model conversion modules
+│   │   ├── converters/        # Format converters
+│   │   │   ├── pytorch/      # PyTorch converters
+│   │   │   ├── tensorflow/   # TensorFlow converters
+│   │   │   ├── onnx/         # ONNX converters
+│   │   │   └── ollama/       # Ollama converters
+│   │   ├── optimizers/        # Conversion optimizers
+│   │   │   ├── quantization/ # Quantization methods
+│   │   │   ├── pruning/      # Model pruning
+│   │   │   └── graph/        # Graph optimization
+│   │   ├── validators/        # Format validators
+│   │   └── utils/            # Conversion utilities
+│   ├── compliance/            # Compliance features
+│   │   ├── monitors/         # Compliance monitoring
+│   │   ├── validators/       # Compliance validation
+│   │   └── reporting/        # Compliance reporting
+│   └── utils/                # Utility functions
+├── examples/                  # Example implementations
+│   ├── cli/                  # Command-line examples
+│   │   ├── rag_cli.py       # RAG CLI tool
+│   │   └── agent_cli.py     # Agent CLI tool
+│   ├── api/                  # API and integration examples
+│   │   ├── fastapi/         # FastAPI examples
+│   │   └── flask/           # Flask examples
+│   ├── model_conversion/     # Model conversion examples
+│   │   ├── converters/      # Converter examples
+│   │   │   ├── pytorch_to_gguf.py
+│   │   │   ├── tensorflow_to_tflite.py
+│   │   │   ├── onnx_to_ort.py
+│   │   │   ├── pytorch_to_safetensors.py
+│   │   │   └── tensorflow_to_onnx.py
+│   │   ├── docker/          # Docker examples
+│   │   │   ├── Dockerfile
+│   │   │   └── docker-compose.yml
+│   │   └── cli/             # CLI examples
+│   │       └── cli_example.py
+│   └── streamlit-ui/        # Streamlit-based UI examples
+├── tests/                    # Test suite
+│   ├── unit/                # Unit tests
+│   ├── integration/         # Integration tests
+│   └── e2e/                 # End-to-end tests
+├── docs/                    # Documentation
+│   ├── api_reference/       # API documentation
+│   ├── guides/             # User guides
+│   └── architecture/       # Architecture docs
+└── scripts/                # Development scripts
+    ├── setup/             # Setup scripts
+    ├── deployment/        # Deployment scripts
+    └── maintenance/       # Maintenance scripts
 ```
 
 ## 🤝 Contributing

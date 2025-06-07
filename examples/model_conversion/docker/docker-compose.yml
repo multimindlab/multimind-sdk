@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  model-converter:
+    build:
+      context: ../..
+      dockerfile: examples/model_conversion/Dockerfile
+    volumes:
+      - ../../multimind:/app/multimind
+      - ./models:/app/models
+      - ./output:/app/output
+    environment:
+      - CUDA_VISIBLE_DEVICES=0  # Enable GPU if available
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  ollama_data: 
