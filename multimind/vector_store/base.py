@@ -1,4 +1,84 @@
 """
+Base classes and interfaces for vector store implementations.
+"""
+
+from typing import List, Dict, Any, Optional, Protocol, runtime_checkable
+from dataclasses import dataclass
+from enum import Enum
+
+@dataclass
+class VectorStoreConfig:
+    """Configuration for vector store."""
+    store_type: str  # Type of vector store to use
+    dimension: int  # Vector dimension
+    index_params: Dict[str, Any]  # Index-specific parameters
+    connection_params: Dict[str, Any]  # Connection parameters
+    search_params: Dict[str, Any]  # Search parameters
+    custom_params: Dict[str, Any]  # Custom parameters
+
+@dataclass
+class SearchResult:
+    """Represents a search result."""
+    id: str
+    vector: List[float]
+    metadata: Dict[str, Any]
+    document: Dict[str, Any]
+    score: float
+
+class VectorStoreType(Enum):
+    """Types of vector stores supported."""
+    FAISS = "faiss"
+    CHROMA = "chroma"
+    WEAVIATE = "weaviate"
+    QDRANT = "qdrant"
+    MILVUS = "milvus"
+    PINECONE = "pinecone"
+    ELASTICSEARCH = "elasticsearch"
+    REDIS = "redis"
+    POSTGRES = "postgres"
+
+@runtime_checkable
+class VectorStoreBackend(Protocol):
+    """Protocol defining vector store backend interface."""
+    async def initialize(self) -> None:
+        """Initialize the vector store."""
+        pass
+
+    async def add_vectors(
+        self,
+        vectors: List[List[float]],
+        metadatas: List[Dict[str, Any]],
+        documents: List[Dict[str, Any]],
+        ids: Optional[List[str]] = None
+    ) -> None:
+        """Add vectors to the store."""
+        pass
+
+    async def search(
+        self,
+        query_vector: List[float],
+        k: int = 5,
+        filter_criteria: Optional[Dict[str, Any]] = None
+    ) -> List[SearchResult]:
+        """Search for similar vectors."""
+        pass
+
+    async def delete_vectors(self, ids: List[str]) -> None:
+        """Delete vectors from the store."""
+        pass
+
+    async def clear(self) -> None:
+        """Clear all vectors from the store."""
+        pass
+
+    async def persist(self, path: str) -> None:
+        """Persist the vector store to disk."""
+        pass
+
+    @classmethod
+    async def load(cls, path: str, config: VectorStoreConfig) -> "VectorStoreBackend":
+        """Load vector store from disk."""
+        pass """
 Base vector store interface and embedding standardization.
 """
 

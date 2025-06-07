@@ -30,7 +30,7 @@ from sklearn.preprocessing import normalize
 import sqlite3
 import yaml
 
-from .vector_store import (
+from . import (
     VectorStore, VectorStoreConfig, VectorStoreType, VectorStoreBackend,
     SearchResult, FAISSBackend, ChromaBackend, WeaviateBackend, QdrantBackend,
     MilvusBackend, PineconeBackend, ElasticsearchBackend, RedisBackend,

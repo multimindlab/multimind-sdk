@@ -35,7 +35,7 @@ from multimind.models import (
     MistralModel
 )
 from multimind.rag import RAG, Document
-from multimind.rag.embeddings import get_embedder
+from multimind.embeddings.embeddings import get_embedder
 from multimind import MCPParser, MCPExecutor
 
 # Initialize session state

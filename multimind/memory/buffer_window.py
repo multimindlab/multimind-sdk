@@ -1,64 +1,109 @@
 """
-Conversation buffer window memory implementation.
+Sliding window buffer memory implementation that maintains a fixed-size window of recent messages.
 """
 
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime
-import json
-from pathlib import Path
-from .base import BaseMemory
+from typing import List, Dict, Any, Optional
+from datetime import datetime, timedelta
+from .buffer import BufferMemory
 
-class ConversationBufferWindowMemory(BaseMemory):
-    """Memory that stores only the last k messages in a buffer."""
+class BufferWindowMemory(BufferMemory):
+    """Memory that maintains a sliding window of recent messages."""
 
     def __init__(
         self,
-        k: int = 5,
-        memory_key: str = "chat_history",
-        return_messages: bool = False,
-        storage_path: Optional[str] = None
+        window_size: int = 10,
+        window_type: str = "count",  # count, time, or tokens
+        window_value: Optional[Any] = None,  # count, timedelta, or token count
+        **kwargs
     ):
-        super().__init__(memory_key)
-        self.k = k
-        self.return_messages = return_messages
-        self.storage_path = Path(storage_path) if storage_path else None
-        self.messages: List[Dict[str, str]] = []
-        self.load()
+        """Initialize buffer window memory."""
+        super().__init__(**kwargs)
+        self.window_size = window_size
+        self.window_type = window_type
+        self.window_value = window_value or (
+            timedelta(hours=1) if window_type == "time"
+            else 1000 if window_type == "tokens"
+            else 10
+        )
 
-    def add_message(self, message: Dict[str, str]) -> None:
-        """Add a message to the buffer window."""
-        self.messages.append({
-            **message,
-            "timestamp": datetime.now().isoformat()
-        })
-        # Keep only the last k messages
-        if len(self.messages) > self.k:
-            self.messages = self.messages[-self.k:]
-        self.save()
+    async def add_message(
+        self,
+        message: Dict[str, str],
+        metadata: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Add a message and maintain window."""
+        await super().add_message(message, metadata)
+        await self._maintain_window()
 
-    def get_messages(self) -> List[Dict[str, str]]:
-        """Get messages from the buffer window."""
-        if self.return_messages:
-            return self.messages
-        return [f"{msg['role']}: {msg['content']}" for msg in self.messages]
+    async def _maintain_window(self) -> None:
+        """Maintain the sliding window based on window type."""
+        if self.window_type == "count":
+            await self._maintain_count_window()
+        elif self.window_type == "time":
+            await self._maintain_time_window()
+        else:  # tokens
+            await self._maintain_token_window()
 
-    def clear(self) -> None:
-        """Clear all messages from the buffer window."""
-        self.messages.clear()
-        self.save()
+    async def _maintain_count_window(self) -> None:
+        """Maintain window based on message count."""
+        if len(self.messages) > self.window_size:
+            self.messages = self.messages[-self.window_size:]
 
-    def save(self) -> None:
-        """Save messages to persistent storage."""
-        if self.storage_path:
-            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump(self.messages, f)
+    async def _maintain_time_window(self) -> None:
+        """Maintain window based on time."""
+        cutoff_time = datetime.now() - self.window_value
+        self.messages = [
+            m for m in self.messages
+            if m["timestamp"] >= cutoff_time
+        ]
 
-    def load(self) -> None:
-        """Load messages from persistent storage."""
-        if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
-                self.messages = json.load(f)
-                # Ensure we only keep the last k messages after loading
-                if len(self.messages) > self.k:
-                    self.messages = self.messages[-self.k:] 
+    async def _maintain_token_window(self) -> None:
+        """Maintain window based on token count."""
+        from .token_buffer import TokenBufferMemory
+        token_memory = TokenBufferMemory(max_tokens=self.window_value)
+        
+        # Add messages to token memory
+        for msg in self.messages:
+            await token_memory.add_message(msg["message"], msg["metadata"])
+        
+        # Get messages that fit within token limit
+        self.messages = [
+            {
+                "message": m["message"],
+                "metadata": m["metadata"],
+                "timestamp": m["timestamp"]
+            }
+            for m in token_memory.messages
+        ]
+
+    async def get_window_stats(self) -> Dict[str, Any]:
+        """Get statistics about the current window."""
+        if not self.messages:
+            return {
+                "window_type": self.window_type,
+                "window_value": self.window_value,
+                "message_count": 0,
+                "window_usage": 0.0
+            }
+            
+        if self.window_type == "count":
+            usage = len(self.messages) / self.window_size
+        elif self.window_type == "time":
+            oldest = self.messages[0]["timestamp"]
+            window_span = datetime.now() - oldest
+            usage = window_span / self.window_value
+        else:  # tokens
+            from .token_buffer import TokenBufferMemory
+            token_memory = TokenBufferMemory(max_tokens=self.window_value)
+            for msg in self.messages:
+                await token_memory.add_message(msg["message"], msg["metadata"])
+            usage = token_memory.total_tokens / self.window_value
+            
+        return {
+            "window_type": self.window_type,
+            "window_value": self.window_value,
+            "message_count": len(self.messages),
+            "window_usage": min(1.0, usage),
+            "oldest_message": self.messages[0]["timestamp"],
+            "newest_message": self.messages[-1]["timestamp"]
+        } 
