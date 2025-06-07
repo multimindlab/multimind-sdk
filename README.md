@@ -450,6 +450,6 @@ MultiMind SDK is developed and maintained by the MultimindLAB team, dedicated to
   </p>
   <p>
     <a href="docs/compliance.md" class="button">🔒 Learn About Compliance</a>
-    <a href="docs/examples.md" class="button">📚 View Examples</a>
+    <a href="docs/examples/readme.md" class="button">📚 View Examples</a>
   </p>
 </div>
