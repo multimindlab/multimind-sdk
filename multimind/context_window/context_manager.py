@@ -22,8 +22,8 @@ import logging
 from pathlib import Path
 import pickle
 from ..models.base import BaseLLM
-from .embedding import EmbeddingModel, EmbeddingConfig
-from .vector_store import VectorStore, VectorStoreConfig
+from ..embeddings.embedding import EmbeddingModel, EmbeddingConfig
+from ..rag.vector_store import VectorStore, VectorStoreConfig
 
 @dataclass
 class ContextWindowConfig:

@@ -1,6 +1,25 @@
 """
-Multimind SDK - A unified interface for multiple LLM providers and local models.
+MultiMind SDK - A flexible and composable SDK for building AI applications.
+
+This SDK provides a set of tools and abstractions for building AI applications,
+including memory management, model integration, and utility functions.
+
+Core Components:
+- Memory: Conversation and context management
+- Models: LLM and embedding model integration
+- Utils: Common utility functions
+
+Each component is designed to be modular and composable, allowing for flexible
+application design.
 """
+
+from .memory import (
+    BaseMemory,
+    BufferMemory,
+    SummaryMemory,
+    SummaryBufferMemory,
+    MemoryUtils
+)
 
 __version__ = "0.1.0"
 
@@ -49,6 +68,16 @@ from multimind.mcp.workflows.documentation import DocumentationWorkflow
 from multimind.mcp.workflows.multi_integration import MultiIntegrationWorkflow
 
 __all__ = [
+    # Memory
+    "BaseMemory",
+    "BufferMemory",
+    "SummaryMemory",
+    "SummaryBufferMemory",
+    "MemoryUtils",
+    
+    # Version
+    "__version__",
+
     # Core
     "BaseLLM",
     "ModelRouter",

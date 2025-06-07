@@ -10,7 +10,7 @@ import json
 
 from multimind.models import OpenAIModel, AnthropicModel
 from multimind.rag import RAG, Document
-from multimind.rag.embeddings import get_embedder
+from multimind.embeddings.embeddings import get_embedder
 from multimind.agents import Agent, AgentMemory, AgentTool
 from multimind.agents.tools import WebSearchTool, CalculatorTool
 
@@ -248,7 +248,7 @@ async def main():
     print("\nCustom document processing...")
     
     # Create custom document processor
-    from multimind.rag.document import DocumentProcessor
+    from multimind.document_processing.document import DocumentProcessor
     
     processor = DocumentProcessor(
         chunk_size=500,  # Smaller chunks
