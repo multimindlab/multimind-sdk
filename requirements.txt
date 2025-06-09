@@ -29,3 +29,48 @@ pytesseract
 pdf2image
 ebooklib
 scikit-learn
+
+# Vector Store Dependencies
+faiss-cpu>=1.7.4  # For FAISS backend
+chromadb>=0.4.18  # For Chroma backend
+weaviate-client>=4.4.0  # For Weaviate backend
+qdrant-client>=1.6.4  # For Qdrant backend
+pymilvus>=2.3.3  # For Milvus backend
+pinecone-client>=2.2.4  # For Pinecone backend
+elasticsearch>=8.10.0  # For Elasticsearch backend
+redis>=5.0.1  # For Redis backend
+psycopg2-binary>=2.9.9  # For Postgres backend
+hnswlib>=0.7.0  # For HNSW index support
+
+# Common Dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+tqdm>=4.65.0
+python-dotenv>=1.0.0
+aiohttp>=3.8.5
+asyncio>=3.4.3
+typing-extensions>=4.7.1
+pydantic>=2.4.2
+
+# Document Processing
+python-magic>=0.4.27
+python-magic-bin>=0.4.14; sys_platform == 'win32'
+PyPDF2>=3.0.0
+docx2txt>=0.8
+beautifulsoup4>=4.12.0
+markdown>=3.5.0
+
+# Embedding Dependencies
+sentence-transformers>=2.2.2
+torch>=2.0.0
+transformers>=4.35.0
+
+# Testing and Development
+pytest>=7.4.0
+pytest-asyncio>=0.21.1
+pytest-cov>=4.1.0
+black>=23.9.1
+isort>=5.12.0
+mypy>=1.5.1
+flake8>=6.1.0

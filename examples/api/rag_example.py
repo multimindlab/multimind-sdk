@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 
 from multimind.models import OpenAIModel
 from multimind.rag import RAG, Document
-from multimind.rag.embeddings import get_embedder
+from multimind.embeddings.embeddings import get_embedder
 
 async def main():
     # Initialize models

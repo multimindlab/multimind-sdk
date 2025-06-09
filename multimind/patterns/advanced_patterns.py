@@ -10,7 +10,7 @@ import networkx as nx
 import numpy as np
 from ..models.base import BaseLLM
 from .retrieval import HybridRetriever, QueryDecomposer
-from .memory import TokenAwareMemory
+from ..memory import TokenAwareMemory
 
 @dataclass
 class RetrievalStep:
