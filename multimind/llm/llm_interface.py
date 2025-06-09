@@ -11,7 +11,7 @@ import time
 from datetime import datetime
 import logging
 from ..models.base import BaseLLM
-from .advanced_prompting import AdvancedPrompting, PromptType, PromptStrategy
+from ..prompts.advanced_prompting import AdvancedPrompting, PromptType, PromptStrategy
 
 @dataclass
 class GenerationConfig:
