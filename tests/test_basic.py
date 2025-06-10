@@ -70,7 +70,7 @@ def test_agent_creation():
     memory = AgentMemory()
     calculator = CalculatorTool()
 
-    # Create agen
+    # Create agent
     agent = Agent(
         model=model,
         memory=memory,
