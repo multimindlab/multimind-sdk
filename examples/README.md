@@ -1,219 +1,271 @@
 # MultiMind SDK Examples
 
-This directory contains example scripts demonstrating various features of the MultiMind SDK, organized into CLI and API examples.
+This directory contains examples demonstrating the various capabilities of the MultiMind SDK, organized into multiple categories for different use cases and features.
 
 ## Directory Structure
 
 ```
 examples/
-├── cli/                    # Command-line interface examples
-│   ├── chat_ollama_cli.py  # Interactive chat with Ollama models
-│   ├── chat_with_gpt.py    # Basic chat with GPT
-│   ├── basic_agent.py      # Simple agent implementation
-│   ├── prompt_chain.py     # Chain of prompts example
-│   ├── task_runner.py      # Task execution with agents
-│   ├── usage_tracking.py   # Track model usage and costs
-│   ├── mcp_workflow.py     # Multi-agent collaboration
-│   └── multi_model_wrapper_cli.py  # CLI for multi-model wrapper
-├── api/                    # API and integration examples
-│   ├── gateway_examples.py # Gateway API usage examples
-│   ├── rag_example.py      # Basic RAG implementation
-│   ├── rag_advanced_example.py  # Advanced RAG with custom configs
-│   ├── multi_model_wrapper_api.py  # API for multi-model wrapper
-│   ├── model_wrapper.py    # Model wrapper implementation
-│   └── test_llm_wrapper.py # Tests for LLM wrapper
-└── streamlit-ui/          # Streamlit-based UI examples
+├── api/                 # API integration examples
+│   ├── fastapi/        # FastAPI server examples
+│   └── rest/           # REST API client examples
+│
+├── cli/                # Command-line interface examples
+│   ├── basic/          # Basic CLI usage
+│   └── advanced/       # Advanced CLI features
+│
+├── compliance/         # Compliance and security examples
+│   ├── audit/          # Audit logging
+│   └── security/       # Security features
+│
+├── data/               # Sample data for examples
+│   ├── sample_image.jpg
+│   └── sample_audio.mp3
+│
+├── ensemble/           # Model ensemble examples
+│   ├── basic/          # Basic ensemble methods
+│   └── advanced/       # Advanced ensemble techniques
+│
+├── hybrid_workflow/    # Hybrid workflow examples
+│   ├── basic/          # Basic hybrid workflows
+│   └── advanced/       # Advanced hybrid processing
+│
+├── mcp/                # Model Control Protocol examples
+│   ├── basic/          # Basic MCP usage
+│   └── advanced/       # Advanced MCP features
+│
+├── memory/             # Memory management examples
+│   ├── basic/          # Basic memory operations
+│   └── advanced/       # Advanced memory features
+│
+├── model_conversion/   # Model conversion examples
+│   ├── basic/          # Basic model conversion
+│   └── advanced/       # Advanced conversion techniques
+│
+├── model_management/   # Text-based model management
+│   ├── basic/          # Basic model operations
+│   ├── advanced/       # Advanced features
+│   └── training/       # Model training examples
+│
+├── multi_modal/        # Multi-modal processing
+│   ├── basic/          # Basic multi-modal examples
+│   ├── advanced/       # Advanced multi-modal features
+│   └── workflows/      # Complex multi-modal workflows
+│
+├── multi_model/        # Multi-model integration
+│   ├── basic/          # Basic multi-model usage
+│   └── advanced/       # Advanced multi-model features
+│
+├── observability/      # Observability examples
+│   ├── logging/        # Logging examples
+│   ├── metrics/        # Metrics collection
+│   └── tracing/        # Distributed tracing
+│
+├── pipeline/           # Pipeline examples
+│   ├── basic/          # Basic pipeline usage
+│   └── advanced/       # Advanced pipeline features
+│
+├── rag/                # Retrieval-Augmented Generation
+│   ├── basic/          # Basic RAG implementation
+│   └── advanced/       # Advanced RAG features
+│
+├── streamlit-ui/       # Streamlit UI examples
+│   ├── basic/          # Basic UI components
+│   └── advanced/       # Advanced UI features
+│
+└── vector_store/       # Vector store examples
+    ├── basic/          # Basic vector operations
+    └── advanced/       # Advanced vector features
 ```
 
-## CLI Examples
+## Category Descriptions
 
-### Ollama Chat Example
+### 1. API Examples (`api/`)
+- FastAPI server implementation
+- REST API client usage
+- API authentication and security
+- Rate limiting and caching
 
-The `cli/chat_ollama_cli.py` script provides an interactive command-line interface for chatting with Ollama models.
+### 2. CLI Examples (`cli/`)
+- Command-line interface usage
+- Custom command creation
+- Interactive shell features
+- Configuration management
 
-### Prerequisites
+### 3. Compliance Examples (`compliance/`)
+- Audit logging implementation
+- Security best practices
+- Data privacy features
+- Compliance monitoring
 
-1. Install Ollama:
-   - Visit [Ollama's website](https://ollama.ai) and follow the installation instructions
-   - Make sure the Ollama service is running
+### 4. Ensemble Examples (`ensemble/`)
+- Model ensemble techniques
+- Weighted voting systems
+- Stacking and blending
+- Performance optimization
 
-2. Install required Python packages:
+### 5. Hybrid Workflow Examples (`hybrid_workflow/`)
+- Combined model workflows
+- Multi-stage processing
+- Pipeline optimization
+- Resource management
+
+### 6. MCP Examples (`mcp/`)
+- Model Control Protocol usage
+- Workflow management
+- State handling
+- Error recovery
+
+### 7. Memory Examples (`memory/`)
+- Memory management
+- Caching strategies
+- State persistence
+- Resource optimization
+
+### 8. Model Conversion Examples (`model_conversion/`)
+- Model format conversion
+- Framework migration
+- Optimization techniques
+- Compatibility handling
+
+### 9. Model Management Examples (`model_management/`)
+- Text model operations
+- Model switching
+- Cost optimization
+- Performance tracking
+
+### 10. Multi-Modal Examples (`multi_modal/`)
+- Image processing
+- Audio processing
+- Cross-modal analysis
+- Unified processing
+
+### 11. Multi-Model Examples (`multi_model/`)
+- Multiple model integration
+- Model routing
+- Fallback handling
+- Performance optimization
+
+### 12. Observability Examples (`observability/`)
+- Logging implementation
+- Metrics collection
+- Distributed tracing
+- Performance monitoring
+
+### 13. Pipeline Examples (`pipeline/`)
+- Pipeline creation
+- Stage management
+- Error handling
+- Resource optimization
+
+### 14. RAG Examples (`rag/`)
+- Retrieval implementation
+- Context management
+- Query optimization
+- Result ranking
+
+### 15. Streamlit UI Examples (`streamlit-ui/`)
+- UI component creation
+- Interactive features
+- Data visualization
+- User experience
+
+### 16. Vector Store Examples (`vector_store/`)
+- Vector operations
+- Similarity search
+- Index management
+- Performance optimization
+
+## Getting Started
+
+1. **Setup Environment**:
    ```bash
-   pip install pytest  # For running tests
+   # Install dependencies
+   pip install -r requirements.txt
+
+   # Set up environment variables
+   export OPENAI_API_KEY="your-key"
+   export ANTHROPIC_API_KEY="your-key"
+   export HUGGINGFACE_API_KEY="your-key"
    ```
 
-### Usage
+2. **Run Examples**:
+   ```bash
+   # Basic examples
+   python examples/model_management/basic/basic_usage.py
+   python examples/multi_modal/basic/model_registration.py
 
-Basic usage:
-```bash
-python chat_ollama_cli.py
-```
+   # Advanced examples
+   python examples/model_management/advanced/intelligent_switching.py
+   python examples/multi_modal/advanced/cost_optimized_processing.py
+   ```
 
-With specific model:
-```bash
-python chat_ollama_cli.py --model llama2
-```
+## Requirements
 
-Save chat history:
-```bash
-python chat_ollama_cli.py --history chat_log.json
-```
+- Python 3.8+
+- Required packages:
+  - fastapi
+  - uvicorn
+  - requests
+  - pydantic
+  - torch
+  - numpy
+  - pillow
+  - soundfile
+  - pandas
+  - scikit-learn
+  - matplotlib
+  - seaborn
+  - nltk
+  - pyyaml
+  - openpyxl
+  - pyarrow
+  - streamlit
+  - redis
+  - elasticsearch
+  - chromadb
+  - faiss-cpu
+  - sentence-transformers
 
-Disable streaming:
-```bash
-python chat_ollama_cli.py --no-stream
-```
+## Best Practices
 
-Enable debug logging:
-```bash
-python chat_ollama_cli.py --debug
-```
+1. **Code Organization**
+   - Follow the established directory structure
+   - Use appropriate subdirectories
+   - Maintain consistent naming
 
-### Special Commands
+2. **Documentation**
+   - Include detailed README files
+   - Document dependencies
+   - Provide usage examples
 
-During the chat session, you can use these special commands:
-- `exit` - Exit the chat
-- `history` - Show chat history
-- `models` - List available models
-- `clear` - Clear chat history
-- `pull <model_name>` - Pull a new model (e.g., `pull llama2`)
-
-### Features
-
-1. **Interactive Chat**
-   - Real-time streaming responses
-   - Support for all Ollama models
-   - Easy model switching
-
-2. **Chat History**
-   - Save conversations to file
-   - View previous messages
-   - Clear history when needed
-
-3. **Model Management**
-   - List available models
-   - Pull new models
-   - Automatic model verification
+3. **Testing**
+   - Write comprehensive tests
+   - Include test data
+   - Document test requirements
 
 4. **Error Handling**
-   - Graceful error handling
-   - Informative error messages
-   - Debug logging option
+   - Implement proper error handling
+   - Include logging
+   - Provide meaningful error messages
 
-### Testing
-
-Run the test suite:
-```bash
-python test_ollama_chat.py
-```
-
-The tests verify:
-- Basic initialization
-- Chat history management
-- Model availability
-- Chat functionality
-- Error handling
-
-### Other CLI Examples
-
-1. **Basic Agent** (`cli/basic_agent.py`)
-   - Simple agent implementation
-   - Demonstrates basic agent capabilities
-
-2. **Prompt Chain** (`cli/prompt_chain.py`)
-   - Chain of prompts example
-   - Shows how to create complex prompt workflows
-
-3. **Task Runner** (`cli/task_runner.py`)
-   - Task execution with agents
-   - Demonstrates task management and execution
-
-4. **Usage Tracking** (`cli/usage_tracking.py`)
-   - Track model usage and costs
-   - Monitor API usage and expenses
-
-5. **MCP Workflow** (`cli/mcp_workflow.py`)
-   - Multi-agent collaboration
-   - Complex workflow management
-
-6. **Multi-Model Wrapper** (`cli/multi_model_wrapper_cli.py`)
-   - CLI interface for multi-model wrapper
-   - Demonstrates model composition and switching
-
-## API Examples
-
-### Gateway Examples
-
-The `api/gateway_examples.py` demonstrates how to use the MultiMind Gateway API:
-
-```python
-from multimind.gateway import MultiMindCLI, chat_manager, monitor
-
-# Create a chat session
-session = chat_manager.create_session(
-    model="openai",
-    system_prompt="You are a helpful AI assistant."
-)
-
-# Add messages and get responses
-session.add_message(role="user", content="Hello!")
-response = await handler.generate("Hello!")
-```
-
-### RAG Examples
-
-1. **Basic RAG** (`api/rag_example.py`)
-   - Simple RAG implementation
-   - Document processing and retrieval
-
-2. **Advanced RAG** (`api/rag_advanced_example.py`)
-   - Custom configurations
-   - Advanced retrieval strategies
-
-### Multi-Model Wrapper
-
-The multi-model wrapper examples demonstrate how to combine different models:
-
-1. **API Interface** (`api/multi_model_wrapper_api.py`)
-   - API for model composition
-   - Model switching and routing
-
-2. **Model Wrapper** (`api/model_wrapper.py`)
-   - Core wrapper implementation
-   - Model abstraction and management
-
-3. **Tests** (`api/test_llm_wrapper.py`)
-   - Test suite for LLM wrapper
-   - Integration tests
+5. **Performance**
+   - Optimize resource usage
+   - Implement caching
+   - Monitor performance
 
 ## Contributing
 
-Feel free to contribute more examples! When adding new examples:
-1. Follow the existing code style
-2. Add appropriate documentation
-3. Include tests if applicable
-4. Update this README with usage instructions
-5. Place files in the appropriate directory (cli/ or api/)
+1. Fork the repository
+2. Create a feature branch
+3. Add your example
+4. Write tests
+5. Update documentation
+6. Submit a pull request
 
-## Troubleshooting
+## Support
 
-Common issues and solutions:
-
-1. **Ollama not found**
-   - Ensure Ollama is installed and in your PATH
-   - Check if the Ollama service is running
-
-2. **Model not available**
-   - Use the `pull` command to download the model
-   - Check available models with the `models` command
-
-3. **Chat history issues**
-   - Ensure write permissions in the history file directory
-   - Check file path validity
-
-4. **Performance issues**
-   - Try disabling streaming with `--no-stream`
-   - Use a smaller model if available
-   - Check system resources
-
-For more help, check the [main documentation](https://github.com/multimind-dev/multimind-sdk/blob/main/docs/README.md) or open an issue. 
+For issues and questions:
+1. Check the [documentation](https://multimind-sdk.readthedocs.io/)
+2. Open an issue on GitHub
+3. Contact support@multimind.ai 
