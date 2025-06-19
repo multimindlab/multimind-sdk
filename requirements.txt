@@ -39,8 +39,12 @@ pymilvus>=2.3.3  # For Milvus backend
 pinecone-client>=2.2.4  # For Pinecone backend
 elasticsearch>=8.10.0  # For Elasticsearch backend
 redis>=5.0.1  # For Redis backend
-psycopg2-binary>=2.9.9  # For Postgres backend
+psycopg2-binary>=2.9.9  # For Postgres/AnalyticDB backend
 hnswlib>=0.7.0  # For HNSW index support
+opensearch-py>=2.3.1  # For Alibaba Cloud OpenSearch backend
+annoy>=1.17.3  # For Annoy backend
+astrapy>=0.6.0  # For AstraDB backend
+pymongo>=4.5.0  # For MongoDB Atlas backend
 
 # Common Dependencies
 numpy>=1.24.0
