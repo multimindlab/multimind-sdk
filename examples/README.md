@@ -268,4 +268,4 @@ examples/
 For issues and questions:
 1. Check the [documentation](https://multimind-sdk.readthedocs.io/)
 2. Open an issue on GitHub
-3. Contact support@multimind.ai 
+3. Contact support@multimind.dev 
