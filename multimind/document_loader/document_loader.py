@@ -2,7 +2,7 @@
 Enhanced document loading with support for multiple formats and sources.
 """
 
-from typing import List, Dict, Any, Optional, Union, Protocol, runtime_checkable
+from typing import List, Dict, Any, Optional, Union, Protocol, runtime_checkable, Tuple
 from pathlib import Path
 import asyncio
 import aiohttp
@@ -16,6 +16,7 @@ import docx
 import pandas as pd
 from unstructured.partition.auto import partition
 from ..models.base import BaseLLM
+import os
 
 @dataclass
 class DocumentMetadata:
@@ -353,4 +354,42 @@ class DocumentLoaderFactory:
         elif source_type == DocumentSource.STREAM:
             return StreamDocumentLoader(kwargs.pop('connector'), **kwargs)
         else:
-            raise ValueError(f"Unsupported source type: {source_type}") 
+            raise ValueError(f"Unsupported source type: {source_type}")
+
+class WebsiteDocumentLoader:
+    """Loader for ingesting documents from websites (HTML/webpages)."""
+    async def load(self, url: str) -> Tuple[str, str]:
+        """Fetch and extract main text content from a webpage."""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+        except ImportError:
+            raise ImportError("Please install 'requests' and 'beautifulsoup4' to use WebsiteDocumentLoader.")
+        response = requests.get(url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, 'html.parser')
+        # Try to extract main content
+        texts = [t for t in soup.stripped_strings]
+        content = '\n'.join(texts)
+        return content, response.text
+
+class EmailDocumentLoader:
+    """Loader for parsing and ingesting email files (EML, MSG, etc.)."""
+    async def load(self, file_path: str) -> Tuple[str, str]:
+        """Parse an email file and extract the main text content."""
+        import email
+        from email import policy
+        from email.parser import BytesParser
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Email file not found: {file_path}")
+        with open(file_path, 'rb') as f:
+            msg = BytesParser(policy=policy.default).parse(f)
+        # Extract text/plain part
+        text = ""
+        if msg.is_multipart():
+            for part in msg.walk():
+                if part.get_content_type() == 'text/plain':
+                    text += part.get_content()
+        else:
+            text = msg.get_content()
+        return text.strip(), str(msg) 

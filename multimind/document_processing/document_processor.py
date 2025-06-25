@@ -2,7 +2,7 @@
 Enhanced document processing with semantic chunking and metadata extraction.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Union, Tuple, Callable
 import re
 from dataclasses import dataclass
 from enum import Enum
@@ -12,173 +12,18 @@ import requests
 from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
 import numpy as np
 from ..models.base import BaseLLM
+from .document_chunkers import *
+from .document_embeddings import *
 
-@dataclass
-class DocumentChunk:
-    """Represents a processed document chunk."""
-    text: str
-    metadata: Dict[str, Any]
-    chunk_id: str
-    parent_id: Optional[str]
-    semantic_score: Optional[float] = None
-    embedding: Optional[List[float]] = None
+try:
+    import nltk
+    nltk.download('punkt', quiet=True)
+    from nltk.tokenize import sent_tokenize
+    _HAS_NLTK = True
+except ImportError:
+    _HAS_NLTK = False
 
-class ChunkingStrategy(Enum):
-    """Different document chunking strategies."""
-    FIXED_SIZE = "fixed_size"
-    SEMANTIC = "semantic"
-    RECURSIVE = "recursive"
-    SLIDING_WINDOW = "sliding_window"
 
-class MetadataExtractor:
-    """Extracts and enriches document metadata."""
-
-    def __init__(self, nlp_model: Optional[str] = "en_core_web_sm"):
-        self.nlp = spacy.load(nlp_model) if nlp_model else None
-
-    def extract_metadata(self, text: str) -> Dict[str, Any]:
-        """
-        Extract metadata from text using NLP.
-        
-        Args:
-            text: Input text
-            
-        Returns:
-            Dictionary of extracted metadata
-        """
-        if not self.nlp:
-            return {}
-
-        doc = self.nlp(text)
-        
-        # Extract entities
-        entities = {
-            ent.label_: [e.text for e in doc.ents if e.label_ == ent.label_]
-            for ent in doc.ents
-        }
-        
-        # Extract key phrases (noun chunks)
-        key_phrases = [chunk.text for chunk in doc.noun_chunks]
-        
-        # Extract document statistics
-        stats = {
-            "word_count": len(doc),
-            "sentence_count": len(list(doc.sents)),
-            "avg_word_length": np.mean([len(token.text) for token in doc]),
-            "unique_words": len(set(token.text.lower() for token in doc))
-        }
-        
-        return {
-            "entities": entities,
-            "key_phrases": key_phrases,
-            "statistics": stats
-        }
-
-class SemanticChunker:
-    """Implements semantic document chunking."""
-
-    def __init__(
-        self,
-        model: BaseLLM,
-        min_chunk_size: int = 100,
-        max_chunk_size: int = 1000,
-        similarity_threshold: float = 0.7,
-        **kwargs
-    ):
-        self.model = model
-        self.min_chunk_size = min_chunk_size
-        self.max_chunk_size = max_chunk_size
-        self.similarity_threshold = similarity_threshold
-        self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
-        self.summarizer = AutoModelForSeq2SeqGeneration.from_pretrained("facebook/bart-large-cnn")
-
-    async def chunk_document(
-        self,
-        text: str,
-        metadata: Optional[Dict[str, Any]] = None,
-        **kwargs
-    ) -> List[DocumentChunk]:
-        """
-        Chunk document semantically based on content similarity.
-        
-        Args:
-            text: Input document text
-            metadata: Optional document metadata
-            **kwargs: Additional chunking parameters
-            
-        Returns:
-            List of semantic document chunks
-        """
-        # Split into sentences
-        sentences = self._split_into_sentences(text)
-        
-        # Generate embeddings for sentences
-        sentence_embeddings = await self.model.embeddings(sentences)
-        
-        # Group similar sentences
-        chunks = self._group_similar_sentences(sentences, sentence_embeddings)
-        
-        # Create DocumentChunk objects
-        return [
-            DocumentChunk(
-                text=chunk_text,
-                metadata=metadata or {},
-                chunk_id=f"chunk_{i}",
-                parent_id=None,
-                semantic_score=self._calculate_semantic_score(chunk_text)
-            )
-            for i, chunk_text in enumerate(chunks)
-        ]
-
-    def _split_into_sentences(self, text: str) -> List[str]:
-        """Split text into sentences using NLP."""
-        doc = spacy.load("en_core_web_sm")(text)
-        return [sent.text.strip() for sent in doc.sents]
-
-    def _group_similar_sentences(
-        self,
-        sentences: List[str],
-        embeddings: List[List[float]]
-    ) -> List[str]:
-        """Group similar sentences into chunks."""
-        chunks = []
-        current_chunk = []
-        current_embedding = None
-        
-        for sentence, embedding in zip(sentences, embeddings):
-            if not current_chunk:
-                current_chunk.append(sentence)
-                current_embedding = embedding
-            else:
-                # Calculate similarity with current chunk
-                similarity = self._cosine_similarity(current_embedding, embedding)
-                
-                if similarity >= self.similarity_threshold:
-                    current_chunk.append(sentence)
-                    # Update chunk embedding
-                    current_embedding = np.mean([current_embedding, embedding], axis=0)
-                else:
-                    # Start new chunk
-                    chunks.append(" ".join(current_chunk))
-                    current_chunk = [sentence]
-                    current_embedding = embedding
-        
-        if current_chunk:
-            chunks.append(" ".join(current_chunk))
-        
-        return chunks
-
-    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
-        """Calculate cosine similarity between two vectors."""
-        vec1 = np.array(vec1)
-        vec2 = np.array(vec2)
-        return np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2))
-
-    def _calculate_semantic_score(self, text: str) -> float:
-        """Calculate semantic coherence score for a chunk."""
-        # This is a placeholder implementation
-        # In practice, you might want to use more sophisticated methods
-        return 1.0
 
 class EnhancedDocumentProcessor:
     """Enhanced document processing with multiple strategies."""
@@ -341,4 +186,5 @@ class EnhancedDocumentProcessor:
             embedding=np.mean([chunk1.embedding, chunk2.embedding], axis=0)
             if chunk1.embedding and chunk2.embedding
             else None
-        ) 
+        )
+
