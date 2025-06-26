@@ -317,4 +317,70 @@ curl -X GET http://localhost:8000/anomalies
 For support, please contact:
 - Email: support@multimind.ai
 - Documentation: https://docs.multimind.ai
-- GitHub: https://github.com/multimind-ai/multimind-sdk 
+- GitHub: https://github.com/multimind-ai/multimind-sdk
+
+## Model Client Usage Examples
+
+### Basic ModelClient Subclass
+```python
+from multimind.client.model_client import ModelClient
+
+class MyCustomModelClient(ModelClient):
+    def generate(self, prompt: str, **kwargs) -> str:
+        # Custom model logic here
+        return "response"
+```
+
+### LSTMModelClient Example
+```python
+from multimind.client.model_client import LSTMModelClient
+# Assume you have a trained model and tokenizer
+client = LSTMModelClient(model_path="lstm.pt", tokenizer=my_tokenizer)
+response = client.generate("Hello world")
+```
+
+### Mixture-of-Experts (MoE) ModelClient
+```python
+from multimind.client.model_client import MoEModelClient, LSTMModelClient, RNNModelClient
+
+def router_fn(prompt):
+    return "lstm" if len(prompt) < 100 else "rnn"
+
+experts = {"lstm": LSTMModelClient(...), "rnn": RNNModelClient(...)}
+moe_client = MoEModelClient(expert_clients=experts, router_fn=router_fn)
+response = moe_client.generate("Test input")
+```
+
+### DynamicMoEModelClient Example
+```python
+from multimind.client.model_client import DynamicMoEModelClient, LSTMModelClient, RNNModelClient
+
+def dynamic_router(prompt, metrics):
+    if metrics["input_length"] > 1000:
+        return "rnn"
+    return "lstm"
+
+experts = {"lstm": LSTMModelClient(...), "rnn": RNNModelClient(...)}
+dyn_moe_client = DynamicMoEModelClient(expert_clients=experts, router_fn=dynamic_router)
+response = dyn_moe_client.generate("Test input")
+```
+
+### MultiModalClient Example
+```python
+from multimind.client.model_client import MultiModalClient, LSTMModelClient, ImageModelClient
+
+client = MultiModalClient(text_client=LSTMModelClient(...), image_client=ImageModelClient())
+text_response = client.generate("Hello world", input_type="text")
+image_response = client.generate("Describe this image", input_type="image")
+```
+
+### FederatedRouter Example
+```python
+from multimind.client.federated_router import FederatedRouter
+from multimind.client.model_client import LSTMModelClient
+
+local_client = LSTMModelClient(...)
+cloud_client = LSTMModelClient(...)
+router = FederatedRouter(local_client, cloud_client)
+response = router.generate("Test input")
+``` 

@@ -223,4 +223,25 @@ export ANTHROPIC_API_KEY="your-anthropic-key"
 - `chromadb`: Vector store
 - `sentence-transformers`: Embeddings
 - `openai`: OpenAI integration
-- `anthropic`: Anthropic integration 
+- `anthropic`: Anthropic integration
+
+## Model Client System and Routing
+
+### Extensible Model Clients
+- **ModelClient**: Base class for all model clients (transformer and non-transformer). Subclass to implement custom models.
+- **LSTMModelClient, RNNModelClient, GRUModelClient**: Ready-to-use clients for classic sequence models.
+- **MoEModelClient**: Mixture-of-Experts client that routes requests to the best expert model based on a routing function.
+- **DynamicMoEModelClient**: Advanced MoE client that routes based on runtime metrics (latency, input length, etc.).
+- **MultiModalClient**: Unified client for text, image, audio, video, and code models. Routes requests based on input type.
+- **Other Clients**: Includes MambaClient, RWKVClient, SpaCyClient, S4Client, HyenaClient, DiffusionTextClient, and stubs for image/audio/video/code models.
+
+### Routing Logic
+- **FederatedRouter**: Routes between local and cloud model clients based on context (input size, latency, privacy, etc.). Supports custom routing logic and metrics tracking.
+- **Custom Routing**: Easily extendable to support new routing strategies and model types.
+
+### Example Use Cases
+- Combine multiple model types in a single workflow.
+- Route requests dynamically for cost, latency, or quality optimization.
+- Build multimodal applications with unified API.
+
+See the Usage Guide for code examples. 
