@@ -1,5 +1,10 @@
 """
 Main vector store implementation that manages different backends.
+this file that provides the unified abstraction for all vector store backends.
+It allows users to switch between databases seamlessly by specifying the backend 
+in the config, without changing their code.
+All backend implementations (e.g., Milvus, Pinecone, Qdrant, etc.) are mapped in 
+this file, so the user can select any supported backend via configuration.
 """
 
 import logging
