@@ -85,14 +85,8 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 - **Task Orchestration**: Complex workflow management and prompt chaining
 - **Model Composition**: Protocol for combining multiple models and tools
 
-### 4. Framework Integrations
 
-- **LangChain**: Seamless integration with LangChain components
-- **CrewAI**: Support for multi-agent systems
-- **LiteLLM**: Unified model interface
-- **SuperAGI**: Advanced agent capabilities
-
-### 5. Enterprise Compliance
+### 4. Enterprise Compliance
 
 - **Real-time Monitoring**: Continuous compliance checks and alerts
 - **Healthcare Compliance**: HIPAA, GDPR, and healthcare-specific regulations
@@ -101,7 +95,7 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 - **Alert Management**: Configurable alerts and notifications
 - **Compliance Dashboard**: Interactive monitoring and reporting
 
-### 6. Model Conversion
+### 5. Model Conversion
 
 - **Format Support**: PyTorch, TensorFlow, ONNX, GGUF, TFLite, Safetensors
 - **Optimization**: Quantization, pruning, graph optimization
