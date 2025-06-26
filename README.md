@@ -85,7 +85,6 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 - **Task Orchestration**: Complex workflow management and prompt chaining
 - **Model Composition**: Protocol for combining multiple models and tools
 
-
 ### 4. Enterprise Compliance
 
 - **Real-time Monitoring**: Continuous compliance checks and alerts
@@ -105,6 +104,42 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 - **Enterprise Features**: Batch processing, streaming, and monitoring
 
 [Learn more about model conversion →](examples/model_conversion/README.md)
+
+### 6. Model Client System & Routing
+
+- **Extensible ModelClient base class** for custom, classic, and transformer models
+- **Mixture-of-Experts (MoE) and DynamicMoE** for expert selection and runtime optimization
+- **MultiModalClient** for unified text, image, audio, video, and code model access
+- **FederatedRouter** for local/cloud and custom routing strategies
+
+---
+
+### Model Client & Routing Example
+
+```python
+from multimind.client.model_client import LSTMModelClient, MoEModelClient, MultiModalClient
+from multimind.client.federated_router import FederatedRouter
+
+# Example: LSTM Model Client
+lstm_client = LSTMModelClient(model_path="lstm.pt", tokenizer=my_tokenizer)
+print(lstm_client.generate("Hello world"))
+
+# Example: Mixture-of-Experts (MoE)
+def router_fn(prompt):
+    return "lstm" if len(prompt) < 100 else "rnn"
+moe_client = MoEModelClient({"lstm": lstm_client, "rnn": lstm_client}, router_fn)
+print(moe_client.generate("Test input"))
+
+# Example: MultiModalClient
+mm_client = MultiModalClient(text_client=lstm_client)
+print(mm_client.generate("Hello world", input_type="text"))
+
+# Example: FederatedRouter
+router = FederatedRouter(local_client=lstm_client, cloud_client=lstm_client)
+print(router.generate("short prompt"))
+```
+
+---
 
 ## 🔒 Compliance Features
 
@@ -262,6 +297,8 @@ multimind-sdk/
 │   │   └── utils/              # Gateway utilities
 │   ├── client/                 # Client libraries
 │   │   ├── rag_client.py      # RAG system client
+│   │   ├── model_client.py    # Extensible model client system (LSTM, MoE, MultiModal, etc.)
+│   │   ├── federated_router.py # Local/cloud and custom routing logic
 │   │   ├── agent_client.py    # Agent system client
 │   │   └── compliance_client.py # Compliance client
 │   ├── fine_tuning/           # Fine-tuning modules

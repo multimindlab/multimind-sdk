@@ -86,4 +86,14 @@ settings = config.load()
 - [Architecture Overview](../docs/architecture.md)
 - [API Reference](../docs/api_reference/)
 - [Configuration Guide](../docs/configuration.md)
-- [Development Guide](../docs/development.md) 
+- [Development Guide](../docs/development.md)
+
+## Model Client Architecture and Routing
+
+The MultiMind SDK provides an extensible model client system:
+- **ModelClient**: Base class for all model clients. Subclass to implement custom models.
+- **Prebuilt Clients**: Includes LSTMModelClient, RNNModelClient, GRUModelClient, MoEModelClient, DynamicMoEModelClient, MultiModalClient, and more.
+- **Routing**: Use MoE and DynamicMoE for expert selection, or FederatedRouter for local/cloud routing.
+- **Extensibility**: Add new model types or routing strategies by subclassing ModelClient or implementing custom routers.
+
+This architecture enables advanced workflows, dynamic model selection, and multimodal support. 
