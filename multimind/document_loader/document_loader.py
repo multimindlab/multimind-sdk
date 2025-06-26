@@ -392,4 +392,94 @@ class EmailDocumentLoader:
                     text += part.get_content()
         else:
             text = msg.get_content()
-        return text.strip(), str(msg) 
+        return text.strip(), str(msg)
+
+class SpreadsheetDocumentLoader(BaseDocumentLoader):
+    """Loader for spreadsheet documents (Excel/CSV)."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        try:
+            import pandas as pd
+        except ImportError:
+            raise ImportError('pandas is required for SpreadsheetDocumentLoader. Install with: pip install pandas openpyxl')
+        path = Path(source)
+        if path.suffix.lower() == '.csv':
+            df = pd.read_csv(path)
+        else:
+            df = pd.read_excel(path)
+        content = df.to_string()
+        metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
+        return LoadedDocument(content=content, metadata=metadata, raw_content=df)
+
+class PresentationDocumentLoader(BaseDocumentLoader):
+    """Loader for presentation documents (PowerPoint)."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        try:
+            from pptx import Presentation
+        except ImportError:
+            raise ImportError('python-pptx is required for PresentationDocumentLoader. Install with: pip install python-pptx')
+        path = Path(source)
+        prs = Presentation(path)
+        slides = []
+        for slide in prs.slides:
+            text = []
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text.append(shape.text)
+            slides.append("\n".join(text))
+        content = "\n---\n".join(slides)
+        metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
+        return LoadedDocument(content=content, metadata=metadata, raw_content=prs)
+
+class ImageDocumentLoader(BaseDocumentLoader):
+    """Loader for image files (extracts text via OCR)."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        try:
+            from PIL import Image
+            import pytesseract
+        except ImportError:
+            raise ImportError('Pillow and pytesseract are required for ImageDocumentLoader. Install with: pip install pillow pytesseract')
+        path = Path(source)
+        image = Image.open(path)
+        content = pytesseract.image_to_string(image)
+        metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
+        return LoadedDocument(content=content, metadata=metadata, raw_content=image)
+
+class AudioDocumentLoader(BaseDocumentLoader):
+    """Loader for audio files (extracts text via speech-to-text)."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        try:
+            import librosa
+        except ImportError:
+            raise ImportError('librosa is required for AudioDocumentLoader. Install with: pip install librosa')
+        # User must provide a transcribe_fn for actual speech-to-text
+        transcribe_fn = kwargs.get('transcribe_fn')
+        if not transcribe_fn:
+            raise ValueError('You must provide a transcribe_fn for audio transcription.')
+        path = Path(source)
+        audio, sr = librosa.load(path, sr=None)
+        content = transcribe_fn(audio, sr)
+        metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
+        return LoadedDocument(content=content, metadata=metadata, raw_content=audio)
+
+class VideoDocumentLoader(BaseDocumentLoader):
+    """Loader for video files (extracts text via video-to-text or speech-to-text)."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        try:
+            import moviepy.editor as mp
+        except ImportError:
+            raise ImportError('moviepy is required for VideoDocumentLoader. Install with: pip install moviepy')
+        # User must provide a transcribe_fn for actual video/audio transcription
+        transcribe_fn = kwargs.get('transcribe_fn')
+        if not transcribe_fn:
+            raise ValueError('You must provide a transcribe_fn for video transcription.')
+        path = Path(source)
+        video = mp.VideoFileClip(str(path))
+        audio = video.audio
+        audio_path = str(path) + '.temp_audio.wav'
+        audio.write_audiofile(audio_path)
+        import librosa
+        audio_data, sr = librosa.load(audio_path, sr=None)
+        content = transcribe_fn(audio_data, sr)
+        os.remove(audio_path)
+        metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
+        return LoadedDocument(content=content, metadata=metadata, raw_content=video) 

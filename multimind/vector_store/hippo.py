@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional, Callable
 import os
 import logging
 import asyncio
-# Placeholder: Replace with actual Hippo SDK import if available
+from hippo_api import HippoClient
 
 class HippoBackend(VectorStoreBackend):
     def __init__(
@@ -37,20 +37,64 @@ class HippoBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.api_key or not self.endpoint:
             raise ValueError("Hippo API key and endpoint must be provided.")
-        # self.client = HippoClient(api_key=self.api_key, endpoint=self.endpoint)
-        # self.col = self.client.collection(self.collection)
+        self.client = HippoClient(api_key=self.api_key, endpoint=self.endpoint)
+        self.col = self.client.collection(self.collection)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
-        # Placeholder for batch add
+        # Hippo expects a list of dicts with 'vector', 'metadata', 'document', and optional 'id'
+        items = []
+        for i, vector in enumerate(vectors):
+            item = {
+                "vector": vector,
+                "metadata": metadatas[i] if metadatas else {},
+                "document": documents[i] if documents else {},
+            }
+            if ids:
+                item["id"] = ids[i]
+            items.append(item)
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: self.col.insert_many(items)
+        )
         if self.live_indexing:
             await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
         self.log_metrics('add_vectors', len(vectors))
 
     async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
-        # Placeholder for search logic
+        # Build search query
+        query = {"vector": query_vector, "k": k}
+        if filter_criteria:
+            query["filter"] = filter_criteria
+        res = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: self.col.search(query)
+        )
         results = []
-        # Implement Hippo vector search here
+        for doc in res:
+            meta = doc.get("metadata", {})
+            doc_content = doc.get("document", {})
+            score = doc.get("score", 1.0)
+            bm25_score = None
+            if self.enable_hybrid_search and query_text:
+                bm25_score = self._bm25_score(query_text, doc_content.get("content", ""))
+                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
+            if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
+                continue
+            result = SearchResult(
+                id=doc.get("id"),
+                vector=doc.get("vector"),
+                metadata=meta,
+                document=doc_content,
+                score=score
+            )
+            if explain:
+                result.explanation = {
+                    "vector_score": doc.get("score", 1.0),
+                    "bm25_score": bm25_score,
+                    "final_score": score
+                }
+            results.append(result)
+        if scoring_method and scoring_method != "weighted_sum":
+            results = self._apply_custom_scoring(results, scoring_method)
         self.log_metrics('search', len(results))
         return results
 
@@ -64,14 +108,19 @@ class HippoBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
-        # Placeholder for batch delete
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: [self.col.delete_one({"id": doc_id}) for doc_id in ids]
+        )
         self.log_metrics('delete_vectors', len(ids))
 
     async def clear(self):
-        # Placeholder for clear
+        await asyncio.get_event_loop().run_in_executor(
+            None, lambda: self.col.delete_many({})
+        )
         self.log_metrics('clear', 1)
 
     async def persist(self, path):
+        # Hippo is a managed service, so persistence is not typically needed
         self.log_metrics('persist', 1)
 
     @classmethod
