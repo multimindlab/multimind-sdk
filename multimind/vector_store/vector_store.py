@@ -11,15 +11,68 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from .base import VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType
-from .backends.faiss import FAISSBackend
+
+# Import all backend implementations
+from .faiss import FAISSBackend
 from .chroma import ChromaBackend
-from .backends.weaviate import WeaviateBackend
-from .backends.qdrant import QdrantBackend
-from .backends.milvus import MilvusBackend
-from .backends.pinecone import PineconeBackend
-from .backends.elasticsearch import ElasticsearchBackend
-from .backends.redis import RedisBackend
-from .backends.postgres import PostgresBackend
+from .weaviate import WeaviateVectorStore
+from .qdrant import QdrantBackend
+from .milvus import MilvusBackend
+from .pinecone import PineconeBackend
+from .elasticsearch import ElasticsearchBackend
+from .alibabacloud_opensearch import AlibabaCloudOpenSearchBackend
+from .atlas import AtlasBackend
+from .awadb import AwaDBBackend
+from .azuresearch import AzureSearchBackend
+from .bageldb import BagelDBBackend
+from .baiducloud_vector_search import BaiduCloudVectorSearchBackend
+from .cassandra import CassandraBackend
+from .clarifai import ClarifaiBackend
+from .clickhouse import ClickHouseBackend
+from .databricks_vector_search import DatabricksVectorSearchBackend
+from .dashvector import DashVectorBackend
+from .dingo import DingoDBBackend
+from .elastic_vector_search import ElasticVectorSearchBackend
+from .hologres import HologresBackend
+from .lancedb import LanceDBBackend
+from .marqo import MarqoBackend
+from .meilisearch import MeiliSearchBackend
+from .mongodb_atlas import MongoDBAtlasBackend
+from .momento_vector_index import MomentoVectorIndexBackend
+from .neo4j_vector import Neo4jVectorBackend
+from .opensearch_vector_search import OpenSearchVectorBackend
+from .pgvector import PGVectorBackend
+from .pgvecto_rs import PGVectoRSBackend
+from .pgembedding import PGEmbeddingBackend
+from .nucliadb import NucliaDBBackend
+from .myscale import MyScaleBackend
+from .matching_engine import MatchingEngineBackend
+from .llm_rails import LLMRailsBackend
+from .hippo import HippoBackend
+from .epsilla import EpsillaBackend
+from .deeplake import DeepLakeBackend
+from .azure_cosmos_db import AzureCosmosDBBackend
+from .annoy import AnnoyBackend
+from .astradb import AstraDBBackend
+from .analyticdb import AnalyticDBBackend
+from .sklearn import SklearnBackend
+from .singlestoredb import SingleStoreDBBackend
+from .rocksetdb import RocksetDBBackend
+from .sqlitevss import SQLiteVSSBackend
+from .starrocks import StarRocksBackend
+from .supabase import SupabaseVectorStore
+from .tair import TairVectorStore
+from .tigris import TigrisVectorStore
+from .tiledb import TileDBVectorStore
+from .timescalevector import TimescaleVectorStore
+from .tencentvectordb import TencentVectorDBVectorStore
+from .usearch import USearchVectorStore
+from .vald import ValdVectorStore
+from .vectara import VectaraVectorStore
+from .typesense import TypesenseVectorStore
+from .xata import XataVectorStore
+from .zep import ZepVectorStore
+from .zilliz import ZillizVectorStore
 
 class VectorStore:
     """Unified vector store interface."""
@@ -42,13 +95,64 @@ class VectorStore:
         backend_map = {
             VectorStoreType.FAISS: FAISSBackend,
             VectorStoreType.CHROMA: ChromaBackend,
-            VectorStoreType.WEAVIATE: WeaviateBackend,
+            VectorStoreType.WEAVIATE: WeaviateVectorStore,
             VectorStoreType.QDRANT: QdrantBackend,
             VectorStoreType.MILVUS: MilvusBackend,
             VectorStoreType.PINECONE: PineconeBackend,
             VectorStoreType.ELASTICSEARCH: ElasticsearchBackend,
-            VectorStoreType.REDIS: RedisBackend,
-            VectorStoreType.POSTGRES: PostgresBackend
+            VectorStoreType.ALIBABACLOUD_OPENSEARCH: AlibabaCloudOpenSearchBackend,
+            VectorStoreType.ATLAS: AtlasBackend,
+            VectorStoreType.AWADB: AwaDBBackend,
+            VectorStoreType.AZURESEARCH: AzureSearchBackend,
+            VectorStoreType.BAGELDB: BagelDBBackend,
+            VectorStoreType.BAIDUCLOUD_VECTOR_SEARCH: BaiduCloudVectorSearchBackend,
+            VectorStoreType.CASSANDRA: CassandraBackend,
+            VectorStoreType.CLARIFAI: ClarifaiBackend,
+            VectorStoreType.CLICKHOUSE: ClickHouseBackend,
+            VectorStoreType.DATABRICKS_VECTOR_SEARCH: DatabricksVectorSearchBackend,
+            VectorStoreType.DASHVECTOR: DashVectorBackend,
+            VectorStoreType.DINGO: DingoDBBackend,
+            VectorStoreType.ELASTIC_VECTOR_SEARCH: ElasticVectorSearchBackend,
+            VectorStoreType.HOLOGRES: HologresBackend,
+            VectorStoreType.LANCEDB: LanceDBBackend,
+            VectorStoreType.MARQO: MarqoBackend,
+            VectorStoreType.MEILISEARCH: MeiliSearchBackend,
+            VectorStoreType.MONGODB_ATLAS: MongoDBAtlasBackend,
+            VectorStoreType.MOMENTO_VECTOR_INDEX: MomentoVectorIndexBackend,
+            VectorStoreType.NEO4J_VECTOR: Neo4jVectorBackend,
+            VectorStoreType.OPENSEARCH_VECTOR_SEARCH: OpenSearchVectorBackend,
+            VectorStoreType.PGVECTOR: PGVectorBackend,
+            VectorStoreType.PGVECTO_RS: PGVectoRSBackend,
+            VectorStoreType.PGEMBEDDING: PGEmbeddingBackend,
+            VectorStoreType.NUCLIADB: NucliaDBBackend,
+            VectorStoreType.MYSCALE: MyScaleBackend,
+            VectorStoreType.MATCHING_ENGINE: MatchingEngineBackend,
+            VectorStoreType.LLM_RAILS: LLMRailsBackend,
+            VectorStoreType.HIPPO: HippoBackend,
+            VectorStoreType.EPSILLA: EpsillaBackend,
+            VectorStoreType.DEEPLAKE: DeepLakeBackend,
+            VectorStoreType.AZURE_COSMOS_DB: AzureCosmosDBBackend,
+            VectorStoreType.ANNOY: AnnoyBackend,
+            VectorStoreType.ASTRADB: AstraDBBackend,
+            VectorStoreType.ANALYTICDB: AnalyticDBBackend,
+            VectorStoreType.SKLEARN: SklearnBackend,
+            VectorStoreType.SINGLESTOREDB: SingleStoreDBBackend,
+            VectorStoreType.ROCKSETDB: RocksetDBBackend,
+            VectorStoreType.SQLITEVSS: SQLiteVSSBackend,
+            VectorStoreType.STARROCKS: StarRocksBackend,
+            VectorStoreType.SUPABASE: SupabaseVectorStore,
+            VectorStoreType.TAIR: TairVectorStore,
+            VectorStoreType.TIGRIS: TigrisVectorStore,
+            VectorStoreType.TILEDB: TileDBVectorStore,
+            VectorStoreType.TIMESCALEVECTOR: TimescaleVectorStore,
+            VectorStoreType.TENCENTVECTORDB: TencentVectorDBVectorStore,
+            VectorStoreType.USEARCH: USearchVectorStore,
+            VectorStoreType.VALD: ValdVectorStore,
+            VectorStoreType.VECTARA: VectaraVectorStore,
+            VectorStoreType.TYPESENSE: TypesenseVectorStore,
+            VectorStoreType.XATA: XataVectorStore,
+            VectorStoreType.ZEP: ZepVectorStore,
+            VectorStoreType.ZILLIZ: ZillizVectorStore,
         }
         
         backend_class = backend_map.get(store_type)
