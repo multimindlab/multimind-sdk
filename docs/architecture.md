@@ -648,6 +648,17 @@ classDiagram
     OrchestrationEngine --> EventBus
 ```
 
+### Model Client Architecture and Routing
+
+The MultiMind SDK features an extensible model client system for advanced and flexible model management:
+
+- **ModelClient**: The base class for all model clients (transformer and non-transformer). Subclass to implement custom models.
+- **Prebuilt Clients**: Includes LSTMModelClient, RNNModelClient, GRUModelClient, MoEModelClient (Mixture-of-Experts), DynamicMoEModelClient (runtime metrics-based routing), MultiModalClient (unified text, image, audio, video, code), and more.
+- **Routing Logic**: MoE and DynamicMoE clients route requests to the best expert model based on prompt or runtime metrics. FederatedRouter enables routing between local and cloud models based on context (input size, latency, privacy, etc.).
+- **Extensibility**: Easily add new model types or routing strategies by subclassing ModelClient or implementing custom routers.
+
+This architecture enables dynamic model selection, multimodal workflows, and advanced routing for cost, latency, or quality optimization. See the Usage Guide for code examples.
+
 ## Data Flow
 
 ```mermaid

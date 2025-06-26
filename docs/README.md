@@ -38,6 +38,8 @@ MultiMind is a powerful SDK that provides a unified interface for working with m
 
 - A flexible pipeline system for complex AI workflows
 - An ensemble system for combining results from multiple providers
+- **Extensible model client system for custom, multimodal, and mixture-of-experts (MoE) models**
+- **Advanced routing logic (MoE, dynamic, federated/local-cloud) for optimal model selection**
 - Command-line interface for quick access to functionality
 - REST API for integration with other systems
 - Support for various AI tasks and providers
@@ -55,6 +57,12 @@ MultiMind is a powerful SDK that provides a unified interface for working with m
 - Various ensemble methods (weighted voting, confidence cascade, etc.)
 - Configurable provider weights and confidence thresholds
 - Detailed confidence scoring and explanations
+
+### Model Client System & Routing
+- **Extensible ModelClient base class** for custom and classic models (LSTM, RNN, GRU, etc.)
+- **Mixture-of-Experts (MoE) and DynamicMoE** for expert selection and runtime optimization
+- **MultiModalClient** for unified text, image, audio, video, and code model access
+- **FederatedRouter** for local/cloud and custom routing strategies
 
 ### CLI Interface
 - Easy-to-use command-line tools
