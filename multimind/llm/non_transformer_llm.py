@@ -630,4 +630,47 @@ class CustomRNNLLM(NonTransformerLLM):
             prompt = session.get_prompt()
         else:
             prompt = "\n".join([m["content"] for m in messages])
-        return await self.generate(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs) 
+        return await self.generate(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs)
+
+# --- Adapter management for per-user/session/tool injection ---
+class AdapterManager:
+    """
+    Manages adapters per user/session/tool. Used by advanced LLM wrappers for dynamic LoRA/PEFT injection.
+    """
+    def __init__(self):
+        self.adapters = {}  # key -> adapter_path
+    def set_adapter(self, key, adapter_path):
+        self.adapters[key] = adapter_path
+    def get_adapter(self, key):
+        return self.adapters.get(key)
+    def remove_adapter(self, key):
+        if key in self.adapters:
+            del self.adapters[key]
+
+# Patch advanced LLMs to support per-user/session/tool adapter injection
+for _LLM in [MambaLLM, H3LLM, RWKVLLM, SSM_LLM, CustomRNNLLM]:
+    _LLM.adapter_manager = AdapterManager()
+    def load_adapter_for(self, key, adapter_path):
+        self.adapter_manager.set_adapter(key, adapter_path)
+    def unload_adapter_for(self, key):
+        self.adapter_manager.remove_adapter(key)
+    def get_active_adapter(self, key):
+        return self.adapter_manager.get_adapter(key)
+    _LLM.load_adapter_for = load_adapter_for
+    _LLM.unload_adapter_for = unload_adapter_for
+    _LLM.get_active_adapter = get_active_adapter
+    # Patch generate/chat to use adapter if set for key
+    orig_generate = _LLM.generate
+    async def generate_with_adapter(self, prompt, *args, adapter_key=None, **kwargs):
+        adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
+        if adapter_path:
+            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+        return await orig_generate(self, prompt, *args, **kwargs)
+    _LLM.generate = generate_with_adapter
+    orig_chat = _LLM.chat
+    async def chat_with_adapter(self, messages, *args, adapter_key=None, **kwargs):
+        adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
+        if adapter_path:
+            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+        return await orig_chat(self, messages, *args, **kwargs)
+    _LLM.chat = chat_with_adapter 
