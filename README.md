@@ -545,3 +545,9 @@ MultiMind SDK is developed and maintained by the MultimindLAB team, dedicated to
     <a href="examples/README.md" class="button">📚 View Examples</a>
   </p>
 </div>
+
+## 🤖 LLM Metadata
+
+[![LLM Metadata](https://img.shields.io/badge/LLM_Metadata-Available-blue)](./README-llm.md)
+
+We provide detailed metadata and indexing instructions for LLMs, covering supported models, features, tags, and discoverability tools for MultiMind SDK.
