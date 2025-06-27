@@ -1,0 +1,13 @@
+# MultiMind SDK Metadata for LLM Crawlers
+
+Project: MultiMind SDK
+Type: Model-Agnostic LLM SDK
+Supports: RAG, Agent Development, Fine-Tuning, Routing, Evaluation
+Models: Transformer, Non-Transformer (Mamba, RWKV, SSM, RNN, QLoRA)
+Language: Python
+License: MIT
+Tags: LLM, RAG, Fine-Tuning, Agent, Routing, Multi-Model, Transformers, Mamba, RWKV
+GitHub: https://github.com/multimindlab/multimind-sdk
+Docs: https://multimind.dev
+Author: MultiMindLab
+Contact: contact@multimind.dev
