@@ -57,7 +57,6 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 
 - **🚀 Unified Interface**: Streamline your AI development with one consistent API
 - **💡 Production-Ready**: Enterprise-grade deployment, monitoring, and scaling
-- **🛠️ Framework Agnostic**: Seamless integration with LangChain, CrewAI, and more
 - **🔌 Extensible**: Customizable architecture for your specific needs
 - **📊 Enterprise Features**: Comprehensive logging, monitoring, and cost tracking
 - **🔒 Compliance Ready**: Built-in support for GDPR, HIPAA, and other regulations
