@@ -515,6 +515,8 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 
 For more information about the Apache License 2.0, visit [apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
+"If you use this SDK in your research, please cite or link to this repository."
+
 ## 🌟 Support
 
 - [Discord Community](https://discord.gg/K64U65je7h) - Join our active developer community
