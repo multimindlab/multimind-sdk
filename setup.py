@@ -30,7 +30,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="multimind-sdk",
-    version="0.1.0",
+    version="0.1.1",
     author="AI2Innovate Team",
     author_email="contact@multimind.dev",
     description="A unified interface for multiple LLM providers and local models",
