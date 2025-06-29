@@ -104,6 +104,7 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 
 [Learn more about model conversion →](examples/model_conversion/README.md)
 
+<<<<<<< Updated upstream
 ### 6. Model Client System & Routing
 
 - **Extensible ModelClient base class** for custom, classic, and transformer models
@@ -139,6 +140,17 @@ print(router.generate("short prompt"))
 ```
 
 ---
+=======
+### 7. Context Transfer
+
+- **Cross-Model Context**: Transfer conversation context between different LLM providers
+- **Smart Summarization**: Intelligent conversation summarization for context preservation
+- **Model-Specific Formatting**: Optimized prompts for each target model (DeepSeek, Claude, Gemini, etc.)
+- **CLI Interface**: Easy command-line interface for context transfer operations
+- **Chrome Extension Support**: Backend for ContextHop Chrome Extension
+
+[Learn more about context transfer →](#context-transfer-chatgpt--deepseek)
+>>>>>>> Stashed changes
 
 ## 🔒 Compliance Features
 
@@ -274,6 +286,36 @@ dashboard = await monitor.get_dashboard_metrics(
 )
 ```
 
+### Context Transfer Example
+
+Transfer conversation context from ChatGPT to DeepSeek:
+
+```bash
+# Using CLI
+multimind context-transfer \
+  --from_model chatgpt \
+  --to_model deepseek \
+  --input_file conversation.json \
+  --output_file deepseek_prompt.txt \
+  --last_n 5
+```
+
+```python
+# Using Python API
+from multimind.context_transfer import ContextTransferManager
+
+manager = ContextTransferManager()
+
+# Transfer context
+formatted_prompt = manager.transfer_context(
+    from_model="chatgpt",
+    to_model="deepseek", 
+    input_file="conversation.json",
+    output_file="deepseek_prompt.txt",
+    last_n=5
+)
+```
+
 ## 📚 Documentation
 
 - [API Reference](docs/api_reference/README.md) - Complete API documentation
@@ -316,6 +358,10 @@ multimind-sdk/
 │   │   │   └── graph/        # Graph optimization
 │   │   ├── validators/        # Format validators
 │   │   └── utils/            # Conversion utilities
+│   ├── context_transfer/      # Context transfer modules
+│   │   ├── manager.py        # Core context transfer logic
+│   │   ├── adapters.py       # Model-specific adapters
+│   │   └── __init__.py       # Module initialization
 │   ├── compliance/            # Compliance features
 │   │   ├── monitors/         # Compliance monitoring
 │   │   ├── validators/       # Compliance validation
@@ -340,6 +386,9 @@ multimind-sdk/
 │   │   │   └── docker-compose.yml
 │   │   └── cli/             # CLI examples
 │   │       └── cli_example.py
+│   ├── context_transfer/     # Context transfer examples
+│   │   ├── chatgpt_to_deepseek.json  # Sample conversation data
+│   │   └── README.md         # Context transfer documentation
 │   └── streamlit-ui/        # Streamlit-based UI examples
 ├── tests/                    # Test suite
 │   ├── unit/                # Unit tests
