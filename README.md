@@ -105,6 +105,7 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 [Learn more about model conversion →](examples/model_conversion/README.md)
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 ### 6. Model Client System & Routing
 
 - **Extensible ModelClient base class** for custom, classic, and transformer models
@@ -141,6 +142,8 @@ print(router.generate("short prompt"))
 
 ---
 =======
+=======
+>>>>>>> Stashed changes
 ### 7. Context Transfer
 
 - **Cross-Model Context**: Transfer conversation context between different LLM providers
@@ -150,6 +153,9 @@ print(router.generate("short prompt"))
 - **Chrome Extension Support**: Backend for ContextHop Chrome Extension
 
 [Learn more about context transfer →](#context-transfer-chatgpt--deepseek)
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 ## 🔒 Compliance Features
