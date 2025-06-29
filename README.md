@@ -40,6 +40,9 @@
 
 [![🐦 Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=%F0%9F%90%A6%20Follow%20on%20X&style=for-the-badge&logo=x&logoColor=white)](https://x.com/multimindsdk)
 
+
+
+
 ## 🚀 Why MultiMind SDK?
 
 > 🧠 **MultiMind SDK is the only open-source toolkit that unifies Fine-Tuning, RAG, Agent Orchestration, and Enterprise Compliance** — all in one modular, extensible Python framework.
@@ -495,6 +498,13 @@ services:
     # ... other configuration
 ```
 
+## 🚀 Used By
+
+[![Used by](https://img.shields.io/badge/Used%20by-4.3k-blue)](https://github.com/multimindlab/multimind-sdk/network/dependents)
+
+<a href="https://github.com/multimindlab/multimind-sdk/network/dependents">
+  <img src="https://img.shields.io/github/dependents/multimindlab/multimind-sdk?label=Used%20By&logo=github" alt="Used by other repos">
+</a>
 
 ## 💖 Support MultiMind SDK
 
