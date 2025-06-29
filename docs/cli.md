@@ -7,7 +7,7 @@ The MultiMind CLI provides a comprehensive command-line interface for using the 
 Make sure you have the MultiMind package installed:
 
 ```bash
-pip install multimind
+pip install multimind-sdk
 ```
 
 ## Available Commands
