@@ -12,6 +12,7 @@ from .chat import chat
 from .models import models
 from .config import config
 from .model_conversion_cli import main as convert_main
+from .context_transfer import main as context_transfer_main
 
 console = Console()
 
@@ -29,12 +30,20 @@ cli.add_command(config)
 def main():
     """Main entry point for the CLI."""
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "convert":
-        sys.argv.pop(1)  # Remove 'convert' from arguments
-        sys.exit(convert_main())
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "convert":
+            sys.argv.pop(1)  # Remove 'convert' from arguments
+            sys.exit(convert_main())
+        elif sys.argv[1] == "context-transfer":
+            sys.argv.pop(1)  # Remove 'context-transfer' from arguments
+            sys.exit(context_transfer_main())
+        else:
+            print("Usage: multimind [convert|context-transfer] [options]")
+            print("Run 'multimind convert --help' or 'multimind context-transfer --help' for more information")
+            sys.exit(1)
     else:
-        print("Usage: multimind convert [options]")
-        print("Run 'multimind convert --help' for more information")
+        print("Usage: multimind [convert|context-transfer] [options]")
+        print("Run 'multimind convert --help' or 'multimind context-transfer --help' for more information")
         sys.exit(1)
 
 if __name__ == "__main__":

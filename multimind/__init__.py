@@ -53,8 +53,8 @@ from multimind.integrations.discord import DiscordIntegrationHandler
 from multimind.integrations.jira import JiraIntegrationHandler
 
 # Logging components
-from multimind.logging.trace_logger import TraceLogger
-from multimind.logging.usage_tracker import UsageTracker
+from multimind.multimind_logging.trace_logger import TraceLogger
+from multimind.multimind_logging.usage_tracker import UsageTracker
 
 # Model implementations
 from multimind.models.claude import ClaudeModel
@@ -65,7 +65,7 @@ from multimind.models.openai import OpenAIModel
 from multimind.mcp.workflows.code_review import CodeReviewWorkflow
 from multimind.mcp.workflows.ci_cd import CICDWorkflow
 from multimind.mcp.workflows.documentation import DocumentationWorkflow
-from multimind.mcp.workflows.multi_integration import MultiIntegrationWorkflow
+# from multimind.mcp.workflows.multi_integration import MultiIntegrationWorkflow
 
 __all__ = [
     # Memory
@@ -120,5 +120,4 @@ __all__ = [
     "CodeReviewWorkflow",
     "CICDWorkflow",
     "DocumentationWorkflow",
-    "MultiIntegrationWorkflow",
 ]
