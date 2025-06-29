@@ -2,7 +2,7 @@
 Base integration handler for MCP workflows.
 """
 
-from typing import Dict, Any, Optional, Protocol
+from typing import Dict, Any, Optional, Protocol, List
 from abc import ABC, abstractmethod
 import logging
 from datetime import datetime
