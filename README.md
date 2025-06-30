@@ -42,7 +42,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/multimind-sdk.svg)](https://pypi.org/project/multimind-sdk/)
 [![Python versions](https://img.shields.io/pypi/pyversions/multimind-sdk.svg)](https://pypi.org/project/multimind-sdk/)
-[![Downloads](https://static.pepy.tech/badge/multimind-sdk)](https://pepy.tech/project/multimind-sdk)
+[![PyPI weekly Downloads](https://static.pepy.tech/badge/multimind-sdk/week)](https://pepy.tech/projects/multimind-sdk)
 [![Dependencies](https://img.shields.io/librariesio/release/pypi/multimind-sdk)](https://libraries.io/pypi/multimind-sdk)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/multimindlab/multimind-sdk/blob/develop/LICENSE)
