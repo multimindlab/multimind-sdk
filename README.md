@@ -61,6 +61,32 @@ Forget silos. While others focus on chaining, agents, or retrieval alone, **Mult
 
 📑 Check out our [Strategic Roadmap](docs/roadmap.md) to see where we're headed!
 
+---
+## 📚 Related Research
+
+### 🔬 Symbolic Self‑Evolving Agents  
+- **Paper**: Zhou et al. (2024), *Symbolic Learning Enables Self‑Evolving Agents*  
+- **Link**: https://arxiv.org/abs/2406.18532  
+- **Implementation in MultiMindSDK**: Reflexive DAG loops via `JudgeAgent` → `RewriterAgent`, symbolic-style pipeline updates, and hybrid model routing.
+
+---
+
+### 🧠 Neuro‑Symbolic Logical Consistency  
+- **Paper**: Calanzone et al. (2024), *Logically Consistent Language Models via Neuro‑Symbolic Integration*  
+- **Link**: https://arxiv.org/abs/2409.13724  
+- **Relevance**: Supports integrating logical loss constraints with hybrid symbolic agent modules—ideally realized through logical-check agents or constraint-based pipelines.
+
+---
+
+### 📚 Hybrid RAG Architectures  
+- **Paper**: Sarmah et al. (2024), *HybridRAG: Integrating Knowledge Graphs and Vector Retrieval*  
+- **Link**: https://arxiv.org/abs/2408.04948  
+- **Implementation in MultiMindSDK**: Hybrid RAG combining vector and knowledge‑graph retrieval agents, mirroring this design.
+
+
+---
+
+
 ### Key Benefits
 
 - **🚀 Unified Interface**: Streamline your AI development with one consistent API
