@@ -1,156 +1,88 @@
-# MultiMind SDK Model Conversion CLI
+# MultiMindSDK CLI Tools
 
-A command-line interface for converting models between different formats using the MultiMind SDK.
+This directory contains the main command-line tools for the MultiMindSDK. Each CLI is modular, developer-friendly, and focused on a specific feature or workflow.
 
-## Installation
+## Table of Contents
+- [Agentic Workflow CLI (`agentic.py`)](#agentic-workflow-cli-agenticpy)
+- [Feature-Specific CLIs](#feature-specific-clis)
+- [How to Use](#how-to-use)
+- [Entry Point](#entry-point)
 
-The CLI is automatically installed with the MultiMind SDK:
+---
 
+## Agentic Workflow CLI (`agentic.py`)
+
+**Run agentic, evolutionary, and reflexive workflow demos from the command line.**
+
+### Usage
 ```bash
-pip install multimind-sdk
+python -m multimind.cli.agentic list-examples
+python -m multimind.cli.agentic run-demo reflexive
+python -m multimind.cli.agentic run-demo hybrid
+python -m multimind.cli.agentic info
 ```
 
-## Usage
+### Commands
+| Command         | Description                                      |
+|----------------|--------------------------------------------------|
+| list-examples   | List all available agentic workflow demos        |
+| run-demo <name> | Run a specific demo (e.g., reflexive, hybrid)    |
+| info            | Show CLI info and available examples             |
 
-Basic usage:
+---
+
+## Feature-Specific CLIs
+
+| File                    | Purpose                                      |
+|-------------------------|----------------------------------------------|
+| context_transfer.py     | CLI for context transfer workflows           |
+| model_conversion_cli.py | CLI for model conversion and export          |
+| multi_model_cli.py      | CLI for multi-model management               |
+| compliance.py           | CLI for compliance workflows                 |
+| chat.py                 | CLI for chat and conversational agents       |
+| config.py               | CLI for configuration management             |
+| models.py               | CLI for model registry and management        |
+| __main__.py             | Main entry point (see below)                 |
+
+Each CLI is self-contained and can be run as a module:
 ```bash
-multimind convert --source <source_format> --target <target_format> --model-path <path> --output-dir <dir>
+python -m multimind.cli.<tool_name> [args]
 ```
 
-### Examples
+---
 
-1. Convert HuggingFace model to GGUF:
+## How to Use
+
+- **List all available agentic workflow demos:**
+  ```bash
+  python -m multimind.cli.agentic list-examples
+  ```
+- **Run a specific agentic workflow demo:**
+  ```bash
+  python -m multimind.cli.agentic run-demo reflexive
+  ```
+- **Run a feature-specific CLI:**
+  ```bash
+  python -m multimind.cli.model_conversion_cli --help
+  ```
+
+---
+
+## Entry Point
+
+The file `__main__.py` allows you to run the CLI package directly:
 ```bash
-multimind convert \
-    --source huggingface \
-    --target gguf \
-    --model-path Qwen/Qwen1.5-7B \
-    --output-dir ./models \
-    --quantization q4_k_m \
-    --context-length 4096 \
-    --validate \
-    --test
+python -m multimind.cli
 ```
+This should dispatch to a main menu or point you to the right CLI tools.
 
-2. Convert PyTorch model to Safetensors:
-```bash
-multimind convert \
-    --source pytorch \
-    --target safetensors \
-    --model-path ./model.pt \
-    --output-dir ./converted \
-    --compression lz4 \
-    --compression-level 9 \
-    --device cuda \
-    --metadata author=JohnDoe version=1.0
-```
+---
 
-3. Convert TensorFlow model to TFLite:
-```bash
-multimind convert \
-    --source tensorflow \
-    --target tflite \
-    --model-path ./model \
-    --output-dir ./converted \
-    --optimizations DEFAULT OPTIMIZE_FOR_LATENCY \
-    --quantization int8
-```
+## Developer Notes
+- All CLI tools are modular and can be extended independently.
+- For more examples and advanced usage, see the `examples/cli/` and `examples/evolutionary/` folders.
+- Each CLI tool provides `--help` for command-line usage details.
 
-4. Convert ONNX model to ONNX Runtime:
-```bash
-multimind convert \
-    --source onnx \
-    --target ort \
-    --model-path ./model.onnx \
-    --output-dir ./converted \
-    --optimization-level all \
-    --device cuda
-```
+---
 
-## Supported Formats
-
-### Source Formats
-- `huggingface`: HuggingFace models
-- `pytorch`: PyTorch models
-- `tensorflow`: TensorFlow models
-- `onnx`: ONNX models
-- `ollama`: Ollama models
-
-### Target Formats
-- `gguf`: GGUF format (for Ollama)
-- `safetensors`: Safetensors format
-- `tflite`: TensorFlow Lite format
-- `ort`: ONNX Runtime format
-- `onnx`: ONNX format
-
-## Options
-
-### Required Arguments
-- `--source`: Source model format
-- `--target`: Target model format
-- `--model-path`: Path to source model or HuggingFace model ID
-- `--output-dir`: Directory to save converted model
-
-### Optional Arguments
-- `--quantization`: Quantization method
-  - For GGUF: `q4_k_m`, `q4_0`, `q5_k_m`, `q8_0`
-  - For TFLite: `int8`, `fp16`
-- `--compression`: Compression method for Safetensors
-  - `lz4`: Fast compression
-  - `zstd`: Better compression ratio
-- `--compression-level`: Compression level (1-9)
-- `--optimizations`: Optimization methods
-  - For TFLite: `DEFAULT`, `OPTIMIZE_FOR_LATENCY`, etc.
-- `--optimization-level`: ONNX Runtime optimization level
-  - `basic`: Basic optimizations
-  - `all`: All optimizations
-  - `extreme`: Maximum optimizations
-- `--device`: Device to use
-  - `cpu`: CPU only
-  - `cuda`: GPU acceleration
-- `--context-length`: Context length for GGUF models
-- `--metadata`: Additional metadata (key=value pairs)
-- `--validate`: Validate model before and after conversion
-- `--test`: Test converted model
-- `--verbose`: Enable verbose output
-
-## Best Practices
-
-1. **Model Validation**
-   - Always use `--validate` for production conversions
-   - Check model metadata with `--verbose`
-
-2. **Optimization**
-   - Use appropriate quantization for your use case
-   - Consider hardware constraints
-   - Test performance impact
-
-3. **Testing**
-   - Use `--test` to verify converted models
-   - Test with real-world inputs
-   - Monitor performance metrics
-
-## Troubleshooting
-
-1. **Memory Issues**
-   - Reduce batch size
-   - Use CPU if GPU memory is insufficient
-   - Try different quantization methods
-
-2. **Conversion Failures**
-   - Check format compatibility
-   - Verify model structure
-   - Update conversion tools
-
-3. **Performance Issues**
-   - Adjust optimization levels
-   - Try different quantization methods
-   - Monitor hardware usage
-
-## Contributing
-
-To add support for new formats or features:
-1. Implement the converter in `multimind/model_conversion/`
-2. Add format validation
-3. Update the CLI interface
-4. Add tests and documentation 
+Happy hacking! 🚀 
