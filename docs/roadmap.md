@@ -2,7 +2,7 @@
 
 A future-ready SDK for unified AI development, covering fine-tuning, RAG, agents, and enterprise-grade deployment.
 
-## ✅ Phase 1 – Core Foundations (Completed)
+## ✅ Phase 1 – Core Foundations 
 
 - Unified API for LLM orchestration
 - Initial support: OpenAI, Anthropic, Ollama, HF
@@ -11,6 +11,107 @@ A future-ready SDK for unified AI development, covering fine-tuning, RAG, agents
 - CLI + FastAPI interface
 - Modular Python SDK Framework
 - Basic RAG Implementation
+
+
+## ✅ Feature Roadmap for MultiMindSDK (Modular Architecture)
+
+---
+
+## 📁 `multimind/memory/`
+
+### 🔧 Memory System (Hybrid & Symbolic)
+
+| Feature Name          | Description                                                         | Type         |
+| --------------------- | ------------------------------------------------------------------- | ------------ |
+| `GraphMemoryAgent`    | Store and query `(subject, predicate, object)` triples              | Agent/Module |
+| `MemoryTripleStore`   | Internal structure for graph-based memory using `networkx` or Neo4j | Utility      |
+| `MemoryDeduplicator`  | Detect and merge/reject redundant symbolic or vector entries        | Utility      |
+| `MemoryMergeEngine`   | Use LLM to decide whether to update or merge conflicting facts      | Agent/Tool   |
+| `MemoryScorer`        | Score memory items for utility, freshness, relevance                | Utility      |
+| `TemporalMemoryAgent` | Adds timestamp-based memory with order-aware reasoning              | Agent        |
+
+---
+
+## 📁 `multimind/agents/reflexive/`
+
+### 🧠 Agents & Reasoning Modules
+
+| Feature Name               | Description                                              | Type     |
+| -------------------------- | -------------------------------------------------------- | -------- |
+| `ThinkerAgent`             | Performs abstract reasoning, problem decomposition       | Agent    |
+| `SelfReflectAgent`         | Triggers Judge ➝ Rewriter ➝ Update cycles                | Agent    |
+| `FactExtractorAgent`       | Parses LLM output into structured `(s, p, o)` facts      | Agent    |
+| `RetrieverAgent` (hybrid)  | Retrieves from vector + graph + timeline memory          | Agent    |
+| `MemoryUpdateAgent`        | Mutates, rewrites, or deletes memory entries on feedback | Agent    |
+| `AgentWorkflowDAGExecutor` | Runs reflexive agent chains via YAML or JSON DAG         | Executor |
+
+---
+
+## 📁 `multimind/core/evolution/`
+
+### 🧬 Reflexive Learning & Genetic Optimization
+
+| Feature Name               | Description                                                    | Type            |
+| -------------------------- | -------------------------------------------------------------- | --------------- |
+| `MetaControllerAgent`      | Modifies agent flow (DAG mutation) based on outcome            | Agent           |
+| `AgentMutator`             | Introduces randomness/policy-based mutation into agent chains  | Tool            |
+| `AgentArena`               | Competes agent pipelines against each other for a task         | Arena/Framework |
+| `MultiObjectiveJudgeAgent` | Scores outputs by multiple objectives: accuracy, cost, novelty | Agent           |
+| `EvolutionMemory`          | Tracks agent-chain performance over time per task type         | Memory Module   |
+
+---
+
+## 📁 `multimind/core/pipeline/`
+
+### 🔁 Memory Routing & Context Injection
+
+| Feature Name             | Description                                                  | Type    |
+| ------------------------ | ------------------------------------------------------------ | ------- |
+| `MemoryManagerAgent++`   | Routes queries to vector, graph, summary, or timeline memory | Router  |
+| `ContextScorerAgent`     | Ranks context slices before injecting into prompt            | Agent   |
+| `ChainOfThoughtInjector` | Injects prior thought patterns to next step agents           | Helper  |
+| `TaskFeedbackRecorder`   | Logs outcomes to memory for self-improvement loops           | Utility |
+
+---
+
+## 📁 `multimind/utils/infra/`
+
+### ⚙️ Infrastructure & Tooling
+
+| Feature Name          | Description                                      | Type        |
+| --------------------- | ------------------------------------------------ | ----------- |
+| `AgentTraceLogger`    | Logs agent execution, inputs, outputs            | Utility     |
+| `AgentLoaderFromYAML` | Load agents and chains via YAML config           | Loader      |
+| `MemoryInspectorAPI`  | REST or WebSocket API for Chrome/Streamlit       | API         |
+| `UnifiedMemoryStore`  | Abstract interface over vector, graph, key-value | Core Module |
+
+---
+
+
+
+## 🧠  (LLM + Performance)
+
+| Feature Name              | Description                                                   |
+| ------------------------- | ------------------------------------------------------------- |
+| `ModelRouter`             | Route requests between Claude, GPT-4, Mistral, RWKV, etc.     |
+| `ModelPerformanceMetrics` | Track per-model latency, accuracy, cost                       |
+| `LLMAbstractionLayer`     | Allow plug-in of local models or APIs with same prompt format |
+
+---
+
+## 🏁 Summary by Type
+
+| Category      | Modules to Add                                   |
+| ------------- | ------------------------------------------------ |
+| Memory        | GraphMemoryAgent, MergeEngine, Scorer, Timeline  |
+| Agents        | ThinkerAgent, SelfReflectAgent, Extractor, Arena |
+| Evolution     | Mutator, Arena, Judge++, DAG Executor            |
+| Infra         | TraceLogger, Memory API, YAML Loader             |
+| Pipeline      | DAG Runner, ScorerAgent, MemoryRouter            |
+| UI (Optional) | Graph Viewer, Timeline Tracker, Dashboard        |
+
+---
+---
 
 ## 🚧 Phase 2 – In Progress (Q2 2025)
 
@@ -43,6 +144,18 @@ A future-ready SDK for unified AI development, covering fine-tuning, RAG, agents
   - Custom model integration
   - Fine-tuning capabilities
   - Support for CV and NLP models
+
+## 📁 `multimind/frontend/streamlit/` (optional)
+
+### 🔍 Visualization Tools
+
+| Feature Name            | Description                                      | Type      |
+| ----------------------- | ------------------------------------------------ | --------- |
+| `MemoryGraphViewer`     | Visualize symbolic knowledge graph               | UI        |
+| `AgentPerformanceBoard` | Track agent win rates, scores, token costs       | Dashboard |
+| `MemoryTimelineViewer`  | Show events over time, with sources and outcomes | UI        |
+
+---
 
 ## 🌐 Phase 4 – Enterprise & Edge Ready (Q4 2025)
 
