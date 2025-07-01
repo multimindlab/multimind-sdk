@@ -533,9 +533,7 @@ services:
 
 [![Used by](https://img.shields.io/badge/Used%20by-4.3k-blue)](https://github.com/multimindlab/multimind-sdk/network/dependents)
 
-<a href="https://github.com/multimindlab/multimind-sdk/network/dependents">
-  <img src="https://img.shields.io/github/dependents/multimindlab/multimind-sdk?label=Used%20By&logo=github" alt="Used by other repos">
-</a>
+
 
 ## 💖 Support MultiMind SDK
 
