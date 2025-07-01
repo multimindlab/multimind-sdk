@@ -1,0 +1,9 @@
+pipeline:
+  - name: retriever
+  - name: llm
+  - name: judge
+  - if:
+      condition: judge.quality < 0.7
+      then:
+        - name: improver
+        - name: llm 

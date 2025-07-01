@@ -1,0 +1,7 @@
+pipeline:
+  - name: retriever
+  - [
+      {name: summarizer},
+      {name: llm}
+    ]
+  - name: judge 
