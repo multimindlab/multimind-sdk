@@ -139,7 +139,7 @@ class MilvusBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids, partition_name: Optional[str] = None):
-        expr = f"id in {[f'\"{i}\"' for i in ids]}"
+        expr = f"id in [{', '.join([repr(i) for i in ids])}]"
         loop = asyncio.get_event_loop()
         partition = partition_name or self.partition_name
         kwargs = {"partition_name": partition} if partition else {}

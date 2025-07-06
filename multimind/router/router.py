@@ -4,7 +4,7 @@ Main router interface for model selection and request routing.
 
 from typing import List, Dict, Any, Optional, Type
 from ..models.base import BaseLLM
-from .strategy import RoutingStrategy
+from .strategy import RoutingStrategy, CostAwareStrategy
 from .fallback import FallbackHandler
 
 class ModelRouter:
@@ -12,7 +12,7 @@ class ModelRouter:
 
     def __init__(self, strategy: Optional[RoutingStrategy] = None):
         self.models: Dict[str, BaseLLM] = {}
-        self.strategy = strategy or RoutingStrategy()
+        self.strategy = strategy or CostAwareStrategy()
         self.fallback = FallbackHandler()
 
     def register_model(self, name: str, model: BaseLLM) -> None:

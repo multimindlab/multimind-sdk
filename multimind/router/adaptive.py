@@ -5,7 +5,8 @@ Adaptive router implementation with data-driven model selection.
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 import numpy as np
-from .base import ModelRouter, RoutingStrategy
+from .router import ModelRouter
+from .strategy import RoutingStrategy
 from ..models.base import BaseLLM
 from ..memory.importance import ImportanceScorer
 

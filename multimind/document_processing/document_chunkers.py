@@ -2,10 +2,24 @@
 All document chunker classes for text, code, tables, multimodal, and hybrid chunking.
 """
 from typing import List, Callable, Optional, Any, Union, Dict
+from dataclasses import dataclass
+from enum import Enum
 import re
 import numpy as np
 import spacy
-from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+
+# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+try:
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    _AUTO_MODEL_CLASS = AutoModelForSeq2SeqLM
+except ImportError:
+    try:
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+        _AUTO_MODEL_CLASS = AutoModelForSeq2SeqGeneration
+    except ImportError:
+        # Fallback for very old versions
+        from transformers import AutoTokenizer
+        _AUTO_MODEL_CLASS = None
 
 try:
     import nltk
@@ -23,7 +37,17 @@ class SemanticChunker:
         self.max_chunk_size = max_chunk_size
         self.similarity_threshold = similarity_threshold
         self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
-        self.summarizer = AutoModelForSeq2SeqGeneration.from_pretrained("facebook/bart-large-cnn")
+        
+        # Backward compatible model loading
+        if _AUTO_MODEL_CLASS is not None:
+            self.summarizer = _AUTO_MODEL_CLASS.from_pretrained("facebook/bart-large-cnn")
+        else:
+            # Fallback for very old versions - try to import the model directly
+            try:
+                from transformers import BartForConditionalGeneration
+                self.summarizer = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
+            except ImportError:
+                raise ImportError("Unable to load BART model. Please ensure transformers is properly installed.")
     async def chunk_document(self, text: str, metadata: Optional[Dict[str, Any]] = None, **kwargs) -> List[Any]:
         sentences = self._split_into_sentences(text)
         sentence_embeddings = await self.model.embeddings(sentences)
