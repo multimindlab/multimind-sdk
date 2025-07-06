@@ -7,7 +7,20 @@ import torch
 import torch.nn as nn
 from transformers.modeling_utils import PreTrainedModel
 from transformers.tokenization_utils import PreTrainedTokenizer
-from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+
+# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+try:
+    from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+    _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqLM
+except ImportError:
+    try:
+        from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqGeneration
+        _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqGeneration
+    except ImportError:
+        # Fallback for very old versions
+        from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification
+        _AUTO_MODEL_FOR_SEQ2SEQ = None
+
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 from transformers.training_args import TrainingArguments
 from transformers.trainer import Trainer
@@ -230,7 +243,15 @@ class PEFTTuner:
         elif self.model_type == "sequence_classification":
             return AutoModelForSequenceClassification
         elif self.model_type == "seq2seq":
-            return AutoModelForSeq2SeqLM
+            if _AUTO_MODEL_FOR_SEQ2SEQ is not None:
+                return _AUTO_MODEL_FOR_SEQ2SEQ
+            else:
+                # Fallback for very old versions
+                try:
+                    from transformers import BartForConditionalGeneration
+                    return BartForConditionalGeneration
+                except ImportError:
+                    raise ImportError("Unable to load seq2seq model. Please ensure transformers is properly installed.")
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 

@@ -9,7 +9,7 @@ from pathlib import Path
 import pickle
 from typing import List, Dict, Any, Optional
 
-from ..base import VectorStoreBackend, VectorStoreConfig, SearchResult
+from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
 
 class FAISSBackend(VectorStoreBackend):
     """FAISS vector store backend."""

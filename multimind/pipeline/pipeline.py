@@ -3,7 +3,7 @@ Pipeline system for building and executing complex workflows.
 """
 
 from typing import Dict, List, Optional, Union, Any, Callable, TypeVar, Generic
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from enum import Enum
 import asyncio
 from ..core.router import Router, TaskType
@@ -38,6 +38,7 @@ class StageResult(BaseModel):
     output: Any
     metadata: Dict[str, Any] = {}
     error: Optional[Exception] = None
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 class PipelineStage(Generic[T, R]):
     """Represents a stage in the pipeline."""

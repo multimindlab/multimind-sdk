@@ -8,7 +8,7 @@ import os
 import asyncio
 import pinecone
 
-from ..base import VectorStoreBackend, VectorStoreConfig, SearchResult
+from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
 
 class PineconeBackend(VectorStoreBackend):
     """Production-grade Pinecone vector store backend."""
