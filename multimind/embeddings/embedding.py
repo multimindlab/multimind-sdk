@@ -6,14 +6,44 @@ from typing import List, Dict, Any, Optional, Union, Tuple, Protocol, runtime_ch
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
+import json
 import numpy as np
 from datetime import datetime
 import torch
 from transformers import AutoTokenizer, AutoModel
 from sentence_transformers import SentenceTransformer
 import openai
-import cohere
+
+# Graceful import for optional dependencies
+try:
+    import cohere
+    _HAS_COHERE = True
+except ImportError:
+    _HAS_COHERE = False
+
 from ..models.base import BaseLLM
+
+@dataclass
+class Embedding:
+    """Represents an embedding vector with metadata."""
+    vector: List[float]
+    text: str
+    model_name: str
+    model_type: str
+    metadata: Dict[str, Any]
+    created_at: datetime
+    embedding_id: Optional[str] = None
+    
+    def __post_init__(self):
+        """Validate embedding after initialization."""
+        if not isinstance(self.vector, list):
+            raise ValueError("Embedding vector must be a list")
+        if not all(isinstance(x, (int, float)) for x in self.vector):
+            raise ValueError("Embedding vector must contain numbers")
+        if not isinstance(self.text, str):
+            raise ValueError("Embedding text must be a string")
+        if not isinstance(self.metadata, dict):
+            raise ValueError("Embedding metadata must be a dictionary")
 
 @dataclass
 class EmbeddingConfig:
@@ -78,6 +108,8 @@ class EmbeddingModel:
             self.model = None  # OpenAI uses API calls
         
         elif model_type == EmbeddingType.COHERE:
+            if not _HAS_COHERE:
+                raise ImportError("Cohere package not installed. Install with: pip install cohere")
             if not api_key:
                 raise ValueError("Cohere API key required")
             self.model = cohere.Client(api_key)

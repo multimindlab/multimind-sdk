@@ -2,10 +2,12 @@
 All document chunker classes for text, code, tables, multimodal, and hybrid chunking.
 """
 from typing import List, Callable, Optional, Any, Union, Dict
+from dataclasses import dataclass
+from enum import Enum
 import re
 import numpy as np
 import spacy
-from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
 try:
     import nltk
@@ -23,7 +25,7 @@ class SemanticChunker:
         self.max_chunk_size = max_chunk_size
         self.similarity_threshold = similarity_threshold
         self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
-        self.summarizer = AutoModelForSeq2SeqGeneration.from_pretrained("facebook/bart-large-cnn")
+        self.summarizer = AutoModelForSeq2SeqLM.from_pretrained("facebook/bart-large-cnn")
     async def chunk_document(self, text: str, metadata: Optional[Dict[str, Any]] = None, **kwargs) -> List[Any]:
         sentences = self._split_into_sentences(text)
         sentence_embeddings = await self.model.embeddings(sentences)

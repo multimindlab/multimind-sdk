@@ -9,7 +9,7 @@ from enum import Enum
 import spacy
 from bs4 import BeautifulSoup
 import requests
-from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import numpy as np
 from ..models.base import BaseLLM
 from .document_chunkers import *
@@ -187,4 +187,7 @@ class EnhancedDocumentProcessor:
             if chunk1.embedding and chunk2.embedding
             else None
         )
+
+# Backward compatibility alias
+DocumentProcessor = EnhancedDocumentProcessor
 

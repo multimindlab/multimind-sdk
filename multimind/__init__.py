@@ -2,11 +2,12 @@
 MultiMind SDK - A flexible and composable SDK for building AI applications.
 
 This SDK provides a set of tools and abstractions for building AI applications,
-including memory management, model integration, and utility functions.
+including memory management, model integration, context transfer, and utility functions.
 
 Core Components:
 - Memory: Conversation and context management
 - Models: LLM and embedding model integration
+- Context Transfer: Advanced conversation context transfer between LLM providers
 - Utils: Common utility functions
 
 Each component is designed to be modular and composable, allowing for flexible
@@ -21,51 +22,68 @@ from .memory import (
     MemoryUtils
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 # Core components
-from multimind.config import Config
-from multimind.models.base import BaseLLM
-from multimind.router.router import ModelRouter
-from multimind.core.multimind import MultiMind
+from .main_config import Config
+from .models.base import BaseLLM
+from .router.router import ModelRouter
+from .core.multimind import MultiMind
+
+# Context Transfer components
+from .context_transfer import ContextTransferManager
 
 # Agent components
-from multimind.agents.agent import Agent
-from multimind.agents.memory import AgentMemory
-from multimind.agents.tools.calculator import CalculatorTool
+from .agents.agent import Agent
+from .agents.memory import AgentMemory
 
 # Orchestration components
-from multimind.orchestration.prompt_chain import PromptChain
-from multimind.orchestration.task_runner import TaskRunner
+from .orchestration.prompt_chain import PromptChain
+from .orchestration.task_runner import TaskRunner
 
 # MCP components
-from multimind.mcp.executor import MCPExecutor
-from multimind.mcp.parser import MCPParser
-from multimind.mcp.advanced_executor import AdvancedMCPExecutor
-from multimind.mcp.api.base import MCPWorkflowAPI
-from multimind.mcp.api.registry import WorkflowRegistry
+from .mcp.executor import MCPExecutor
+from .mcp.parser import MCPParser
+from .mcp.advanced_executor import AdvancedMCPExecutor
+from .mcp.api.base import MCPWorkflowAPI
+from .mcp.api.registry import WorkflowRegistry
 
 # Integration handlers
-from multimind.integrations.base import IntegrationHandler
-from multimind.integrations.github import GitHubIntegrationHandler
-from multimind.integrations.slack import SlackIntegrationHandler
-from multimind.integrations.discord import DiscordIntegrationHandler
-from multimind.integrations.jira import JiraIntegrationHandler
+from .integrations.base import IntegrationHandler
+from .integrations.github import GitHubIntegrationHandler
+from .integrations.slack import SlackIntegrationHandler
+from .integrations.discord import DiscordIntegrationHandler
+from .integrations.jira import JiraIntegrationHandler
 
 # Logging components
-from multimind.multimind_logging.trace_logger import TraceLogger
-from multimind.multimind_logging.usage_tracker import UsageTracker
+from .multimind_logging.trace_logger import TraceLogger
+from .multimind_logging.usage_tracker import UsageTracker
 
 # Model implementations
-from multimind.models.claude import ClaudeModel
-from multimind.models.ollama import OllamaModel
-from multimind.models.openai import OpenAIModel
+from .models.claude import ClaudeModel
+from .models.ollama import OllamaModel
+from .models.openai import OpenAIModel
 
 # Pre-built workflows
-from multimind.mcp.workflows.code_review import CodeReviewWorkflow
-from multimind.mcp.workflows.ci_cd import CICDWorkflow
-from multimind.mcp.workflows.documentation import DocumentationWorkflow
-# from multimind.mcp.workflows.multi_integration import MultiIntegrationWorkflow
+from .mcp.workflows.code_review import CodeReviewWorkflow
+from .mcp.workflows.ci_cd import CICDWorkflow
+from .mcp.workflows.documentation import DocumentationWorkflow
+
+# API components
+from .api import multi_model_app, unified_app
+
+# Server components
+from .server import MultiMindServer
+
+# Splitter components
+from .splitter import TextSplitter, DocumentSplitter
+
+# Retrieval components
+from .retrieval.retriever import Retriever, RetrievalConfig
+from .retrieval.enhanced_retrieval import EnhancedRetriever
+
+# Pipeline components
+from .pipeline.pipeline import Pipeline, PipelineBuilder
 
 __all__ = [
     # Memory
@@ -84,10 +102,12 @@ __all__ = [
     "Config",
     "MultiMind",
 
+    # Context Transfer
+    "ContextTransferManager",
+
     # Agents
     "Agent",
     "AgentMemory",
-    "CalculatorTool",
 
     # Orchestration
     "PromptChain",
@@ -120,4 +140,24 @@ __all__ = [
     "CodeReviewWorkflow",
     "CICDWorkflow",
     "DocumentationWorkflow",
+
+    # API
+    "multi_model_app",
+    "unified_app",
+
+    # Server
+    "MultiMindServer",
+
+    # Splitter
+    "TextSplitter",
+    "DocumentSplitter",
+
+    # Retrieval
+    "Retriever",
+    "RetrievalConfig",
+    "EnhancedRetriever",
+
+    # Pipeline
+    "Pipeline",
+    "PipelineBuilder",
 ]
