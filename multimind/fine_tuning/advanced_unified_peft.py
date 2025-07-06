@@ -5,18 +5,52 @@ Advanced PEFT implementations including UniPELT++ and Enhanced MAM Adapters.
 from typing import List, Dict, Any, Optional, Union, Tuple, Se
 import torch
 import torch.nn as nn
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling,
-    DataCollatorForSeq2Seq
-)
+
+# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+try:
+    from transformers import (
+        PreTrainedModel,
+        PreTrainedTokenizer,
+        AutoModelForCausalLM,
+        AutoModelForSequenceClassification,
+        AutoModelForSeq2SeqLM,
+        AutoTokenizer,
+        TrainingArguments,
+        Trainer,
+        DataCollatorForLanguageModeling,
+        DataCollatorForSeq2Seq
+    )
+    _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqLM
+except ImportError:
+    try:
+        from transformers import (
+            PreTrainedModel,
+            PreTrainedTokenizer,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForSeq2SeqGeneration,
+            AutoTokenizer,
+            TrainingArguments,
+            Trainer,
+            DataCollatorForLanguageModeling,
+            DataCollatorForSeq2Seq
+        )
+        _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqGeneration
+    except ImportError:
+        # Fallback for very old versions
+        from transformers import (
+            PreTrainedModel,
+            PreTrainedTokenizer,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+            TrainingArguments,
+            Trainer,
+            DataCollatorForLanguageModeling,
+            DataCollatorForSeq2Seq
+        )
+        _AUTO_MODEL_FOR_SEQ2SEQ = None
+
 from peft import (
     LoraConfig,
     AdapterConfig,
