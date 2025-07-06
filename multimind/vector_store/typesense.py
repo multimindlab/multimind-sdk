@@ -85,7 +85,7 @@ class TypesenseVectorStore(VectorStoreBackend):
                     'per_page': k
                 }
                 if filter_criteria:
-                    filters = [f"metadata.{k}:={repr(v)}" for k, v in filter_criteria.items()]
+                    filters = [f"metadata.{key}:={repr(value)}" for key, value in filter_criteria.items()]
                     search_params['filter_by'] = ' && '.join(filters)
                 res = self.client.collections[self.collection].documents.search(search_params)
                 hits = res.get('hits', [])

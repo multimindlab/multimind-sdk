@@ -24,6 +24,132 @@ except ImportError:
     _HAS_NLTK = False
 
 
+@dataclass
+class ProcessingConfig:
+    """Configuration for document processing operations."""
+    
+    # Chunking configuration
+    chunking_strategy: ChunkingStrategy = ChunkingStrategy.SEMANTIC
+    min_chunk_size: int = 100
+    max_chunk_size: int = 1000
+    chunk_overlap: int = 50
+    similarity_threshold: float = 0.7
+    
+    # Metadata extraction
+    extract_metadata: bool = True
+    extract_entities: bool = True
+    extract_key_phrases: bool = True
+    extract_statistics: bool = True
+    
+    # Embedding configuration
+    generate_embeddings: bool = True
+    embedding_model: Optional[str] = None
+    embedding_dimension: Optional[int] = None
+    
+    # Processing options
+    remove_html: bool = True
+    remove_urls: bool = False
+    remove_emails: bool = False
+    remove_phone_numbers: bool = False
+    normalize_whitespace: bool = True
+    lowercase: bool = False
+    
+    # Language processing
+    language: str = "en"
+    use_spacy: bool = True
+    spacy_model: str = "en_core_web_sm"
+    
+    # Advanced options
+    merge_similar_chunks: bool = True
+    max_merged_tokens: Optional[int] = None
+    preserve_formatting: bool = False
+    include_original_text: bool = False
+    
+    # Performance settings
+    batch_size: int = 10
+    max_workers: Optional[int] = None
+    timeout: Optional[float] = None
+    
+    # Custom processing functions
+    preprocess_fn: Optional[Callable[[str], str]] = None
+    postprocess_fn: Optional[Callable[[List[DocumentChunk]], List[DocumentChunk]]] = None
+    
+    def __post_init__(self):
+        """Validate configuration after initialization."""
+        if self.min_chunk_size > self.max_chunk_size:
+            raise ValueError("min_chunk_size cannot be greater than max_chunk_size")
+        
+        if self.chunk_overlap >= self.max_chunk_size:
+            raise ValueError("chunk_overlap must be less than max_chunk_size")
+        
+        if not 0 <= self.similarity_threshold <= 1:
+            raise ValueError("similarity_threshold must be between 0 and 1")
+        
+        if self.batch_size < 1:
+            raise ValueError("batch_size must be at least 1")
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert configuration to dictionary."""
+        return {
+            'chunking_strategy': self.chunking_strategy.value,
+            'min_chunk_size': self.min_chunk_size,
+            'max_chunk_size': self.max_chunk_size,
+            'chunk_overlap': self.chunk_overlap,
+            'similarity_threshold': self.similarity_threshold,
+            'extract_metadata': self.extract_metadata,
+            'extract_entities': self.extract_entities,
+            'extract_key_phrases': self.extract_key_phrases,
+            'extract_statistics': self.extract_statistics,
+            'generate_embeddings': self.generate_embeddings,
+            'embedding_model': self.embedding_model,
+            'embedding_dimension': self.embedding_dimension,
+            'remove_html': self.remove_html,
+            'remove_urls': self.remove_urls,
+            'remove_emails': self.remove_emails,
+            'remove_phone_numbers': self.remove_phone_numbers,
+            'normalize_whitespace': self.normalize_whitespace,
+            'lowercase': self.lowercase,
+            'language': self.language,
+            'use_spacy': self.use_spacy,
+            'spacy_model': self.spacy_model,
+            'merge_similar_chunks': self.merge_similar_chunks,
+            'max_merged_tokens': self.max_merged_tokens,
+            'preserve_formatting': self.preserve_formatting,
+            'include_original_text': self.include_original_text,
+            'batch_size': self.batch_size,
+            'max_workers': self.max_workers,
+            'timeout': self.timeout
+        }
+    
+    @classmethod
+    def from_dict(cls, config_dict: Dict[str, Any]) -> 'ProcessingConfig':
+        """Create configuration from dictionary."""
+        # Convert string strategy back to enum
+        if 'chunking_strategy' in config_dict and isinstance(config_dict['chunking_strategy'], str):
+            config_dict['chunking_strategy'] = ChunkingStrategy(config_dict['chunking_strategy'])
+        
+        return cls(**config_dict)
+    
+    def get_chunker_config(self) -> Dict[str, Any]:
+        """Get configuration specific to chunking operations."""
+        return {
+            'min_chunk_size': self.min_chunk_size,
+            'max_chunk_size': self.max_chunk_size,
+            'similarity_threshold': self.similarity_threshold,
+            'chunk_overlap': self.chunk_overlap
+        }
+    
+    def get_metadata_config(self) -> Dict[str, Any]:
+        """Get configuration specific to metadata extraction."""
+        return {
+            'extract_entities': self.extract_entities,
+            'extract_key_phrases': self.extract_key_phrases,
+            'extract_statistics': self.extract_statistics,
+            'language': self.language,
+            'use_spacy': self.use_spacy,
+            'spacy_model': self.spacy_model
+        }
+
 
 class EnhancedDocumentProcessor:
     """Enhanced document processing with multiple strategies."""
@@ -31,14 +157,19 @@ class EnhancedDocumentProcessor:
     def __init__(
         self,
         model: BaseLLM,
+        config: Optional[ProcessingConfig] = None,
         chunking_strategy: ChunkingStrategy = ChunkingStrategy.SEMANTIC,
         metadata_extractor: Optional[MetadataExtractor] = None,
         **kwargs
     ):
         self.model = model
+        self.config = config or ProcessingConfig()
         self.chunking_strategy = chunking_strategy
         self.metadata_extractor = metadata_extractor or MetadataExtractor()
-        self.semantic_chunker = SemanticChunker(model, **kwargs)
+        
+        # Use config for chunker initialization
+        chunker_config = self.config.get_chunker_config()
+        self.semantic_chunker = SemanticChunker(model, **chunker_config, **kwargs)
         self.kwargs = kwargs
 
     async def process_document(
@@ -58,10 +189,17 @@ class EnhancedDocumentProcessor:
         Returns:
             List of processed document chunks
         """
-        # Extract metadata
-        extracted_metadata = self.metadata_extractor.extract_metadata(text)
-        if metadata:
-            extracted_metadata.update(metadata)
+        # Preprocess text if configured
+        if self.config.preprocess_fn:
+            text = self.config.preprocess_fn(text)
+        
+        # Extract metadata if configured
+        if self.config.extract_metadata:
+            extracted_metadata = self.metadata_extractor.extract_metadata(text)
+            if metadata:
+                extracted_metadata.update(metadata)
+        else:
+            extracted_metadata = metadata or {}
         
         # Chunk document based on strategy
         if self.chunking_strategy == ChunkingStrategy.SEMANTIC:
@@ -76,9 +214,14 @@ class EnhancedDocumentProcessor:
                 f"Chunking strategy {self.chunking_strategy} not implemented"
             )
         
-        # Generate embeddings for chunks
-        for chunk in chunks:
-            chunk.embedding = await self.model.embeddings([chunk.text])[0]
+        # Generate embeddings for chunks if configured
+        if self.config.generate_embeddings:
+            for chunk in chunks:
+                chunk.embedding = await self.model.embeddings([chunk.text])[0]
+        
+        # Postprocess chunks if configured
+        if self.config.postprocess_fn:
+            chunks = self.config.postprocess_fn(chunks)
         
         return chunks
 
@@ -127,8 +270,12 @@ class EnhancedDocumentProcessor:
         Returns:
             List of merged chunks
         """
-        if not chunks:
-            return []
+        if not chunks or not self.config.merge_similar_chunks:
+            return chunks
+        
+        # Use config max_tokens if not provided
+        if max_tokens is None:
+            max_tokens = self.config.max_merged_tokens
         
         # Sort chunks by semantic score
         sorted_chunks = sorted(chunks, key=lambda x: x.semantic_score or 0, reverse=True)
@@ -173,7 +320,7 @@ class EnhancedDocumentProcessor:
             if combined_tokens > max_tokens:
                 return False
         
-        return similarity >= self.semantic_chunker.similarity_threshold
+        return similarity >= self.config.similarity_threshold
 
     def _merge_two_chunks(self, chunk1: DocumentChunk, chunk2: DocumentChunk) -> DocumentChunk:
         """Merge two chunks into one."""
