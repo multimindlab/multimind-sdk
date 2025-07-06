@@ -7,7 +7,7 @@ pydantic-settings>=2.0.0
 python-dotenv==1.1.0
 
 tiktoken==0.9.0
-spacy==3.8.5
+spacy>=3.8.7
 nltk==3.9.1
 
 # API dependencies
@@ -52,3 +52,5 @@ mypy==1.15.0
 ruff==0.11.11
 python-pptx
 unstructured
+pytesseract
+sentence-transformers==4.1.0

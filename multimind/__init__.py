@@ -22,7 +22,7 @@ from .memory import (
     MemoryUtils
 )
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 # Core components
 from .main_config import Config
