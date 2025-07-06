@@ -5,18 +5,52 @@ UniPELT and MAM Adapters implementations for advanced parameter-efficient fine-t
 from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
-from transformers import (
-    PreTrainedModel,
-    PreTrainedTokenizer,
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    AutoModelForSeq2SeqLM,
-    AutoTokenizer,
-    TrainingArguments,
-    Trainer,
-    DataCollatorForLanguageModeling,
-    DataCollatorForSeq2Seq
-)
+
+# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+try:
+    from transformers import (
+        PreTrainedModel,
+        PreTrainedTokenizer,
+        AutoModelForCausalLM,
+        AutoModelForSequenceClassification,
+        AutoModelForSeq2SeqLM,
+        AutoTokenizer,
+        TrainingArguments,
+        Trainer,
+        DataCollatorForLanguageModeling,
+        DataCollatorForSeq2Seq
+    )
+    _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqLM
+except ImportError:
+    try:
+        from transformers import (
+            PreTrainedModel,
+            PreTrainedTokenizer,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoModelForSeq2SeqGeneration,
+            AutoTokenizer,
+            TrainingArguments,
+            Trainer,
+            DataCollatorForLanguageModeling,
+            DataCollatorForSeq2Seq
+        )
+        _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqGeneration
+    except ImportError:
+        # Fallback for very old versions
+        from transformers import (
+            PreTrainedModel,
+            PreTrainedTokenizer,
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+            TrainingArguments,
+            Trainer,
+            DataCollatorForLanguageModeling,
+            DataCollatorForSeq2Seq
+        )
+        _AUTO_MODEL_FOR_SEQ2SEQ = None
+
 from peft import (
     LoraConfig,
     # AdapterConfig,  # Commented out due to ImportError
@@ -129,7 +163,15 @@ class UniPELTTuner:
         elif self.model_type == "sequence_classification":
             return AutoModelForSequenceClassification
         elif self.model_type == "seq2seq":
-            return AutoModelForSeq2SeqLM
+            if _AUTO_MODEL_FOR_SEQ2SEQ is not None:
+                return _AUTO_MODEL_FOR_SEQ2SEQ
+            else:
+                # Fallback for very old versions
+                try:
+                    from transformers import BartForConditionalGeneration
+                    return BartForConditionalGeneration
+                except ImportError:
+                    raise ImportError("Unable to load seq2seq model. Please ensure transformers is properly installed.")
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 

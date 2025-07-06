@@ -9,7 +9,20 @@ from enum import Enum
 import spacy
 from bs4 import BeautifulSoup
 import requests
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+
+# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+try:
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+    _AUTO_MODEL_CLASS = AutoModelForSeq2SeqLM
+except ImportError:
+    try:
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
+        _AUTO_MODEL_CLASS = AutoModelForSeq2SeqGeneration
+    except ImportError:
+        # Fallback for very old versions
+        from transformers import AutoTokenizer
+        _AUTO_MODEL_CLASS = None
+
 import numpy as np
 from ..models.base import BaseLLM
 from .document_chunkers import *
