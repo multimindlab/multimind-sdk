@@ -1,25 +1,54 @@
 # Common dependencies used across MultiMind SDK
 # Core AI dependencies
-openai>=1.0.0
-anthropic>=0.5.0
-pydantic>=2.0.0
-python-dotenv>=1.0.0
+openai==1.82.0
+anthropic==0.52.1
+pydantic==2.11.5
+pydantic-settings>=2.0.0
+python-dotenv==1.1.0
+
+tiktoken==0.9.0
+spacy==3.8.5
+nltk==3.9.1
 
 # API dependencies
-fastapi>=0.100.0
-python-jose[cryptography]>=3.3.0
-python-multipart>=0.0.6
+fastapi==0.115.9
+python-jose==3.5.0
+python-multipart==0.0.20
 
 # Common utilities
-click>=8.1.0
-rich>=13.0.0
-requests>=2.26.0
-typing-extensions>=4.5.0
+click==8.1.8
+rich==14.0.0
+requests==2.32.3
+typing-extensions==4.13.2
+aiohttp==3.12.2
 
-# Development dependencies
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-black>=23.0.0
-isort>=5.12.0
-mypy>=1.0.0
-ruff>=0.1.0
+# Document processing dependencies
+beautifulsoup4==4.12.2
+opencv-python==4.11.0.86
+pillow==11.2.1
+PyPDF2==3.0.1
+python-docx==1.1.2
+
+# Other essential dependencies
+attrs==25.3.0
+certifi==2025.4.26
+charset-normalizer==3.4.2
+idna==3.10
+numpy==2.2.6
+scikit-learn==1.6.1
+scipy==1.15.3
+pandas==2.2.3
+matplotlib==3.10.3
+seaborn==0.13.2
+selenium==4.15.2
+lxml==5.4.0
+joblib==1.5.1
+PyYAML==6.0.2
+pytest==8.3.5
+pytest-asyncio==1.0.0
+black==25.1.0
+isort==6.0.1
+mypy==1.15.0
+ruff==0.11.11
+python-pptx
+unstructured
