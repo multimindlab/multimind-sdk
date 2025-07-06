@@ -133,28 +133,6 @@
 - **Predictive Maintenance**: Proactive system health monitoring
 
 ---
-
-## 🔒 Compliance Features
-
-MultiMind SDK provides comprehensive compliance support for enterprise AI applications:
-
-### Core Compliance Features
-- Real-time compliance monitoring
-- Healthcare-specific compliance checks
-- Interactive compliance dashboard
-- Alert management system
-- Compliance trend analysis
-
-### Advanced Compliance Mechanisms
-- Federated compliance shards
-- Zero-knowledge proofs
-- Differential privacy feedback loops
-- Self-healing patches
-- Model watermarking and fingerprint tracking
-- Dynamic regulatory change detection
-
-[Learn more about our compliance features →](docs/compliance.md)
-
 ## 🚀 Quick Start
 
 ### Installation
