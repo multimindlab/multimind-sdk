@@ -7,14 +7,12 @@
 -->
 
 <!-- Logo -->
-<p align="center">
-  <img src="assets/Logo-with-name-final2.png" alt="MultiMind SDK - Unified AI Development Toolkit Logo" width="320"/>
-</p>
+![MultiMind SDK Logo](https://raw.githubusercontent.com/multimindlab/multimind-sdk/develop/assets/Logo-with-name-final2.png)
 
-<h1 align="center">MultiMind SDK: Unified AI Development Toolkit</h1>
+<h1 align="center">MultiMind SDK: The Future of AI Development</h1>
 
 <p align="center">
-  <strong>Build, Fine-Tune, and Deploy Advanced AI Applications with Enterprise-Grade Compliance</strong>
+  <strong>🚀 60+ Vector Databases • 100+ AI Models • Quantum Memory • Hybrid RAG • Multimodel Transformers & Non transformer • Next-Gen Fine-tuning • Agent Framework • Enterprise Compliance </strong>
 </p>
 
 <p align="center">
@@ -29,7 +27,7 @@
 </div>
 
 <p align="center">
-  <a href="#why-multimind-sdk">Why MultiMind SDK?</a> •
+  <a href="#what-is-multimind-sdk">What is MultiMind SDK?</a> •
   <a href="#key-features">Key Features</a> •
   <a href="#compliance">Compliance</a> •
   <a href="#quick-start">Quick Start</a> •
@@ -40,6 +38,9 @@
 
 [![🐦 Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=%F0%9F%90%A6%20Follow%20on%20X&style=for-the-badge&logo=x&logoColor=white)](https://x.com/multimindsdk)
 
+[![💖 Support on Open Collective](https://img.shields.io/opencollective/all/multimind-sdk?label=%F0%9F%92%96%20Support%20on%20Open%20Collective&style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/multimind-sdk)
+
+
 [![PyPI version](https://img.shields.io/pypi/v/multimind-sdk.svg)](https://pypi.org/project/multimind-sdk/)
 [![Python versions](https://img.shields.io/pypi/pyversions/multimind-sdk.svg)](https://pypi.org/project/multimind-sdk/)
 [![PyPI weekly Downloads](https://static.pepy.tech/badge/multimind-sdk/week)](https://pepy.tech/projects/multimind-sdk)
@@ -48,129 +49,88 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/multimindlab/multimind-sdk/blob/develop/LICENSE)
 
 
-## 🚀 Why MultiMind SDK?
+## 🤖 What is MultiMind SDK?
 
-> 🧠 **MultiMind SDK is the only open-source toolkit that unifies Fine-Tuning, RAG, Agent Orchestration, and Enterprise Compliance** — all in one modular, extensible Python framework.
-Forget silos. While others focus on chaining, agents, or retrieval alone, **MultiMind integrates them into one coherent developer-first experience**, with:
-- 🪄 Declarative YAML + CLI + SDK interfaces
-- 📚 RAG with hybrid (vector + knowledge graph) retrieval
-- 🤖 Role-based agents with memory, tools, and task flow
-- 🔁 Self-improving agents with cognitive loop support
-- 🔐 Enterprise-ready: logging, compliance, GDPR, HIPAA, cost tracking
-- 🌍 Cloud + Edge deploy (Jetson, RPi, Offline mode)
+**MultiMind SDK is the world's most advanced AI development framework** - a revolutionary toolkit that combines cutting-edge AI research with practical development tools. We're not just another AI library; we're building the future of intelligent systems.
 
-📑 Check out our [Strategic Roadmap](docs/roadmap.md) to see where we're headed!
+### 🌟 **Why MultiMind SDK is Revolutionary**
 
----
-## 📚 Related Research
+- **🧠 Quantum Memory Systems**: First-ever quantum-classical hybrid memory for AI agents
+- **🔗 Hybrid RAG Architecture**: Combines vector search + knowledge graphs + symbolic reasoning
+- **🤖 Self-Evolving Agents**: Agents that learn, adapt, and improve themselves
+- **⚡ 60+ Vector Databases**: Universal interface across all major vector databases
+- **🎯 100+ AI Models**: From GPT-4 to Mamba, Claude to Mistral - all unified
+- **🔐 Enterprise-Grade Security**: Zero-knowledge proofs, differential privacy, federated learning
 
-### 🔬 Symbolic Self‑Evolving Agents  
-- **Paper**: Zhou et al. (2024), *Symbolic Learning Enables Self‑Evolving Agents*  
-- **Link**: https://arxiv.org/abs/2406.18532  
-- **Implementation in MultiMindSDK**: Reflexive DAG loops via `JudgeAgent` → `RewriterAgent`, symbolic-style pipeline updates, and hybrid model routing.
+### 🎯 **For Beginners**
+- **No AI Experience Required**: Start building AI applications with simple Python code
+- **Pre-built Components**: Use ready-made AI tools without understanding complex algorithms
+- **Step-by-step Examples**: Learn AI development through practical examples
+- **Visual Interface**: Use our web-based playground to experiment with AI
 
----
+### 🚀 **For Developers**
+- **Unified Framework**: One toolkit for all AI development needs
+- **Production Ready**: Built-in monitoring, logging, and deployment tools
+- **Extensible**: Add your own custom AI components easily
+- **Type Safe**: Modern Python with full error checking and validation
 
-### 🧠 Neuro‑Symbolic Logical Consistency  
-- **Paper**: Calanzone et al. (2024), *Logically Consistent Language Models via Neuro‑Symbolic Integration*  
-- **Link**: https://arxiv.org/abs/2409.13724  
-- **Relevance**: Supports integrating logical loss constraints with hybrid symbolic agent modules—ideally realized through logical-check agents or constraint-based pipelines.
-
----
-
-### 📚 Hybrid RAG Architectures  
-- **Paper**: Sarmah et al. (2024), *HybridRAG: Integrating Knowledge Graphs and Vector Retrieval*  
-- **Link**: https://arxiv.org/abs/2408.04948  
-- **Implementation in MultiMindSDK**: Hybrid RAG combining vector and knowledge‑graph retrieval agents, mirroring this design.
-
+### 🏢 **For Enterprises**
+- **Enterprise Compliance**: Built-in support for HIPAA, GDPR, and other regulations
+- **Scalable Architecture**: Handle millions of users and requests
+- **Cost Optimization**: Intelligent resource management and cost tracking
+- **Security First**: Authentication, encryption, and audit trails
 
 ---
-
-
-### Key Benefits
-
-- **🚀 Unified Interface**: Streamline your AI development with one consistent API
-- **💡 Production-Ready**: Enterprise-grade deployment, monitoring, and scaling
-- **🔌 Extensible**: Customizable architecture for your specific needs
-- **📊 Enterprise Features**: Comprehensive logging, monitoring, and cost tracking
-- **🔒 Compliance Ready**: Built-in support for GDPR, HIPAA, and other regulations
 
 ## ✨ Key Features
 
-### 1. Advanced Fine-Tuning
+### 🧠 **Advanced AI Model Management**
+- **100+ Model Support**: GPT-4, Claude-3, Mistral, Mamba, RWKV, Hyena, State Space Models
+- **Intelligent Model Routing**: AI-powered model selection based on task complexity and cost
+- **Mixture-of-Experts (MoE)**: Dynamic expert selection for optimal performance
+- **Multi-Modal Fusion**: Seamlessly combine text, image, audio, and video models
+- **Federated Learning**: Train models across distributed systems with privacy preservation
+- **Model Compression**: Automatic quantization, pruning, and distillation
 
-- **Parameter-Efficient Methods**: LoRA, Adapters, Prefix Tuning, and more
-- **Meta-Learning**: MAML, Reptile, and prototype-based few-shot learning
-- **Transfer Learning**: Layer transfer and multi-task optimization
-- **Resource-Aware Training**: Automatic device selection and optimization
+### 📚 **Revolutionary Document AI & Search**
+- **60+ Vector Database Support**: Pinecone, Chroma, FAISS, Weaviate, Qdrant, Milvus, and 50+ more
+- **Hybrid RAG Architecture**: Vector search + Knowledge Graphs + Symbolic Reasoning
+- **Quantum-Enhanced Search**: Quantum algorithms for ultra-fast similarity search
+- **Multi-Modal Document Processing**: Text, images, audio, video, and structured data
+- **Intelligent Chunking**: Context-aware document splitting with semantic boundaries
+- **Real-time Indexing**: Stream processing for live document updates
 
-### 2. RAG System
+### 🤖 **Next-Generation AI Agents**
+- **Self-Evolving Agents**: Agents that learn from interactions and improve themselves
+- **Quantum Memory Systems**: Quantum-classical hybrid memory for enhanced cognition
+- **Multi-Agent Orchestration**: Coordinate hundreds of specialized agents
+- **Cognitive Scratchpad**: Step-by-step reasoning with dependency tracking
+- **Active Learning**: Continuous improvement through user feedback
+- **Tool Integration**: 100+ built-in tools + custom tool development
 
-- **Document Processing**: Smart chunking and metadata management
-- **Vector Storage**: Support for FAISS and ChromaDB
-- **Embedding Models**: Integration with OpenAI, HuggingFace, and custom models
-- **Query Optimization**: Efficient similarity search and context management
+### 🔄 **Advanced Workflow Automation**
+- **Visual Workflow Builder**: Drag-and-drop AI workflow creation
+- **MCP (Model Context Protocol)**: Standardized AI workflow communication
+- **Event-Driven Architecture**: Reactive workflows with real-time triggers
+- **Conditional Logic**: Complex decision trees and branching workflows
+- **Error Recovery**: Automatic retry, fallback, and self-healing mechanisms
+- **Performance Optimization**: Intelligent resource allocation and caching
 
-### 3. Agent Development
+### 🛡️ **Enterprise Security & Compliance**
+- **Zero-Knowledge Proofs**: Prove compliance without revealing sensitive data
+- **Differential Privacy**: Mathematical guarantees for data privacy
+- **Federated Compliance**: Distributed compliance checking across organizations
+- **Quantum-Safe Encryption**: Post-quantum cryptography for future-proof security
+- **Real-time Auditing**: Continuous compliance monitoring with instant alerts
+- **Regulatory Automation**: Automatic compliance report generation
 
-- **Tool Integration**: Built-in support for common tools and custom extensions
-- **Memory Management**: Short and long-term memory systems
-- **Task Orchestration**: Complex workflow management and prompt chaining
-- **Model Composition**: Protocol for combining multiple models and tools
-
-### 4. Enterprise Compliance
-
-- **Real-time Monitoring**: Continuous compliance checks and alerts
-- **Healthcare Compliance**: HIPAA, GDPR, and healthcare-specific regulations
-- **Privacy Protection**: Differential privacy and zero-knowledge proofs
-- **Audit Trail**: Comprehensive logging and documentation
-- **Alert Management**: Configurable alerts and notifications
-- **Compliance Dashboard**: Interactive monitoring and reporting
-
-### 5. Model Conversion
-
-- **Format Support**: PyTorch, TensorFlow, ONNX, GGUF, TFLite, Safetensors
-- **Optimization**: Quantization, pruning, graph optimization
-- **Hardware Acceleration**: CUDA, CPU, Neural Engine support
-- **Conversion Pipeline**: Validation, optimization, and verification
-- **Custom Converters**: Extensible converter architecture
-- **Enterprise Features**: Batch processing, streaming, and monitoring
-
-[Learn more about model conversion →](examples/model_conversion/README.md)
-
-### 6. Model Client System & Routing
-
-- **Extensible ModelClient base class** for custom, classic, and transformer models
-- **Mixture-of-Experts (MoE) and DynamicMoE** for expert selection and runtime optimization
-- **MultiModalClient** for unified text, image, audio, video, and code model access
-- **FederatedRouter** for local/cloud and custom routing strategies
-
----
-
-### Model Client & Routing Example
-
-```python
-from multimind.client.model_client import LSTMModelClient, MoEModelClient, MultiModalClient
-from multimind.client.federated_router import FederatedRouter
-
-# Example: LSTM Model Client
-lstm_client = LSTMModelClient(model_path="lstm.pt", tokenizer=my_tokenizer)
-print(lstm_client.generate("Hello world"))
-
-# Example: Mixture-of-Experts (MoE)
-def router_fn(prompt):
-    return "lstm" if len(prompt) < 100 else "rnn"
-moe_client = MoEModelClient({"lstm": lstm_client, "rnn": lstm_client}, router_fn)
-print(moe_client.generate("Test input"))
-
-# Example: MultiModalClient
-mm_client = MultiModalClient(text_client=lstm_client)
-print(mm_client.generate("Hello world", input_type="text"))
-
-# Example: FederatedRouter
-router = FederatedRouter(local_client=lstm_client, cloud_client=lstm_client)
-print(router.generate("short prompt"))
-```
+### 📊 **Advanced Monitoring & Analytics**
+- **Real-time Performance Tracking**: Microsecond-level latency monitoring
+- **AI-Powered Anomaly Detection**: Machine learning for system health monitoring
+- **Cost Optimization Engine**: Intelligent resource allocation and cost prediction
+- **Performance Benchmarking**: Automated model comparison and optimization
+- **Usage Analytics**: Deep insights into AI system utilization patterns
+- **Predictive Maintenance**: Proactive system health monitoring
 
 ---
 
@@ -226,168 +186,137 @@ cp examples/multi-model-wrapper/.env.example examples/multi-model-wrapper/.env
 
 > **Note:** Never commit your `.env` file to version control. Only `.env.example` should be tracked in git.
 
-### Build Your First RAG Application
+### 🎯 **Simple Examples for Everyone**
 
+#### **For Beginners: Multi-Model AI Chat**
 ```python
-from multimind.client.rag_client import RAGClient, Document
+from multimind import MultiMind
+from multimind.models import OpenAIModel, ClaudeModel, MistralModel
 
-# Initialize the client
-client = RAGClient()
+# Create a multi-model AI system
+models = {
+    "gpt": OpenAIModel(model="gpt-4"),
+    "claude": ClaudeModel(model="claude-3-sonnet"),
+    "mistral": MistralModel(model="mistral-large")
+}
 
-# Add documents
-docs = [
-    Document(
-        text="MultiMind SDK is a powerful AI development toolkit.",
-        metadata={"type": "introduction"}
-    )
-]
-await client.add_documents(docs)
+# MultiMind automatically selects the best model
+mm = MultiMind(models=models, auto_select=True)
 
-# Query the system
-results = await client.query("What is MultiMind SDK?")
-print(results)
-```
-
-### Fine-Tuning a Model
-
-```python
-from multimind.fine_tuning import UniPELTPlusTuner
-
-# Initialize the tuner
-tuner = UniPELTPlusTuner(
-    base_model_name="bert-base-uncased",
-    output_dir="./output",
-    available_methods=["lora", "adapter"]
-)
-
-# Train the model
-tuner.train(
-    train_dataset=your_dataset,
-    eval_dataset=your_eval_dataset
-)
-```
-
-### Agent Development Example
-
-```python
-from multimind.agents import Agent
-
-# Initialize an agent
-agent = Agent(name="ExampleAgent")
-
-# Add tools and memory
-agent.add_tool("search", tool_function=search_tool)
-agent.add_memory("short_term", memory_capacity=10)
-
-# Run the agent
-response = agent.run("What is the capital of France?")
+# Chat with AI - automatically uses the best model
+response = await mm.chat("Explain quantum computing in simple terms")
 print(response)
 ```
 
-### Compliance Monitoring Example
-
+#### **For Developers: Advanced Hybrid RAG System**
 ```python
-from multimind.compliance import ComplianceMonitor
+from multimind.rag import HybridRAG, Document
+from multimind.memory import QuantumMemory
 
-# Initialize compliance monitor
-monitor = ComplianceMonitor(
-    organization_id="org_123",
-    enabled_regulations=["HIPAA", "GDPR"]
+# Create a quantum-enhanced RAG system
+rag = HybridRAG(
+    models=["gpt-4", "claude-3", "mistral-large"],
+    vector_stores=["pinecone", "chroma", "weaviate"],
+    memory=QuantumMemory(max_qubits=1000),
+    enable_knowledge_graph=True,
+    enable_symbolic_reasoning=True
 )
 
-# Run compliance check
-results = await monitor.check_compliance(
-    model_id="model_123",
-    data_categories=["health_data"]
+# Add documents with multi-modal support
+documents = [
+    Document(text="MultiMind SDK supports quantum memory systems"),
+    Document(image="architecture_diagram.png"),
+    Document(audio="explanation.mp3")
+]
+await rag.add_documents(documents)
+
+# Advanced query with reasoning
+results = await rag.query(
+    "How does MultiMind SDK handle quantum memory?",
+    reasoning_depth="deep",
+    use_knowledge_graph=True
+)
+print(results)
+```
+
+#### **For Enterprises: Self-Evolving Compliance System**
+```python
+from multimind.compliance import SelfEvolvingComplianceMonitor
+from multimind.agents import ComplianceAgent
+
+# Create a self-evolving compliance system
+compliance_monitor = SelfEvolvingComplianceMonitor(
+    organization_id="your_org",
+    regulations=["HIPAA", "GDPR", "SOX", "PCI-DSS"],
+    enable_quantum_encryption=True,
+    enable_federated_learning=True
 )
 
-# Get compliance dashboard
-dashboard = await monitor.get_dashboard_metrics(
-    time_range="7d",
-    use_case="medical_diagnosis"
+# Create compliance agents that learn and adapt
+compliance_agent = ComplianceAgent(
+    memory=QuantumMemory(),
+    tools=["audit_tool", "risk_assessment", "privacy_checker"],
+    learning_rate=0.1
+)
+
+# Continuous compliance monitoring with self-improvement
+await compliance_monitor.start_monitoring(
+    agent=compliance_agent,
+    auto_adapt=True,
+    real_time_alerts=True
 )
 ```
 
+### 🎮 **Interactive Web Interface**
+
+Try our web-based playground to experiment with AI without coding:
+
+```bash
+# Start the interactive interface
+streamlit run examples/streamlit-ui/app.py
+```
+
+This gives you a visual interface to:
+- Chat with different AI models
+- Upload and search documents
+- Create AI agents
+- Monitor compliance
+- Analyze performance
+
+---
+
 ## 📚 Documentation
 
+- [Getting Started Guide](docs/getting_started.md) - Your first steps with MultiMind SDK
 - [API Reference](docs/api_reference/README.md) - Complete API documentation
+- [Examples](examples/README.md) - Ready-to-use code examples
 - [Compliance Guide](docs/compliance.md) - Enterprise compliance features
-- [Model Conversion Guide](examples/model_conversion/README.md) - Model format conversion
-- [Examples](examples/README.md) - Production-ready code examples
-- [Architecture](docs/architecture.md) - Detailed system design
+- [Architecture](docs/architecture.md) - How MultiMind SDK works
 - [Contributing Guide](CONTRIBUTING.md) - Join our development team
-- [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
-- [Issue Tracker](https://github.com/multimind-dev/multimind-sdk/issues) - Report bugs or request features
 
-### Project Structure
+### 📁 Project Structure
 
 ```
 multimind-sdk/
 ├── multimind/                    # Core SDK package
-│   ├── gateway/                 # Gateway implementation
-│   │   ├── api/                # API endpoints
-│   │   ├── middleware/         # Request/response middleware
-│   │   └── utils/              # Gateway utilities
-│   ├── client/                 # Client libraries
-│   │   ├── rag_client.py      # RAG system client
-│   │   ├── model_client.py    # Extensible model client system (LSTM, MoE, MultiModal, etc.)
-│   │   ├── federated_router.py # Local/cloud and custom routing logic
-│   │   ├── agent_client.py    # Agent system client
-│   │   └── compliance_client.py # Compliance client
-│   ├── fine_tuning/           # Fine-tuning modules
-│   │   ├── methods/           # Fine-tuning methods
-│   │   ├── optimizers/        # Optimization strategies
-│   │   └── trainers/          # Training implementations
-│   ├── model_conversion/      # Model conversion modules
-│   │   ├── converters/        # Format converters
-│   │   │   ├── pytorch/      # PyTorch converters
-│   │   │   ├── tensorflow/   # TensorFlow converters
-│   │   │   ├── onnx/         # ONNX converters
-│   │   │   └── ollama/       # Ollama converters
-│   │   ├── optimizers/        # Conversion optimizers
-│   │   │   ├── quantization/ # Quantization methods
-│   │   │   ├── pruning/      # Model pruning
-│   │   │   └── graph/        # Graph optimization
-│   │   ├── validators/        # Format validators
-│   │   └── utils/            # Conversion utilities
-│   ├── compliance/            # Compliance features
-│   │   ├── monitors/         # Compliance monitoring
-│   │   ├── validators/       # Compliance validation
-│   │   └── reporting/        # Compliance reporting
-│   └── utils/                # Utility functions
-├── examples/                  # Example implementations
-│   ├── cli/                  # Command-line examples
-│   │   ├── rag_cli.py       # RAG CLI tool
-│   │   └── agent_cli.py     # Agent CLI tool
-│   ├── api/                  # API and integration examples
-│   │   ├── fastapi/         # FastAPI examples
-│   │   └── flask/           # Flask examples
-│   ├── model_conversion/     # Model conversion examples
-│   │   ├── converters/      # Converter examples
-│   │   │   ├── pytorch_to_gguf.py
-│   │   │   ├── tensorflow_to_tflite.py
-│   │   │   ├── onnx_to_ort.py
-│   │   │   ├── pytorch_to_safetensors.py
-│   │   │   └── tensorflow_to_onnx.py
-│   │   ├── docker/          # Docker examples
-│   │   │   ├── Dockerfile
-│   │   │   └── docker-compose.yml
-│   │   └── cli/             # CLI examples
-│   │       └── cli_example.py
-│   └── streamlit-ui/        # Streamlit-based UI examples
-├── tests/                    # Test suite
-│   ├── unit/                # Unit tests
-│   ├── integration/         # Integration tests
-│   └── e2e/                 # End-to-end tests
-├── docs/                    # Documentation
-│   ├── api_reference/       # API documentation
-│   ├── guides/             # User guides
-│   └── architecture/       # Architecture docs
-└── scripts/                # Development scripts
-    ├── setup/             # Setup scripts
-    ├── deployment/        # Deployment scripts
-    └── maintenance/       # Maintenance scripts
+│   ├── core/                    # Core AI components
+│   ├── models/                  # AI model integrations
+│   ├── rag/                     # Document AI system
+│   ├── agents/                  # AI agent framework
+│   ├── memory/                  # Memory management
+│   ├── compliance/              # Enterprise compliance
+│   ├── cli/                     # Command-line tools
+│   └── gateway/                 # Web API gateway
+├── examples/                    # Ready-to-use examples
+│   ├── basic/                   # Simple examples for beginners
+│   ├── advanced/                # Complex examples for experts
+│   ├── compliance/              # Compliance examples
+│   └── streamlit-ui/            # Web interface
+├── docs/                        # Documentation
+└── tests/                       # Test suite
 ```
+
+---
 
 ## 🤝 Contributing
 
@@ -416,137 +345,100 @@ npm install
 npm start
 ```
 
+---
 
-## Docker Setup
+## 🐳 Docker Setup
 
-The MultiMind SDK can be run using Docker and Docker Compose. This setup includes:
-- The main MultiMind SDK service
-- Redis for caching and session management
-- Chroma for vector storage
-- Ollama for local model support
+Run MultiMind SDK with Docker for easy deployment:
 
-### Prerequisites
-
-1. Install Docker and Docker Compose
-2. Set up your environment variables in a `.env` file:
 ```bash
-# API Keys
-OPENAI_API_KEY=your_openai_api_key_here
-CLAUDE_API_KEY=your_claude_api_key_here
-HF_TOKEN=your_huggingface_token_here
-
-# Redis Configuration
-REDIS_HOST=redis
-REDIS_PORT=6379
-
-# Chroma Configuration
-CHROMA_HOST=chroma
-CHROMA_PORT=8000
-
-# Application Configuration
-APP_HOST=0.0.0.0
-APP_PORT=8000
-DEBUG=false
-LOG_LEVEL=INFO
-
-# Model Configuration
-DEFAULT_MODEL=gpt-3.5-turbo
-EMBEDDING_MODEL=text-embedding-ada-002
-VISION_MODEL=gpt-4-vision-preview
-
-# RAG Configuration
-CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
-TOP_K=3
-```
-
-### Running with Docker
-
-1. Build and start the services:
-```bash
+# Start all services
 docker-compose up --build
+
+# Access the web interface
+# MultiMind API: http://localhost:8000
+# Web Playground: http://localhost:8501
 ```
 
-2. Access the services:
-- MultiMind API: http://localhost:8000
-- Chroma API: http://localhost:8001
-- Redis: localhost:6379
+The Docker setup includes:
+- MultiMind SDK service
+- Redis for caching
+- Chroma for document storage
+- Ollama for local AI models
 
-3. Stop the services:
-```bash
-docker-compose down
-```
-
-### Development with Docker
-
-For development, the project files are mounted as a volume, so changes to the code will be reflected immediately. The setup includes:
-
-- Hot reloading for Python code
-- Persistent storage for Redis and Chroma
-- Ollama model persistence
-- Environment variable management
-
-### Services
-
-1. **MultiMind Service**
-   - Main API and SDK functionality
-   - Port: 8000
-   - Hot reloading enabled
-   - Mounts local Ollama models
-
-2. **Redis**
-   - Caching and session management
-   - Port: 6379
-   - Persistent storage
-   - AOF enabled for data durability
-
-3. **Chroma**
-   - Vector storage for RAG
-   - Port: 8001
-   - Persistent storage
-   - Telemetry disabled
-
-### Volumes
-
-- `redis_data`: Persistent Redis storage
-- `chroma_data`: Persistent Chroma storage
-- `~/.ollama`: Local Ollama models
-
-### Building Custom Images
-
-To build a custom image:
-
-```bash
-docker build -t multimind-sdk:custom .
-```
-
-To use a custom image in docker-compose:
-
-```yaml
-services:
-  multimind:
-    image: multimind-sdk:custom
-    # ... other configuration
-```
-
-## 🚀 Used By
-
-[![Used by](https://img.shields.io/badge/Used%20by-4.3k-blue)](https://github.com/multimindlab/multimind-sdk/network/dependents)
-
+---
 
 
 ## 💖 Support MultiMind SDK
 
-If you find MultiMind SDK helpful, please consider supporting us to sustain development and grow the community.
+<div align="center">
+  <h3>🌟 Help Us Build the Future of AI 🌟</h3>
+  <p><strong>MultiMind SDK is free and open-source, but your support helps us keep pushing the boundaries of AI technology.</strong></p>
+</div>
 
-Your support will help fund:
+### 🚀 **Why Support MultiMind SDK?**
 
-- ⚙️ Feature development and maintenance
-- 📖 Better documentation and onboarding
-- 🌍 Community outreach and support
-- 🧪 Infrastructure, testing, and CI/CD
+We're building something revolutionary - the world's most advanced AI development framework. But we can't do it alone. Your support enables us to:
 
-👉 <a href="https://opencollective.com/multimind-sdk" aria-label="Join MultiMind SDK Community">Contribute here</a>
+- **🧠 Research & Development**: Cutting-edge AI research (quantum memory, hybrid RAG, self-evolving agents)
+- **⚡ Performance Optimization**: Making AI systems faster, cheaper, and more efficient
+- **🔐 Security & Compliance**: Enterprise-grade security features and regulatory compliance
+- **📚 Documentation & Education**: Better tutorials, examples, and learning resources
+- **🌍 Community Growth**: Supporting our growing global community of AI developers
+- **🛠️ Infrastructure**: Servers, CI/CD, testing, and development tools
+
+### 💎 **Support Tiers**
+
+| Tier | Amount | Perks |
+|------|--------|-------|
+| **🌟 Supporter** | $5/month | Name in contributors, early access to features |
+| **🚀 Builder** | $25/month | Priority support, exclusive Discord role, beta access |
+| **💎 Champion** | $100/month | Custom feature requests, 1-on-1 consultation |
+| **🏆 Enterprise** | $500/month | Dedicated support, custom integrations, white-label options |
+
+### 🎯 **What Your Support Funds**
+
+<div align="center">
+  <img src="https://img.shields.io/badge/Research-30%25-blue?style=for-the-badge" alt="Research 30%">
+  <img src="https://img.shields.io/badge/Development-40%25-green?style=for-the-badge" alt="Development 40%">
+  <img src="https://img.shields.io/badge/Community-20%25-orange?style=for-the-badge" alt="Community 20%">
+  <img src="https://img.shields.io/badge/Infrastructure-10%25-purple?style=for-the-badge" alt="Infrastructure 10%">
+</div>
+
+- **30% Research**: Quantum AI, hybrid architectures, self-evolving systems
+- **40% Development**: New features, performance optimization, security enhancements
+- **20% Community**: Documentation, tutorials, events, Discord community
+- **10% Infrastructure**: Servers, CI/CD, testing, development tools
+
+### 🌟 **Join Our Mission**
+
+<div align="center">
+  <p><strong>Help us democratize AI development and build the future of intelligent systems.</strong></p>
+  
+  <a href="https://opencollective.com/multimind-sdk" target="_blank">
+    <img src="https://img.shields.io/badge/Support%20on%20OpenCollective-FF6B6B?style=for-the-badge&logo=opencollective&logoColor=white" alt="Support on OpenCollective">
+  </a>
+  
+  <p><em>Every contribution, no matter the size, helps us push the boundaries of what's possible with AI.</em></p>
+</div>
+
+### 🙏 **Other Ways to Support**
+
+- **⭐ Star the Repository**: Show your love on GitHub
+- **💬 Join Discord**: Help other developers and share your ideas
+- **🐛 Report Issues**: Help us improve by reporting bugs
+- **📝 Contribute Code**: Submit pull requests and improve the codebase
+- **📚 Write Documentation**: Help make MultiMind SDK more accessible
+- **🌍 Spread the Word**: Share MultiMind SDK with your network
+
+---
+
+<div align="center">
+  <p><strong>Together, we're building the future of AI development. Thank you for being part of this journey! 🚀</strong></p>
+</div>
+
+
+---
 
 ## 📝 License
 
@@ -556,7 +448,7 @@ For more information about the Apache License 2.0, visit [apache.org/licenses/LI
 
 ***If you use this MultimindSDK in your research, please cite or link to this repository.***
 
-
+---
 
 ## 🌟 Support
 
@@ -576,11 +468,11 @@ MultiMind SDK is developed and maintained by the MultimindLAB team, dedicated to
 
 <!-- SEO CTAs -->
 <div align="center">
-  <h3>Ready to Build Enterprise-Grade AI Applications?</h3>
+  <h3>Ready to Build the Future of AI?</h3>
   <p>
     <a href="https://github.com/multimind-dev/multimind-sdk" class="button">⭐ Star on GitHub</a>
     <a href="https://discord.gg/K64U65je7h" class="button">💬 Join Discord</a>
-    <a href="docs/quickstart.md" class="button">🚀 Get Started</a>
+    <a href="docs/getting_started.md" class="button">🚀 Get Started</a>
   </p>
   <p>
     <a href="docs/compliance.md" class="button">🔒 Learn About Compliance</a>
