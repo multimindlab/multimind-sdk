@@ -3,8 +3,107 @@ Embedding model implementations for RAG system.
 """
 
 from typing import List, Dict, Any, Optional
+from dataclasses import dataclass
 import numpy as np
 from ..models.base import BaseLLM
+
+@dataclass
+class EmbeddingConfig:
+    """Configuration for embedding generation."""
+    model_name: str = "text-embedding-ada-002"
+    batch_size: int = 100
+    cache_enabled: bool = True
+    device: str = "cpu"
+    max_length: Optional[int] = None
+    normalize: bool = True
+    custom_params: Dict[str, Any] = None
+
+class EmbeddingGenerator:
+    """Main embedding generator that can use different embedding models."""
+    
+    def __init__(self, config: EmbeddingConfig):
+        """Initialize embedding generator.
+        
+        Args:
+            config: Configuration for embedding generation
+        """
+        self.config = config
+        self.embedder = self._get_embedder()
+    
+    def _get_embedder(self) -> BaseLLM:
+        """Get the appropriate embedder based on configuration."""
+        if "openai" in self.config.model_name.lower():
+            return OpenAIEmbedder(
+                model=self.config.model_name,
+                batch_size=self.config.batch_size,
+                cache_enabled=self.config.cache_enabled,
+                **(self.config.custom_params or {})
+            )
+        elif "sentence" in self.config.model_name.lower():
+            return SentenceT5Embedder(
+                model_name=self.config.model_name,
+                device=self.config.device,
+                batch_size=self.config.batch_size,
+                **(self.config.custom_params or {})
+            )
+        else:
+            return HuggingFaceEmbedder(
+                model_name=self.config.model_name,
+                device=self.config.device,
+                batch_size=self.config.batch_size,
+                **(self.config.custom_params or {})
+            )
+    
+    async def generate(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for a list of texts.
+        
+        Args:
+            texts: List of texts to embed
+            
+        Returns:
+            List of embedding vectors
+        """
+        embeddings = await self.embedder.embed(texts)
+        
+        if self.config.normalize:
+            embeddings = self._normalize_embeddings(embeddings)
+        
+        return embeddings
+    
+    async def generate_embedding(self, text: str) -> List[float]:
+        """Generate embedding for a single text.
+        
+        Args:
+            text: Text to embed
+            
+        Returns:
+            Embedding vector
+        """
+        embeddings = await self.generate([text])
+        return embeddings[0]
+    
+    def _normalize_embeddings(self, embeddings: List[List[float]]) -> List[List[float]]:
+        """Normalize embeddings to unit vectors."""
+        normalized = []
+        for embedding in embeddings:
+            norm = np.linalg.norm(embedding)
+            if norm > 0:
+                normalized.append((np.array(embedding) / norm).tolist())
+            else:
+                normalized.append(embedding)
+        return normalized
+    
+    async def initialize(self) -> None:
+        """Initialize the embedding generator."""
+        # Any initialization logic can go here
+        pass
+    
+    def get_stats(self) -> Dict[str, Any]:
+        """Get embedding generator statistics."""
+        return {
+            "config": self.config.__dict__,
+            "embedder_type": self.embedder.__class__.__name__
+        }
 
 class OpenAIEmbedder(BaseLLM):
     """OpenAI embedding model implementation."""

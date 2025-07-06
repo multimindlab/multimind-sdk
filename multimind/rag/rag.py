@@ -7,7 +7,6 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from ..vector_store import VectorStore, VectorStoreConfig
-from ..retrieval import Retriever, RetrievalConfig
 from ..document_processing import DocumentLoader, DocumentProcessor, Document
 from ..embeddings import EmbeddingGenerator, EmbeddingConfig
 
@@ -15,7 +14,7 @@ from ..embeddings import EmbeddingGenerator, EmbeddingConfig
 class RAGConfig:
     """Configuration for RAG system."""
     vector_store_config: VectorStoreConfig
-    retrieval_config: RetrievalConfig
+    retrieval_config: Dict[str, Any]  # Changed from RetrievalConfig to avoid circular import
     embedding_config: EmbeddingConfig
     document_config: Dict[str, Any]
     custom_params: Dict[str, Any] = None
@@ -32,16 +31,29 @@ class RAG:
         """
         self.config = config
         self.vector_store = VectorStore(config.vector_store_config)
-        self.retriever = self._get_retriever()
+        self.retriever = None  # Will be initialized lazily
         self.embedding_generator = self._get_embedding_generator()
         self.document_loader = self._get_document_loader()
         self.document_processor = self._get_document_processor()
         self.logger = logging.getLogger(__name__)
 
-    def _get_retriever(self) -> Retriever:
-        """Get appropriate retriever."""
-        # Implementation depends on your retriever factory
-        pass
+    def _get_retriever(self):
+        """Get appropriate retriever with lazy import."""
+        if self.retriever is None:
+            # Lazy import to avoid circular dependency
+            from ..retrieval import Retriever, RetrievalConfig
+            
+            # Create RetrievalConfig from the dict
+            retrieval_config = RetrievalConfig(
+                vector_store=self.vector_store,
+                document_processor=self.document_processor,
+                embedding_generator=self.embedding_generator,
+                top_k=self.config.retrieval_config.get('top_k', 5),
+                similarity_threshold=self.config.retrieval_config.get('similarity_threshold', 0.7)
+            )
+            
+            self.retriever = Retriever(retrieval_config)
+        return self.retriever
 
     def _get_embedding_generator(self) -> EmbeddingGenerator:
         """Get appropriate embedding generator."""
@@ -61,7 +73,8 @@ class RAG:
     async def initialize(self) -> None:
         """Initialize all components."""
         await self.vector_store.initialize()
-        await self.retriever.initialize()
+        retriever = self._get_retriever()
+        await retriever.initialize()
         await self.embedding_generator.initialize()
 
     async def add_documents(
@@ -89,9 +102,11 @@ class RAG:
         filter_criteria: Optional[Dict[str, Any]] = None
     ) -> List[Document]:
         """Retrieve relevant documents."""
-        return await self.retriever.retrieve(query, k, filter_criteria)
+        retriever = self._get_retriever()
+        return await retriever.retrieve(query, k, filter_criteria)
 
     async def clear(self) -> None:
         """Clear all documents from the system."""
         await self.vector_store.clear()
-        await self.retriever.clear()
+        if self.retriever:
+            await self.retriever.clear()
