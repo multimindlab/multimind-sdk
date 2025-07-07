@@ -93,11 +93,28 @@ def info():
 @click.argument('shell', required=False, type=click.Choice(['bash', 'zsh', 'fish', 'powershell'], case_sensitive=False))
 def completion(shell):
     """Generate shell completion script"""
+    import sys
+    import importlib
     if not shell:
         shell = click.prompt('Shell type (bash/zsh/fish/powershell)', type=click.Choice(['bash', 'zsh', 'fish', 'powershell']))
-        
     console.print(f"[bold]Shell Completion for {shell}[/bold]")
     console.print("To enable completion, run:")
     console.print(f"[cyan]eval \"$(multimind completion {shell})\"[/cyan]")
-    
-    # TODO: Actually output the completion script for the shell 
+
+    # Output the actual completion script for the shell
+    # Find the main multimind CLI group
+    multimind_cli = None
+    try:
+        multimind_cli = importlib.import_module('multimind.cli.__main__').cli
+    except Exception:
+        try:
+            multimind_cli = importlib.import_module('multimind.cli').cli
+        except Exception:
+            console.print("[red]Could not import multimind CLI main group for completion.[/red]")
+            sys.exit(1)
+    script = click.shell_completion._get_completion_script(
+        cli=multimind_cli,
+        prog_name='multimind',
+        shell=shell
+    )
+    click.echo(script) 

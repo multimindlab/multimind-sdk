@@ -241,19 +241,19 @@ class MultiModalClient(ModelClient):
 class ImageModelClient(ModelClient):
     """Stub for image model client (e.g., CLIP, BLIP, etc.)."""
     def generate(self, prompt: str, **kwargs):
-        return f"[Image output for: {prompt}]"
+        raise NotImplementedError("ImageModelClient is a stub. Please provide a real implementation for image generation.")
 
 class AudioModelClient(ModelClient):
     """Stub for audio model client (e.g., Whisper, Bark, etc.)."""
     def generate(self, prompt: str, **kwargs):
-        return f"[Audio output for: {prompt}]"
+        raise NotImplementedError("AudioModelClient is a stub. Please provide a real implementation for audio generation.")
 
 class VideoModelClient(ModelClient):
     """Stub for video model client (e.g., Video LLMs)."""
     def generate(self, prompt: str, **kwargs):
-        return f"[Video output for: {prompt}]"
+        raise NotImplementedError("VideoModelClient is a stub. Please provide a real implementation for video generation.")
 
 class CodeModelClient(ModelClient):
     """Stub for code model client (e.g., Code LLMs)."""
     def generate(self, prompt: str, **kwargs):
-        return f"[Code output for: {prompt}]" 
+        raise NotImplementedError("CodeModelClient is a stub. Please provide a real implementation for code generation.") 

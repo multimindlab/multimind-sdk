@@ -199,14 +199,16 @@ class CompliancePolicyEngine(BaseModel):
             action_params = action.get("params", {})
             
             if action_type == "log":
-                # Log violation
-                pass
+                # Log violation (could be replaced with a real logger)
+                print(f"[COMPLIANCE LOG] Violation: {violation.violation_id} | Rule: {rule.name} | Details: {violation.details}")
             elif action_type == "notify":
-                # Send notification
-                pass
+                # Simulate sending a notification (could be email, webhook, etc.)
+                recipient = action_params.get("recipient", "admin")
+                message = action_params.get("message", f"Policy violation: {violation.violation_id}")
+                print(f"[COMPLIANCE NOTIFY] To: {recipient} | Message: {message}")
             elif action_type == "block":
-                # Block operation
-                pass
+                # Block operation by raising an exception
+                raise Exception(f"Operation blocked due to policy violation: {violation.violation_id} (Rule: {rule.name})")
             elif action_type == "custom":
                 # Execute custom handler
                 handler = self.rule_handlers.get(rule.rule_id)

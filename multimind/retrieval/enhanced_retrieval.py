@@ -47,12 +47,28 @@ class RetrievalType(Enum):
     HYBRID = "hybrid"
 
 class EnhancedRetriever:
-    """Enhanced retriever with advanced capabilities."""
+    """
+    Enhanced retriever with advanced capabilities.
+
+    Features:
+    - Weighted, cross-strategy, and explainable result fusion
+    - Per-strategy fusion weights (user-configurable or adaptive)
+    - User feedback loop to adapt weights
+    - Plugin system for custom fusion logic
+    - Each result includes an explanation of its score
+    Usage:
+        retriever = EnhancedRetriever(...)
+        results = await retriever.retrieve(...)
+        # After user feedback:
+        retriever.record_feedback(strategy='hierarchical', success=True, feedback=1.0)
+    """
 
     def __init__(
         self,
         model: BaseLLM,
         base_retriever: HybridRetriever,
+        fusion_weights: Optional[Dict[str, float]] = None,
+        custom_fusion_fn: Optional[Any] = None,
         **kwargs
     ):
         """
@@ -61,6 +77,8 @@ class EnhancedRetriever:
         Args:
             model: Language model
             base_retriever: Base retriever
+            fusion_weights: Per-strategy fusion weights
+            custom_fusion_fn: Custom fusion function
             **kwargs: Additional parameters
         """
         self.model = model
@@ -69,6 +87,14 @@ class EnhancedRetriever:
         self.domain_classifier = None  # Initialize domain classifier
         self.language_detector = None  # Initialize language detector
         self.kwargs = kwargs
+        self.fusion_weights = fusion_weights or {
+            "hierarchical": 1.0,
+            "temporal": 1.0,
+            "domain": 1.0,
+            "multi_lingual": 1.0
+        }
+        self.feedback_history = {k: [] for k in self.fusion_weights}
+        self.custom_fusion_fn = custom_fusion_fn
 
     async def retrieve(
         self,
@@ -354,8 +380,8 @@ class EnhancedRetriever:
         **kwargs
     ) -> float:
         """Calculate hierarchy-based relevance score."""
-        # This is a placeholder implementation
-        return 1.0
+        # Simple heuristic: higher level = lower score
+        return max(0.0, 1.0 - 0.1 * context.level)
 
     async def _calculate_temporal_score(
         self,
@@ -364,8 +390,9 @@ class EnhancedRetriever:
         **kwargs
     ) -> float:
         """Calculate temporal relevance score."""
-        # This is a placeholder implementation
-        return 1.0
+        # Simple heuristic: more recent = higher score
+        days_diff = context.time_difference / 86400  # seconds to days
+        return max(0.0, 1.0 - 0.01 * days_diff)
 
     async def _calculate_domain_score(
         self,
@@ -374,16 +401,24 @@ class EnhancedRetriever:
         **kwargs
     ) -> float:
         """Calculate domain relevance score."""
-        # This is a placeholder implementation
-        return 1.0
+        # Simple heuristic: exact domain match = 1.0, else 0.5
+        if context.domain in query.lower():
+            return 1.0
+        return 0.5
 
     async def _detect_domain(
         self,
         text: str,
         **kwargs
     ) -> str:
-        """Detect domain of text."""
-        # This is a placeholder implementation
+        """Detect domain of text using keyword heuristics."""
+        text_l = text.lower()
+        if any(word in text_l for word in ["finance", "stock", "bank"]):
+            return "finance"
+        if any(word in text_l for word in ["health", "medical", "doctor"]):
+            return "healthcare"
+        if any(word in text_l for word in ["law", "legal", "court"]):
+            return "legal"
         return "general"
 
     async def _detect_language(
@@ -391,8 +426,9 @@ class EnhancedRetriever:
         text: str,
         **kwargs
     ) -> str:
-        """Detect language of text."""
-        # This is a placeholder implementation
+        """Detect language of text using simple heuristics."""
+        if any(ord(c) > 128 for c in text):
+            return "non-en"
         return "en"
 
     async def _translate_content(
@@ -402,9 +438,10 @@ class EnhancedRetriever:
         target_lang: str,
         **kwargs
     ) -> str:
-        """Translate content between languages."""
-        # This is a placeholder implementation
-        return content
+        """Translate content between languages (mock: append lang code)."""
+        if source_lang == target_lang:
+            return content
+        return f"[Translated {source_lang}->{target_lang}]: {content}"
 
     async def _extract_domain_entities(
         self,
@@ -412,17 +449,71 @@ class EnhancedRetriever:
         domain: str,
         **kwargs
     ) -> List[Dict[str, Any]]:
-        """Extract domain-specific entities."""
-        # This is a placeholder implementation
-        return []
+        """Extract domain-specific entities using keyword matching."""
+        entities = []
+        if domain == "finance":
+            for word in ["stock", "bank", "market"]:
+                if word in text.lower():
+                    entities.append({"entity": word, "type": "finance"})
+        if domain == "healthcare":
+            for word in ["doctor", "patient", "hospital"]:
+                if word in text.lower():
+                    entities.append({"entity": word, "type": "healthcare"})
+        return entities
 
     def _extract_document_time(
         self,
         document: Dict[str, Any]
     ) -> datetime:
-        """Extract time from document metadata."""
-        # This is a placeholder implementation
+        """Extract time from document metadata or fallback to now."""
+        if "timestamp" in document:
+            try:
+                return datetime.fromisoformat(document["timestamp"])
+            except Exception:
+                pass
         return datetime.now()
+
+    def record_feedback(self, strategy: str, success: bool, feedback: float = None, ema_alpha: float = 0.2):
+        """
+        Record user or downstream feedback for a retrieval strategy.
+        Updates fusion weights using exponential moving average (EMA).
+        Args:
+            strategy: Name of the retrieval strategy
+            success: Whether the result was successful/correct
+            feedback: Numeric feedback (e.g., user rating)
+            ema_alpha: Smoothing factor for EMA (default 0.2)
+        """
+        if strategy not in self.fusion_weights:
+            return
+        # Use feedback if provided, else 1.0 for success, 0.0 for fail
+        value = feedback if feedback is not None else (1.0 if success else 0.0)
+        hist = self.feedback_history[strategy]
+        if hist:
+            prev = hist[-1]
+            value = ema_alpha * value + (1 - ema_alpha) * prev
+        hist.append(value)
+        # Update fusion weight (normalize after all updates)
+        self.fusion_weights[strategy] = value
+        # Normalize weights
+        total = sum(self.fusion_weights.values())
+        for k in self.fusion_weights:
+            self.fusion_weights[k] /= total if total > 0 else 1.0
+
+    def set_fusion_weights(self, weights: Dict[str, float]):
+        """Set fusion weights directly (overrides adaptive weights)."""
+        self.fusion_weights = weights
+        # Normalize
+        total = sum(self.fusion_weights.values())
+        for k in self.fusion_weights:
+            self.fusion_weights[k] /= total if total > 0 else 1.0
+
+    def set_custom_fusion(self, fn):
+        """Set a custom fusion function (signature: (results_map, strategy_lists, strategy_names, **kwargs) -> List[Dict])."""
+        self.custom_fusion_fn = fn
+
+    def get_fusion_explanation(self) -> Dict[str, float]:
+        """Return the current fusion weights for explainability."""
+        return dict(self.fusion_weights)
 
     def _combine_results(
         self,
@@ -432,17 +523,14 @@ class EnhancedRetriever:
         multi_lingual_results: List[Dict[str, Any]],
         **kwargs
     ) -> List[Dict[str, Any]]:
-        """Combine results from different retrieval strategies."""
-        # Create document ID to result mapping
+        """Combine results from different retrieval strategies using weighted, cross-strategy, and explainable fusion."""
+        # Allow custom fusion function
+        if self.custom_fusion_fn:
+            return self.custom_fusion_fn(locals(), **kwargs)
         results_map = {}
-        
-        # Process each strategy's results
-        for results in [
-            hierarchical_results,
-            temporal_results,
-            domain_results,
-            multi_lingual_results
-        ]:
+        strategy_lists = [hierarchical_results, temporal_results, domain_results, multi_lingual_results]
+        strategy_names = ["hierarchical", "temporal", "domain", "multi_lingual"]
+        for strat_idx, results in enumerate(strategy_lists):
             for doc in results:
                 doc_id = doc["id"]
                 if doc_id not in results_map:
@@ -450,29 +538,53 @@ class EnhancedRetriever:
                         "id": doc_id,
                         "content": doc["content"],
                         "scores": [],
-                        "contexts": {}
+                        "confidences": [],
+                        "contexts": {},
+                        "strategies": set(),
+                        "strategy_weights": []
                     }
-                
-                # Add score
-                results_map[doc_id]["scores"].append(doc.get("score", 0.0))
-                
+                # Add score (weighted by fusion weight)
+                strat = strategy_names[strat_idx]
+                weight = self.fusion_weights.get(strat, 1.0)
+                results_map[doc_id]["scores"].append(doc.get("score", 0.0) * weight)
+                results_map[doc_id]["strategy_weights"].append(weight)
+                # Add confidence if available
+                conf = None
+                if "confidence" in doc:
+                    conf = doc["confidence"]
+                elif "contexts" in doc and "confidence" in doc["contexts"]:
+                    conf = doc["contexts"]["confidence"]
+                if conf is not None:
+                    results_map[doc_id]["confidences"].append(conf)
                 # Add contexts
                 for key in ["hierarchy_context", "temporal_context", "domain_context"]:
                     if key in doc:
                         results_map[doc_id]["contexts"][key] = doc[key]
-        
+                # Track which strategies this doc appeared in
+                results_map[doc_id]["strategies"].add(strat)
         # Calculate combined scores
         combined_results = []
         for doc_id, data in results_map.items():
-            # Calculate weighted average score
-            combined_score = np.mean(data["scores"])
-            
+            # Weighted average if weights available, else mean
+            if data["strategy_weights"]:
+                weights = np.array(data["strategy_weights"])
+                scores = np.array(data["scores"])
+                combined_score = float(np.average(scores, weights=weights))
+                explanation = f"Weighted average using fusion weights {weights.tolist()} from {len(data['scores'])} strategies."
+            else:
+                combined_score = float(np.mean(data["scores"]))
+                explanation = f"Simple average from {len(data['scores'])} strategies."
+            # Boost score if doc appears in multiple strategies
+            n_strategies = len(data["strategies"])
+            if n_strategies > 1:
+                combined_score *= 1 + 0.1 * (n_strategies - 1)
+                explanation += f" Boosted for appearing in {n_strategies} strategies."
             combined_results.append({
                 "id": doc_id,
                 "content": data["content"],
                 "score": combined_score,
+                "explanation": explanation,
                 **data["contexts"]
             })
-        
         # Sort by combined score
         return sorted(combined_results, key=lambda x: x["score"], reverse=True) 

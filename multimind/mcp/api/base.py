@@ -77,45 +77,22 @@ class MCPWorkflowAPI:
         )
     
     def _build_workflow_spec(self) -> Dict[str, Any]:
-        """
-        Build the workflow specification.
-        
-        Returns:
-            Dict containing workflow specification
-        """
-        raise NotImplementedError("Subclasses must implement _build_workflow_spec")
+        """Build the workflow specification. Must be implemented in subclass."""
+        raise NotImplementedError("_build_workflow_spec must be implemented in a subclass of MCPWorkflowAPI.")
     
     def _validate_context(self, context: Dict[str, Any]) -> bool:
-        """
-        Validate the workflow context.
-        
-        Args:
-            context: Context to validate
-            
-        Returns:
-            True if context is valid, False otherwise
-        """
-        raise NotImplementedError("Subclasses must implement _validate_context")
+        """Validate the workflow context. Must be implemented in subclass."""
+        raise NotImplementedError("_validate_context must be implemented in a subclass of MCPWorkflowAPI.")
     
     @classmethod
     def _get_required_integrations(cls) -> List[str]:
-        """
-        Get list of required integrations.
-        
-        Returns:
-            List of required integration names
-        """
-        raise NotImplementedError("Subclasses must implement _get_required_integrations")
+        """Get list of required integrations. Must be implemented in subclass."""
+        raise NotImplementedError("_get_required_integrations must be implemented in a subclass of MCPWorkflowAPI.")
     
     @classmethod
     def _get_required_models(cls) -> List[str]:
-        """
-        Get list of required models.
-        
-        Returns:
-            List of required model names
-        """
-        raise NotImplementedError("Subclasses must implement _get_required_models")
+        """Get list of required models. Must be implemented in subclass."""
+        raise NotImplementedError("_get_required_models must be implemented in a subclass of MCPWorkflowAPI.")
     
     @classmethod
     def get_workflow_info(cls) -> Dict[str, Any]:
