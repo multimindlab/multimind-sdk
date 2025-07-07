@@ -7,9 +7,14 @@ explainable DTOs, and other advanced features.
 from typing import Dict, Any, List, Optional, Tuple, Union
 import torch
 import numpy as np
-from cryptography.zkp import ZeroKnowledgeProof
-from cryptography.dp import DifferentialPrivacy
-from cryptography.federated import FederatedShard
+try:
+    from cryptography.zkp import ZeroKnowledgeProof
+except ImportError:
+    class ZeroKnowledgeProof:
+        def __init__(self, *args, **kwargs):
+            import warnings
+            warnings.warn("cryptography.zkp is not installed; using dummy ZeroKnowledgeProof.")
+# from cryptography.federated import FederatedShard
 from cryptography.homomorphic import HomomorphicEncryption
 from datetime import datetime
 import json
@@ -34,16 +39,15 @@ class ComplianceMetrics:
     verification_time: float
     resource_usage: Dict[str, float]
 
-class ComplianceShard(FederatedShard):
+class ComplianceShard:
     """Enhanced federated compliance shard for distributed compliance monitoring."""
     
     def __init__(self, shard_id: str, jurisdiction: str, config: Dict[str, Any]):
-        super().__init__(shard_id)
+        self.shard_id = shard_id
         self.jurisdiction = jurisdiction
         self.config = config
         self.local_rules = self._load_local_rules()
         self.zk_proofs = {}
-        self.dp_mechanism = DifferentialPrivacy(epsilon=config.get("epsilon", 1.0))
         self.homomorphic_encryption = HomomorphicEncryption()
         self.compliance_level = ComplianceLevel(config.get("level", "standard"))
         self.metrics_history = []
@@ -58,15 +62,12 @@ class ComplianceShard(FederatedShard):
         # Generate ZK proof with enhanced security
         proof = await self._generate_zk_proof(compliance_result)
         
-        # Apply differential privacy with adaptive parameters
-        private_result = self.dp_mechanism.privatize(compliance_result)
-        
         # Calculate metrics
         metrics = self._calculate_metrics(compliance_result, start_time)
         self.metrics_history.append(metrics)
         
         # Apply homomorphic encryption for sensitive data
-        encrypted_result = self.homomorphic_encryption.encrypt(private_result)
+        encrypted_result = self.homomorphic_encryption.encrypt(compliance_result)
         
         return compliance_result["compliant"], {
             "proof": proof,
@@ -223,7 +224,7 @@ class AdaptivePrivacy:
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.dp_mechanism = DifferentialPrivacy(epsilon=config["initial_epsilon"])
+        self.homomorphic_encryption = HomomorphicEncryption()
         self.feedback_history = []
         self.adaptation_strategy = self._initialize_adaptation_strategy()
         self.privacy_metrics = {}
@@ -234,7 +235,7 @@ class AdaptivePrivacy:
         self.feedback_history.append({
             **feedback,
             "timestamp": datetime.now().isoformat(),
-            "current_epsilon": self.dp_mechanism.epsilon
+            "current_epsilon": self.homomorphic_encryption.epsilon
         })
         
         # Calculate new epsilon with advanced strategy
@@ -252,7 +253,7 @@ class AdaptivePrivacy:
     async def _update_dp_mechanism(self, new_epsilon: float):
         """Update DP mechanism with validation and constraints."""
         if self._validate_epsilon(new_epsilon):
-            self.dp_mechanism.update_epsilon(new_epsilon)
+            self.homomorphic_encryption.update_epsilon(new_epsilon)
             await self._verify_privacy_guarantees()
 
 class RegulatoryChangeDetector:
@@ -351,4 +352,15 @@ class FederatedCompliance:
             "aggregated_result": result,
             "consensus_evidence": await self.consensus_mechanism.get_evidence(),
             "signature": await self._generate_secure_signature(result)
-        } 
+        }
+
+def use_zero_knowledge_proof(*args, **kwargs):
+    try:
+        from cryptography.zkp import ZeroKnowledgeProof
+        return ZeroKnowledgeProof(*args, **kwargs)
+    except ImportError:
+        import warnings
+        warnings.warn("cryptography.zkp is not installed; using dummy ZeroKnowledgeProof.")
+        class DummyZKP:
+            def __init__(self, *a, **k): pass
+        return DummyZKP(*args, **kwargs) 

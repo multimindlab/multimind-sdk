@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 """
 Implicit Memory implementation for storing unconscious, procedural knowledge.
 """
 
+from datetime import timedelta
 from typing import Dict, Any, Optional, List, Set, Tuple
 from datetime import datetime
 import numpy as np
@@ -163,7 +166,7 @@ class ImplicitMemory(BaseMemory):
     async def get_skill_progress(
         self,
         skill_id: str,
-        time_window: Optional[timedelta] = None
+        time_window = None
     ) -> Dict[str, Any]:
         """Get progress statistics for a skill."""
         if skill_id not in self.skills:

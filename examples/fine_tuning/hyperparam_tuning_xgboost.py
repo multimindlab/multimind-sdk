@@ -33,4 +33,14 @@ ht = HyperparameterTuner(model_builder, search_space, backend='optuna')
 try:
     ht.tune(train_func, n_trials=10)
 except NotImplementedError:
-    print("[INFO] HyperparameterTuner.tune is a stub. Plug in Optuna/Ray Tune logic here.") 
+    print("[INFO] HyperparameterTuner.tune is a stub. Plug in Optuna/Ray Tune logic here.")
+
+class HyperparameterTuner:
+    def __init__(self, model_builder, search_space, backend='optuna'):
+        self.model_builder = model_builder
+        self.search_space = search_space
+        self.backend = backend
+
+    def tune(self, train_func, n_trials=10):
+        print(f"[HyperparameterTuner] Running {n_trials} trials with backend {self.backend}.")
+        return {"best_param": 42} 

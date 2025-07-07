@@ -149,3 +149,37 @@ class MCPWorkflowAPI:
             integrations=integrations,
             **kwargs
         ) 
+
+class ExampleMCPWorkflowAPI(MCPWorkflowAPI):
+    """Example concrete implementation of MCPWorkflowAPI."""
+    def _build_workflow_spec(self) -> dict:
+        # Minimal example spec
+        return {"steps": ["step1", "step2"], "description": "Example workflow spec"}
+
+    def _validate_context(self, context: dict) -> bool:
+        # Accept any context with a 'user' key
+        return isinstance(context, dict) and "user" in context
+
+    @classmethod
+    def _get_required_integrations(cls) -> list:
+        return ["example_integration"]
+
+    @classmethod
+    def _get_required_models(cls) -> list:
+        return ["example_model"]
+
+class DefaultMCPWorkflowAPI(MCPWorkflowAPI):
+    """Default implementation of MCPWorkflowAPI for basic workflows."""
+    def _build_workflow_spec(self) -> dict:
+        return {"steps": ["default_step"], "description": "Default workflow spec"}
+
+    def _validate_context(self, context: dict) -> bool:
+        return isinstance(context, dict)
+
+    @classmethod
+    def _get_required_integrations(cls) -> list:
+        return []
+
+    @classmethod
+    def _get_required_models(cls) -> list:
+        return [] 

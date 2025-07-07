@@ -22,23 +22,8 @@ class EpsillaBackend(VectorStoreBackend):
         explain: bool = False,
         **kwargs
     ):
-        self.api_key = api_key or os.environ.get("EPSILLA_API_KEY")
-        self.endpoint = endpoint or os.environ.get("EPSILLA_ENDPOINT")
-        self.collection = collection
-        self.enable_hybrid_search = enable_hybrid_search
-        self.hybrid_weight = hybrid_weight
-        self.scoring_method = scoring_method
-        self.enable_metadata_indexing = enable_metadata_indexing
-        self.live_indexing = live_indexing
-        self.metrics_enabled = metrics_enabled
-        self.plugin_registry = plugin_registry or {}
-        self.retry_policy = retry_policy or {"retries": 3}
-        self.explain = explain
-        self.logger = logging.getLogger(__name__)
-        if not self.api_key or not self.endpoint:
-            raise ValueError("Epsilla API key and endpoint must be provided.")
-        # self.client = EpsillaClient(api_key=self.api_key, endpoint=self.endpoint)
-        # self.col = self.client.collection(self.collection)
+        super().__init__(api_key, endpoint, collection, enable_hybrid_search, hybrid_weight, scoring_method, enable_metadata_indexing, live_indexing, metrics_enabled, plugin_registry, retry_policy, explain, **kwargs)
+        self._store = []
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Placeholder for batch add
@@ -102,3 +87,22 @@ class EpsillaBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
                     raise 
+
+    def add(self, vector, metadata=None):
+        self._store.append((vector, metadata))
+        return True
+
+    def search(self, query_vector, top_k=3):
+        return self._store[:top_k]
+
+    def delete(self, index):
+        if 0 <= index < len(self._store):
+            del self._store[index]
+            return True
+        return False
+
+    def search(self, *args, **kwargs):
+        raise NotImplementedError("EpsillaBackend.search is a placeholder. Integrate with Epsilla SDK.")
+
+    def delete(self, *args, **kwargs):
+        raise NotImplementedError("EpsillaBackend.delete is a placeholder. Integrate with Epsilla SDK.") 

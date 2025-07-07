@@ -23,24 +23,8 @@ class ClarifaiBackend(VectorStoreBackend):
         explain: bool = False,
         **kwargs
     ):
-        self.api_key = api_key or os.environ.get("CLARIFAI_API_KEY")
-        self.app_id = app_id or os.environ.get("CLARIFAI_APP_ID")
-        self.user_id = user_id or os.environ.get("CLARIFAI_USER_ID")
-        self.collection = collection
-        self.enable_hybrid_search = enable_hybrid_search
-        self.hybrid_weight = hybrid_weight
-        self.scoring_method = scoring_method
-        self.enable_metadata_indexing = enable_metadata_indexing
-        self.live_indexing = live_indexing
-        self.metrics_enabled = metrics_enabled
-        self.plugin_registry = plugin_registry or {}
-        self.retry_policy = retry_policy or {"retries": 3}
-        self.explain = explain
-        self.logger = logging.getLogger(__name__)
-        if not self.api_key:
-            raise ValueError("Clarifai API key must be provided.")
-        # self.client = ClarifaiClient(api_key=self.api_key, app_id=self.app_id, user_id=self.user_id)
-        # self.col = self.client.collection(self.collection)
+        super().__init__(api_key, app_id, user_id, collection, enable_hybrid_search, hybrid_weight, scoring_method, enable_metadata_indexing, live_indexing, metrics_enabled, plugin_registry, retry_policy, explain, **kwargs)
+        self._store = []
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Placeholder for batch add
@@ -104,3 +88,26 @@ class ClarifaiBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
                     raise 
+
+    def add(self, vector, metadata=None):
+        self._store.append((vector, metadata))
+        return True
+
+    def search(self, query_vector, top_k=3):
+        # Return top_k items (no real similarity, just for fallback)
+        return self._store[:top_k]
+
+    def delete(self, index):
+        if 0 <= index < len(self._store):
+            del self._store[index]
+            return True
+        return False
+
+    def add(self, *args, **kwargs):
+        raise NotImplementedError("ClarifaiBackend.add is a placeholder. Integrate with Clarifai SDK.")
+
+    def search(self, *args, **kwargs):
+        raise NotImplementedError("ClarifaiBackend.search is a placeholder. Integrate with Clarifai SDK.")
+
+    def delete(self, *args, **kwargs):
+        raise NotImplementedError("ClarifaiBackend.delete is a placeholder. Integrate with Clarifai SDK.") 

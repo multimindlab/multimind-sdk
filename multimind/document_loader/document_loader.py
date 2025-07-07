@@ -2,7 +2,7 @@
 Enhanced document loading with support for multiple formats and sources.
 """
 
-from typing import List, Dict, Any, Optional, Union, Protocol, runtime_checkable, Tuple
+from typing import List, Dict, Any, Optional, Union, Protocol, runtime_checkable, Tuple, Callable
 from pathlib import Path
 import asyncio
 import aiohttp
@@ -482,4 +482,13 @@ class VideoDocumentLoader(BaseDocumentLoader):
         content = transcribe_fn(audio_data, sr)
         os.remove(audio_path)
         metadata = DocumentMetadata(source=str(path), format=path.suffix[1:].lower())
-        return LoadedDocument(content=content, metadata=metadata, raw_content=video) 
+        return LoadedDocument(content=content, metadata=metadata, raw_content=video)
+
+class DefaultFileLoader(BaseDocumentLoader):
+    """Default file loader that loads text files from disk."""
+    async def load_document(self, source: str, **kwargs) -> LoadedDocument:
+        if not os.path.isfile(source):
+            raise FileNotFoundError(f"File not found: {source}")
+        with open(source, "r", encoding="utf-8") as f:
+            text = f.read()
+        return LoadedDocument(text=text, metadata={"source": source}) 
