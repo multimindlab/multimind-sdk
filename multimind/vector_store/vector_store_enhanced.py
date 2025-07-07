@@ -29,6 +29,7 @@ import rank_bm25
 from sklearn.preprocessing import normalize
 import sqlite3
 import yaml
+import requests
 
 from . import (
     VectorStore, VectorStoreConfig, VectorStoreType, VectorStoreBackend,
@@ -77,7 +78,15 @@ class HybridSearchResult(SearchResult):
     metadata_scores: Dict[str, float]
 
 class PluginRegistry:
-    """Registry for vector store plugins."""
+    """
+    Registry for vector store plugins.
+    Now supports plugin marketplace: install, uninstall, list available (remote), and activate plugins.
+    Usage:
+        registry = PluginRegistry()
+        registry.list_marketplace_plugins()
+        registry.install_plugin('my_plugin')
+        registry.activate_plugin('my_plugin')
+    """
     
     def __init__(self):
         self._plugins: Dict[str, Type[VectorStoreBackend]] = {}
@@ -129,6 +138,69 @@ class PluginRegistry:
                     )
             except Exception as e:
                 self.logger.error(f"Failed to load plugin {plugin_file}: {e}")
+
+    def list_marketplace_plugins(self, marketplace_url: str = "https://multimind-plugins.example.com/api/plugins") -> list:
+        """List available plugins from the remote marketplace (placeholder URL)."""
+        try:
+            resp = requests.get(marketplace_url)
+            resp.raise_for_status()
+            return resp.json().get('plugins', [])
+        except Exception as e:
+            self.logger.error(f"Failed to fetch marketplace plugins: {e}")
+            return []
+
+    def install_plugin(self, name: str, marketplace_url: str = "https://multimind-plugins.example.com/api/plugins") -> bool:
+        """Install a plugin from the marketplace (downloads and registers)."""
+        try:
+            plugins = self.list_marketplace_plugins(marketplace_url)
+            plugin_info = next((p for p in plugins if p['name'] == name), None)
+            if not plugin_info:
+                self.logger.error(f"Plugin {name} not found in marketplace.")
+                return False
+            # Download plugin file
+            resp = requests.get(plugin_info['download_url'])
+            resp.raise_for_status()
+            plugin_dir = Path(self._plugin_configs.get('plugin_dir', './plugins'))
+            plugin_dir.mkdir(exist_ok=True)
+            plugin_path = plugin_dir / f"{name}.py"
+            with open(plugin_path, 'wb') as f:
+                f.write(resp.content)
+            self.discover_plugins(str(plugin_dir))
+            self.logger.info(f"Installed plugin: {name}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to install plugin {name}: {e}")
+            return False
+
+    def uninstall_plugin(self, name: str) -> bool:
+        """Uninstall a plugin by removing its file and unregistering."""
+        try:
+            plugin_dir = Path(self._plugin_configs.get('plugin_dir', './plugins'))
+            plugin_path = plugin_dir / f"{name}.py"
+            if plugin_path.exists():
+                plugin_path.unlink()
+            if name in self._plugins:
+                del self._plugins[name]
+            if name in self._plugin_configs:
+                del self._plugin_configs[name]
+            self.logger.info(f"Uninstalled plugin: {name}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to uninstall plugin {name}: {e}")
+            return False
+
+    def activate_plugin(self, name: str) -> bool:
+        """Activate a plugin (make it the current backend, if applicable)."""
+        try:
+            if name not in self._plugins:
+                self.logger.error(f"Plugin {name} not registered.")
+                return False
+            # In a real system, this would set the active backend or strategy
+            self.logger.info(f"Activated plugin: {name}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to activate plugin {name}: {e}")
+            return False
 
 class LiveUpdateHandler:
     """Handles live updates to vector store indices."""
@@ -341,6 +413,38 @@ class HybridSearchHandler:
         results.sort(key=lambda x: x.fusion_score, reverse=True)
         return results[:k]
 
+class FusionPerformanceTracker:
+    """Tracks performance/feedback for each fusion scoring method."""
+    def __init__(self):
+        self.metrics = {}
+        # metrics: {method: {"success": int, "fail": int, "feedback": [float]}}
+
+    def record(self, method: str, success: bool, feedback: float = None):
+        if method not in self.metrics:
+            self.metrics[method] = {"success": 0, "fail": 0, "feedback": []}
+        if success:
+            self.metrics[method]["success"] += 1
+        else:
+            self.metrics[method]["fail"] += 1
+        if feedback is not None:
+            self.metrics[method]["feedback"].append(feedback)
+
+    def get_weight(self, method: str) -> float:
+        m = self.metrics.get(method, None)
+        if not m:
+            return 1.0
+        total = m["success"] + m["fail"]
+        success_rate = m["success"] / total if total > 0 else 1.0
+        avg_feedback = np.mean(m["feedback"]) if m["feedback"] else 1.0
+        return success_rate * (avg_feedback + 1.0)
+
+    def get_all_weights(self, methods: List[str]) -> Dict[str, float]:
+        return {m: self.get_weight(m) for m in methods}
+
+    def submit_feedback(self, method: str, feedback: float):
+        """Submit user feedback for a fusion method (1.0=good, 0.0=bad, or any float)."""
+        self.record(method, success=True, feedback=feedback)
+
 class ScoringFusionHandler:
     """Handles fusion of multiple scoring methods."""
     
@@ -358,17 +462,84 @@ class ScoringFusionHandler:
             "metadata": 0.2
         }
         self.logger = logging.getLogger(__name__)
+        self.performance_tracker = FusionPerformanceTracker()
+        # Neural fusion model (if available)
+        try:
+            import torch
+            import torch.nn as nn
+            class SimpleFusionNet(nn.Module):
+                def __init__(self, n_methods):
+                    super().__init__()
+                    self.linear = nn.Linear(n_methods, 1)
+                def forward(self, x):
+                    return self.linear(x)
+            class MultiLayerFusionNet(nn.Module):
+                def __init__(self, n_methods, hidden_dim=16, n_layers=2):
+                    super().__init__()
+                    layers = [nn.Linear(n_methods, hidden_dim), nn.ReLU()]
+                    for _ in range(n_layers-1):
+                        layers += [nn.Linear(hidden_dim, hidden_dim), nn.ReLU()]
+                    layers += [nn.Linear(hidden_dim, 1)]
+                    self.net = nn.Sequential(*layers)
+                def forward(self, x):
+                    return self.net(x)
+            class AttentionFusionNet(nn.Module):
+                def __init__(self, n_methods, hidden_dim=16):
+                    super().__init__()
+                    self.query = nn.Parameter(torch.randn(1, hidden_dim))
+                    self.key = nn.Linear(n_methods, hidden_dim)
+                    self.value = nn.Linear(n_methods, 1)
+                def forward(self, x):
+                    # x: [batch, n_methods]
+                    k = self.key(x)  # [batch, hidden_dim]
+                    attn = torch.softmax((k * self.query).sum(-1, keepdim=True), dim=0)
+                    v = self.value(x)  # [batch, 1]
+                    return attn * v
+            class TransformerFusionNet(nn.Module):
+                def __init__(self, n_methods, hidden_dim=16, n_heads=2, n_layers=2):
+                    super().__init__()
+                    encoder_layer = nn.TransformerEncoderLayer(d_model=hidden_dim, nhead=n_heads)
+                    self.embedding = nn.Linear(n_methods, hidden_dim)
+                    self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=n_layers)
+                    self.fc = nn.Linear(hidden_dim, 1)
+                def forward(self, x):
+                    # x: [batch, n_methods] -> [batch, 1, n_methods]
+                    x = self.embedding(x).unsqueeze(1)  # [batch, 1, hidden_dim]
+                    x = self.encoder(x)  # [batch, 1, hidden_dim]
+                    x = self.fc(x.squeeze(1))  # [batch, 1]
+                    return x
+            self.fusion_net = None
+            self.fusion_net_trained = False
+            self.SimpleFusionNet = SimpleFusionNet
+            self.MultiLayerFusionNet = MultiLayerFusionNet
+            self.AttentionFusionNet = AttentionFusionNet
+            self.TransformerFusionNet = TransformerFusionNet
+        except ImportError:
+            self.fusion_net = None
+            self.fusion_net_trained = False
+            self.SimpleFusionNet = None
+            self.MultiLayerFusionNet = None
+            self.AttentionFusionNet = None
+            self.TransformerFusionNet = None
     
     def fuse_scores(
         self,
-        scores: Dict[str, List[float]]
+        scores: Dict[str, List[float]],
+        use_adaptive_weights: bool = True
     ) -> List[float]:
-        """Fuse multiple score lists into a single score list."""
+        """Fuse multiple score lists into a single score list (adaptive if enabled, supports neural/attention/transformer fusion)."""
         if not scores:
             return []
-        
+        if self.fusion_method == "neural_fusion" and self.fusion_net and self.fusion_net_trained:
+            return self._neural_fusion(scores)
+        if self.fusion_method == "multi_layer_fusion" and self.fusion_net and self.fusion_net_trained:
+            return self._multi_layer_fusion(scores)
+        if self.fusion_method == "attention_fusion" and self.fusion_net and self.fusion_net_trained:
+            return self._attention_fusion(scores)
+        if self.fusion_method == "transformer_fusion" and self.fusion_net and self.fusion_net_trained:
+            return self._transformer_fusion(scores)
         if self.fusion_method == "weighted_sum":
-            return self._weighted_sum_fusion(scores)
+            return self._weighted_sum_fusion(scores, use_adaptive_weights=use_adaptive_weights)
         elif self.fusion_method == "reciprocal_rank":
             return self._reciprocal_rank_fusion(scores)
         elif self.fusion_method == "borda_count":
@@ -378,9 +549,10 @@ class ScoringFusionHandler:
     
     def _weighted_sum_fusion(
         self,
-        scores: Dict[str, List[float]]
+        scores: Dict[str, List[float]],
+        use_adaptive_weights: bool = True
     ) -> List[float]:
-        """Fuse scores using weighted sum."""
+        """Fuse scores using weighted sum (adaptive if enabled)."""
         # Normalize scores
         normalized_scores = {}
         for method, score_list in scores.items():
@@ -388,13 +560,22 @@ class ScoringFusionHandler:
                 normalized_scores[method] = normalize(
                     np.array(score_list).reshape(1, -1)
                 ).flatten()
-        
+        # Use adaptive weights if enabled
+        if use_adaptive_weights:
+            methods = list(normalized_scores.keys())
+            weights = self.performance_tracker.get_all_weights(methods)
+        else:
+            weights = self.fusion_weights
+        # Normalize weights
+        total_weight = sum(weights.values())
+        normalized_weights = {k: v/total_weight for k, v in weights.items()}
         # Compute weighted sum
         fused_scores = np.zeros(len(next(iter(scores.values()))))
         for method, score_list in normalized_scores.items():
-            weight = self.fusion_weights.get(method, 0.0)
+            weight = normalized_weights.get(method, 0.0)
             fused_scores += weight * score_list
-        
+        # Add explanation for transparency
+        self.logger.info(f"Fusion weights used: {normalized_weights}")
         return fused_scores.tolist()
     
     def _reciprocal_rank_fusion(
@@ -428,6 +609,82 @@ class ScoringFusionHandler:
             fused_scores += (n_docs - ranks - 1)
         
         return fused_scores.tolist()
+
+    def _neural_fusion(self, scores: Dict[str, List[float]]) -> List[float]:
+        """Fuse scores using a neural network (requires torch, must be trained)."""
+        import torch
+        method_names = list(scores.keys())
+        score_matrix = np.stack([scores[m] for m in method_names], axis=1)
+        x = torch.tensor(score_matrix, dtype=torch.float32)
+        with torch.no_grad():
+            fused = self.fusion_net(x).squeeze(-1).numpy()
+        return fused.tolist()
+
+    def _multi_layer_fusion(self, scores: Dict[str, List[float]]) -> List[float]:
+        """Fuse scores using a multi-layer neural network (requires torch, must be trained)."""
+        import torch
+        method_names = list(scores.keys())
+        score_matrix = np.stack([scores[m] for m in method_names], axis=1)
+        x = torch.tensor(score_matrix, dtype=torch.float32)
+        with torch.no_grad():
+            fused = self.fusion_net(x).squeeze(-1).numpy()
+        return fused.tolist()
+
+    def _attention_fusion(self, scores: Dict[str, List[float]]) -> List[float]:
+        """Fuse scores using an attention-based neural network (requires torch, must be trained)."""
+        import torch
+        method_names = list(scores.keys())
+        score_matrix = np.stack([scores[m] for m in method_names], axis=1)
+        x = torch.tensor(score_matrix, dtype=torch.float32)
+        with torch.no_grad():
+            fused = self.fusion_net(x).squeeze(-1).numpy()
+        return fused.tolist()
+
+    def _transformer_fusion(self, scores: Dict[str, List[float]]) -> List[float]:
+        """Fuse scores using a transformer-based neural network (requires torch, must be trained)."""
+        import torch
+        method_names = list(scores.keys())
+        score_matrix = np.stack([scores[m] for m in method_names], axis=1)
+        x = torch.tensor(score_matrix, dtype=torch.float32)
+        with torch.no_grad():
+            fused = self.fusion_net(x).squeeze(-1).numpy()
+        return fused.tolist()
+
+    def train_neural_fusion(self, scores: List[Dict[str, List[float]]], labels: List[List[float]], method: str = "simple"):
+        """Train the neural/attention/transformer fusion model (requires torch). method: 'simple', 'multi_layer', 'attention', 'transformer'"""
+        if method == "simple":
+            Net = self.SimpleFusionNet
+        elif method == "multi_layer":
+            Net = self.MultiLayerFusionNet
+        elif method == "attention":
+            Net = self.AttentionFusionNet
+        elif method == "transformer":
+            Net = self.TransformerFusionNet
+        else:
+            raise ValueError("Unknown fusion net type")
+        if not Net:
+            raise ImportError("PyTorch is required for neural fusion.")
+        import torch
+        import torch.nn as nn
+        import torch.optim as optim
+        method_names = list(scores[0].keys())
+        n_methods = len(method_names)
+        self.fusion_net = Net(n_methods)
+        optimizer = optim.Adam(self.fusion_net.parameters(), lr=0.01)
+        loss_fn = nn.MSELoss()
+        x = torch.tensor(np.stack([np.stack([s[m] for m in method_names], axis=1) for s in scores]), dtype=torch.float32)
+        y = torch.tensor(np.array(labels), dtype=torch.float32)
+        for epoch in range(100):
+            optimizer.zero_grad()
+            out = self.fusion_net(x).squeeze(-1)
+            loss = loss_fn(out, y)
+            loss.backward()
+            optimizer.step()
+        self.fusion_net_trained = True
+
+    def submit_feedback(self, method: str, feedback: float):
+        """Submit user feedback for a fusion method (1.0=good, 0.0=bad, or any float)."""
+        self.performance_tracker.submit_feedback(method, feedback)
 
 class PersistenceManager:
     """Manages persistence of vector stores to different backends."""

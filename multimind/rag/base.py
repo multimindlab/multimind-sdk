@@ -99,16 +99,8 @@ class BaseRAG(ABC):
         chunking_strategy: Optional[ChunkingStrategy] = None,
         **kwargs
     ) -> None:
-        """
-        Add documents to the vector store with enhanced error handling.
-        
-        Args:
-            documents: List of documents to add
-            metadata: Optional metadata for each document
-            chunking_strategy: Optional override for chunking strategy
-            **kwargs: Additional arguments for document processing
-        """
-        pass
+        """Add documents to the vector store with enhanced error handling. Must be implemented in subclass."""
+        raise NotImplementedError("add_documents must be implemented in a subclass of BaseRAG.")
 
     @abstractmethod
     async def search(
@@ -118,16 +110,8 @@ class BaseRAG(ABC):
         retrieval_strategy: Optional[RetrievalStrategy] = None,
         **kwargs
     ) -> List[Dict[str, Any]]:
-        """
-        Search for relevant documents with enhanced retrieval strategies.
-        
-        Args:
-            query: Search query
-            k: Number of results to return
-            retrieval_strategy: Optional override for retrieval strategy
-            **kwargs: Additional search parameters
-        """
-        pass
+        """Search for relevant documents with enhanced retrieval strategies. Must be implemented in subclass."""
+        raise NotImplementedError("search must be implemented in a subclass of BaseRAG.")
 
     @abstractmethod
     async def query(

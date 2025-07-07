@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig
+import json
 
 class AuditEvent(BaseModel):
     """Audit event model."""
@@ -136,8 +137,22 @@ class ComplianceAuditLogger(BaseModel):
         if format == "json":
             return json.dumps([e.dict() for e in events], default=str)
         elif format == "csv":
-            # Implementation for CSV export
-            pass
+            import csv
+            import io
+            if not events:
+                return ""
+            output = io.StringIO()
+            fieldnames = list(events[0].dict().keys())
+            writer = csv.DictWriter(output, fieldnames=fieldnames)
+            writer.writeheader()
+            for e in events:
+                row = e.dict()
+                # Convert datetime to string for CSV
+                for k, v in row.items():
+                    if isinstance(v, datetime):
+                        row[k] = v.isoformat()
+                writer.writerow(row)
+            return output.getvalue()
         else:
             raise ValueError(f"Unsupported export format: {format}")
     

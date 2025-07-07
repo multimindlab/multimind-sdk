@@ -84,8 +84,8 @@ class BaseDocumentLoader:
             return await coro
 
     async def load_document(self, source: str, **kwargs) -> LoadedDocument:
-        """Load a single document."""
-        raise NotImplementedError
+        """Load a single document. Must be implemented in subclass."""
+        raise NotImplementedError("load_document must be implemented in a subclass of BaseDocumentLoader.")
 
     async def load_documents(self, sources: List[str], **kwargs) -> List[LoadedDocument]:
         """Load multiple documents in parallel."""
