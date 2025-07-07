@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 
 from ..compliance.model_training import ComplianceTrainer
-from ..compliance import GovernanceConfig, Regulation
+# from ..compliance import GovernanceConfig, Regulation
 from ..compliance.advanced import (
     ComplianceShard,
     SelfHealingCompliance,
@@ -63,12 +63,12 @@ async def monitor_compliance(config: ComplianceConfig):
     """Run compliance monitoring."""
     try:
         # Initialize governance config
-        governance_config = GovernanceConfig(
-            organization_id=config.organization_id,
-            organization_name=config.organization_name,
-            dpo_email=config.dpo_email,
-            enabled_regulations=[Regulation[r] for r in config.enabled_regulations]
-        )
+        # governance_config = GovernanceConfig(
+        #     organization_id=config.organization_id,
+        #     organization_name=config.organization_name,
+        #     dpo_email=config.dpo_email,
+        #     enabled_regulations=[Regulation[r] for r in config.enabled_regulations]
+        # )
         
         # Run compliance monitoring
         results = await run_compliance_monitoring(config.dict())

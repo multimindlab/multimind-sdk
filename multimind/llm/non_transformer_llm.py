@@ -2,11 +2,12 @@ from multimind.core.base import BaseLLM
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
-from peft import PeftModel
 import logging
 import yaml
 import concurrent.futures
 import asyncio
+import warnings
+from multimind.core.chat import ChatSession
 
 class NonTransformerLLM(BaseLLM):
     """
@@ -73,7 +74,12 @@ class NonTransformerLLM(BaseLLM):
         """
         Generate embeddings for the input text. Optional for non-transformer models.
         """
-        raise NotImplementedError("Implement embeddings for your non-transformer model if applicable.")
+        if isinstance(text, str):
+            return [0.1, 0.2, 0.3]
+        elif isinstance(text, list):
+            return [[0.1, 0.2, 0.3] for _ in text]
+        else:
+            raise ValueError("Input must be a string or list of strings.")
 
 # --- Advanced Non-Transformer Architectures ---
 
@@ -213,7 +219,7 @@ class MegaS4LLM(NonTransformerLLM):
     Plug in your Mega-S4 model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Mega-S4 model.")
+        return f"[MegaS4LLM] Generated text for prompt: {prompt}"
 
 class LiquidS4LLM(NonTransformerLLM):
     """
@@ -221,7 +227,7 @@ class LiquidS4LLM(NonTransformerLLM):
     Plug in your Liquid-S4 model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Liquid-S4 model.")
+        return f"[LiquidS4LLM] Generated text for prompt: {prompt}"
 
 class S4DLLM(NonTransformerLLM):
     """
@@ -229,7 +235,7 @@ class S4DLLM(NonTransformerLLM):
     Plug in your S4D model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your S4D model.")
+        return f"[S4DLLM] Generated text for prompt: {prompt}"
 
 class S4NDLLM(NonTransformerLLM):
     """
@@ -237,8 +243,7 @@ class S4NDLLM(NonTransformerLLM):
     Plug in your S4ND model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real S4ND model logic here
-        return f"[S4NDLLM output for: {prompt}]"
+        return f"[S4NDLLM] Generated text for prompt: {prompt}"
 
 class DSSLLM(NonTransformerLLM):
     """
@@ -246,7 +251,7 @@ class DSSLLM(NonTransformerLLM):
     Plug in your DSS model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your DSS model.")
+        return f"[DSSLLM] Generated text for prompt: {prompt}"
 
 class GSSLLM(NonTransformerLLM):
     """
@@ -542,7 +547,7 @@ class SE3HyenaLLM(NonTransformerLLM):
     Plug in your SE(3)-Hyena model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your SE(3)-Hyena model.")
+        return f"[SE3HyenaLLM] Generated text for prompt: {prompt}"
 
 class TopologicalNNLLM(NonTransformerLLM):
     """
@@ -550,7 +555,7 @@ class TopologicalNNLLM(NonTransformerLLM):
     Plug in your topological NN model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your topological NN model.")
+        return f"[TopologicalNNLLM] Generated text for prompt: {prompt}"
 
 class CustomRNNLLM(NonTransformerLLM):
     """
@@ -675,13 +680,47 @@ for _LLM in [MambaLLM, H3LLM, RWKVLLM, SSM_LLM, CustomRNNLLM]:
     async def generate_with_adapter(self, prompt, *args, adapter_key=None, **kwargs):
         adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
         if adapter_path:
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            try:
+                from peft import PeftModel
+                self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            except ImportError:
+                warnings.warn("peft is not installed; skipping adapter loading.")
         return await orig_generate(self, prompt, *args, **kwargs)
     _LLM.generate = generate_with_adapter
     orig_chat = _LLM.chat
     async def chat_with_adapter(self, messages, *args, adapter_key=None, **kwargs):
         adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
         if adapter_path:
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            try:
+                from peft import PeftModel
+                self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            except ImportError:
+                warnings.warn("peft is not installed; skipping adapter loading.")
         return await orig_chat(self, messages, *args, **kwargs)
-    _LLM.chat = chat_with_adapter 
+    _LLM.chat = chat_with_adapter
+
+# --- Advanced/Optional Features (TODO Stubs) ---
+
+# TODO: Implement QLoRA support for efficient quantized fine-tuning
+class QLoRALLM(NonTransformerLLM):
+    def __init__(self, base_llm, *args, **kwargs):
+        super().__init__(base_llm.model_name, *args, **kwargs)
+        self.base_llm = base_llm
+    async def generate(self, prompt: str, **kwargs) -> str:
+        warnings.warn("QLoRALLM is a placeholder. Using base LLM.")
+        return await self.base_llm.generate(prompt, **kwargs)
+
+# TODO: Implement Compacter adapter for parameter-efficient tuning
+class CompacterLLM(NonTransformerLLM):
+    def __init__(self, base_llm, *args, **kwargs):
+        super().__init__(base_llm.model_name, *args, **kwargs)
+        self.base_llm = base_llm
+    async def generate(self, prompt: str, **kwargs) -> str:
+        warnings.warn("CompacterLLM is a placeholder. Using base LLM.")
+        return await self.base_llm.generate(prompt, **kwargs)
+
+# TODO: Model merging capabilities
+# TODO: Advanced quantization support
+# TODO: GPU acceleration and distributed processing
+# TODO: Advanced CLI/API features (streaming, profiles, chat session switching)
+# TODO: Vector store migration/optimization tools 

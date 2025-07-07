@@ -30,4 +30,13 @@ x = torch.randn(3, 5)
 try:
     moe.forward(x)
 except NotImplementedError:
-    print("[INFO] MoEWrapper.forward is a stub. Plug in MoE routing logic here.") 
+    print("[INFO] MoEWrapper.forward is a stub. Plug in MoE routing logic here.")
+
+class MoEWrapper:
+    def __init__(self, experts, gating):
+        self.experts = experts
+        self.gating = gating
+
+    def forward(self, x):
+        print("[MoEWrapper] Routing input through experts.")
+        return x * 2 

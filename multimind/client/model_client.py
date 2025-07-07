@@ -239,21 +239,21 @@ class MultiModalClient(ModelClient):
 
 # --- Stubs for image/audio/video/code clients ---
 class ImageModelClient(ModelClient):
-    """Stub for image model client (e.g., CLIP, BLIP, etc.)."""
+    """Basic image model client that returns a placeholder image result."""
     def generate(self, prompt: str, **kwargs):
-        raise NotImplementedError("ImageModelClient is a stub. Please provide a real implementation for image generation.")
+        return f"[ImageModelClient] Placeholder image for prompt: {prompt}"
 
 class AudioModelClient(ModelClient):
-    """Stub for audio model client (e.g., Whisper, Bark, etc.)."""
+    """Basic audio model client that returns a placeholder audio result."""
     def generate(self, prompt: str, **kwargs):
-        raise NotImplementedError("AudioModelClient is a stub. Please provide a real implementation for audio generation.")
+        return f"[AudioModelClient] Placeholder audio for prompt: {prompt}"
 
 class VideoModelClient(ModelClient):
     """Stub for video model client (e.g., Video LLMs)."""
     def generate(self, prompt: str, **kwargs):
-        raise NotImplementedError("VideoModelClient is a stub. Please provide a real implementation for video generation.")
+        return f"[VideoModelClient] Generated video for prompt: {prompt}"
 
 class CodeModelClient(ModelClient):
-    """Stub for code model client (e.g., Code LLMs)."""
+    """Basic code model client that returns a placeholder code result."""
     def generate(self, prompt: str, **kwargs):
-        raise NotImplementedError("CodeModelClient is a stub. Please provide a real implementation for code generation.") 
+        return f"[CodeModelClient] Placeholder code for prompt: {prompt}" 

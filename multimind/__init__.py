@@ -45,7 +45,7 @@ from .orchestration.task_runner import TaskRunner
 from .mcp.executor import MCPExecutor
 from .mcp.parser import MCPParser
 from .mcp.advanced_executor import AdvancedMCPExecutor
-from .mcp.api.base import MCPWorkflowAPI
+from .mcp.api.base import MCPWorkflowAPI, DefaultMCPWorkflowAPI
 from .mcp.api.registry import WorkflowRegistry
 
 # Integration handlers
@@ -84,6 +84,15 @@ from .retrieval.enhanced_retrieval import EnhancedRetriever
 
 # Pipeline components
 from .pipeline.pipeline import Pipeline, PipelineBuilder
+
+# New imports
+from .document_loader.document_loader import DefaultFileLoader
+from .llm.non_transformer_llm import QLoRALLM, CompacterLLM
+from .vector_store.clarifai import ClarifaiBackend
+from .vector_store.dashvector import DashVectorBackend
+from .vector_store.dingo import DingoDBBackend
+from .vector_store.epsilla import EpsillaBackend
+from multimind.agents.tools.calculator import CalculatorTool
 
 __all__ = [
     # Memory
@@ -160,4 +169,15 @@ __all__ = [
     # Pipeline
     "Pipeline",
     "PipelineBuilder",
+
+    # New components
+    "DefaultMCPWorkflowAPI",
+    "DefaultFileLoader",
+    "QLoRALLM",
+    "CompacterLLM",
+    "ClarifaiBackend",
+    "DashVectorBackend",
+    "DingoDBBackend",
+    "EpsillaBackend",
+    "CalculatorTool",
 ]
