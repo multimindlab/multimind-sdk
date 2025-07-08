@@ -47,7 +47,7 @@
 [![Dependencies](https://img.shields.io/librariesio/release/pypi/multimind-sdk)](https://libraries.io/pypi/multimind-sdk)
 [![Code Style: Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://github.com/multimindlab/multimind-sdk/blob/develop/LICENSE)
-[![Code Coverage](https://img.shields.io/badge/coverage-14%25-red.svg)](https://github.com/multimind-dev/multimind-sdk)
+
 
 
 ## 🤖 What is MultiMind SDK?
