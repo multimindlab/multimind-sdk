@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from ..compliance.model_training import ComplianceTrainer
-# from ..compliance import GovernanceConfig, Regulation
+from ..compliance.governance import GovernanceConfig, Regulation
 from ..gateway.compliance_api import (
     run_compliance_monitoring,
     generate_compliance_report,
@@ -38,12 +38,12 @@ async def _run_compliance(config_path: str, output_path: str):
         config = json.load(f)
     
     # Initialize governance config
-    # governance_config = GovernanceConfig(
-    #     organization_id=config["organization_id"],
-    #     organization_name=config["organization_name"],
-    #     dpo_email=config["dpo_email"],
-    #     enabled_regulations=[Regulation[r] for r in config["enabled_regulations"]]
-    # )
+    governance_config = GovernanceConfig(
+        organization_id=config["organization_id"],
+        organization_name=config["organization_name"],
+        dpo_email=config["dpo_email"],
+        enabled_regulations=[Regulation[r] for r in config["enabled_regulations"]]
+    )
     
     # Run compliance monitoring
     results = await run_compliance_monitoring(config)

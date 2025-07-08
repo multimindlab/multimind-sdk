@@ -96,7 +96,7 @@ class LLMInterface:
         self.custom_ensemble_fn = custom_ensemble_fn
         
         # Initialize advanced prompting
-        self.prompting = AdvancedPrompting(llm=models[default_model])
+        self.prompting = AdvancedPrompting(model=models[default_model])
         
         # Initialize logging
         self.logger = logging.getLogger(__name__)
@@ -228,11 +228,19 @@ class LLMInterface:
                     **{**config.custom_params, **kwargs}
                 )
                 
-                return {
-                    "text": result.text,
-                    "metadata": result.metadata,
-                    "usage": result.usage
-                }
+                # Handle both string and object responses
+                if isinstance(result, str):
+                    return {
+                        "text": result,
+                        "metadata": {},
+                        "usage": {"total_tokens": len(result.split())}
+                    }
+                else:
+                    return {
+                        "text": result.text,
+                        "metadata": result.metadata,
+                        "usage": result.usage
+                    }
                 
             except Exception as e:
                 last_error = e
@@ -265,6 +273,11 @@ class LLMInterface:
     ) -> GenerationResult:
         """Handle generation error based on strategy."""
         if self.error_config.strategy == ErrorHandlingStrategy.RAISE.value:
+            raise error
+        
+        elif self.error_config.strategy == ErrorHandlingStrategy.RETRY.value:
+            # Retry strategy should have already been handled in _generate_with_retry
+            # If we get here, all retries failed, so raise the error
             raise error
         
         elif self.error_config.strategy == ErrorHandlingStrategy.FALLBACK.value:
@@ -305,8 +318,8 @@ class LLMInterface:
         **kwargs
     ) -> GenerationResult:
         """Generate text using model router."""
-        if not self.llm:
-            raise ValueError("LLM required for model routing")
+        if not self.models:
+            raise ValueError("Models required for model routing")
         
         # Analyze prompt
         model_choice = await self._route_prompt(prompt)
@@ -321,7 +334,7 @@ class LLMInterface:
 
     async def _route_prompt(self, prompt: str) -> str:
         """Route prompt to appropriate model."""
-        if not self.llm:
+        if not self.models:
             return self.default_model
         
         # Analyze prompt
@@ -413,8 +426,8 @@ class LLMInterface:
         elif strategy == EnsembleStrategy.CONFIDENCE:
             return self._confidence_weighted(results)
         elif strategy == EnsembleStrategy.LLM:
-            if not self.llm:
-                raise ValueError("LLM required for LLM ensemble strategy")
+            if not self.models:
+                raise ValueError("Models required for LLM ensemble strategy")
             combined = await self._combine_ensemble_results(
                 prompt,
                 results
@@ -512,10 +525,10 @@ class LLMInterface:
         """
         
         # Generate combined response
-        combined = await self.llm.generate(combination_prompt)
+        combined_text = await self.models[self.default_model].generate(combination_prompt)
         
         return {
-            "text": combined.text,
+            "text": combined_text,
             "metadata": {
                 "combination_method": "llm",
                 "source_responses": len(results)

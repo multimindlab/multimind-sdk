@@ -6,9 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional, Union
 import asyncio
-from ..router.multi_modal_router import MultiModalRouter, MultiModalRequest
 from ..models.moe import MoEFactory
-from ..mcp.api.registry import WorkflowRegistry
 
 app = FastAPI(title="Unified Multi-Modal API")
 
@@ -37,14 +35,20 @@ class UnifiedResponse(BaseModel):
     metrics: Dict[str, Any]
 
 # Initialize components
-router = MultiModalRouter()
 moe_factory = MoEFactory()
-workflow_registry = WorkflowRegistry()
 
 @app.post("/v1/process", response_model=UnifiedResponse)
 async def process_request(request: UnifiedRequest):
     """Process multi-modal request using either MoE or router."""
     try:
+        # Import here to avoid circular imports
+        from ..router.multi_modal_router import MultiModalRouter, MultiModalRequest
+        from .mcp.registry import WorkflowRegistry
+        
+        # Initialize components
+        router = MultiModalRouter()
+        workflow_registry = WorkflowRegistry()
+        
         # Convert inputs to router format
         content = {
             input.modality: input.content
@@ -107,6 +111,10 @@ async def process_request(request: UnifiedRequest):
 @app.get("/v1/models")
 async def list_models():
     """List available models and their capabilities."""
+    # Import here to avoid circular imports
+    from ..router.multi_modal_router import MultiModalRouter
+    router = MultiModalRouter()
+    
     models = {}
     for modality, model_dict in router.modality_registry.items():
         models[modality] = list(model_dict.keys())
@@ -115,11 +123,18 @@ async def list_models():
 @app.get("/v1/workflows")
 async def list_workflows():
     """List available MCP workflows."""
+    # Import here to avoid circular imports
+    from .mcp.registry import WorkflowRegistry
+    workflow_registry = WorkflowRegistry()
     return {"workflows": workflow_registry.list_workflows()}
 
 @app.get("/v1/metrics")
 async def get_metrics():
     """Get performance metrics for models."""
+    # Import here to avoid circular imports
+    from ..router.multi_modal_router import MultiModalRouter
+    router = MultiModalRouter()
+    
     return {
         "costs": router.cost_tracker.costs,
         "performance": router.performance_metrics.metrics

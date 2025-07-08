@@ -2,7 +2,7 @@
 Advanced multi-task and cross-model features for PEFT methods.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -20,6 +20,7 @@ from .adaptive_peft import (
     MethodImportance,
     DynamicComponentWeighting
 )
+from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 

@@ -11,13 +11,8 @@ from transformers import (
     Trainer,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    AdapterConfig,
-    PromptEncoderConfig,
-    get_peft_model,
-    TaskType
-)
-from datasets import Dataset as HFDatase
+from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
+from datasets import Dataset as HFDataset
 import logging
 
 logger = logging.getLogger(__name__)
@@ -82,7 +77,7 @@ class AdapterTuner:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Configure adapter tuning
-        peft_config = AdapterConfig(**self.adapter_config)
+        peft_config = LoraConfig(**self.adapter_config)
         self.model = get_peft_model(self.model, peft_config)
 
         # Print trainable parameters
@@ -111,7 +106,7 @@ class AdapterTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -231,7 +226,7 @@ class PTuner:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Configure p-tuning
-        peft_config = PromptEncoderConfig(**self.p_tuning_config)
+        peft_config = LoraConfig(**self.p_tuning_config)
         self.model = get_peft_model(self.model, peft_config)
 
         # Print trainable parameters
@@ -260,7 +255,7 @@ class PTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,

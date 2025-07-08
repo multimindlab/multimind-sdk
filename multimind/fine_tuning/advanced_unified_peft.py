@@ -2,7 +2,7 @@
 Advanced PEFT implementations including UniPELT++ and Enhanced MAM Adapters.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 
@@ -51,16 +51,7 @@ except ImportError:
         )
         _AUTO_MODEL_FOR_SEQ2SEQ = None
 
-from peft import (
-    LoraConfig,
-    AdapterConfig,
-    PromptTuningConfig,
-    PrefixTuningConfig,
-    IA3Config,
-    get_peft_model,
-    TaskType,
-    PeftModel
-)
+from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
 from datasets import Dataset as HFDatase
 import logging
 from enum import Enum
@@ -322,28 +313,28 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
 
         # Configure each componen
         # 1. Adapter
-        adapter_config = AdapterConfig(**self.adapter_config,
-                                     task_type=TaskType.CAUSAL_LM)
+        adapter_config = LoraConfig(**self.adapter_config,
+                                     task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, adapter_config)
 
         # 2. LoRA
         lora_config = LoraConfig(**self.lora_config,
-                                task_type=TaskType.CAUSAL_LM)
+                                task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, lora_config)
 
         # 3. Prompt Tuning
-        prompt_config = PromptTuningConfig(**self.prompt_config,
-                                         task_type=TaskType.CAUSAL_LM)
+        prompt_config = PeftConfig(**self.prompt_config,
+                                         task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, prompt_config)
 
         # 4. Prefix Tuning
-        prefix_config = PrefixTuningConfig(**self.prefix_config,
-                                         task_type=TaskType.CAUSAL_LM)
+        prefix_config = PeftConfig(**self.prefix_config,
+                                         task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, prefix_config)
 
         # 5. IA³
-        ia3_config = IA3Config(**self.ia3_config,
-                              task_type=TaskType.CAUSAL_LM)
+        ia3_config = PeftConfig(**self.ia3_config,
+                              task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, ia3_config)
 
         # Print trainable parameters

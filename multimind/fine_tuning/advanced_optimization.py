@@ -3,7 +3,7 @@ Advanced optimization features for PEFT methods including task-specific hyperpar
 and cross-task knowledge distillation.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -24,6 +24,7 @@ from .multitask_peft import (
     TaskType,
     UniPELTPlusMethod
 )
+from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 

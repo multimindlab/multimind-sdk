@@ -7,7 +7,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from ..vector_store import VectorStore, VectorStoreConfig
-from ..document_processing import DocumentLoader, DocumentProcessor, Document
+from ..document_processing import DocumentProcessor, Document
+from ..document_loader import BaseDocumentLoader as DocumentLoader
 from ..embeddings import EmbeddingGenerator, EmbeddingConfig
 
 @dataclass

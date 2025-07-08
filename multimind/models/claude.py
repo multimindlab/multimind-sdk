@@ -4,7 +4,7 @@ Anthropic Claude model implementation.
 
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
 from anthropic import AsyncAnthropic
-from ..core.base import BaseLLM
+from .base import BaseLLM
 
 class ClaudeModel(BaseLLM):
     """Anthropic Claude model implementation."""

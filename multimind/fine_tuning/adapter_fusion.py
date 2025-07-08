@@ -13,11 +13,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    AdapterConfig,
-    get_peft_model,
-    TaskType
-)
+from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
 import logging
 from datasets import Dataset as HFDataset
 
@@ -149,9 +145,9 @@ class AdapterFusionTuner:
 
         # Add adapters
         for i, config in enumerate(self.adapter_configs):
-            adapter_config = AdapterConfig(
+            adapter_config = LoraConfig(
                 **config,
-                task_type=TaskType.CAUSAL_LM
+                task_type=PeftType.CAUSAL_LM
             )
             self.model.add_adapter(f"adapter_{i}", adapter_config)
             self.adapters.append(f"adapter_{i}")
