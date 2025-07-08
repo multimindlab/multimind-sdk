@@ -266,7 +266,7 @@ This gives you a visual interface to:
 
 ## 📚 Documentation
 
-- [Getting Started Guide](docs/getting_started.md) - Your first steps with MultiMind SDK
+- [Getting Started Guide](docs/README.md) - Your first steps with MultiMind SDK
 - [API Reference](docs/api_reference/README.md) - Complete API documentation
 - [Examples](examples/README.md) - Ready-to-use code examples
 - [Compliance Guide](docs/compliance.md) - Enterprise compliance features
