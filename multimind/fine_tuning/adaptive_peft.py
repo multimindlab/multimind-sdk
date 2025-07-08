@@ -2,7 +2,7 @@
 Advanced adaptive features for PEFT methods including method selection and dynamic weighting.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -14,6 +14,7 @@ from transformers import TrainerCallback, TrainerState, TrainerControl
 import logging
 from enum import Enum
 from .advanced_unified_peft import UniPELTPlusTuner, EnhancedMAMAdapterTuner, UniPELTPlusMethod
+from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
 

@@ -16,7 +16,7 @@ from peft import (
     get_peft_model,
     TaskType
 )
-from datasets import Dataset as HFDatase
+from datasets import Dataset as HFDataset
 import logging
 
 logger = logging.getLogger(__name__)
@@ -108,7 +108,7 @@ class IA3Tuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -250,7 +250,7 @@ class BitFitTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,

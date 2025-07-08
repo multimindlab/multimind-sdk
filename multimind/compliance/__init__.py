@@ -17,21 +17,20 @@ from .advanced_config import (
     save_advanced_config
 )
 
-# from .api import (
-#     ComplianceConfig,
-#     ComplianceResult,
-#     DashboardMetrics,
-#     start_api_server
-# )
+from .advanced import (
+    ComplianceShard,
+    SelfHealingCompliance,
+    ExplainableDTO,
+    ModelWatermarking,
+    AdaptivePrivacy,
+    RegulatoryChangeDetector,
+    FederatedCompliance,
+    ComplianceLevel,
+    ComplianceMetrics
+)
 
-# from .cli import (
-#     run_compliance,
-#     run_example,
-#     generate_report,
-#     show_dashboard,
-#     show_alerts,
-#     configure_alerts
-# )
+from .governance import GovernanceConfig, Regulation
+from .model_training import ComplianceTrainer
 
 __all__ = [
     # Advanced Features
@@ -42,6 +41,8 @@ __all__ = [
     'AdaptivePrivacy',
     'RegulatoryChangeDetector',
     'FederatedCompliance',
+    'ComplianceLevel',
+    'ComplianceMetrics',
     
     # Advanced Configurations
     'ComplianceShardConfig',
@@ -54,19 +55,12 @@ __all__ = [
     'load_advanced_config',
     'save_advanced_config',
     
-    # API Components
-    # 'ComplianceConfig',
-    # 'ComplianceResult',
-    # 'DashboardMetrics',
-    # 'start_api_server',
+    # Governance
+    'GovernanceConfig',
+    'Regulation',
     
-    # CLI Commands
-    # 'run_compliance',
-    # 'run_example',
-    # 'generate_report',
-    # 'show_dashboard',
-    # 'show_alerts',
-    # 'configure_alerts'
+    # Training
+    'ComplianceTrainer',
 ]
 
 __version__ = '1.0.0' 

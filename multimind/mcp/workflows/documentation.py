@@ -5,8 +5,8 @@ This workflow automates the documentation generation process using AI-powered an
 """
 
 from typing import Any, Dict, List
-from ..api.base import MCPWorkflowAPI
-from ..api.registry import WorkflowRegistry
+from ...api.mcp.base import MCPWorkflowAPI
+from ...api.mcp.registry import WorkflowRegistry
 
 @WorkflowRegistry.register
 class DocumentationWorkflow(MCPWorkflowAPI):

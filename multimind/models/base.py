@@ -76,3 +76,16 @@ class BaseLLM(ABC):
     async def get_latency(self) -> Optional[float]:
         """Get the average latency for this model."""
         return self.avg_latency
+
+    def get_capabilities(self) -> Dict[str, Any]:
+        """Get model capabilities for routing and selection."""
+        return {
+            "supported_tasks": ["text_generation", "chat", "embeddings"],
+            "max_complexity": 10,
+            "supported_domains": ["general"],
+            "supported_languages": ["en"],
+            "max_context_length": 4096,
+            "model_type": "transformer",
+            "supports_streaming": True,
+            "supports_fine_tuning": False
+        }

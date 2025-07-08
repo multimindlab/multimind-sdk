@@ -12,9 +12,6 @@ import numpy as np
 from datetime import datetime
 import faiss
 import hnswlib
-import redis
-from redis.commands.search.field import VectorField, TagField, TextField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 import tiktoken
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -24,6 +21,26 @@ import pickle
 from ..models.base import BaseLLM
 from ..embeddings.embedding import EmbeddingModel, EmbeddingConfig
 from ..rag.vector_store import VectorStore, VectorStoreConfig
+
+# Try to import Redis and Redis search modules, but handle gracefully if not available
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
+
+try:
+    if REDIS_AVAILABLE:
+        from redis.commands.search.field import VectorField, TagField, TextField
+        from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+        REDIS_SEARCH_AVAILABLE = True
+    else:
+        REDIS_SEARCH_AVAILABLE = False
+        VectorField = TagField = TextField = IndexDefinition = IndexType = None
+except ImportError:
+    REDIS_SEARCH_AVAILABLE = False
+    VectorField = TagField = TextField = IndexDefinition = IndexType = None
 
 @dataclass
 class ContextWindowConfig:

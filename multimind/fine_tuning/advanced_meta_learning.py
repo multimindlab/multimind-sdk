@@ -2,7 +2,7 @@
 Advanced meta-learning features including few-shot learning and transfer learning.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Set
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -468,7 +468,7 @@ class TransferLearner:
 
                 similarity = F.cosine_similarity(
                     source_flat,
-                    target_fla
+                    target_flat
                 ).item()
 
                 similarities[layer_name] = similarity
