@@ -20,7 +20,7 @@ from pathlib import Path
 import pickle
 from ..models.base import BaseLLM
 from ..embeddings.embedding import EmbeddingModel, EmbeddingConfig
-from ..rag.vector_store import VectorStore, VectorStoreConfig
+from ..vector_store import VectorStore, VectorStoreConfig
 
 # Try to import Redis and Redis search modules, but handle gracefully if not available
 try:
