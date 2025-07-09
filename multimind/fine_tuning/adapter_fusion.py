@@ -13,9 +13,41 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
-from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
+from peft import (
+    get_peft_model,
+    LoraConfig,
+    PeftModel,
+    PeftConfig,
+    PeftType
+)
 import logging
 from datasets import Dataset as HFDataset
+
+import warnings
+
+# Deprecated compatibility shim for AdapterConfig
+class AdapterConfig:
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "AdapterConfig is deprecated. Please use LoraConfig or PeftConfig instead.",
+            DeprecationWarning
+        )
+        self._config = LoraConfig(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self._config, item)
+
+# Deprecated compatibility shim for TaskType
+class TaskType:
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "TaskType is deprecated. Please use PeftType instead.",
+            DeprecationWarning
+        )
+        self._type = PeftType(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self._type, item)
 
 logger = logging.getLogger(__name__)
 
@@ -265,3 +297,10 @@ class AdapterFusionTuner:
             if param.requires_grad:
                 params[name] = param.data.clone()
         return params 
+
+__all__ = [
+    'AdapterFusionLayer',
+    'AdapterFusionTuner',
+    'AdapterConfig',
+    'TaskType',
+] 

@@ -43,7 +43,6 @@ __all__ = [
     'FederatedCompliance',
     'ComplianceLevel',
     'ComplianceMetrics',
-    
     # Advanced Configurations
     'ComplianceShardConfig',
     'SelfHealingConfig',
@@ -54,13 +53,45 @@ __all__ = [
     'FederatedComplianceConfig',
     'load_advanced_config',
     'save_advanced_config',
-    
     # Governance
     'GovernanceConfig',
     'Regulation',
-    
     # Training
     'ComplianceTrainer',
 ]
+
+# Backward compatibility: import legacy CLI and API functions if available
+try:
+    from .cli import (
+        run_compliance,
+        run_example,
+        generate_report,
+        show_dashboard,
+        show_alerts,
+        configure_alerts
+    )
+    __all__.extend([
+        'run_compliance',
+        'run_example',
+        'generate_report',
+        'show_dashboard',
+        'show_alerts',
+        'configure_alerts',
+    ])
+except ImportError:
+    import warnings
+    warnings.warn(
+        "multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.",
+        DeprecationWarning
+    )
+
+try:
+    from .api import *
+except ImportError:
+    import warnings
+    warnings.warn(
+        "multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code.",
+        DeprecationWarning
+    )
 
 __version__ = '1.0.0' 
