@@ -39,12 +39,15 @@ class AdapterConfig:
 
 # Deprecated compatibility shim for TaskType
 class TaskType:
-    def __init__(self, *args, **kwargs):
+    def __init__(self, value=None, *args, **kwargs):
         warnings.warn(
             "TaskType is deprecated. Please use PeftType instead.",
             DeprecationWarning
         )
-        self._type = PeftType(*args, **kwargs)
+        if value is None:
+            self._type = PeftType.LORA
+        else:
+            self._type = PeftType(value)
 
     def __getattr__(self, item):
         return getattr(self._type, item)
@@ -303,4 +306,4 @@ __all__ = [
     'AdapterFusionTuner',
     'AdapterConfig',
     'TaskType',
-] 
+]
