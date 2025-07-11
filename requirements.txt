@@ -203,6 +203,7 @@ neo4j
 tigrisdb
 tiledb
 timescale-vector
+psycopg2-binary
 tcvectordb
 usearch
 vald-client-python
@@ -210,7 +211,9 @@ vectara
 typesense
 xata
 zep-python
-zilliz
+# zilliz
+## zilliz (commented out, not available on PyPI, causes pipeline failure)
+# zilliz
 unstructured
 
 # Optional dependencies (may not be available for all Python versions)

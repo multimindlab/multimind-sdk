@@ -38,7 +38,8 @@
 
 [![🐦 Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=%F0%9F%90%A6%20Follow%20on%20X&style=for-the-badge&logo=x&logoColor=white)](https://x.com/multimindsdk)
 
-[![💖 Support on Open Collective](https://img.shields.io/opencollective/all/multimind-sdk?label=%F0%9F%92%96%20Support%20on%20Open%20Collective&style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/multimind-sdk)
+[![💖 Support on Open Collective](https://img.shields.io/badge/%F0%9F%92%96%20Support%20on%20Open%20Collective-blue?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/multimind-sdk)
+
 
 
 [![PyPI version](https://img.shields.io/pypi/v/multimind-sdk.svg)](https://pypi.org/project/multimind-sdk/)

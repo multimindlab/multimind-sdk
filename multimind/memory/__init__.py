@@ -7,11 +7,13 @@ from .buffer import BufferMemory
 from .summary import SummaryMemory
 from .summary_buffer import SummaryBufferMemory
 from .utils import MemoryUtils
+from .token_aware import TokenAwareMemory
 
 __all__ = [
     "BaseMemory",
     "BufferMemory",
     "SummaryMemory",
     "SummaryBufferMemory",
-    "MemoryUtils"
-] 
+    "MemoryUtils",
+    "TokenAwareMemory"
+]

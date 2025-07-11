@@ -43,6 +43,17 @@ except ImportError:
     VectorField = TagField = TextField = IndexDefinition = IndexType = None
 
 @dataclass
+class ContextConfig:
+    """General configuration for context management."""
+    max_tokens: int = 2048
+    chunk_size: int = 256
+    overlap_tokens: int = 32
+    compression_ratio: float = 0.5
+    relevance_threshold: float = 0.7
+    memory_limit: int = 10000
+    custom_params: Dict[str, Any] = None
+
+@dataclass
 class ContextWindowConfig:
     """Configuration for context window management."""
     max_tokens: int
@@ -730,4 +741,4 @@ class ContextManager:
                 vector_store.config
             )
         
-        return manager 
+        return manager
