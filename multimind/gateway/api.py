@@ -12,7 +12,8 @@ from datetime import datetime
 import uvicorn
 
 from ..core.config import config
-from ..core.models import ModelResponse, get_model_handler
+from ..core.models import ModelResponse
+from ..gateway.models import get_model_handler
 from ..core.monitoring import monitor, ModelHealth
 from ..core.chat import chat_manager, ChatSession, ChatMessage
 from ..compliance.privacy import (

@@ -2,9 +2,10 @@
 Embedding model implementations for RAG system.
 """
 
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, AsyncGenerator, Coroutine
 from dataclasses import dataclass
 import numpy as np
+import asyncio
 from ..models.base import BaseLLM
 
 @dataclass
@@ -195,6 +196,34 @@ class OpenAIEmbedder(BaseLLM):
         # Implement embedding generation logic here
         pass
 
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
+
+    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate text from the model."""
+        return "Generated text"  # Placeholder implementation
+
+    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate text stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Generated text stream"  # Placeholder implementation
+        return wrapper()
+
+    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate chat completion from the model."""
+        return "Chat response"  # Placeholder implementation
+
+    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate chat completion stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Chat response stream"  # Placeholder implementation
+        return wrapper()
+
+    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings for the input text."""
+        return [[0.0]]  # Placeholder implementation
+
 class HuggingFaceEmbedder(BaseLLM):
     """HuggingFace embedding model implementation."""
 
@@ -275,6 +304,34 @@ class HuggingFaceEmbedder(BaseLLM):
 
         return all_embeddings
 
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
+
+    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate text from the model."""
+        return "Generated text"  # Placeholder implementation
+
+    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate text stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Generated text stream"  # Placeholder implementation
+        return wrapper()
+
+    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate chat completion from the model."""
+        return "Chat response"  # Placeholder implementation
+
+    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate chat completion stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Chat response stream"  # Placeholder implementation
+        return wrapper()
+
+    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings for the input text."""
+        return [[0.0]]  # Placeholder implementation
+
 class SentenceT5Embedder(BaseLLM):
     """Sentence-T5 embedding model implementation."""
 
@@ -337,6 +394,34 @@ class SentenceT5Embedder(BaseLLM):
 
         return all_embeddings
 
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
+
+    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate text from the model."""
+        return "Generated text"  # Placeholder implementation
+
+    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate text stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Generated text stream"  # Placeholder implementation
+        return wrapper()
+
+    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+        """Generate chat completion from the model."""
+        return "Chat response"  # Placeholder implementation
+
+    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+        """Generate chat completion stream from the model."""
+        async def wrapper() -> AsyncGenerator[str, None]:
+            yield "Chat response stream"  # Placeholder implementation
+        return wrapper()
+
+    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+        """Generate embeddings for the input text."""
+        return [[0.0]]  # Placeholder implementation
+
 from PIL import Image
 from transformers import CLIPProcessor, CLIPModel
 
@@ -365,6 +450,18 @@ class ImageEmbedder(BaseLLM):
         inputs = self.processor(images=images, return_tensors="pt", padding=True)
         outputs = self.model.get_image_features(**inputs)
         return outputs.detach().numpy().tolist()
+
+    def process_images(self, images: List[Any]) -> Any:
+        """Process images using the processor."""
+        if not callable(self.processor):
+            raise TypeError("Processor is not callable")
+        return self.processor(images=images, return_tensors="pt", padding=True)
+
+    def get_image_features(self, inputs: Any) -> Any:
+        """Get image features from the model."""
+        if not hasattr(self.model, 'get_image_features'):
+            raise AttributeError("Model does not have `get_image_features` method")
+        return self.model.get_image_features(**inputs)
 
 def get_embedder(
     embedder_type: str,

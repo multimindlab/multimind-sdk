@@ -74,9 +74,10 @@ class GatewayConfig(BaseSettings):
         description="Logging level for the gateway"
     )
 
-    class Config:
-        env_prefix = "MULTIMIND_"
-        case_sensitive = False
+    model_config = {
+        "env_prefix": "MULTIMIND_",
+        "case_sensitive": False
+    }
 
     def get_model_config(self, model_name: str) -> ModelConfig:
         """Get configuration for a specific model"""
@@ -95,4 +96,4 @@ class GatewayConfig(BaseSettings):
         return value
 
 # Create a global config instance
-config = GatewayConfig() 
+config = GatewayConfig()

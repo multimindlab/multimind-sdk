@@ -17,7 +17,7 @@ from peft import (
     get_peft_model,
     prepare_model_for_kbit_training
 )
-from datasets import Dataset as HFDatase
+from datasets import Dataset as HFDataset
 import logging
 
 logger = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ class LoRATrainer:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,

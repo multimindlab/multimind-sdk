@@ -5,7 +5,7 @@ Ollama model implementation for local model running.
 import json
 import aiohttp
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
-from ..core.base import BaseLLM
+from .base import BaseLLM
 
 class OllamaModel(BaseLLM):
     """Runner for local models using Ollama."""

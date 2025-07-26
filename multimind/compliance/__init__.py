@@ -5,16 +5,6 @@ This module provides comprehensive compliance monitoring and evaluation capabili
 including advanced features for privacy, security, and regulatory compliance.
 """
 
-from .advanced import (
-    ComplianceShard,
-    SelfHealingCompliance,
-    ExplainableDTO,
-    ModelWatermarking,
-    AdaptivePrivacy,
-    RegulatoryChangeDetector,
-    FederatedCompliance
-)
-
 from .advanced_config import (
     ComplianceShardConfig,
     SelfHealingConfig,
@@ -27,21 +17,21 @@ from .advanced_config import (
     save_advanced_config
 )
 
-from .api import (
-    ComplianceConfig,
-    ComplianceResult,
-    DashboardMetrics,
-    start_api_server
+from .advanced import (
+    ComplianceShard,
+    SelfHealingCompliance,
+    ExplainableDTO,
+    ModelWatermarking,
+    AdaptivePrivacy,
+    RegulatoryChangeDetector,
+    FederatedCompliance,
+    ComplianceLevel,
+    ComplianceMetrics
 )
 
-from .cli import (
-    run_compliance,
-    run_example,
-    generate_report,
-    show_dashboard,
-    show_alerts,
-    configure_alerts
-)
+from .governance import GovernanceConfig, Regulation
+from .model_training import ComplianceTrainer
+from multimind.cli.compliance import run_compliance
 
 __all__ = [
     # Advanced Features
@@ -52,7 +42,8 @@ __all__ = [
     'AdaptivePrivacy',
     'RegulatoryChangeDetector',
     'FederatedCompliance',
-    
+    'ComplianceLevel',
+    'ComplianceMetrics',
     # Advanced Configurations
     'ComplianceShardConfig',
     'SelfHealingConfig',
@@ -63,20 +54,42 @@ __all__ = [
     'FederatedComplianceConfig',
     'load_advanced_config',
     'save_advanced_config',
-    
-    # API Components
-    'ComplianceConfig',
-    'ComplianceResult',
-    'DashboardMetrics',
-    'start_api_server',
-    
-    # CLI Commands
+    # Governance
+    'GovernanceConfig',
+    'Regulation',
+    # Training
+    'ComplianceTrainer',
+    # CLI
     'run_compliance',
-    'run_example',
-    'generate_report',
-    'show_dashboard',
-    'show_alerts',
-    'configure_alerts'
 ]
 
-__version__ = '1.0.0' 
+# Backward compatibility: import legacy CLI and API functions if available
+try:
+    from .cli import (
+        run_example,
+        generate_report,
+        show_dashboard,
+        show_alerts,
+        configure_alerts
+    )
+    __all__.extend([
+        'run_example',
+        'generate_report',
+        'show_dashboard',
+        'show_alerts',
+        'configure_alerts',
+    ])
+except ImportError:
+    import warnings
+    warnings.warn("multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.")
+
+try:
+    from .api import *
+except ImportError:
+    import warnings
+    warnings.warn(
+        "multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code.",
+        DeprecationWarning
+    )
+
+__version__ = '1.0.0'

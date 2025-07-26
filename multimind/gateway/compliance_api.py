@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from datetime import datetime, timedelta
 
 from ..compliance.model_training import ComplianceTrainer
-from ..compliance import GovernanceConfig, Regulation
+from ..compliance.governance import GovernanceConfig, Regulation
 from ..compliance.advanced import (
     ComplianceShard,
     SelfHealingCompliance,
@@ -230,26 +230,27 @@ async def get_alerts(
 async def run_compliance_monitoring(config: Dict[str, Any]) -> Dict[str, Any]:
     """Run compliance monitoring with the given configuration."""
     try:
-        # Initialize compliance components
+        # Initialize compliance components with proper parameters
         shard = ComplianceShard(
             shard_id=f"shard_{config['organization_id']}",
-            level=ComplianceLevel.STRICT
+            jurisdiction=config.get('jurisdiction', 'global'),
+            config=config
         )
-        self_healing = SelfHealingCompliance()
-        explainable = ExplainableDTO()
-        watermarking = ModelWatermarking()
-        privacy = AdaptivePrivacy()
-        detector = RegulatoryChangeDetector()
-        federated = FederatedCompliance()
+        self_healing = SelfHealingCompliance(config)
+        explainable = ExplainableDTO(config)
+        watermarking = ModelWatermarking(config)
+        privacy = AdaptivePrivacy(config)
+        detector = RegulatoryChangeDetector(config)
+        federated = FederatedCompliance(config)
 
         # Run compliance checks
         evaluation = await shard.verify_compliance(config)
         healing_result = await self_healing.check_and_heal(config)
-        explanation = await explainable.generate_explanation(evaluation)
-        watermark = await watermarking.apply_watermark(config)
+        explanation = await explainable.explain_decision(evaluation)
+        watermark = await watermarking.watermark_model(config.get('model', None))
         privacy_result = await privacy.adapt_privacy(config)
         regulatory_changes = await detector.detect_changes()
-        federated_result = await federated.verify_compliance(config)
+        federated_result = await federated.verify_global_compliance(config)
 
         # Combine results
         return {
@@ -312,10 +313,11 @@ async def get_compliance_history(
 ) -> List[Dict[str, Any]]:
     """Get compliance check history for an organization."""
     try:
-        # Initialize compliance components
+        # Initialize compliance components with proper parameters
         shard = ComplianceShard(
             shard_id=f"shard_{organization_id}",
-            level=ComplianceLevel.STRICT
+            jurisdiction="global",
+            config={"organization_id": organization_id, "use_case": use_case}
         )
         
         # Get history from shard
@@ -336,10 +338,11 @@ async def get_active_alerts(
 ) -> List[Dict[str, Any]]:
     """Get active compliance alerts for an organization."""
     try:
-        # Initialize compliance components
+        # Initialize compliance components with proper parameters
         shard = ComplianceShard(
             shard_id=f"shard_{organization_id}",
-            level=ComplianceLevel.STRICT
+            jurisdiction="global",
+            config={"organization_id": organization_id, "use_case": use_case}
         )
         
         # Get alerts from shard
@@ -356,10 +359,11 @@ async def save_alert_rules(
 ) -> None:
     """Save alert rules for an organization."""
     try:
-        # Initialize compliance components
+        # Initialize compliance components with proper parameters
         shard = ComplianceShard(
             shard_id=f"shard_{organization_id}",
-            level=ComplianceLevel.STRICT
+            jurisdiction="global",
+            config={"organization_id": organization_id, "alert_rules": alert_rules}
         )
         
         # Save rules to shard
@@ -375,10 +379,11 @@ async def get_compliance_alerts(
 ) -> List[Dict[str, Any]]:
     """Get compliance alerts with optional filtering."""
     try:
-        # Initialize compliance components
+        # Initialize compliance components with proper parameters
         shard = ComplianceShard(
             shard_id=f"shard_{organization_id}",
-            level=ComplianceLevel.STRICT
+            jurisdiction="global",
+            config={"organization_id": organization_id, "status": status, "severity": severity}
         )
         
         # Get alerts from shard with filters

@@ -102,3 +102,12 @@ class DatabricksVectorSearchBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
                     raise 
+
+    def add(self, *args, **kwargs):
+        raise NotImplementedError("DatabricksVectorSearchBackend.add is a placeholder. Integrate with Databricks Vector Search SDK.")
+
+    def search(self, *args, **kwargs):
+        raise NotImplementedError("DatabricksVectorSearchBackend.search is a placeholder. Integrate with Databricks Vector Search SDK.")
+
+    def delete(self, *args, **kwargs):
+        raise NotImplementedError("DatabricksVectorSearchBackend.delete is a placeholder. Integrate with Databricks Vector Search SDK.") 

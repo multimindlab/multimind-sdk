@@ -9,6 +9,7 @@ from ..models.base import BaseLLM
 from .base import BaseMemory
 from ..vector_store.vector_store import VectorStore
 from ..vector_store.base import VectorStoreConfig, VectorStoreType
+import os
 
 class VectorStoreMemory(BaseMemory):
     """Memory that uses vector store for storing and retrieving embeddings."""
@@ -183,7 +184,12 @@ class VectorStoreMemory(BaseMemory):
         # Remove old backups
         if len(self.backup_history) > self.max_backups:
             old_backup = self.backup_history.pop(0)
-            # TODO: Delete old backup file
+            # Delete old backup file
+            try:
+                if os.path.exists(old_backup["path"]):
+                    os.remove(old_backup["path"])
+            except Exception as e:
+                print(f"Warning: Failed to delete old backup file {old_backup['path']}: {e}")
         
         self.last_backup = datetime.now()
 

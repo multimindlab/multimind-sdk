@@ -5,7 +5,7 @@ OpenAI model implementation.
 import openai
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union, cast
 from openai.types.chat import ChatCompletionMessageParam
-from ..core.base import BaseLLM
+from .base import BaseLLM
 
 class OpenAIModel(BaseLLM):
     """OpenAI model implementation."""

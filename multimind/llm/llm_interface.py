@@ -58,6 +58,13 @@ class ErrorHandlingConfig:
     fallback_model: Optional[str]
     custom_params: Dict[str, Any]
 
+class EnsembleStrategy(Enum):
+    MAJORITY = "majority"
+    SEMANTIC = "semantic"
+    CONFIDENCE = "confidence"
+    LLM = "llm"
+    CUSTOM = "custom"
+
 class LLMInterface:
     """Advanced LLM interface with multiple model support."""
 
@@ -66,6 +73,8 @@ class LLMInterface:
         models: Dict[str, BaseLLM],
         default_model: str,
         error_config: Optional[ErrorHandlingConfig] = None,
+        ensemble_strategy: str = "llm",
+        custom_ensemble_fn: Optional[Any] = None,
         **kwargs
     ):
         """
@@ -75,15 +84,19 @@ class LLMInterface:
             models: Dictionary of model name to LLM instance
             default_model: Name of default model to use
             error_config: Optional error handling configuration
+            ensemble_strategy: Ensemble strategy for combining results
+            custom_ensemble_fn: Optional custom ensemble function
             **kwargs: Additional parameters
         """
         self.models = models
         self.default_model = default_model
         self.error_config = error_config or self._get_default_error_config()
         self.kwargs = kwargs
+        self.ensemble_strategy = EnsembleStrategy(ensemble_strategy)
+        self.custom_ensemble_fn = custom_ensemble_fn
         
         # Initialize advanced prompting
-        self.prompting = AdvancedPrompting(llm=models[default_model])
+        self.prompting = AdvancedPrompting(model=models[default_model])
         
         # Initialize logging
         self.logger = logging.getLogger(__name__)
@@ -215,11 +228,19 @@ class LLMInterface:
                     **{**config.custom_params, **kwargs}
                 )
                 
-                return {
-                    "text": result.text,
-                    "metadata": result.metadata,
-                    "usage": result.usage
-                }
+                # Handle both string and object responses
+                if isinstance(result, str):
+                    return {
+                        "text": result,
+                        "metadata": {},
+                        "usage": {"total_tokens": len(result.split())}
+                    }
+                else:
+                    return {
+                        "text": result.text,
+                        "metadata": result.metadata,
+                        "usage": result.usage
+                    }
                 
             except Exception as e:
                 last_error = e
@@ -252,6 +273,11 @@ class LLMInterface:
     ) -> GenerationResult:
         """Handle generation error based on strategy."""
         if self.error_config.strategy == ErrorHandlingStrategy.RAISE.value:
+            raise error
+        
+        elif self.error_config.strategy == ErrorHandlingStrategy.RETRY.value:
+            # Retry strategy should have already been handled in _generate_with_retry
+            # If we get here, all retries failed, so raise the error
             raise error
         
         elif self.error_config.strategy == ErrorHandlingStrategy.FALLBACK.value:
@@ -292,8 +318,8 @@ class LLMInterface:
         **kwargs
     ) -> GenerationResult:
         """Generate text using model router."""
-        if not self.llm:
-            raise ValueError("LLM required for model routing")
+        if not self.models:
+            raise ValueError("Models required for model routing")
         
         # Analyze prompt
         model_choice = await self._route_prompt(prompt)
@@ -308,7 +334,7 @@ class LLMInterface:
 
     async def _route_prompt(self, prompt: str) -> str:
         """Route prompt to appropriate model."""
-        if not self.llm:
+        if not self.models:
             return self.default_model
         
         # Analyze prompt
@@ -369,9 +395,11 @@ class LLMInterface:
         self,
         prompt: str,
         config: Optional[GenerationConfig] = None,
+        ensemble_strategy: Optional[str] = None,
+        custom_ensemble_fn: Optional[Any] = None,
         **kwargs
     ) -> GenerationResult:
-        """Generate text using model ensemble."""
+        """Generate text using model ensemble with configurable strategy."""
         # Generate with each model
         results = await asyncio.gather(*[
             self.generate(
@@ -382,44 +410,92 @@ class LLMInterface:
             )
             for name in self.models
         ])
-        
-        # Combine results
-        if not self.llm:
-            # Simple voting if no LLM available
+
+        # Determine strategy
+        strategy = EnsembleStrategy(ensemble_strategy) if ensemble_strategy else self.ensemble_strategy
+        custom_fn = custom_ensemble_fn or self.custom_ensemble_fn
+
+        if strategy == EnsembleStrategy.MAJORITY:
             texts = [r.text for r in results]
             return max(
                 results,
                 key=lambda x: texts.count(x.text)
             )
-        
-        # Use LLM to combine results
-        combined = await self._combine_ensemble_results(
-            prompt,
-            results
-        )
-        
-        return GenerationResult(
-            text=combined["text"],
-            metadata={
-                "ensemble_results": [
-                    {
-                        "model": r.model,
-                        "text": r.text,
-                        "score": r.metadata.get("score", 0.0)
-                    }
-                    for r in results
-                ],
-                **combined["metadata"]
-            },
-            usage={
-                "total_tokens": sum(
-                    r.usage.get("total_tokens", 0)
-                    for r in results
-                )
-            },
-            model="ensemble",
-            latency=sum(r.latency for r in results)
-        )
+        elif strategy == EnsembleStrategy.SEMANTIC:
+            return await self._semantic_voting(results)
+        elif strategy == EnsembleStrategy.CONFIDENCE:
+            return self._confidence_weighted(results)
+        elif strategy == EnsembleStrategy.LLM:
+            if not self.models:
+                raise ValueError("Models required for LLM ensemble strategy")
+            combined = await self._combine_ensemble_results(
+                prompt,
+                results
+            )
+            return GenerationResult(
+                text=combined["text"],
+                metadata={
+                    "ensemble_results": [
+                        {
+                            "model": r.model,
+                            "text": r.text,
+                            "score": r.metadata.get("score", 0.0)
+                        }
+                        for r in results
+                    ],
+                    **combined["metadata"]
+                },
+                usage={
+                    "total_tokens": sum(
+                        r.usage.get("total_tokens", 0)
+                        for r in results
+                    )
+                },
+                model="ensemble",
+                latency=sum(r.latency for r in results)
+            )
+        elif strategy == EnsembleStrategy.CUSTOM and custom_fn:
+            return await custom_fn(prompt, results)
+        else:
+            raise ValueError(f"Unsupported ensemble strategy: {strategy}")
+
+    async def _semantic_voting(self, results: List[GenerationResult]) -> GenerationResult:
+        """Select the most semantically central answer using embedding similarity."""
+        try:
+            from ..embeddings.embedding import get_embedding, cosine_similarity
+        except ImportError:
+            raise ImportError("Semantic voting requires embedding utilities.")
+        texts = [r.text for r in results]
+        embeddings = [get_embedding(text) for text in texts]
+        # Compute average similarity for each answer
+        avg_sims = []
+        for i, emb in enumerate(embeddings):
+            sims = [cosine_similarity(emb, other) for j, other in enumerate(embeddings) if i != j]
+            avg_sims.append(sum(sims) / (len(sims) or 1))
+        # Pick the answer with highest average similarity
+        idx = avg_sims.index(max(avg_sims))
+        return results[idx]
+
+    def _confidence_weighted(self, results: List[GenerationResult]) -> GenerationResult:
+        """Weighted voting by model confidence/score."""
+        # Assume each result has a 'score' in metadata
+        scores = [r.metadata.get("score", 1.0) for r in results]
+        if sum(scores) == 0:
+            # Fallback to majority
+            texts = [r.text for r in results]
+            return max(
+                results,
+                key=lambda x: texts.count(x.text)
+            )
+        # Weighted selection: pick the answer with highest total score
+        score_map = {}
+        for r, s in zip(results, scores):
+            score_map[r.text] = score_map.get(r.text, 0) + s
+        best_text = max(score_map.items(), key=lambda x: x[1])[0]
+        for r in results:
+            if r.text == best_text:
+                return r
+        return results[0]  # fallback
 
     async def _combine_ensemble_results(
         self,
@@ -449,10 +525,10 @@ class LLMInterface:
         """
         
         # Generate combined response
-        combined = await self.llm.generate(combination_prompt)
+        combined_text = await self.models[self.default_model].generate(combination_prompt)
         
         return {
-            "text": combined.text,
+            "text": combined_text,
             "metadata": {
                 "combination_method": "llm",
                 "source_responses": len(results)

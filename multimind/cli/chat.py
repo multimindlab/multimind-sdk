@@ -8,6 +8,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress
+from typing import Optional
 
 from ..gateway.chat import chat_manager, ChatSession
 from ..gateway.models import get_model_handler
@@ -165,4 +166,4 @@ def delete(session_id: str):
             console.print(f"[red]Session {session_id} not found[/red]")
 
     except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]") 
+        console.print(f"[red]Error: {str(e)}[/red]")

@@ -55,8 +55,7 @@ def test_query_ollama(mock_run, wrapper):
     """Test Ollama query."""
     mock_run.return_value.stdout = "test response"
     mock_run.return_value.returncode = 0
-    
-    with patch('subprocess.run', return_value=MagicMock(returncode=0)):
+    with patch('subprocess.run', return_value=MagicMock(stdout="test response", returncode=0)):
         result = wrapper.query_model("ollama", "test prompt")
         assert result["status"] == "success"
         assert result["response"] == "test response"

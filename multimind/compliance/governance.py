@@ -4,7 +4,7 @@ Governance configuration for compliance management.
 
 from enum import Enum
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, timedelta
 
 class Regulation(str, Enum):
@@ -145,14 +145,14 @@ class GovernanceConfig(BaseModel):
         description="Custom compliance settings"
     )
     
-    class Config:
-        """Pydantic model configuration."""
-        use_enum_values = True
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(
+        use_enum_values=True,
+        arbitrary_types_allowed=True
+    )
 
 class ComplianceMetadata(BaseModel):
     """Metadata for compliance tracking."""
-    
+
     data_category: DataCategory
     risk_level: RiskLevel
     regulation_tags: List[Regulation]
@@ -165,7 +165,7 @@ class ComplianceMetadata(BaseModel):
     access_count: int = 0
     version: int = 1
     metadata_hash: Optional[str] = None
-    
-    class Config:
-        """Pydantic model configuration."""
-        use_enum_values = True 
+
+    model_config = ConfigDict(
+        use_enum_values=True
+    )

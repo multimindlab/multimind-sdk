@@ -9,6 +9,7 @@ import asyncio
 import numpy as np
 from ..core.provider import GenerationResult, EmbeddingResult, ImageAnalysisResult
 from ..core.router import Router, TaskType
+import optuna
 
 class EnsembleMethod(str, Enum):
     """Methods for combining ensemble results."""
@@ -31,21 +32,73 @@ class EnsembleResult(BaseModel):
     provider_votes: Dict[str, float]  # Provider name to vote weight
     metadata: Dict[str, Any] = {}
 
+class ProviderPerformanceTracker:
+    """Tracks provider performance for adaptive weighting."""
+    def __init__(self):
+        self.metrics = {}
+        # metrics: {provider: {"success": int, "fail": int, "latency": [float], "feedback": [float]}}
+
+    def record(self, provider: str, success: bool, latency: float = None, feedback: float = None):
+        if provider not in self.metrics:
+            self.metrics[provider] = {"success": 0, "fail": 0, "latency": [], "feedback": []}
+        if success:
+            self.metrics[provider]["success"] += 1
+        else:
+            self.metrics[provider]["fail"] += 1
+        if latency is not None:
+            self.metrics[provider]["latency"].append(latency)
+        if feedback is not None:
+            self.metrics[provider]["feedback"].append(feedback)
+
+    def get_weight(self, provider: str) -> float:
+        m = self.metrics.get(provider, None)
+        if not m:
+            return 1.0
+        # Weight: success rate * (1 / avg latency) * (avg feedback + 1)
+        total = m["success"] + m["fail"]
+        success_rate = m["success"] / total if total > 0 else 1.0
+        avg_latency = np.mean(m["latency"]) if m["latency"] else 1.0
+        avg_feedback = np.mean(m["feedback"]) if m["feedback"] else 0.0
+        return success_rate * (1.0 / (avg_latency + 1e-3)) * (avg_feedback + 1.0)
+
+    def get_all_weights(self, providers: List[str]) -> Dict[str, float]:
+        return {p: self.get_weight(p) for p in providers}
+
+    def submit_feedback(self, provider: str, feedback: float):
+        self.record(provider, success=True, feedback=feedback)
+
 class AdvancedEnsemble:
-    """Advanced ensemble system for combining results from multiple providers."""
+    """
+    Advanced ensemble system for combining results from multiple providers.
+
+    Features:
+    - Weighted, confidence, semantic, and rank-based voting
+    - Adaptive/learning-based weights using ProviderPerformanceTracker
+    - Feedback loop: call record_outcome after each ensemble result to update weights
+    - Custom ensemble strategies via plugin
+    - Optuna-based hyperparameter tuning for ensemble weights (see tune_weights_with_optuna)
+    """
     
     def __init__(self, router: Router):
         """Initialize the ensemble system."""
         self.router = router
+        self.performance_tracker = ProviderPerformanceTracker()
+        self.custom_strategies = {}  # name -> async function
     
+    def register_strategy(self, name: str, strategy_fn):
+        """Register a custom ensemble strategy. The function must be async and accept (results, task_type, **kwargs)."""
+        self.custom_strategies[name] = strategy_fn
+
     async def combine_results(
         self,
         results: List[Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]],
-        method: EnsembleMethod,
+        method: Union[EnsembleMethod, str],
         task_type: TaskType,
         **kwargs
     ) -> EnsembleResult:
-        """Combine results using the specified method."""
+        """Combine results using the specified method or a registered custom strategy."""
+        if isinstance(method, str) and method in self.custom_strategies:
+            return await self.custom_strategies[method](results, task_type, **kwargs)
         if method == EnsembleMethod.WEIGHTED_VOTING:
             return await self._weighted_voting(results, **kwargs)
         elif method == EnsembleMethod.CONFIDENCE_CASCADE:
@@ -63,30 +116,28 @@ class AdvancedEnsemble:
         self,
         results: List[Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]],
         weights: Optional[Dict[str, float]] = None,
+        use_adaptive_weights: bool = True,
         **kwargs
     ) -> EnsembleResult:
-        """Combine results using weighted voting."""
-        if not weights:
-            weights = {result.provider: 1.0 for result in results}
-        
+        """Combine results using weighted voting (adaptive if enabled)."""
+        if use_adaptive_weights or not weights:
+            providers = [result.provider for result in results]
+            weights = self.performance_tracker.get_all_weights(providers)
         # Normalize weights
         total_weight = sum(weights.values())
         normalized_weights = {k: v/total_weight for k, v in weights.items()}
-        
         # Calculate weighted scores for each result
         weighted_scores = []
         for result in results:
             weight = normalized_weights.get(result.provider, 0.0)
             weighted_scores.append((result, weight))
-        
         # Select result with highest weight
         best_result, best_weight = max(weighted_scores, key=lambda x: x[1])
-        
         return EnsembleResult(
             result=best_result,
             confidence=ConfidenceScore(
                 score=best_weight,
-                explanation=f"Selected result from {best_result.provider} with weight {best_weight:.2f}"
+                explanation=f"Selected result from {best_result.provider} with adaptive weight {best_weight:.2f}"
             ),
             provider_votes=normalized_weights
         )
@@ -163,28 +214,70 @@ class AdvancedEnsemble:
     async def _majority_voting(
         self,
         results: List[Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]],
+        embedder=None,
+        similarity_threshold: float = 0.8,
         **kwargs
     ) -> EnsembleResult:
-        """Combine results using simple majority voting."""
-        # Count votes for each unique result
-        result_counts = {}
-        for result in results:
-            key = str(result.result)  # Use string representation as key
-            if key not in result_counts:
-                result_counts[key] = (result, 0)
-            result_counts[key] = (result, result_counts[key][1] + 1)
-        
-        # Find result with most votes
-        best_result, vote_count = max(result_counts.values(), key=lambda x: x[1])
-        total_votes = len(results)
-        
+        """Combine results using semantic majority voting (embedding-based)."""
+        # Use a default embedder if not provided
+        if embedder is None:
+            try:
+                from sentence_transformers import SentenceTransformer
+                embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            except ImportError:
+                # Fallback to string equality if no embedder available
+                embedder = None
+
+        texts = [str(r.result) for r in results]
+        if embedder is not None:
+            embeddings = embedder.encode(texts, convert_to_tensor=True)
+            import torch
+            groups = []
+            used = set()
+            for i, emb in enumerate(embeddings):
+                if i in used:
+                    continue
+                group = [i]
+                for j in range(i+1, len(embeddings)):
+                    if j in used:
+                        continue
+                    sim = torch.nn.functional.cosine_similarity(emb, embeddings[j], dim=0, eps=1e-6).item()
+                    if sim >= similarity_threshold:
+                        group.append(j)
+                        used.add(j)
+                used.add(i)
+                groups.append(group)
+            # Find largest group
+            largest_group = max(groups, key=len)
+            # Pick result with highest confidence/score in group
+            group_results = [results[idx] for idx in largest_group]
+            # Use score if available, else default to first
+            def get_score(r):
+                return getattr(r, 'score', 1.0) or 1.0
+            best_result = max(group_results, key=get_score)
+            vote_count = len(largest_group)
+            total_votes = len(results)
+            explanation = f"Selected result by semantic majority voting: {vote_count}/{total_votes} semantically similar."
+            provider_votes = {r.provider: 1.0 if idx in largest_group else 0.0 for idx, r in enumerate(results)}
+        else:
+            # Fallback: string equality
+            result_counts = {}
+            for result in results:
+                key = str(result.result)
+                if key not in result_counts:
+                    result_counts[key] = (result, 0)
+                result_counts[key] = (result, result_counts[key][1] + 1)
+            best_result, vote_count = max(result_counts.values(), key=lambda x: x[1])
+            total_votes = len(results)
+            explanation = f"Selected result with {vote_count}/{total_votes} votes (string equality fallback)"
+            provider_votes = {r.provider: 1.0 for r in results}
         return EnsembleResult(
             result=best_result,
             confidence=ConfidenceScore(
                 score=vote_count/total_votes,
-                explanation=f"Selected result with {vote_count}/{total_votes} votes"
+                explanation=explanation
             ),
-            provider_votes={r.provider: 1.0 for r in results}
+            provider_votes=provider_votes
         )
     
     async def _rank_based(
@@ -376,4 +469,70 @@ class AdvancedEnsemble:
         
         # Normalize scores
         total_points = sum(points.values())
-        return total_points / (total_providers * (total_providers + 1) / 2) 
+        return total_points / (total_providers * (total_providers + 1) / 2)
+
+    def submit_feedback(self, provider: str, feedback: float):
+        """Submit user feedback for a provider (1.0=good, 0.0=bad, or any float)."""
+        self.performance_tracker.submit_feedback(provider, feedback)
+
+    def record_outcome(self, provider: str, success: bool, latency: float = None, feedback: float = None, ema_alpha: float = 0.2):
+        """
+        Record the outcome of an ensemble decision for a provider.
+        Updates the ProviderPerformanceTracker and adapts weights.
+        Optionally uses exponential moving average (EMA) for latency/feedback.
+        Args:
+            provider: Provider name
+            success: Whether the result was successful/correct
+            latency: Latency of the provider's response
+            feedback: User or downstream feedback (numeric)
+            ema_alpha: Smoothing factor for EMA (default 0.2)
+        """
+        # If using EMA, update latency/feedback with smoothing
+        m = self.performance_tracker.metrics.get(provider, None)
+        if m and latency is not None:
+            if m["latency"]:
+                prev = m["latency"][-1]
+                latency = ema_alpha * latency + (1 - ema_alpha) * prev
+        if m and feedback is not None:
+            if m["feedback"]:
+                prev = m["feedback"][-1]
+                feedback = ema_alpha * feedback + (1 - ema_alpha) * prev
+        self.performance_tracker.record(provider, success, latency, feedback)
+
+    def tune_weights_with_optuna(self, results, task_type, eval_fn, n_trials=30):
+        """
+        Tune ensemble weights using Optuna.
+        Args:
+            results: List of results (GenerationResult, etc.)
+            task_type: TaskType
+            eval_fn: Function to evaluate ensemble result (signature: (EnsembleResult) -> float, higher is better)
+            n_trials: Number of Optuna trials
+        Returns:
+            Dict of best weights
+        """
+        providers = [r.provider for r in results]
+        def objective(trial):
+            weights = {p: trial.suggest_float(f"weight_{p}", 0.01, 1.0) for p in providers}
+            # Normalize
+            total = sum(weights.values())
+            weights = {k: v/total for k, v in weights.items()}
+            # Run weighted voting
+            loop = asyncio.get_event_loop()
+            ensemble_result = loop.run_until_complete(self._weighted_voting(results, weights=weights, use_adaptive_weights=False))
+            score = eval_fn(ensemble_result)
+            return score
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=n_trials)
+        best_weights = {k: v for k, v in study.best_params.items() if k.startswith("weight_")}
+        # Normalize
+        total = sum(best_weights.values())
+        best_weights = {k.replace("weight_", ""): v/total for k, v in best_weights.items()}
+        return best_weights
+
+    # In class docstring, add:
+    """
+    Usage:
+        result = await ensemble.combine_results(...)
+        # After user feedback or downstream evaluation:
+        ensemble.record_outcome(result.result.provider, success=True, latency=..., feedback=...)
+    """ 

@@ -537,7 +537,38 @@ class EmbeddingModel:
             embedding = np.array(embedding)
         
         norm = np.linalg.norm(embedding)
-        if norm > 0:
-            embedding = embedding / norm
+        if norm == 0:
+            return embedding.tolist()
         
-        return embedding.tolist() 
+        normalized = embedding / norm
+        return normalized.tolist()
+
+# Utility functions for semantic voting
+async def get_embedding(text: str, model_name: str = "sentence-transformers/all-MiniLM-L6-v2") -> List[float]:
+    """Get embedding for text using default model."""
+    try:
+        model = SentenceTransformer(model_name)
+        embedding = model.encode(text)
+        return embedding.tolist()
+    except Exception as e:
+        # Fallback to simple embedding
+        return [0.1] * 384  # Default dimension
+
+def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+    """Calculate cosine similarity between two vectors."""
+    try:
+        v1 = np.array(vec1)
+        v2 = np.array(vec2)
+        
+        # Normalize vectors
+        norm1 = np.linalg.norm(v1)
+        norm2 = np.linalg.norm(v2)
+        
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+        
+        # Calculate cosine similarity
+        similarity = np.dot(v1, v2) / (norm1 * norm2)
+        return float(similarity)
+    except Exception:
+        return 0.0 

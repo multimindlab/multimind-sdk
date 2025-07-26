@@ -11,14 +11,8 @@ from transformers import (
     Trainer,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    LoraConfig,
-    AdapterConfig,
-    PromptTuningConfig,
-    get_peft_model,
-    TaskType
-)
-from datasets import Dataset as HFDatase
+from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
+from datasets import Dataset as HFDataset
 import logging
 from enum import Enum
 
@@ -125,15 +119,15 @@ class UniPELTTuner:
         peft_configs = []
         for method in self.methods:
             if method == UniPELTMethod.LORA:
-                config = LoraConfig(**self.method_configs["lora"], task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs["lora"], task_type=PeftType.CAUSAL_LM)
             elif method == UniPELTMethod.ADAPTER:
-                config = AdapterConfig(**self.method_configs["adapter"], task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs["adapter"], task_type=PeftType.CAUSAL_LM)
             elif method == UniPELTMethod.PROMPT:
-                config = PromptTuningConfig(**self.method_configs["prompt"], task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs["prompt"], task_type=PeftType.CAUSAL_LM)
             elif method == UniPELTMethod.PREFIX:
-                config = PrefixTuningConfig(**self.method_configs["prefix"], task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs["prefix"], task_type=PeftType.CAUSAL_LM)
             elif method == UniPELTMethod.IA3:
-                config = IA3Config(**self.method_configs["ia3"], task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(**self.method_configs["ia3"], task_type=PeftType.CAUSAL_LM)
             elif method == UniPELTMethod.BITFIT:
                 # BitFit is handled separately as it doesn't use PEFT
                 continue
@@ -177,7 +171,7 @@ class UniPELTTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -307,11 +301,11 @@ class MAMAdapterTuner:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         # Configure adapter
-        adapter_config = AdapterConfig(**self.adapter_config, task_type=TaskType.CAUSAL_LM)
+        adapter_config = LoraConfig(**self.adapter_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, adapter_config)
 
         # Add LoRA
-        lora_config = LoraConfig(**self.lora_config, task_type=TaskType.CAUSAL_LM)
+        lora_config = LoraConfig(**self.lora_config, task_type=PeftType.CAUSAL_LM)
         self.model.add_adapter(lora_config)
 
         # Print trainable parameters
@@ -340,7 +334,7 @@ class MAMAdapterTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,

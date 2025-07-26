@@ -22,7 +22,7 @@ from peft import (
     TaskType,
     PeftModel
 )
-from datasets import Dataset as HFDatase
+from datasets import Dataset as HFDataset
 import logging
 import math
 from enum import Enum
@@ -223,7 +223,7 @@ class CompacterTuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -433,7 +433,7 @@ class HyperLoRATuner:
             remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
