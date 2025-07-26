@@ -25,22 +25,25 @@ class OpenAIProvider(ProviderAdapter):
         self.metadata = ProviderMetadata(
             name="openai",
             version="1.0.0",
-            capabilities={
+            capabilities=[
                 ProviderCapability.TEXT_GENERATION,
                 ProviderCapability.CHAT,
                 ProviderCapability.EMBEDDINGS,
                 ProviderCapability.IMAGE_ANALYSIS,
                 ProviderCapability.CODE_GENERATION
-            },
+            ],
             pricing={
-                "gpt-4": {"input": 0.03, "output": 0.06},
-                "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
-                "text-embedding-ada-002": {"input": 0.0001}
+                "gpt-4": 0.03,
+                "gpt-3.5-turbo": 0.0015,
+                "text-embedding-ada-002": 0.0001
             },
-            latency={
-                "gpt-4": {"p50": 500, "p95": 2000},
-                "gpt-3.5-turbo": {"p50": 200, "p95": 1000}
-            }
+            typical_latency_ms={
+                "gpt-4": 500,
+                "gpt-3.5-turbo": 200
+            },
+            max_context_length=4096,
+            max_tokens_per_request=2048,
+            supported_models=["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]
         )
     
     async def generate_text(
@@ -65,9 +68,15 @@ class OpenAIProvider(ProviderAdapter):
             
             # Calculate cost based on model pricing
             pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
+            if isinstance(pricing, dict):
+                input_cost = pricing.get("input", 0.0)
+                output_cost = pricing.get("output", 0.0)
+            else:
+                input_cost = 0.0
+                output_cost = 0.0
             cost = (
-                pricing["input"] * response.usage.prompt_tokens +
-                pricing["output"] * response.usage.completion_tokens
+                input_cost * response.usage.prompt_tokens +
+                output_cost * response.usage.completion_tokens
             ) / 1000  # Convert to USD
             
             return GenerationResult(
@@ -104,9 +113,15 @@ class OpenAIProvider(ProviderAdapter):
             
             # Calculate cost based on model pricing
             pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
+            if isinstance(pricing, dict):
+                input_cost = pricing.get("input", 0.0)
+                output_cost = pricing.get("output", 0.0)
+            else:
+                input_cost = 0.0
+                output_cost = 0.0
             cost = (
-                pricing["input"] * response.usage.prompt_tokens +
-                pricing["output"] * response.usage.completion_tokens
+                input_cost * response.usage.prompt_tokens +
+                output_cost * response.usage.completion_tokens
             ) / 1000  # Convert to USD
             
             return GenerationResult(
@@ -193,9 +208,15 @@ class OpenAIProvider(ProviderAdapter):
             
             # Calculate cost based on model pricing
             pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
+            if isinstance(pricing, dict):
+                input_cost = pricing.get("input", 0.0)
+                output_cost = pricing.get("output", 0.0)
+            else:
+                input_cost = 0.0
+                output_cost = 0.0
             cost = (
-                pricing["input"] * response.usage.prompt_tokens +
-                pricing["output"] * response.usage.completion_tokens
+                input_cost * response.usage.prompt_tokens +
+                output_cost * response.usage.completion_tokens
             ) / 1000  # Convert to USD
             
             return ImageAnalysisResult(
@@ -209,6 +230,19 @@ class OpenAIProvider(ProviderAdapter):
             
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
+    
+    def _get_metadata(self) -> ProviderMetadata:
+        """Return metadata about the OpenAI provider."""
+        return self.metadata
+
+    def get_cost_estimate(self, model: str, tokens: int) -> float:
+        """Estimate the cost for a given model and token usage."""
+        pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
+        return (pricing["input"] + pricing["output"]) * tokens / 1000  # Convert to USD
+
+    def get_latency_estimate(self, model: str) -> Dict[str, int]:
+        """Return latency estimates for a given model."""
+        return self.metadata.latency.get(model, {"p50": 0, "p95": 0})
     
     async def estimate_cost(
         self,
@@ -237,4 +271,4 @@ class OpenAIProvider(ProviderAdapter):
     ) -> float:
         """Estimate latency for a given task."""
         latency = self.metadata.latency.get(model, {"p50": 0, "p95": 0})
-        return latency["p50"]  # Return median latency 
+        return latency["p50"]  # Return median latency

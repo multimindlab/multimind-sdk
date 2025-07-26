@@ -31,6 +31,7 @@ from .advanced import (
 
 from .governance import GovernanceConfig, Regulation
 from .model_training import ComplianceTrainer
+from multimind.cli.compliance import run_compliance
 
 __all__ = [
     # Advanced Features
@@ -58,12 +59,13 @@ __all__ = [
     'Regulation',
     # Training
     'ComplianceTrainer',
+    # CLI
+    'run_compliance',
 ]
 
 # Backward compatibility: import legacy CLI and API functions if available
 try:
     from .cli import (
-        run_compliance,
         run_example,
         generate_report,
         show_dashboard,
@@ -71,7 +73,6 @@ try:
         configure_alerts
     )
     __all__.extend([
-        'run_compliance',
         'run_example',
         'generate_report',
         'show_dashboard',
@@ -80,10 +81,7 @@ try:
     ])
 except ImportError:
     import warnings
-    warnings.warn(
-        "multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.",
-        DeprecationWarning
-    )
+    warnings.warn("multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.")
 
 try:
     from .api import *
@@ -94,4 +92,4 @@ except ImportError:
         DeprecationWarning
     )
 
-__version__ = '1.0.0' 
+__version__ = '1.0.0'

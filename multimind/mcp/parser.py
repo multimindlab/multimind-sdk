@@ -5,12 +5,13 @@ Parser for Model Composition Protocol (MCP) specifications.
 import json
 from typing import Dict, Any, List, Optional
 from pathlib import Path
+import os
 
 class MCPParser:
     """Parses and validates MCP specifications."""
 
     def __init__(self, schema_path: Optional[str] = None):
-        self.schema_path = schema_path or str(Path(__file__).parent / "schema.json")
+        self.schema_path = schema_path or os.path.join(os.path.dirname(__file__), 'schema.json')
         self.schema = self._load_schema()
 
     def _load_schema(self) -> Dict[str, Any]:

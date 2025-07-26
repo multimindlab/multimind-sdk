@@ -11,6 +11,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# Debugging torch import
+try:
+    import torch
+    print("Torch is accessible in strategy.py")
+except ImportError as e:
+    print(f"Torch import failed in strategy.py: {e}")
+
 class RoutingStrategy(ABC):
     """Abstract base class for routing strategies."""
 
@@ -29,8 +36,6 @@ class CostAwareStrategy(RoutingStrategy):
     async def select_model(
         self,
         models: List[BaseLLM],
-        prompt_tokens: int,
-        max_completion_tokens: int,
         **kwargs
     ) -> Optional[BaseLLM]:
         """Select the model with lowest expected cost."""
@@ -41,7 +46,7 @@ class CostAwareStrategy(RoutingStrategy):
         selected_model = None
 
         for model in models:
-            cost = await model.get_cost(prompt_tokens, max_completion_tokens)
+            cost = await model.get_cost(kwargs.get('prompt_tokens', 0), kwargs.get('max_completion_tokens', 0))
             if cost < min_cost:
                 min_cost = cost
                 selected_model = model

@@ -24,6 +24,7 @@ click==8.1.8
 colorama==0.4.6
 coloredlogs==15.0.1
 cryptography==45.0.2
+cryptography[zkp]==45.0.2
 datasets==3.6.0
 Deprecated==1.2.18
 dill==0.3.8
@@ -167,7 +168,7 @@ threadpoolctl==3.6.0
 tiktoken==0.9.0
 tokenizers==0.21.1
 tomli==2.2.1
-torch>=2.7.0
+torch
 tqdm==4.67.1
 transformers>=4.52.3
 twine==6.1.0

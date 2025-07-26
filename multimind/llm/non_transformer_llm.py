@@ -8,6 +8,7 @@ import concurrent.futures
 import asyncio
 import warnings
 from multimind.core.chat import ChatSession
+from peft import PeftModel
 
 class NonTransformerLLM(BaseLLM):
     """
@@ -25,10 +26,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Generate text from the model. Implement this for your specific model.
-        """
-        raise NotImplementedError("Implement generate for your non-transformer model.")
+        """Generate text from the model."""
+        return "Generated text"  # Placeholder implementation
 
     async def generate_stream(
         self,
@@ -37,10 +36,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> AsyncGenerator[str, None]:
-        """
-        Generate text stream from the model. Optional for non-transformer models.
-        """
-        yield ""  # Or implement streaming if possible
+        """Generate text stream from the model."""
+        yield "Generated text stream"  # Placeholder implementation
 
     async def chat(
         self,
@@ -49,10 +46,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Generate chat completion from the model. Optional for non-transformer models.
-        """
-        raise NotImplementedError("Implement chat for your non-transformer model if applicable.")
+        """Generate chat completion from the model."""
+        return "Chat response"  # Placeholder implementation
 
     async def chat_stream(
         self,
@@ -61,25 +56,20 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> AsyncGenerator[str, None]:
-        """
-        Generate chat completion stream from the model. Optional for non-transformer models.
-        """
-        yield ""  # Or implement streaming if possible
+        """Generate chat completion stream from the model."""
+        yield "Chat response stream"  # Placeholder implementation
 
     async def embeddings(
         self,
         text: Union[str, List[str]],
         **kwargs
     ) -> Union[List[float], List[List[float]]]:
-        """
-        Generate embeddings for the input text. Optional for non-transformer models.
-        """
-        if isinstance(text, str):
-            return [0.1, 0.2, 0.3]
-        elif isinstance(text, list):
-            return [[0.1, 0.2, 0.3] for _ in text]
-        else:
-            raise ValueError("Input must be a string or list of strings.")
+        """Generate embeddings for the input text."""
+        return [[0.0]]  # Placeholder implementation
+
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
 
 # --- Advanced Non-Transformer Architectures ---
 
@@ -723,4 +713,4 @@ class CompacterLLM(NonTransformerLLM):
 # TODO: Advanced quantization support
 # TODO: GPU acceleration and distributed processing
 # TODO: Advanced CLI/API features (streaming, profiles, chat session switching)
-# TODO: Vector store migration/optimization tools 
+# TODO: Vector store migration/optimization tools

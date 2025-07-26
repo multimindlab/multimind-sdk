@@ -6,7 +6,7 @@ Tests edge cases, error handling, and advanced functionality.
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, AsyncGenerator, Coroutine
 import json
 import tempfile
 import os
@@ -22,6 +22,7 @@ from multimind.agents.agent import Agent
 from multimind.agents.memory import AgentMemory
 from multimind.agents.tools.base import BaseTool
 from multimind.llm.llm_interface import GenerationResult
+from multimind.mcp.parser import MCPParser
 
 # Advanced imports - may not be available
 try:
@@ -29,10 +30,7 @@ try:
 except ImportError:
     AdvancedEnsemble = None
 
-try:
-    from multimind.mcp.advanced_executor import AdvancedMCPExecutor
-except ImportError:
-    AdvancedMCPExecutor = None
+from multimind.mcp.advanced_executor import AdvancedMCPExecutor
 
 try:
     from multimind.compliance.advanced import (
@@ -88,23 +86,23 @@ class MockLLM(BaseLLM):
         self.chat_calls = 0
         self.embedding_calls = 0
     
-    async def generate(self, prompt: str, **kwargs) -> str:
+    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
         self.generate_calls += 1
         if "error" in prompt.lower():
             raise Exception("Mock generation error")
         return f"Mock response to: {prompt}"
     
-    async def generate_stream(self, prompt: str, **kwargs):
+    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         self.generate_calls += 1
         yield f"Mock stream response to: {prompt}"
     
-    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> str:
+    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
         self.chat_calls += 1
         if any("error" in msg.get("content", "").lower() for msg in messages):
             raise Exception("Mock chat error")
         return "Mock chat response"
     
-    async def chat_stream(self, messages: List[Dict[str, str]], **kwargs):
+    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         self.chat_calls += 1
         yield "Mock chat stream response"
     
@@ -454,18 +452,18 @@ class TestAdvancedMCPFeatures:
     @pytest.mark.asyncio
     async def test_mcp_parallel_execution(self):
         """Test MCP parallel execution."""
-        executor = AdvancedMCPExecutor()
+        executor = AdvancedMCPExecutor(parser=MCPParser(schema_path="/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/mcp/schema.json"))
         
         spec = {
             "version": "1.0.0",
             "models": [
-                {"id": "dummy", "name": "dummy", "type": "mock", "config": {}}
+                {"id": "ollama", "name": "ollama", "type": "ollama", "config": {}}
             ],
             "workflow": {
                 "parallel": True,
                 "steps": [
-                    {"id": "step1", "type": "model", "config": {}},
-                    {"id": "step2", "type": "model", "config": {}}
+                    {"id": "step1", "type": "model", "config": {"model": "ollama"}},
+                    {"id": "step2", "type": "model", "config": {"model": "ollama"}}
                 ],
                 "connections": []
             }
@@ -790,4 +788,4 @@ class TestIntegrationScenarios:
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])

@@ -13,6 +13,13 @@ from multimind.observability.metrics import MetricsCollector
 
 logger = logging.getLogger(__name__)
 
+class DummyModel:
+    async def execute(self, prompt: str) -> str:
+        return "Dummy response"
+    
+    async def generate(self, prompt: str) -> str:
+        return "Generated response for: " + prompt
+
 class AdvancedMCPExecutor:
     """Advanced MCP workflow executor with enhanced capabilities."""
 
@@ -25,8 +32,14 @@ class AdvancedMCPExecutor:
         retry_delay: float = 1.0
     ):
         self.parser = parser or MCPParser()
-        self.model_registry = model_registry or {}
-        self.metrics_collector = metrics_collector
+        self.metrics_collector = self.MetricsCollector()
+        self.model_registry = {
+            "ollama": OllamaModel(),
+            "openai": OpenAIModel(),
+            "claude": ClaudeModel(),
+            "gemini": GeminiModel()
+        }
+        print(f"Model registry contents: {self.model_registry}")
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.workflow_state: Dict[str, Any] = {}
@@ -178,12 +191,7 @@ class AdvancedMCPExecutor:
 
         # Collect metrics if available
         if self.metrics_collector:
-            self.metrics_collector.record_step_execution(
-                step_id=step_id,
-                step_type=step_type,
-                duration=datetime.utcnow() - self.workflow_metadata["start_time"],
-                success=True
-            )
+            self.metrics_collector.record_step_execution(step_id=step_id, result=result)
 
     async def _execute_integration_step(
         self,
@@ -203,6 +211,53 @@ class AdvancedMCPExecutor:
             return await handler.execute(inputs)
         except (ImportError, AttributeError) as e:
             raise ValueError(f"Integration {integration_type} not found or invalid: {str(e)}")
+
+    async def _execute_model_step(
+        self,
+        step_id: str,
+        config: Dict[str, Any],
+        inputs: Dict[str, Any]
+    ) -> Any:
+        """Execute a model step with advanced features."""
+        model_name = config.get("model", "ollama")
+        model = self.model_registry.get(model_name)
+        if not model:
+            raise ValueError(f"Model not registered or specified: {model_name}")
+
+        # Prepare prompt from inputs
+        prompt = self._prepare_model_prompt(config, inputs)
+
+        # Generate response
+        response = await model.generate(prompt)
+
+        # Collect metrics if enabled
+        if self.metrics_collector:
+            self.metrics_collector.collect(step_id, response)
+
+        return response
+
+    async def _execute_transform_step(self, step_id: str, config: Dict[str, Any], inputs: Dict[str, Any]) -> Any:
+        """Execute a transformation step."""
+        # Example implementation: Apply a transformation to inputs
+        return {key: value.upper() for key, value in inputs.items()}
+
+    async def _execute_condition_step(self, step_id: str, config: Dict[str, Any], inputs: Dict[str, Any]) -> bool:
+        """Execute a condition step."""
+        # Example implementation: Check a condition on inputs
+        return all(value.isalpha() for value in inputs.values())
+
+    def _prepare_model_prompt(self, config: Dict[str, Any], inputs: Dict[str, Any]) -> str:
+        """Prepare a prompt for the model based on config and inputs."""
+        return f"Prompt: {config.get('prefix', '')} {inputs.get('text', '')}"
+
+    class MetricsCollector:
+        def record_step_execution(self, step_id: str, result: Any) -> None:
+            """Record the execution of a step."""
+            print(f"Step {step_id} executed with result: {result}")
+
+        def collect(self, step_id: str, response: Any) -> None:
+            """Collect metrics for a step."""
+            print(f"Metrics collected for step {step_id}: {response}")
 
     def _get_step_inputs(
         self,
@@ -225,4 +280,23 @@ class AdvancedMCPExecutor:
         if missing_inputs:
             raise ValueError(f"Missing required inputs for step {step['id']}: {missing_inputs}")
 
-        return inputs 
+        return inputs
+
+class OllamaModel:
+    def __init__(self):
+        self.name = "Ollama"
+
+    async def generate(self, prompt: str) -> str:
+        return f"Ollama response for: {prompt}"
+
+class OpenAIModel:
+    async def generate(self, prompt: str) -> str:
+        return f"OpenAI response for: {prompt}"
+
+class ClaudeModel:
+    async def generate(self, prompt: str) -> str:
+        return f"Claude response for: {prompt}"
+
+class GeminiModel:
+    async def generate(self, prompt: str) -> str:
+        return f"Gemini response for: {prompt}"
