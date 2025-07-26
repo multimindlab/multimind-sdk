@@ -1,0 +1,62 @@
+default_workflow: null
+models:
+  claude:
+    additional_params: {}
+    api_key: your-api-key
+    cost_per_token: 0.02
+    endpoint: null
+    max_tokens: 100000
+    modality: text
+    name: claude
+    temperature: 0.7
+    type: anthropic
+  clip:
+    additional_params: {}
+    api_key: null
+    cost_per_token: 0.0
+    endpoint: null
+    max_tokens: null
+    modality: vision
+    name: clip
+    temperature: 0.7
+    type: huggingface
+  gpt4:
+    additional_params: {}
+    api_key: your-api-key
+    cost_per_token: 0.03
+    endpoint: null
+    max_tokens: 8192
+    modality: text
+    name: gpt4
+    temperature: 0.7
+    type: openai
+  gpt4v:
+    additional_params: {}
+    api_key: your-api-key
+    cost_per_token: 0.03
+    endpoint: null
+    max_tokens: 4096
+    modality: vision
+    name: gpt4v
+    temperature: 0.7
+    type: openai
+  whisper:
+    additional_params: {}
+    api_key: your-api-key
+    cost_per_token: 0.006
+    endpoint: null
+    max_tokens: null
+    modality: audio
+    name: whisper
+    temperature: 0.7
+    type: openai
+moe:
+  expert_threshold: 0.1
+  fusion_type: concatenate
+  hidden_size: 1024
+  num_experts: 5
+router:
+  cost_weight: 0.7
+  max_retries: 3
+  performance_weight: 0.3
+  switch_threshold: 0.8

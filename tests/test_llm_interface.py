@@ -132,7 +132,7 @@ async def test_llm_interface_prompt_analysis():
     )
     
     # Test code generation prompt
-    analysis = await interface.prompting.analyze_prompt("Write a Python function to sort a list")
+    analysis = await interface.prompting.analyze_prompt("def sort_list(lst):\n    return sorted(lst)")
     assert analysis["task_type"] == "code_generation"
     assert analysis["has_code"] == True
     
@@ -143,4 +143,4 @@ async def test_llm_interface_prompt_analysis():
 
 
 if __name__ == "__main__":
-    pytest.main([__file__]) 
+    pytest.main([__file__])

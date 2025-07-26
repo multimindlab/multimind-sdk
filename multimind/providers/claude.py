@@ -44,8 +44,8 @@ class ClaudeProvider(ProviderAdapter):
     
     async def generate_text(
         self,
+        model: str,
         prompt: str,
-        model: str = "claude-3-sonnet",
         **kwargs
     ) -> GenerationResult:
         """Generate text using Claude's API."""
@@ -68,19 +68,14 @@ class ClaudeProvider(ProviderAdapter):
             cost = (
                 pricing["input"] * response.usage.input_tokens +
                 pricing["output"] * response.usage.output_tokens
-            ) / 1000  # Convert to USD
-            
-            return GenerationResult(
-                provider_name="claude",
-                model_name=model,
-                result=result,
-                tokens_used=tokens_used,
-                latency_ms=latency_ms,
-                cost_estimate_usd=cost
             )
-            
+            return GenerationResult(result, tokens_used, latency_ms, cost)
+        except AttributeError:
+            logger.error("The Claude API client is missing the 'messages.create' method. Please update the client.")
+            raise RuntimeError("Claude API client is outdated or incompatible.")
         except Exception as e:
-            raise Exception(f"Claude API error: {str(e)}")
+            logger.error(f"Error generating text with Claude API: {e}")
+            raise
     
     async def chat(
         self,
@@ -210,4 +205,4 @@ class ClaudeProvider(ProviderAdapter):
     ) -> float:
         """Estimate latency for a given task."""
         latency = self.metadata.latency.get(model, {"p50": 0, "p95": 0})
-        return latency["p50"]  # Return median latency 
+        return latency["p50"]  # Return median latency

@@ -1,0 +1,67 @@
+{
+  "qa_model_v1_20250722_205209": {
+    "model_name": "qa_model",
+    "base_model": "openai",
+    "config": {
+      "temperature": 0.7,
+      "max_tokens": 100
+    },
+    "metadata": {
+      "description": "Question answering model",
+      "tags": [
+        "qa",
+        "general"
+      ]
+    },
+    "created_at": "2025-07-22T20:52:09.847732",
+    "status": "trained",
+    "performance_metrics": {
+      "accuracy": 0.95,
+      "response_time": 0.5
+    },
+    "training_history": [
+      {
+        "epoch": 0,
+        "metrics": {
+          "accuracy": 0.8,
+          "loss": 0.2
+        },
+        "timestamp": "2025-07-22T20:52:09.847966"
+      },
+      {
+        "epoch": 1,
+        "metrics": {
+          "accuracy": 0.8500000000000001,
+          "loss": 0.15000000000000002
+        },
+        "timestamp": "2025-07-22T20:52:09.848137"
+      },
+      {
+        "epoch": 2,
+        "metrics": {
+          "accuracy": 0.9,
+          "loss": 0.1
+        },
+        "timestamp": "2025-07-22T20:52:09.848254"
+      }
+    ],
+    "updated_at": "2025-07-22T20:52:09.848380"
+  },
+  "qa_model_v2_20250722_205209": {
+    "model_name": "qa_model",
+    "base_model": "claude",
+    "config": {
+      "temperature": 0.5,
+      "max_tokens": 150
+    },
+    "metadata": {},
+    "created_at": "2025-07-22T20:52:09.848566",
+    "status": "trained",
+    "performance_metrics": {
+      "accuracy": 0.92,
+      "response_time": 0.7
+    },
+    "training_history": [],
+    "updated_at": "2025-07-22T20:52:09.848686"
+  }
+}

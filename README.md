@@ -23,7 +23,7 @@
 
 <div align="center">
   <h2>🚧 Project Status: In Active Development 🚧</h2>
-  <p>Join the future of AI development! We're actively building MultiMind SDK and looking for contributors. Check our <a href="docs/TODO.md">TODO list</a> to see what's implemented and what's coming next. Connect with our growing community on <a href="https://discord.gg/K64U65je7h" aria-label="Join MultiMind SDK Discord Community">Discord</a> to discuss ideas, get help, and contribute to the project.</p>
+  <p>Join the future of AI development! We're actively building MultiMind SDK and looking for contributors. Check our to see what's implemented and what's coming next. Connect with our growing community on <a href="https://discord.gg/K64U65je7h" aria-label="Join MultiMind SDK Discord Community">Discord</a> to discuss ideas, get help, and contribute to the project.</p>
 </div>
 
 <p align="center">
@@ -39,6 +39,8 @@
 [![🐦 Follow on X](https://img.shields.io/twitter/follow/multimindsdk?label=%F0%9F%90%A6%20Follow%20on%20X&style=for-the-badge&logo=x&logoColor=white)](https://x.com/multimindsdk)
 
 [![💖 Support on Open Collective](https://img.shields.io/badge/%F0%9F%92%96%20Support%20on%20Open%20Collective-blue?style=for-the-badge&logo=opencollective&logoColor=white)](https://opencollective.com/multimind-sdk)
+
+[![Join us on Discord](https://img.shields.io/badge/Join%20us%20on-Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/K64U65je7h)
 
 
 
