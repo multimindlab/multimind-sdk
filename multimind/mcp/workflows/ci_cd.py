@@ -5,8 +5,8 @@ This workflow automates the CI/CD pipeline process using AI-powered analysis and
 """
 
 from typing import Any, Dict, List
-from ..api.base import MCPWorkflowAPI
-from ..api.registry import WorkflowRegistry
+from ...api.mcp.base import MCPWorkflowAPI
+from ...api.mcp.registry import WorkflowRegistry
 
 @WorkflowRegistry.register
 class CICDWorkflow(MCPWorkflowAPI):

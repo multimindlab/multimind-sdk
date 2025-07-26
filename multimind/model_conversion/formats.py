@@ -1,10 +1,17 @@
 from typing import Dict, Any, Optional
 from pathlib import Path
 import torch
-import tensorflow as tf
 import onnx
 import onnxruntime
 from .base import BaseModelConverter
+
+# Try to import tensorflow, but handle gracefully if not available
+try:
+    import tensorflow as tf
+    TENSORFLOW_AVAILABLE = True
+except ImportError:
+    TENSORFLOW_AVAILABLE = False
+    tf = None
 
 class TensorFlowConverter(BaseModelConverter):
     """Converter for TensorFlow models."""
@@ -14,6 +21,9 @@ class TensorFlowConverter(BaseModelConverter):
                 output_path: str,
                 config: Optional[Dict[str, Any]] = None) -> str:
         """Convert TensorFlow model to target format."""
+        if not TENSORFLOW_AVAILABLE:
+            raise ImportError("TensorFlow is not available. Please install tensorflow to use this converter.")
+        
         config = config or {}
         model = tf.saved_model.load(model_path)
         
@@ -24,7 +34,7 @@ class TensorFlowConverter(BaseModelConverter):
         else:
             raise ValueError(f"Unsupported target format: {config.get('format')}")
     
-    def _convert_to_tflite(self, model: tf.keras.Model, output_path: str, config: Dict[str, Any]) -> str:
+    def _convert_to_tflite(self, model: Any, output_path: str, config: Dict[str, Any]) -> str:
         """Convert to TensorFlow Lite format."""
         converter = tf.lite.TFLiteConverter.from_saved_model(model)
         
@@ -40,13 +50,15 @@ class TensorFlowConverter(BaseModelConverter):
             f.write(tflite_model)
         return output_path
     
-    def _convert_to_onnx(self, model: tf.keras.Model, output_path: str, config: Dict[str, Any]) -> str:
+    def _convert_to_onnx(self, model: Any, output_path: str, config: Dict[str, Any]) -> str:
         """Convert to ONNX format."""
         # Implementation for TF to ONNX conversion
         pass
     
     def validate(self, model_path: str) -> bool:
         """Validate TensorFlow model."""
+        if not TENSORFLOW_AVAILABLE:
+            return False
         try:
             tf.saved_model.load(model_path)
             return True
@@ -55,6 +67,9 @@ class TensorFlowConverter(BaseModelConverter):
     
     def get_metadata(self, model_path: str) -> Dict[str, Any]:
         """Get TensorFlow model metadata."""
+        if not TENSORFLOW_AVAILABLE:
+            return {"format": "tensorflow", "error": "TensorFlow not available"}
+        
         model = tf.saved_model.load(model_path)
         return {
             "format": "tensorflow",

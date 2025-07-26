@@ -46,5 +46,17 @@ def main():
         print("Run 'multimind convert --help' or 'multimind context-transfer --help' for more information")
         sys.exit(1)
 
+# Export main CLI functions
+__all__ = [
+    "cli",
+    "main",
+    "compliance",
+    "chat", 
+    "models",
+    "config",
+    "convert_main",
+    "context_transfer_main"
+]
+
 if __name__ == "__main__":
     main() 

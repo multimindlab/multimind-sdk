@@ -10,7 +10,7 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from ..compliance.model_training import ComplianceTrainer
-from ..compliance import GovernanceConfig, Regulation
+from ..compliance.governance import GovernanceConfig, Regulation
 from ..gateway.compliance_api import (
     run_compliance_monitoring,
     generate_compliance_report,

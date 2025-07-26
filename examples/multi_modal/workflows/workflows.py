@@ -1,10 +1,10 @@
 """
-Example MCP workflows for multi-modal processing.
+Multi-modal workflow examples using MCP.
 """
 
 from typing import Dict, Any, List
-from multimind.mcp.api.base import MCPWorkflowAPI
-from multimind.mcp.api.registry import WorkflowRegistry
+from multimind.api.mcp.base import MCPWorkflowAPI
+from multimind.api.mcp.registry import WorkflowRegistry
 from multimind.router.multi_modal_router import MultiModalRequest
 
 @WorkflowRegistry.register

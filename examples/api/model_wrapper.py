@@ -67,11 +67,18 @@ class ModelWrapper:
             
     def query_openai(self, prompt: str) -> str:
         logger.info("Querying OpenAI model")
-        response = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.choices[0].message['content']
+        try:
+            response = openai.ChatCompletion.create(
+                model="gpt-4",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return response.choices[0].message['content']
+        except AttributeError:
+            logger.error("ChatCompletion is not available in the OpenAI library. Please update the library.")
+            raise RuntimeError("OpenAI library is outdated or incompatible.")
+        except Exception as e:
+            logger.error(f"Error querying OpenAI model: {e}")
+            raise
         
     def query_claude(self, prompt: str) -> str:
         logger.info("Querying Claude model")
@@ -83,15 +90,26 @@ class ModelWrapper:
         
     def query_ollama(self, prompt: str, model: str = "mistral") -> str:
         logger.info(f"Querying Ollama model: {model}")
-        result = subprocess.run(
-            ["ollama", "run", model, prompt],
-            capture_output=True,
-            text=True
-        )
-        return result.stdout
+        try:
+            result = subprocess.run(
+                ["ollama", "run", model, prompt],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logger.error(f"Ollama CLI error: {e.stderr}")
+            raise RuntimeError(f"Failed to query Ollama model: {model}") from e
+        except FileNotFoundError:
+            logger.error("Ollama CLI not found. Please ensure it is installed and in the PATH.")
+            raise RuntimeError("Ollama CLI not found. Please install it and try again.")
         
     def query_huggingface(self, prompt: str, model_id: str = "mistralai/Mistral-7B-v0.1") -> str:
         logger.info(f"Querying Hugging Face model: {model_id}")
+        model_id = kwargs.get('hf_model_id', model_id)
+        if not isinstance(model_id, str):
+            raise ValueError("model_id must be a string. Please provide a valid model_id.")
         tokenizer = AutoTokenizer.from_pretrained(model_id, token=self.hf_token)
         model = AutoModelForCausalLM.from_pretrained(model_id, token=self.hf_token)
         
@@ -129,4 +147,4 @@ class ModelWrapper:
                 "status": "error",
                 "model": model,
                 "error": str(e)
-            } 
+            }

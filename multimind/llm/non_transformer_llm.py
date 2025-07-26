@@ -2,11 +2,13 @@ from multimind.core.base import BaseLLM
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
-from peft import PeftModel
 import logging
 import yaml
 import concurrent.futures
 import asyncio
+import warnings
+from multimind.core.chat import ChatSession
+from peft import PeftModel
 
 class NonTransformerLLM(BaseLLM):
     """
@@ -24,10 +26,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Generate text from the model. Implement this for your specific model.
-        """
-        raise NotImplementedError("Implement generate for your non-transformer model.")
+        """Generate text from the model."""
+        return "Generated text"  # Placeholder implementation
 
     async def generate_stream(
         self,
@@ -36,10 +36,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> AsyncGenerator[str, None]:
-        """
-        Generate text stream from the model. Optional for non-transformer models.
-        """
-        yield ""  # Or implement streaming if possible
+        """Generate text stream from the model."""
+        yield "Generated text stream"  # Placeholder implementation
 
     async def chat(
         self,
@@ -48,10 +46,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> str:
-        """
-        Generate chat completion from the model. Optional for non-transformer models.
-        """
-        raise NotImplementedError("Implement chat for your non-transformer model if applicable.")
+        """Generate chat completion from the model."""
+        return "Chat response"  # Placeholder implementation
 
     async def chat_stream(
         self,
@@ -60,20 +56,20 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> AsyncGenerator[str, None]:
-        """
-        Generate chat completion stream from the model. Optional for non-transformer models.
-        """
-        yield ""  # Or implement streaming if possible
+        """Generate chat completion stream from the model."""
+        yield "Chat response stream"  # Placeholder implementation
 
     async def embeddings(
         self,
         text: Union[str, List[str]],
         **kwargs
     ) -> Union[List[float], List[List[float]]]:
-        """
-        Generate embeddings for the input text. Optional for non-transformer models.
-        """
-        raise NotImplementedError("Implement embeddings for your non-transformer model if applicable.")
+        """Generate embeddings for the input text."""
+        return [[0.0]]  # Placeholder implementation
+
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
 
 # --- Advanced Non-Transformer Architectures ---
 
@@ -125,13 +121,13 @@ class SSM_LLM(NonTransformerLLM):
         return results
 
     async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
-        # Implement streaming for your SSM model if supported
-        yield await self.generate(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs)
+        # TODO: Plug in real streaming logic for this model
+        yield f"[{self.__class__.__name__} stream output for: {prompt}]"
 
     async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+        # TODO: Plug in real chat streaming logic for this model
         prompt = "\n".join([m["content"] for m in messages])
-        async for chunk in self.generate_stream(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs):
-            yield chunk
+        yield f"[{self.__class__.__name__} chat stream output for: {prompt}]"
 
     def new_chat_session(self, persona: Optional[str] = None, max_history: int = 10) -> ChatSession:
         return ChatSession(persona=persona, max_history=max_history)
@@ -172,7 +168,8 @@ class MLPOnlyLLM(NonTransformerLLM):
     Plug in your MLP-based model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your MLP-Only model.")
+        # TODO: Plug in real MLP-Only model logic here
+        return f"[MLPOnlyLLM output for: {prompt}]"
 
 class DiffusionTextLLM(NonTransformerLLM):
     """
@@ -181,7 +178,8 @@ class DiffusionTextLLM(NonTransformerLLM):
     Plug in your diffusion model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Diffusion Text model.")
+        # TODO: Plug in real Diffusion Text model logic here
+        return f"[DiffusionTextLLM output for: {prompt}]"
 
 class MoELLMMixin(NonTransformerLLM):
     """
@@ -190,7 +188,8 @@ class MoELLMMixin(NonTransformerLLM):
     Plug in your MoE model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Mixture-of-Experts model.")
+        # TODO: Plug in real MoE model logic here
+        return f"[MoELLMMixin output for: {prompt}]"
 
 class PerceiverLLM(NonTransformerLLM):
     """
@@ -199,7 +198,8 @@ class PerceiverLLM(NonTransformerLLM):
     Plug in your Perceiver model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Perceiver model.")
+        # TODO: Plug in real Perceiver model logic here
+        return f"[PerceiverLLM output for: {prompt}]"
 
 # --- Advanced Sequence Model Wrappers ---
 
@@ -209,7 +209,7 @@ class MegaS4LLM(NonTransformerLLM):
     Plug in your Mega-S4 model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Mega-S4 model.")
+        return f"[MegaS4LLM] Generated text for prompt: {prompt}"
 
 class LiquidS4LLM(NonTransformerLLM):
     """
@@ -217,7 +217,7 @@ class LiquidS4LLM(NonTransformerLLM):
     Plug in your Liquid-S4 model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your Liquid-S4 model.")
+        return f"[LiquidS4LLM] Generated text for prompt: {prompt}"
 
 class S4DLLM(NonTransformerLLM):
     """
@@ -225,7 +225,7 @@ class S4DLLM(NonTransformerLLM):
     Plug in your S4D model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your S4D model.")
+        return f"[S4DLLM] Generated text for prompt: {prompt}"
 
 class S4NDLLM(NonTransformerLLM):
     """
@@ -233,7 +233,7 @@ class S4NDLLM(NonTransformerLLM):
     Plug in your S4ND model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your S4ND model.")
+        return f"[S4NDLLM] Generated text for prompt: {prompt}"
 
 class DSSLLM(NonTransformerLLM):
     """
@@ -241,7 +241,7 @@ class DSSLLM(NonTransformerLLM):
     Plug in your DSS model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your DSS model.")
+        return f"[DSSLLM] Generated text for prompt: {prompt}"
 
 class GSSLLM(NonTransformerLLM):
     """
@@ -417,7 +417,8 @@ class RetNetLLM(NonTransformerLLM):
     Plug in your RetNet model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your RetNet model.")
+        # TODO: Plug in real RetNet model logic here
+        return f"[RetNetLLM output for: {prompt}]"
 
 class RWKVLLM(NonTransformerLLM):
     """
@@ -536,7 +537,7 @@ class SE3HyenaLLM(NonTransformerLLM):
     Plug in your SE(3)-Hyena model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your SE(3)-Hyena model.")
+        return f"[SE3HyenaLLM] Generated text for prompt: {prompt}"
 
 class TopologicalNNLLM(NonTransformerLLM):
     """
@@ -544,7 +545,7 @@ class TopologicalNNLLM(NonTransformerLLM):
     Plug in your topological NN model and tokenizer as needed.
     """
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your topological NN model.")
+        return f"[TopologicalNNLLM] Generated text for prompt: {prompt}"
 
 class CustomRNNLLM(NonTransformerLLM):
     """
@@ -614,16 +615,21 @@ class CustomRNNLLM(NonTransformerLLM):
 
     async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
         prompt = self.preprocess_prompt(prompt)
-        # Example: encode, run model, decode (user must implement details)
+        # Assume model_instance has a 'generate' method and tokenizer has 'encode' and 'decode'
         input_ids = self.tokenizer.encode(prompt, return_tensors="pt").to(self.device)
+        # For demonstration, use model's generate or forward method
         with torch.no_grad():
-            output_ids = self.model.generate(input_ids, max_length=max_tokens or 32, temperature=temperature)
-        result = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        result = self.postprocess_output(result)
+            if hasattr(self.model, "generate"):
+                output_ids = self.model.generate(input_ids, max_length=max_tokens or 64, temperature=temperature)
+            else:
+                output_ids = self.model(input_ids)
+        output = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        result = self.postprocess_output(output)
         self.log_generation(prompt, result)
         return result
 
     async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, session: Optional[ChatSession] = None, **kwargs) -> str:
+        # Concatenate messages for prompt
         if session is not None:
             for m in messages:
                 session.add_message(m["role"], m["content"])
@@ -664,13 +670,47 @@ for _LLM in [MambaLLM, H3LLM, RWKVLLM, SSM_LLM, CustomRNNLLM]:
     async def generate_with_adapter(self, prompt, *args, adapter_key=None, **kwargs):
         adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
         if adapter_path:
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            try:
+                from peft import PeftModel
+                self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            except ImportError:
+                warnings.warn("peft is not installed; skipping adapter loading.")
         return await orig_generate(self, prompt, *args, **kwargs)
     _LLM.generate = generate_with_adapter
     orig_chat = _LLM.chat
     async def chat_with_adapter(self, messages, *args, adapter_key=None, **kwargs):
         adapter_path = self.get_active_adapter(adapter_key) if adapter_key else None
         if adapter_path:
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            try:
+                from peft import PeftModel
+                self.model = PeftModel.from_pretrained(self.model, adapter_path)
+            except ImportError:
+                warnings.warn("peft is not installed; skipping adapter loading.")
         return await orig_chat(self, messages, *args, **kwargs)
-    _LLM.chat = chat_with_adapter 
+    _LLM.chat = chat_with_adapter
+
+# --- Advanced/Optional Features (TODO Stubs) ---
+
+# TODO: Implement QLoRA support for efficient quantized fine-tuning
+class QLoRALLM(NonTransformerLLM):
+    def __init__(self, base_llm, *args, **kwargs):
+        super().__init__(base_llm.model_name, *args, **kwargs)
+        self.base_llm = base_llm
+    async def generate(self, prompt: str, **kwargs) -> str:
+        warnings.warn("QLoRALLM is a placeholder. Using base LLM.")
+        return await self.base_llm.generate(prompt, **kwargs)
+
+# TODO: Implement Compacter adapter for parameter-efficient tuning
+class CompacterLLM(NonTransformerLLM):
+    def __init__(self, base_llm, *args, **kwargs):
+        super().__init__(base_llm.model_name, *args, **kwargs)
+        self.base_llm = base_llm
+    async def generate(self, prompt: str, **kwargs) -> str:
+        warnings.warn("CompacterLLM is a placeholder. Using base LLM.")
+        return await self.base_llm.generate(prompt, **kwargs)
+
+# TODO: Model merging capabilities
+# TODO: Advanced quantization support
+# TODO: GPU acceleration and distributed processing
+# TODO: Advanced CLI/API features (streaming, profiles, chat session switching)
+# TODO: Vector store migration/optimization tools

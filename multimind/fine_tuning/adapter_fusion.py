@@ -14,12 +14,43 @@ from transformers import (
     DataCollatorForLanguageModeling
 )
 from peft import (
-    AdapterConfig,
     get_peft_model,
-    TaskType
+    LoraConfig,
+    PeftModel,
+    PeftConfig,
+    PeftType
 )
 import logging
 from datasets import Dataset as HFDataset
+
+import warnings
+
+# Deprecated compatibility shim for AdapterConfig
+class AdapterConfig:
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "AdapterConfig is deprecated. Please use LoraConfig or PeftConfig instead.",
+            DeprecationWarning
+        )
+        self._config = LoraConfig(*args, **kwargs)
+
+    def __getattr__(self, item):
+        return getattr(self._config, item)
+
+# Deprecated compatibility shim for TaskType
+class TaskType:
+    def __init__(self, value=None, *args, **kwargs):
+        warnings.warn(
+            "TaskType is deprecated. Please use PeftType instead.",
+            DeprecationWarning
+        )
+        if value is None:
+            self._type = PeftType.LORA
+        else:
+            self._type = PeftType(value)
+
+    def __getattr__(self, item):
+        return getattr(self._type, item)
 
 logger = logging.getLogger(__name__)
 
@@ -149,9 +180,9 @@ class AdapterFusionTuner:
 
         # Add adapters
         for i, config in enumerate(self.adapter_configs):
-            adapter_config = AdapterConfig(
+            adapter_config = LoraConfig(
                 **config,
-                task_type=TaskType.CAUSAL_LM
+                task_type=PeftType.CAUSAL_LM
             )
             self.model.add_adapter(f"adapter_{i}", adapter_config)
             self.adapters.append(f"adapter_{i}")
@@ -269,3 +300,10 @@ class AdapterFusionTuner:
             if param.requires_grad:
                 params[name] = param.data.clone()
         return params 
+
+__all__ = [
+    'AdapterFusionLayer',
+    'AdapterFusionTuner',
+    'AdapterConfig',
+    'TaskType',
+]

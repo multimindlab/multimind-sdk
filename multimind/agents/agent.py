@@ -37,8 +37,39 @@ class Agent:
 
     async def _process_task(self, task: str, **kwargs) -> Dict[str, Any]:
         """Process a task using available tools and the model."""
-        # TODO: Implement task processing logic
-        raise NotImplementedError("Task processing not implemented yet")
+        # Try to match a tool by name
+        for tool in self.tools:
+            if tool.name.lower() in task.lower():
+                try:
+                    # Extract parameters for the tool from kwargs
+                    params = {k: v for k, v in kwargs.items() if k in tool.get_parameters().get("required", [])}
+                    if not tool.validate_parameters(**params):
+                        raise ValueError(f"Missing required parameters for tool '{tool.name}'")
+                    result = await tool.run(**params)
+                    return {
+                        "type": "tool",
+                        "tool": tool.name,
+                        "result": result
+                    }
+                except Exception as e:
+                    return {
+                        "type": "tool",
+                        "tool": tool.name,
+                        "error": str(e)
+                    }
+        # If no tool matches, use the model
+        try:
+            prompt = task
+            model_result = await self.model.generate(prompt, **kwargs)
+            return {
+                "type": "model",
+                "result": model_result
+            }
+        except Exception as e:
+            return {
+                "type": "model",
+                "error": str(e)
+            }
 
     def add_tool(self, tool: BaseTool) -> None:
         """Add a new tool to the agent."""

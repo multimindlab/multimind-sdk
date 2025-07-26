@@ -53,7 +53,7 @@ class BaseLLM(ABC):
         max_tokens: Optional[int] = None,
         **kwargs
     ) -> AsyncGenerator[str, None]:
-        """Generate chat completion stream from the model."""
+        """Chat stream with the model."""
         yield ""  # Placeholder to make it an async generator
 
     @abstractmethod
@@ -64,3 +64,7 @@ class BaseLLM(ABC):
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         pass
+
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation

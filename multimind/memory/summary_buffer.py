@@ -1,5 +1,14 @@
 """
 Summary buffer memory implementation that maintains a buffer of messages with summaries.
+
+Features:
+- Supports advanced/contextual similarity metrics for relevance
+- Supports adaptive thresholds for filtering/relevance
+- Buffer strategies: sliding, fixed, dynamic (with adaptive/contextual relevance)
+Usage:
+    buffer = SummaryBufferMemory(...)
+    buffer.set_similarity_func(custom_similarity)
+    buffer.set_adaptive_threshold(AdaptiveThreshold(...))
 """
 
 from typing import List, Dict, Any, Optional
@@ -166,22 +175,24 @@ class SummaryBufferMemory(SummaryMemory):
         item: Dict[str, Any],
         summary: Dict[str, Any]
     ) -> float:
-        """Calculate relevance score relative to summary."""
-        # This is a simplified implementation
-        # In practice, you would use semantic similarity
+        """Calculate relevance score relative to summary (supports advanced similarity and adaptive threshold)."""
         content = item["message"].get("content", "").lower()
         summary_content = summary["content"].lower()
-        
-        # Simple word overlap
+        # Use custom similarity if set
+        if hasattr(self, 'similarity_func') and self.similarity_func:
+            sim = self.similarity_func(content, summary_content)
+            if hasattr(self, 'adaptive_threshold') and self.adaptive_threshold:
+                self.adaptive_threshold.update(sim)
+                if sim < self.adaptive_threshold.value:
+                    return 0.0
+            return sim
+        # Default: simple word overlap
         content_words = set(content.split())
         summary_words = set(summary_content.split())
-        
         if not content_words or not summary_words:
             return 0.0
-            
         overlap = len(content_words.intersection(summary_words))
         total = len(content_words.union(summary_words))
-        
         return overlap / total if total > 0 else 0.0
 
     async def get_buffer_messages(
@@ -225,4 +236,12 @@ class SummaryBufferMemory(SummaryMemory):
                 item.get("relevance", 0.0)
                 for item in self.buffer
             ) / len(self.buffer) if self.buffer else 0.0
-        } 
+        }
+
+    def set_similarity_func(self, func):
+        """Set a custom similarity function for relevance (signature: (a, b) -> float)."""
+        self.similarity_func = func
+
+    def set_adaptive_threshold(self, threshold):
+        """Set an adaptive threshold instance for filtering/relevance."""
+        self.adaptive_threshold = threshold 

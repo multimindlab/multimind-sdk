@@ -283,9 +283,10 @@ class PlanningMemory(BaseMemory):
         action: str
     ) -> Dict[str, Any]:
         """Simulate the outcome of an action."""
-        # This is a placeholder for actual action simulation
-        # In practice, this would use the LLM to predict outcomes
-        return {'success': True}  # Placeholder
+        # Dummy simulation: append action to state and mark as success
+        new_state = dict(state)
+        new_state['last_action'] = action
+        return {'success': True, 'state': new_state, 'message': f"Simulated action: {action}"}
 
     async def _is_goal_reached(
         self,
@@ -293,6 +294,5 @@ class PlanningMemory(BaseMemory):
         goal: str
     ) -> bool:
         """Check if the goal has been reached."""
-        # This is a placeholder for actual goal checking
-        # In practice, this would use the LLM to evaluate goal satisfaction
-        return False  # Placeholder 
+        # Dummy check: goal is reached if goal string is in state['status']
+        return goal in str(state.get('status', '')) 

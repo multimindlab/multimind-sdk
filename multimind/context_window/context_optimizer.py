@@ -26,19 +26,28 @@ class PromptTemplate(Enum):
     FEW_SHOT = "few_shot"
     ANALYTICAL = "analytical"
 
+class OptimizationStrategy(Enum):
+    """Strategies for context optimization."""
+    RELEVANCE = "relevance"
+    TOKEN_BUDGET = "token_budget"
+    FEW_SHOT = "few_shot"
+    HYBRID = "hybrid"
+
 class ContextOptimizer:
-    """Optimizes context based on relevance and token budget."""
+    """Optimizes context based on relevance, token budget, and strategy."""
 
     def __init__(
         self,
         model: BaseLLM,
         max_tokens: int = 2000,
         relevance_threshold: float = 0.7,
+        strategy: OptimizationStrategy = OptimizationStrategy.RELEVANCE,
         **kwargs
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.relevance_threshold = relevance_threshold
+        self.strategy = strategy
         self.tokenizer = AutoTokenizer.from_pretrained("gpt2")  # Default tokenizer
         self.kwargs = kwargs
 
@@ -354,4 +363,4 @@ class AdvancedRAGPrompting:
             **kwargs
         )
         
-        return prompt, optimized_context 
+        return prompt, optimized_context

@@ -2,12 +2,48 @@
 Document loader module for loading and ingesting documents.
 """
 
-from .document_loader import DocumentLoader, LoaderConfig
-from .data_ingestion import DataIngestion, IngestionConfig
+from .data_ingestion import DataIngestion
+from .document_loader import (
+    DocumentMetadata,
+    LoadedDocument,
+    DocumentFormat,
+    DocumentSource,
+    DocumentConnector,
+    BaseDocumentLoader,
+    LocalDocumentLoader,
+    WebDocumentLoader,
+    DatabaseDocumentLoader,
+    StreamDocumentLoader,
+    DocumentLoaderFactory,
+    WebsiteDocumentLoader,
+    EmailDocumentLoader,
+    SpreadsheetDocumentLoader,
+    PresentationDocumentLoader,
+    ImageDocumentLoader,
+    AudioDocumentLoader,
+    VideoDocumentLoader,
+    DefaultFileLoader,
+)
 
 __all__ = [
-    'DocumentLoader',
-    'LoaderConfig',
     'DataIngestion',
-    'IngestionConfig'
+    'DocumentMetadata',
+    'LoadedDocument',
+    'DocumentFormat',
+    'DocumentSource',
+    'DocumentConnector',
+    'BaseDocumentLoader',
+    'LocalDocumentLoader',
+    'WebDocumentLoader',
+    'DatabaseDocumentLoader',
+    'StreamDocumentLoader',
+    'DocumentLoaderFactory',
+    'WebsiteDocumentLoader',
+    'EmailDocumentLoader',
+    'SpreadsheetDocumentLoader',
+    'PresentationDocumentLoader',
+    'ImageDocumentLoader',
+    'AudioDocumentLoader',
+    'VideoDocumentLoader',
+    'DefaultFileLoader',
 ] 

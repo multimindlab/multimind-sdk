@@ -13,11 +13,7 @@ from transformers import (
     TrainingArguments,
     DataCollatorForLanguageModeling
 )
-from peft import (
-    AdapterConfig,
-    get_peft_model,
-    TaskType
-)
+from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
 import logging
 from datasets import Dataset as HFDataset
 

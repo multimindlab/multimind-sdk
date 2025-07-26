@@ -195,15 +195,42 @@ class BufferMemory(BaseMemory):
                         new_metadata[str(i)] = self.metadata.get(str(i + 1), {})
                     self.metadata = new_metadata
 
+    def set_compression_strategy(self, strategy: str, llm: Optional[Any] = None):
+        """Set the compression strategy (llm, truncate, concat) and optional LLM."""
+        self.compression_strategy = strategy
+        self.compression_llm = llm
+
     async def _compress_messages(self) -> None:
-        """Compress messages to reduce token usage."""
+        """Compress messages to reduce token usage (adaptive/LLM-based)."""
         if not self.enable_compression or not self.messages:
             return
-
-        # This is a placeholder for actual compression logic
-        # In practice, you would use more sophisticated compression
-        # For example, using an LLM to summarize or combine messages
-        pass
+        n = len(self.messages)
+        if n < 2:
+            return
+        half = n // 2
+        to_compress = self.messages[:half]
+        summary_content = None
+        method_used = self.compression_strategy if hasattr(self, 'compression_strategy') else 'concat'
+        if hasattr(self, 'compression_strategy') and self.compression_strategy == 'llm' and hasattr(self, 'compression_llm') and self.compression_llm:
+            # Use LLM to summarize
+            prompt = "Summarize the following conversation:\n" + "\n".join([msg.get("content", "") for msg in to_compress])
+            try:
+                summary_content = await self.compression_llm.generate(prompt)
+                method_used = 'llm'
+            except Exception:
+                summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+                method_used = 'concat_fallback'
+        elif hasattr(self, 'compression_strategy') and self.compression_strategy == 'truncate':
+            summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+            method_used = 'truncate'
+        else:
+            summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+            method_used = 'concat'
+        summary_message = {"role": "system", "content": f"Summary: {summary_content}", "compression_method": method_used}
+        # Remove the oldest half and insert the summary at the start
+        self.messages = [summary_message] + self.messages[half:]
+        self.message_tokens = [len(summary_content.split())] + self.message_tokens[half:]
+        self.total_tokens = sum(self.message_tokens)
 
     async def _backup(self) -> None:
         """Create a backup of the current buffer state."""

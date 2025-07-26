@@ -3,12 +3,10 @@ numberOfReviewers: 2
 reviewers:
   - darshankumar89
   - niralbhalodia
-  - kprocks86
   - Nikhil-Kumar98
 
 addAssignees: true
 numberOfAssignees: 1
 assignees:
   - darshankumar89
-  - kprocks86
   - Nikhil-Kumar98

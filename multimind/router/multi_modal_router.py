@@ -7,7 +7,7 @@ from datetime import datetime
 from ..models.base import BaseLLM
 from .router import ModelRouter
 from .strategy import RoutingStrategy
-from ..mcp.api.registry import WorkflowRegistry
+from ..api.mcp.registry import WorkflowRegistry
 
 class ModalityType:
     """Supported modality types."""

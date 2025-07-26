@@ -10,7 +10,16 @@ from .base import BaseMemory
 from ..models.base import BaseLLM
 
 class SummaryMemory(BaseMemory):
-    """Memory that stores summarized versions of conversations."""
+    """
+    Memory that stores summarized versions of conversations.
+
+    Features:
+    - Supports extractive, abstractive, hybrid, LLM-based, and user-configurable compression strategies
+    - set_compression_strategy allows runtime selection of strategy and LLM
+    Usage:
+        memory = SummaryMemory(...)
+        memory.set_compression_strategy('llm', llm=custom_llm)
+    """
 
     def __init__(
         self,
@@ -163,15 +172,88 @@ Summary:"""
         abstractive = await self._abstractive_summarize(text)
         return f"{extractive}\n\n{abstractive}"
 
+    def set_compression_strategy(self, strategy: str, llm: Optional[Any] = None, custom_fn: Optional[Any] = None):
+        """
+        Set the compression strategy (llm, extractive, abstractive, hybrid, concat, or custom) and optional LLM or function.
+        Args:
+            strategy: Compression strategy name
+            llm: Optional LLM for LLM-based compression
+            custom_fn: Optional custom function (signature: async (summaries: List[str]) -> str)
+        """
+        self.compression_strategy = strategy
+        self.compression_llm = llm
+        self.compression_custom_fn = custom_fn
+
     async def _compress_summaries(self) -> None:
-        """Compress summaries to reduce storage."""
+        """Compress summaries to reduce storage (adaptive/LLM-based/user-configurable)."""
         if not self.enable_compression or not self.summaries:
             return
-
-        # This is a placeholder for actual compression logic
-        # In practice, you would use more sophisticated compression
-        # For example, using an LLM to combine similar summaries
-        pass
+        n = len(self.summaries)
+        if n < 2:
+            return
+        half = n // 2
+        to_compress = self.summaries[:half]
+        combined_content = None
+        method_used = self.compression_strategy if hasattr(self, 'compression_strategy') else 'concat'
+        if hasattr(self, 'compression_strategy'):
+            if self.compression_strategy == 'llm' and hasattr(self, 'compression_llm') and self.compression_llm:
+                # Use LLM to summarize
+                prompt = "Summarize the following summaries:\n" + "\n".join([s["content"] for s in to_compress])
+                try:
+                    combined_content = await self.compression_llm.generate(prompt)
+                    method_used = 'llm'
+                except Exception:
+                    combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
+                    method_used = 'concat_fallback'
+            elif self.compression_strategy == 'extractive':
+                # Use extractive summarization (e.g., select key sentences)
+                combined_content = "\n".join([s["content"].split(". ")[0] for s in to_compress])[:512] + "..."
+                method_used = 'extractive'
+            elif self.compression_strategy == 'abstractive':
+                # Use LLM for abstractive summary
+                prompt = "Write a concise summary of the following:\n" + "\n".join([s["content"] for s in to_compress])
+                try:
+                    combined_content = await self.llm.generate(prompt)
+                    method_used = 'abstractive'
+                except Exception:
+                    combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
+                    method_used = 'concat_fallback'
+            elif self.compression_strategy == 'hybrid':
+                # Combine extractive and abstractive
+                extractive = "\n".join([s["content"].split(". ")[0] for s in to_compress])[:256]
+                prompt = f"Summarize the following points concisely:\n{extractive}"
+                try:
+                    combined_content = await self.llm.generate(prompt)
+                    method_used = 'hybrid'
+                except Exception:
+                    combined_content = extractive + "..."
+                    method_used = 'extractive_fallback'
+            elif self.compression_strategy == 'custom' and hasattr(self, 'compression_custom_fn') and self.compression_custom_fn:
+                combined_content = await self.compression_custom_fn([s["content"] for s in to_compress])
+                method_used = 'custom'
+            elif self.compression_strategy == 'concat':
+                combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
+                method_used = 'concat'
+            else:
+                combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
+                method_used = 'concat_default'
+        else:
+            combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
+            method_used = 'concat_default'
+        summary_entry = {
+            "content": f"Combined summary: {combined_content}",
+            "timestamp": datetime.now().isoformat(),
+            "message_count": sum(s.get("message_count", 0) for s in to_compress),
+            "method": method_used
+        }
+        # Remove compressed summaries and add new one
+        self.summaries = self.summaries[half:] + [summary_entry]
+        # Trim metadata if enabled
+        if self.enable_metadata:
+            new_metadata = {"0": {}}
+            for i in range(1, len(self.summaries)):
+                new_metadata[str(i)] = self.summary_metadata.get(str(i + half - 1), {})
+            self.summary_metadata = new_metadata
 
     async def _backup(self) -> None:
         """Create a backup of the current summary state."""

@@ -17,8 +17,35 @@ class QuantumState:
 
     def apply_gate(self, gate: np.ndarray, qubits: List[int]):
         """Apply a quantum gate to specified qubits."""
-        # Implement gate application logic
-        pass
+        # For demonstration: only support single-qubit gates on one qubit
+        if len(qubits) == 1:
+            q = qubits[0]
+            n = self.num_qubits
+            # Build the full operator as I ⊗ ... ⊗ gate ⊗ ... ⊗ I
+            op = 1
+            for i in range(n):
+                if i == q:
+                    op = np.kron(op, gate)
+                else:
+                    op = np.kron(op, np.eye(2))
+            self.state_vector = op @ self.state_vector
+        elif len(qubits) == 2:
+            # For two-qubit gates, assume gate is 4x4 and qubits are [q1, q2]
+            # (This is a simplification; real implementation would require more logic)
+            q1, q2 = qubits
+            n = self.num_qubits
+            # Only support adjacent qubits for demo
+            if abs(q1 - q2) != 1:
+                raise NotImplementedError("Only adjacent two-qubit gates supported in demo.")
+            op = 1
+            for i in range(n - 1):
+                if i == min(q1, q2):
+                    op = np.kron(op, gate)
+                else:
+                    op = np.kron(op, np.eye(2))
+            self.state_vector = op @ self.state_vector
+        else:
+            raise NotImplementedError("Only single- and two-qubit gates supported in demo.")
 
     def measure(self) -> int:
         """Measure the quantum state."""

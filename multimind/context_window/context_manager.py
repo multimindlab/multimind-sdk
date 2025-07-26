@@ -12,9 +12,6 @@ import numpy as np
 from datetime import datetime
 import faiss
 import hnswlib
-import redis
-from redis.commands.search.field import VectorField, TagField, TextField
-from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 import tiktoken
 import torch
 from transformers import AutoTokenizer, AutoModel
@@ -23,7 +20,38 @@ from pathlib import Path
 import pickle
 from ..models.base import BaseLLM
 from ..embeddings.embedding import EmbeddingModel, EmbeddingConfig
-from ..rag.vector_store import VectorStore, VectorStoreConfig
+from ..vector_store import VectorStore, VectorStoreConfig
+
+# Try to import Redis and Redis search modules, but handle gracefully if not available
+try:
+    import redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
+
+try:
+    if REDIS_AVAILABLE:
+        from redis.commands.search.field import VectorField, TagField, TextField
+        from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+        REDIS_SEARCH_AVAILABLE = True
+    else:
+        REDIS_SEARCH_AVAILABLE = False
+        VectorField = TagField = TextField = IndexDefinition = IndexType = None
+except ImportError:
+    REDIS_SEARCH_AVAILABLE = False
+    VectorField = TagField = TextField = IndexDefinition = IndexType = None
+
+@dataclass
+class ContextConfig:
+    """General configuration for context management."""
+    max_tokens: int = 2048
+    chunk_size: int = 256
+    overlap_tokens: int = 32
+    compression_ratio: float = 0.5
+    relevance_threshold: float = 0.7
+    memory_limit: int = 10000
+    custom_params: Dict[str, Any] = None
 
 @dataclass
 class ContextWindowConfig:
@@ -713,4 +741,4 @@ class ContextManager:
                 vector_store.config
             )
         
-        return manager 
+        return manager

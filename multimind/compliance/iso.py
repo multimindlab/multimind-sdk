@@ -21,6 +21,10 @@ class ISOControl(BaseModel):
     last_assessed: Optional[datetime] = None
     next_assessment: Optional[datetime] = None
 
+    def check_compliance(self) -> bool:
+        """Basic compliance check: returns True if implementation_status is 'implemented'."""
+        return self.implementation_status == "implemented"
+
 class ISOCompliance(BaseModel):
     """ISO standards compliance manager."""
     

@@ -7,7 +7,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from ..vector_store import VectorStore, VectorStoreConfig
-from ..document_processing import DocumentLoader, DocumentProcessor, Document
+from ..document_processing import DocumentProcessor, Document
+from ..document_loader import BaseDocumentLoader as DocumentLoader
 from ..embeddings import EmbeddingGenerator, EmbeddingConfig
 
 @dataclass
@@ -57,18 +58,33 @@ class RAG:
 
     def _get_embedding_generator(self) -> EmbeddingGenerator:
         """Get appropriate embedding generator."""
-        # Implementation depends on your embedding generator factory
-        pass
+        # Use EmbeddingModel from multimind/embeddings/embedding.py
+        from ..embeddings.embedding import EmbeddingModel, EmbeddingType
+        cfg = self.config.embedding_config
+        # Assume cfg has model_type as string, convert to EmbeddingType
+        model_type = EmbeddingType(cfg.model_type)
+        return EmbeddingModel(
+            model_type=model_type,
+            model_name=cfg.model_name,
+            api_key=cfg.custom_params.get('api_key') if cfg.custom_params else None,
+            **(cfg.custom_params or {})
+        )
 
     def _get_document_loader(self) -> DocumentLoader:
         """Get appropriate document loader."""
-        # Implementation depends on your document loader factory
-        pass
+        # Use LocalDocumentLoader as default, can be extended for other sources
+        from ..document_loader.document_loader import LocalDocumentLoader
+        return LocalDocumentLoader(**self.config.document_config)
 
     def _get_document_processor(self) -> DocumentProcessor:
         """Get appropriate document processor."""
-        # Implementation depends on your document processor factory
-        pass
+        # Use EnhancedDocumentProcessor as default
+        from ..document_processing.document_processor import EnhancedDocumentProcessor, ProcessingConfig
+        # If a model is needed, pass None or a default
+        return EnhancedDocumentProcessor(
+            model=None,
+            config=ProcessingConfig(**self.config.document_config)
+        )
 
     async def initialize(self) -> None:
         """Initialize all components."""

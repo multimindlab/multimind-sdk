@@ -1,14 +1,18 @@
 """
-Example demonstrating cross-modal retrieval in multi-modal processing.
+Cross-modal retrieval workflow using MCP.
+
+This workflow demonstrates how to use MCP to create a cross-modal retrieval system
+that can search across different modalities (text, image, audio) and retrieve
+relevant content from other modalities.
 """
 
 import asyncio
-from typing import Dict, Any, List
 import base64
 from pathlib import Path
 import os
-from multimind.mcp.api.base import MCPWorkflowAPI
-from multimind.mcp.api.registry import WorkflowRegistry
+from typing import Dict, Any, List, Optional
+from multimind.api.mcp.base import MCPWorkflowAPI
+from multimind.api.mcp.registry import WorkflowRegistry
 from multimind.router.multi_modal_router import MultiModalRequest
 from multimind.models.embeddings import EmbeddingModel
 

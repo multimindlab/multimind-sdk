@@ -840,8 +840,67 @@ class AdvancedPrompting:
         self,
         history: List[Dict[str, Any]]
     ) -> str:
-        """Format conversation history for prompt."""
-        return "\n\n".join(
-            f"Turn {i+1}:\n{json.dumps(turn, indent=2)}"
-            for i, turn in enumerate(history)
-        ) 
+        """Format conversation history."""
+        if not history:
+            return ""
+        
+        formatted = []
+        for msg in history[-5:]:  # Last 5 messages
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
+            formatted.append(f"{role}: {content}")
+        
+        return "\n".join(formatted)
+
+    async def analyze_prompt(self, prompt: str) -> Dict[str, Any]:
+        """Analyze prompt for routing and optimization."""
+        # Simple prompt analysis - can be enhanced with more sophisticated analysis
+        analysis = {
+            "task_type": "text_generation",
+            "complexity": 5,
+            "domain": "general",
+            "language": "en",
+            "context_length": len(prompt.split()),
+            "has_code": "```" in prompt or "def " in prompt or "class " in prompt,
+            "has_math": any(op in prompt for op in ["+", "-", "*", "/", "=", ">", "<"]),
+            "has_questions": "?" in prompt,
+            "sentiment": "neutral"
+        }
+        
+        # Detect task type
+        if "?" in prompt:
+            analysis["task_type"] = "question_answering"
+        elif "translate" in prompt.lower():
+            analysis["task_type"] = "translation"
+        elif "summarize" in prompt.lower():
+            analysis["task_type"] = "summarization"
+        elif analysis["has_code"]:
+            analysis["task_type"] = "code_generation"
+        elif analysis["has_math"]:
+            analysis["task_type"] = "mathematical_reasoning"
+        
+        # Detect complexity
+        word_count = len(prompt.split())
+        if word_count > 100:
+            analysis["complexity"] = 8
+        elif word_count > 50:
+            analysis["complexity"] = 6
+        elif word_count > 20:
+            analysis["complexity"] = 4
+        else:
+            analysis["complexity"] = 2
+        
+        # Detect domain
+        domain_keywords = {
+            "medical": ["health", "medical", "patient", "diagnosis", "treatment"],
+            "legal": ["law", "legal", "contract", "regulation", "compliance"],
+            "technical": ["code", "programming", "algorithm", "system", "technical"],
+            "creative": ["story", "creative", "imagine", "write", "poem"]
+        }
+        
+        for domain, keywords in domain_keywords.items():
+            if any(keyword in prompt.lower() for keyword in keywords):
+                analysis["domain"] = domain
+                break
+        
+        return analysis 

@@ -148,3 +148,7 @@ class LocalRunner(BaseLLM):
         response = await self._make_request("api/embeddings", data)
         embeddings = response["embeddings"]
         return embeddings[0] if len(text) == 1 else embeddings
+
+    async def get_quality(self) -> Optional[float]:
+        """Get the quality score for this model."""
+        return None  # Placeholder implementation
