@@ -31,6 +31,7 @@ from .advanced import (
 
 from .governance import GovernanceConfig, Regulation
 from .model_training import ComplianceTrainer
+from .privacy import PrivacyCompliance, DataCategory, NotificationType, AuditAction, ComplianceStatus
 from multimind.cli.compliance import run_compliance
 
 __all__ = [
@@ -57,6 +58,12 @@ __all__ = [
     # Governance
     'GovernanceConfig',
     'Regulation',
+    # Privacy
+    'PrivacyCompliance',
+    'DataCategory',
+    'NotificationType',
+    'AuditAction',
+    'ComplianceStatus',
     # Training
     'ComplianceTrainer',
     # CLI

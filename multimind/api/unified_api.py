@@ -35,7 +35,10 @@ class UnifiedResponse(BaseModel):
     metrics: Dict[str, Any]
 
 # Initialize components
-moe_factory = MoEFactory()
+try:
+    moe_factory = MoEFactory()
+except ImportError:
+    moe_factory = None
 
 @app.post("/v1/process", response_model=UnifiedResponse)
 async def process_request(request: UnifiedRequest):
@@ -58,6 +61,12 @@ async def process_request(request: UnifiedRequest):
         
         if request.use_moe:
             # Use MoE processing
+            if moe_factory is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="MoE processing is not available. PyTorch is required for MoE features."
+                )
+            
             moe_config = {
                 "experts": {
                     modality: {"model": router.modality_registry[modality]}

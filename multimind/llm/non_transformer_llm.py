@@ -1,14 +1,35 @@
 from multimind.core.base import BaseLLM
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
+# Optional torch import for non-transformer LLM features
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    print("Warning: PyTorch not available. Non-transformer LLM features will be disabled.")
+
+# Optional transformers import
+try:
+    from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("Warning: Transformers not available. Non-transformer LLM features will be disabled.")
+
 import logging
 import yaml
 import concurrent.futures
 import asyncio
 import warnings
 from multimind.core.chat import ChatSession
-from peft import PeftModel
+
+# Optional peft import
+try:
+    from peft import PeftModel
+    PEFT_AVAILABLE = True
+except ImportError:
+    PEFT_AVAILABLE = False
+    print("Warning: PEFT not available. Adapter features will be disabled.")
 
 class NonTransformerLLM(BaseLLM):
     """
@@ -80,6 +101,9 @@ class SSM_LLM(NonTransformerLLM):
     """
     def __init__(self, model_name: str, model_instance: Any, tokenizer: Any, adapter_path: Optional[str] = None, device: Optional[str] = None, torch_dtype: Optional[str] = None, device_map: Optional[str] = None, **kwargs):
         super().__init__(model_name, model_instance, **kwargs)
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for SSM_LLM. Please install torch.")
+        
         self.tokenizer = tokenizer
         dtype = getattr(torch, torch_dtype) if torch_dtype else None
         self.model = model_instance.to(device or ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -274,10 +298,15 @@ class MambaLLM(NonTransformerLLM):
     """
     def __init__(self, model_name: str = "state-spaces/mamba-130m", adapter_path: Optional[str] = None, device: Optional[str] = None, torch_dtype: Optional[str] = None, device_map: Optional[str] = None, **kwargs):
         super().__init__(model_name, None, **kwargs)
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for MambaLLM. Please install torch.")
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError("Transformers is required for MambaLLM. Please install transformers.")
+        
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         dtype = getattr(torch, torch_dtype) if torch_dtype else None
         self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype, device_map=device_map)
-        if adapter_path:
+        if adapter_path and PEFT_AVAILABLE:
             try:
                 self.model = PeftModel.from_pretrained(self.model, adapter_path)
             except Exception:
@@ -426,10 +455,15 @@ class RWKVLLM(NonTransformerLLM):
     """
     def __init__(self, model_name: str = "BlinkDL/rwkv-4-pile-169m", adapter_path: Optional[str] = None, device: Optional[str] = None, torch_dtype: Optional[str] = None, device_map: Optional[str] = None, **kwargs):
         super().__init__(model_name, None, **kwargs)
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for RWKVLLM. Please install torch.")
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError("Transformers is required for RWKVLLM. Please install transformers.")
+        
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         dtype = getattr(torch, torch_dtype) if torch_dtype else None
         self.model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype=dtype, device_map=device_map)
-        if adapter_path:
+        if adapter_path and PEFT_AVAILABLE:
             try:
                 self.model = PeftModel.from_pretrained(self.model, adapter_path)
             except Exception:
@@ -553,6 +587,9 @@ class CustomRNNLLM(NonTransformerLLM):
     """
     def __init__(self, model_instance: Any, tokenizer: Any, device: Optional[str] = None, torch_dtype: Optional[str] = None, **kwargs):
         super().__init__("custom-rnn", model_instance, **kwargs)
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for CustomRNNLLM. Please install torch.")
+        
         self.tokenizer = tokenizer
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model = model_instance.to(self.device)

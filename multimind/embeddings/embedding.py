@@ -9,10 +9,23 @@ import asyncio
 import json
 import numpy as np
 from datetime import datetime
-import torch
-from transformers import AutoTokenizer, AutoModel
-from sentence_transformers import SentenceTransformer
-import openai
+try:
+    import torch
+except ImportError:
+    torch = None
+try:
+    from transformers import AutoTokenizer, AutoModel
+except ImportError:
+    AutoTokenizer = None
+    AutoModel = None
+try:
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    SentenceTransformer = None
+try:
+    import openai
+except ImportError:
+    openai = None
 
 # Graceful import for optional dependencies
 try:

@@ -6,20 +6,33 @@ from dataclasses import dataclass
 from enum import Enum
 import re
 import numpy as np
-import spacy
+# Optional spacy import for NLP features
+try:
+    import spacy
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    print("Warning: spacy not available. NLP features will be disabled.")
 
-# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+# Optional transformers import for advanced document processing
 try:
     from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
     _AUTO_MODEL_CLASS = AutoModelForSeq2SeqLM
+    TRANSFORMERS_AVAILABLE = True
 except ImportError:
     try:
         from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
         _AUTO_MODEL_CLASS = AutoModelForSeq2SeqGeneration
+        TRANSFORMERS_AVAILABLE = True
     except ImportError:
-        # Fallback for very old versions
-        from transformers import AutoTokenizer
-        _AUTO_MODEL_CLASS = None
+        try:
+            from transformers import AutoTokenizer
+            _AUTO_MODEL_CLASS = None
+            TRANSFORMERS_AVAILABLE = True
+        except ImportError:
+            TRANSFORMERS_AVAILABLE = False
+            _AUTO_MODEL_CLASS = None
+            print("Warning: transformers not available. Advanced document processing features will be disabled.")
 
 try:
     import nltk
@@ -36,18 +49,23 @@ class SemanticChunker:
         self.min_chunk_size = min_chunk_size
         self.max_chunk_size = max_chunk_size
         self.similarity_threshold = similarity_threshold
-        self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
         
-        # Backward compatible model loading
-        if _AUTO_MODEL_CLASS is not None:
-            self.summarizer = _AUTO_MODEL_CLASS.from_pretrained("facebook/bart-large-cnn")
+        if TRANSFORMERS_AVAILABLE:
+            self.tokenizer = AutoTokenizer.from_pretrained("facebook/bart-large-cnn")
+            
+            # Backward compatible model loading
+            if _AUTO_MODEL_CLASS is not None:
+                self.summarizer = _AUTO_MODEL_CLASS.from_pretrained("facebook/bart-large-cnn")
+            else:
+                # Fallback for very old versions - try to import the model directly
+                try:
+                    from transformers import BartForConditionalGeneration
+                    self.summarizer = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
+                except ImportError:
+                    raise ImportError("Unable to load BART model. Please ensure transformers is properly installed.")
         else:
-            # Fallback for very old versions - try to import the model directly
-            try:
-                from transformers import BartForConditionalGeneration
-                self.summarizer = BartForConditionalGeneration.from_pretrained("facebook/bart-large-cnn")
-            except ImportError:
-                raise ImportError("Unable to load BART model. Please ensure transformers is properly installed.")
+            self.tokenizer = None
+            self.summarizer = None
     async def chunk_document(self, text: str, metadata: Optional[Dict[str, Any]] = None, **kwargs) -> List[Any]:
         sentences = self._split_into_sentences(text)
         sentence_embeddings = await self.model.embeddings(sentences)
@@ -63,8 +81,12 @@ class SemanticChunker:
             for i, chunk_text in enumerate(chunks)
         ]
     def _split_into_sentences(self, text: str) -> List[str]:
-        doc = spacy.load("en_core_web_sm")(text)
-        return [sent.text.strip() for sent in doc.sents]
+        if SPACY_AVAILABLE:
+            doc = spacy.load("en_core_web_sm")(text)
+            return [sent.text.strip() for sent in doc.sents]
+        else:
+            # Fallback to simple sentence splitting
+            return re.split(r'(?<=[.!?])\s+', text.strip())
     def _group_similar_sentences(self, sentences: List[str], embeddings: List[List[float]]) -> List[str]:
         chunks = []
         current_chunk = []
@@ -346,7 +368,10 @@ class MetadataExtractor:
     """Extracts and enriches document metadata."""
 
     def __init__(self, nlp_model: Optional[str] = "en_core_web_sm"):
-        self.nlp = spacy.load(nlp_model) if nlp_model else None
+        if SPACY_AVAILABLE and nlp_model:
+            self.nlp = spacy.load(nlp_model)
+        else:
+            self.nlp = None
 
     def extract_metadata(self, text: str) -> Dict[str, Any]:
         """

@@ -30,18 +30,19 @@ async def basic_example():
         fallback_models=["gpt-4", "claude"]
     )
     
-    # Generate text
-    response = await wrapper.generate(
-        prompt="Explain quantum computing",
-        temperature=0.7
-    )
-    
-    # Chat completion
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What's the weather like?"}
-    ]
-    chat_response = await wrapper.chat(messages=messages)
+    async def example_model_management():
+        # Generate text
+        response = await wrapper.generate(
+            prompt="Explain quantum computing",
+            temperature=0.7
+        )
+        
+        # Chat completion
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "What's the weather like?"}
+        ]
+        chat_response = await wrapper.chat(messages=messages)
 ```
 
 ### Key Features
@@ -244,6 +245,5 @@ pytest tests/examples/model_management/test_cost_optimization.py
 ## Support
 
 For issues and questions:
-1. Check the [documentation](https://multimind-sdk.readthedocs.io/)
-2. Open an issue on GitHub
-3. Contact support@multimind.ai 
+1. Open an issue on GitHub
+2. Contact contact@multimind.dev
