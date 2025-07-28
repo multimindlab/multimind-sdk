@@ -5,9 +5,8 @@ Example demonstrating how to use the pipeline system.
 import asyncio
 import os
 from typing import List, Dict, Any
+from multimind import Router, TaskType, TaskConfig, RoutingStrategy, Pipeline, PipelineBuilder
 from multimind.core.provider import ProviderConfig
-from multimind.core.router import Router, TaskType, TaskConfig, RoutingStrategy
-from multimind.pipeline.pipeline import Pipeline, PipelineBuilder, StageType
 from multimind.providers.openai import OpenAIProvider
 from multimind.providers.claude import ClaudeProvider
 

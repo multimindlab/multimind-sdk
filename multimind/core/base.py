@@ -68,3 +68,11 @@ class BaseLLM(ABC):
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
         return None  # Placeholder implementation
+    
+    async def get_cost(self, prompt_tokens: int = 0, completion_tokens: int = 0) -> float:
+        """Get the cost estimate for this model."""
+        return 0.0  # Placeholder implementation
+    
+    async def get_latency(self) -> Optional[float]:
+        """Get the latency estimate for this model."""
+        return None  # Placeholder implementation

@@ -14,13 +14,15 @@ nltk==3.9.1
 fastapi==0.115.9
 python-jose==3.5.0
 python-multipart==0.0.20
+aiohttp==3.12.2
+uvicorn==0.34.2
 
 # Common utilities
 click==8.1.8
 rich==14.0.0
 requests==2.32.3
 typing-extensions==4.13.2
-aiohttp==3.12.2
+PyYAML==6.0.2
 
 # Document processing dependencies
 beautifulsoup4==4.12.2
@@ -43,7 +45,6 @@ seaborn==0.13.2
 selenium==4.15.2
 lxml==5.4.0
 joblib==1.5.1
-PyYAML==6.0.2
 pytest==8.3.5
 pytest-asyncio==1.0.0
 black==25.1.0

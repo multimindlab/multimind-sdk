@@ -8,11 +8,46 @@ from enum import Enum
 import asyncio
 import numpy as np
 from PIL import Image
-import pytesseract
-import cv2
-import pandas as pd
-from transformers import AutoProcessor, AutoModel
-import torch
+# Optional pytesseract import for OCR features
+try:
+    import pytesseract
+    PYTESSERACT_AVAILABLE = True
+except ImportError:
+    PYTESSERACT_AVAILABLE = False
+    print("Warning: pytesseract not available. OCR features will be disabled.")
+
+# Optional opencv import for image processing
+try:
+    import cv2
+    OPENCV_AVAILABLE = True
+except ImportError:
+    OPENCV_AVAILABLE = False
+    print("Warning: opencv-python not available. Image processing features will be disabled.")
+
+# Optional pandas import for table processing
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    print("Warning: pandas not available. Table processing features will be disabled.")
+
+# Optional transformers import for advanced document processing
+try:
+    from transformers import AutoProcessor, AutoModel
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("Warning: transformers not available. Advanced document processing features will be disabled.")
+
+# Optional torch import for deep learning features
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    print("Warning: PyTorch not available. Deep learning features will be disabled.")
+
 from ..models.base import BaseLLM
 
 @dataclass
@@ -71,11 +106,19 @@ class AdvancedDocumentProcessor:
             **kwargs: Additional parameters
         """
         self.model = model
-        self.vision_processor = AutoProcessor.from_pretrained(vision_model)
-        self.vision_model = AutoModel.from_pretrained(vision_model)
-        self.table_processor = AutoProcessor.from_pretrained(table_model)
-        self.table_model = AutoModel.from_pretrained(table_model)
         self.kwargs = kwargs
+        
+        # Initialize vision models if transformers is available
+        if TRANSFORMERS_AVAILABLE:
+            self.vision_processor = AutoProcessor.from_pretrained(vision_model)
+            self.vision_model = AutoModel.from_pretrained(vision_model)
+            self.table_processor = AutoProcessor.from_pretrained(table_model)
+            self.table_model = AutoModel.from_pretrained(table_model)
+        else:
+            self.vision_processor = None
+            self.vision_model = None
+            self.table_processor = None
+            self.table_model = None
 
     async def process_document(
         self,

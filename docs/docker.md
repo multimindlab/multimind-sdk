@@ -327,4 +327,4 @@ docker-compose restart multimind
 - [Docker Documentation](https://docs.docker.com/)
 - [Docker Compose Documentation](https://docs.docker.com/compose/)
 - [MultiMind SDK Documentation](../README.md)
-- [API Reference](../api_reference/README.md) 
+- [API Reference](../api_reference/README.md)

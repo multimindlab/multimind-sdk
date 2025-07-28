@@ -247,6 +247,5 @@ pytest tests/examples/multi_modal/test_cross_modal_retrieval.py
 ## Support
 
 For issues and questions:
-1. Check the [documentation](https://multimind-sdk.readthedocs.io/)
-2. Open an issue on GitHub
-3. Contact support@multimind.ai 
+1. Open an issue on GitHub
+2. Contact contact@multimind.dev

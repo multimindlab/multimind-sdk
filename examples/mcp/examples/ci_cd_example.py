@@ -1,11 +1,11 @@
 """
 Example usage of the CI/CD workflow.
+
+This script demonstrates how to use the CI/CD workflow API to automate continuous integration and deployment.
 """
 
 import asyncio
-from multimind.mcp.workflows import CICDWorkflow
-from multimind.models import OpenAIModel, ClaudeModel
-from multimind.integrations import GitHubIntegrationHandler, SlackIntegrationHandler, DiscordIntegrationHandler
+from multimind import CICDWorkflow, OpenAIModel, ClaudeModel, GitHubIntegrationHandler, SlackIntegrationHandler
 
 async def main():
     # Initialize models

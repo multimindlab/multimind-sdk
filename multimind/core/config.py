@@ -4,7 +4,16 @@ Core configuration functionality for MultiMind
 
 import os
 from typing import Dict, Optional
-from pydantic_settings import BaseSettings
+# Optional pydantic-settings import
+try:
+    from pydantic_settings import BaseSettings
+    PYDANTIC_SETTINGS_AVAILABLE = True
+except ImportError:
+    PYDANTIC_SETTINGS_AVAILABLE = False
+    print("Warning: pydantic-settings not available. Configuration features will be disabled.")
+    # Fallback to pydantic BaseModel
+    from pydantic import BaseModel as BaseSettings
+
 from pydantic import Field
 from dotenv import load_dotenv
 

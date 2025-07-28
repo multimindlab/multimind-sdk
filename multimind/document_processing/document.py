@@ -5,7 +5,14 @@ Document processing utilities for RAG system.
 from typing import List, Dict, Any, Optional, Union
 import re
 from dataclasses import dataclass
-import tiktoken
+# Optional tiktoken import for token counting
+try:
+    import tiktoken
+    TIKTOKEN_AVAILABLE = True
+except ImportError:
+    TIKTOKEN_AVAILABLE = False
+    print("Warning: tiktoken not available. Token counting features will be disabled.")
+
 from pathlib import Path
 
 @dataclass
@@ -40,11 +47,18 @@ class DocumentProcessor:
         """
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.tokenizer = tiktoken.get_encoding(tokenizer or "cl100k_base")
+        if TIKTOKEN_AVAILABLE:
+            self.tokenizer = tiktoken.get_encoding(tokenizer or "cl100k_base")
+        else:
+            self.tokenizer = None
 
     def _count_tokens(self, text: str) -> int:
         """Count number of tokens in text."""
-        return len(self.tokenizer.encode(text))
+        if self.tokenizer is not None:
+            return len(self.tokenizer.encode(text))
+        else:
+            # Fallback to character-based estimation (rough approximation)
+            return len(text) // 4  # Rough estimate: 1 token ≈ 4 characters
 
     def _split_text(
         self,

@@ -4,19 +4,24 @@ Routing strategies for model selection based on cost and latency.
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from ..models.base import BaseLLM
+try:
+    from ..models.base import BaseLLM
+except ImportError:
+    # Fallback for when running as standalone
+    class BaseLLM:
+        pass
 import numpy as np
 import random
-import torch
-import torch.nn as nn
-import torch.optim as optim
 
-# Debugging torch import
+# Optional torch import for advanced strategies
 try:
     import torch
-    print("Torch is accessible in strategy.py")
-except ImportError as e:
-    print(f"Torch import failed in strategy.py: {e}")
+    import torch.nn as nn
+    import torch.optim as optim
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    print("Warning: PyTorch not available. Advanced routing strategies will be disabled.")
 
 class RoutingStrategy(ABC):
     """Abstract base class for routing strategies."""
@@ -231,6 +236,9 @@ class DeepRLRouterStrategy(RoutingStrategy):
         - state must be a numeric vector (e.g., [latency, cost, ...])
     """
     def __init__(self, model_names, state_dim, epsilon=0.1, gamma=0.95, lr=0.01, hidden_dim=32):
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for DeepRLRouterStrategy. Please install torch.")
+        
         self.model_names = model_names
         self.n_actions = len(model_names)
         self.state_dim = state_dim
@@ -252,6 +260,7 @@ class DeepRLRouterStrategy(RoutingStrategy):
         self.qnet = QNet(state_dim, self.n_actions, hidden_dim).to(self.device)
         self.optimizer = optim.Adam(self.qnet.parameters(), lr=lr)
         self.loss_fn = nn.MSELoss()
+    
     async def select_model(self, models: List[BaseLLM], state: list = None, **kwargs) -> Optional[BaseLLM]:
         if not models or state is None:
             return random.choice(models) if models else None
@@ -263,6 +272,7 @@ class DeepRLRouterStrategy(RoutingStrategy):
                 qvals = self.qnet(state_tensor)
                 action = int(torch.argmax(qvals).item())
         return next((m for m in models if getattr(m, 'model_name', str(m)) == self.model_names[action]), models[0])
+    
     def update_feedback(self, state, action_idx, reward, next_state, done):
         self.memory.append((state, action_idx, reward, next_state, done))
         if len(self.memory) >= self.batch_size:

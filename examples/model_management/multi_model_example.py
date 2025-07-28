@@ -1,10 +1,9 @@
 """
-Example usage of the MultiModelWrapper.
+Multi-model example demonstrating how to use multiple AI models with intelligent routing.
 """
 
 import asyncio
-from multimind.models.factory import ModelFactory
-from multimind.models.multi_model import MultiModelWrapper
+from multimind import ModelFactory, MultiModelWrapper
 
 async def main():
     # Initialize the model factory

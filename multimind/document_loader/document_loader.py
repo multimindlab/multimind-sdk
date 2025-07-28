@@ -10,11 +10,26 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 import logging
-from bs4 import BeautifulSoup
-import PyPDF2
-import docx
-import pandas as pd
-from unstructured.partition.auto import partition
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+try:
+    import PyPDF2
+except ImportError:
+    PyPDF2 = None
+try:
+    import docx
+except ImportError:
+    docx = None
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+try:
+    from unstructured.partition.auto import partition
+except ImportError:
+    partition = None
 from ..models.base import BaseLLM
 import os
 
