@@ -5,6 +5,8 @@ This module provides comprehensive compliance monitoring and evaluation capabili
 including advanced features for privacy, security, and regulatory compliance.
 """
 
+import os
+import warnings
 from .advanced_config import (
     ComplianceShardConfig,
     SelfHealingConfig,
@@ -33,6 +35,12 @@ from .governance import GovernanceConfig, Regulation
 from .model_training import ComplianceTrainer
 from .privacy import PrivacyCompliance, DataCategory, NotificationType, AuditAction, ComplianceStatus
 from multimind.cli.compliance import run_compliance
+
+def _log_legacy_warning(message: str) -> None:
+    """Log legacy warning only if explicitly enabled."""
+    show_warnings = os.getenv('MULTIMIND_SHOW_LEGACY_WARNINGS', 'false').lower() == 'true'
+    if show_warnings:
+        warnings.warn(message)
 
 __all__ = [
     # Advanced Features
@@ -87,16 +95,13 @@ try:
         'configure_alerts',
     ])
 except ImportError:
-    import warnings
-    warnings.warn("multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.")
+    _log_legacy_warning("multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.")
 
 try:
     from .api import *
 except ImportError:
-    import warnings
-    warnings.warn(
-        "multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code.",
-        DeprecationWarning
+    _log_legacy_warning(
+        "multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code."
     )
 
 __version__ = '1.0.0'
