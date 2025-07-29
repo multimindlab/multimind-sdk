@@ -245,21 +245,6 @@ await compliance_monitor.start_monitoring(
 )
 ```
 
-### 🎮 **Interactive Web Interface**
-
-Try our web-based playground to experiment with AI without coding:
-
-```bash
-# Start the interactive interface
-streamlit run examples/streamlit-ui/app.py
-```
-
-This gives you a visual interface to:
-- Chat with different AI models
-- Upload and search documents
-- Create AI agents
-- Monitor compliance
-- Analyze performance
 
 ---
 
@@ -422,19 +407,7 @@ docker-compose up --build
 # - Redis: localhost:6379
 ```
 
-### 📚 **Documentation & Examples**
-- [Getting Started Guide](docs/README.md)
-- [API Reference](docs/api_reference/README.md)
-- [Examples Directory](examples/README.md)
-- [Compliance Guide](docs/compliance.md)
 
-### ⚠️ **Experimental Features**
-Some features are still in development and may require additional setup:
-- **Streamlit UI**: Available in `examples/streamlit-ui/` but requires additional dependencies
-- **Advanced Visualizations**: Some compliance examples need `plotly` for full functionality
-- **Web Interface**: Docker setup includes basic API but web UI needs manual setup
-
-For the most reliable experience, stick to the tested CLI and API examples listed above.
 
 ---
 
