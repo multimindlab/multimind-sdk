@@ -117,7 +117,7 @@ class VectorStore:
     """
     Unified vector store interface that supports multiple backends.
     """
-
+    
     def __init__(self, config: VectorStoreConfig):
         """
         Initialize the vector store with the specified configuration.
