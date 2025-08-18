@@ -24,7 +24,6 @@ click==8.1.8
 colorama==0.4.6
 coloredlogs==15.0.1
 cryptography==45.0.2
-cryptography[zkp]==45.0.2
 datasets==3.6.0
 Deprecated==1.2.18
 dill==0.3.8
@@ -106,7 +105,7 @@ packaging==25.0
 pandas>=2.2.3
 pathspec==0.12.1
 pdf2image==1.17.0
-peft==0.15.2
+peft>=0.7.0
 pillow==11.2.1
 pinecone-client==6.0.0
 pinecone-plugin-interface==0.0.7
@@ -122,6 +121,7 @@ pyasn1_modules==0.4.1
 pycparser==2.22
 pydantic==2.11.5
 pydantic_core==2.33.2
+pydantic-settings==2.4.0
 Pygments==2.19.1
 PyPDF2==3.0.1
 PyPika==0.48.9
@@ -168,9 +168,9 @@ threadpoolctl==3.6.0
 tiktoken==0.9.0
 tokenizers==0.21.1
 tomli==2.2.1
-torch
+torch==2.0.1
 tqdm==4.67.1
-transformers>=4.52.3
+transformers>=4.41.0
 twine==6.1.0
 typer==0.15.4
 typing-inspection==0.4.1
@@ -219,3 +219,21 @@ unstructured
 
 # Optional dependencies (may not be available for all Python versions)
 # tensorflow>=2.15.0  # Not available for Python 3.13+
+
+# --- Added for full example/test coverage ---
+aiofiles
+pytest
+pytest-asyncio
+python-dotenv
+# The following are already present but are critical for examples:
+# torch
+# uvicorn
+# fastapi
+# pyyaml
+# pydantic-settings
+# scikit-learn
+# sentence-transformers
+# openai
+# anthropic
+# transformers
+# Add more as needed for new examples

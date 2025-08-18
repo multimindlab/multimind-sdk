@@ -7,8 +7,14 @@ import numpy as np
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
-from sentence_transformers import CrossEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
+try:
+    from sentence_transformers import CrossEncoder
+except ImportError:
+    CrossEncoder = None
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+except ImportError:
+    TfidfVectorizer = None
 from ..models.base import BaseLLM
 
 @dataclass

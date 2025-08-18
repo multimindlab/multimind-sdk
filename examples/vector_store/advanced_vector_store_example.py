@@ -6,10 +6,9 @@ import asyncio
 import os
 import numpy as np
 from typing import Dict, List, Any, Optional
+from multimind import Router, TaskType, TaskConfig, RoutingStrategy, VectorStore, VectorStoreConfig
 from multimind.core.provider import ProviderConfig
-from multimind.core.router import Router, TaskType, TaskConfig, RoutingStrategy
-from multimind.vector_store.base import VectorStore, VectorStoreConfig, VectorStoreFactory
-from multimind.rag.fluent import RAGConfig, RAGPipeline
+from multimind.rag import RAGConfig
 from multimind.providers.openai import OpenAIProvider
 
 class HierarchicalVectorStore(VectorStore):

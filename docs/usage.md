@@ -27,30 +27,31 @@ privacy_manager = PrivacyCompliance(config=config)
 ### Managing Data Purposes
 
 ```python
-# Add a new data purpose
-purpose = await privacy_manager.add_data_purpose(
-    purpose_id="marketing_001",
-    name="Marketing Communications",
-    description="Process user data for marketing communications",
-    legal_basis="consent",
-    retention_period=365,  # 1 year
-    data_categories={DataCategory.PERSONAL, DataCategory.CONTACT}
-)
+async def manage_privacy():
+    # Add a new data purpose
+    purpose = await privacy_manager.add_data_purpose(
+        purpose_id="marketing_001",
+        name="Marketing Communications",
+        description="Process user data for marketing communications",
+        legal_basis="consent",
+        retention_period=365,  # 1 year
+        data_categories={DataCategory.PERSONAL, DataCategory.CONTACT}
+    )
 
-# Process privacy-sensitive data
-user_data = await privacy_manager.process_privacy_data(
-    data_id="user_123",
-    data_type="user_profile",
-    content={
-        "name": "John Doe",
-        "email": "john@example.com",
-        "preferences": {"marketing": True}
-    },
-    jurisdiction="EU",
-    data_categories={DataCategory.PERSONAL, DataCategory.CONTACT},
-    purposes={"marketing_001"},
-    consent_status={"marketing_001": True}
-)
+    # Process privacy-sensitive data
+    user_data = await privacy_manager.process_privacy_data(
+        data_id="user_123",
+        data_type="user_profile",
+        content={
+            "name": "John Doe",
+            "email": "john@example.com",
+            "preferences": {"marketing": True}
+        },
+        jurisdiction="EU",
+        data_categories={DataCategory.PERSONAL, DataCategory.CONTACT},
+        purposes={"marketing_001"},
+        consent_status={"marketing_001": True}
+    )
 ```
 
 ### Risk Assessment and Monitoring
@@ -315,8 +316,8 @@ curl -X GET http://localhost:8000/anomalies
 ## Support
 
 For support, please contact:
-- Email: support@multimind.ai
-- Documentation: https://docs.multimind.ai
+- Email: contact@multimind.dev
+- Documentation: (link to be updated)
 - GitHub: https://github.com/multimind-ai/multimind-sdk
 
 ## Model Client Usage Examples
@@ -383,4 +384,4 @@ local_client = LSTMModelClient(...)
 cloud_client = LSTMModelClient(...)
 router = FederatedRouter(local_client, cloud_client)
 response = router.generate("Test input")
-``` 
+```

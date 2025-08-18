@@ -175,16 +175,19 @@ def test_agent_creation():
     assert agent.system_prompt == "You are a helpful assistant."
 
 @pytest.mark.asyncio
-async def test_agent_interaction():
-    # Arrange
+async def test_agent_run():
     agent = create_test_agent()  # Helper fixture
     
-    # Act
-    response = await agent.run("What is 2+2?")
+    async def main():
+        # Act
+        response = await agent.run("What is 2+2?")
     
-    # Assert
-    assert response is not None
-    assert "4" in response.lower()
+        # Assert
+        assert response is not None
+        assert "4" in response.lower()
+
+    # To execute the example
+    # asyncio.run(main())
 ```
 
 ### 3. Examples
@@ -456,9 +459,7 @@ Workflow files in `.github/workflows/`:
 
 ### Getting Help
 
-- Check [documentation](https://multimind-sdk.readthedocs.io/)
 - Search [issues](https://github.com/multimind-dev/multimind-sdk/issues)
-- Join [Discord](https://discord.gg/your-invite-link)
 - Ask in [Discussions](https://github.com/multimind-dev/multimind-sdk/discussions)
 
 ## Contributor License Agreement (CLA)
@@ -548,4 +549,4 @@ If you need to update your CLA information:
 
 For questions about the CLA process, contact the project maintainers at [support@multimind.dev](mailto:support@multimind.dev).
 
-For more details, see the [Architecture Overview](architecture.md) and [API Reference](api.md). 
+For more details, see the [Architecture Overview](architecture.md) and [API Reference](api.md).

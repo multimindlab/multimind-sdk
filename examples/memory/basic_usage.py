@@ -3,28 +3,18 @@ Basic memory usage examples for MultiMind SDK.
 """
 
 import asyncio
-from multimind.memory import (
-    ConversationBufferMemory,
-    VectorStoreMemory,
-    HybridMemory,
-    FastWeightMemory,
-    AdapterMemory,
-    HTMMemory
+from multimind import (
+    BaseMemory,
+    BufferMemory,
+    SummaryMemory,
+    SummaryBufferMemory,
+    MemoryUtils
 )
 
 async def basic_memory_example():
     """Demonstrate basic memory operations."""
-    # Create a hybrid memory system
-    memory_system = HybridMemory(
-        memories=[
-            ConversationBufferMemory(),
-            VectorStoreMemory(),
-            FastWeightMemory(
-                input_size=768,
-                memory_size=1024
-            )
-        ]
-    )
+    # Create a buffer memory system
+    memory_system = BufferMemory(max_history=100)
     
     # Add memories
     await memory_system.add_memory(

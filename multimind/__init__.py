@@ -38,8 +38,9 @@ def configure_warnings(show_backend_warnings: bool = False, log_level: str = 'WA
 # Core components
 from .main_config import Config
 from .models.base import BaseLLM
-from .router.router import ModelRouter
+from .router import ModelRouter
 from .core.multimind import MultiMind
+from .core.router import Router, TaskType, TaskConfig, RoutingStrategy
 
 # Memory components
 from .memory import (
@@ -61,6 +62,10 @@ from .agents.tools import BaseTool, CalculatorTool
 from .orchestration.prompt_chain import PromptChain
 from .orchestration.task_runner import TaskRunner
 
+# Ensemble components
+from .ensemble import AdvancedEnsemble
+from .ensemble.advanced import EnsembleMethod
+
 # MCP components
 from .mcp.executor import MCPExecutor
 from .mcp.parser import MCPParser
@@ -79,8 +84,10 @@ from .multimind_logging.usage_tracker import UsageTracker
 
 # Model implementations
 from .models.claude import ClaudeModel
-from .models.ollama import OllamaModel
+from .models.ollama import OllamaModel, MistralModel
 from .models.openai import OpenAIModel
+from .models.factory import ModelFactory
+from .models.multi_model import MultiModelWrapper
 
 # LLM Interface
 from .llm import LLMInterface, LLMConfig, ModelType
@@ -131,6 +138,9 @@ from .retrieval.enhanced_retrieval import EnhancedRetriever
 
 # Pipeline components
 from .pipeline.pipeline import Pipeline, PipelineBuilder
+
+# RAG components
+from .rag import RAG, RAGConfig, BaseRAG, RAGError, PostProcessor, PostProcessingConfig
 
 # Document loader components
 from .document_loader import DataIngestion
@@ -268,6 +278,10 @@ __all__ = [
     # Core
     "BaseLLM",
     "ModelRouter",
+    "Router",
+    "TaskType", 
+    "TaskConfig",
+    "RoutingStrategy",
     "Config",
     "MultiMind",
 
@@ -292,6 +306,10 @@ __all__ = [
     "PromptChain",
     "TaskRunner",
 
+    # Ensemble
+    "AdvancedEnsemble",
+    "EnsembleMethod",
+
     # MCP
     "MCPParser",
     "MCPExecutor",
@@ -312,6 +330,9 @@ __all__ = [
     "OpenAIModel",
     "ClaudeModel",
     "OllamaModel",
+    "MistralModel",
+    "ModelFactory",
+    "MultiModelWrapper",
 
     # LLM Interface
     "LLMInterface",
@@ -366,6 +387,14 @@ __all__ = [
     # Pipeline
     "Pipeline",
     "PipelineBuilder",
+
+    # RAG
+    "RAG",
+    "RAGConfig",
+    "BaseRAG",
+    "RAGError",
+    "PostProcessor",
+    "PostProcessingConfig",
 
     # Document Loader
     "DataIngestion",

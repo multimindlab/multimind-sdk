@@ -137,14 +137,30 @@ class OllamaModel(BaseLLM):
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings from the local model."""
         if isinstance(text, str):
-            text = [text]
+            texts = [text]
+        else:
+            texts = text
 
-        data = {
-            "model": self.model_name,
-            "prompt": text[0] if len(text) == 1 else text,
-            **kwargs
-        }
+        embeddings = []
+        for t in texts:
+            data = {
+                "model": self.model_name,
+                "prompt": t,
+                **kwargs
+            }
+            response = await self._make_request("api/embeddings", data)
+            embeddings.append(response["embedding"])
 
-        response = await self._make_request("api/embeddings", data)
-        embeddings = response["embeddings"]
-        return embeddings[0] if len(text) == 1 else embeddings
+        return embeddings[0] if isinstance(text, str) else embeddings
+
+
+class MistralModel(OllamaModel):
+    """Convenience class for Mistral models running on Ollama."""
+    
+    def __init__(
+        self,
+        model: str = "mistral",
+        base_url: str = "http://localhost:11434",
+        **kwargs
+    ):
+        super().__init__(model_name=model, base_url=base_url, **kwargs)

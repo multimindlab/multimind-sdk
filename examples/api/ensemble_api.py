@@ -8,8 +8,7 @@ from typing import List, Optional, Dict, Any
 import asyncio
 from pathlib import Path
 
-from multimind import Router, TaskType
-from multimind.ensemble import AdvancedEnsemble, EnsembleMethod
+from multimind import Router, TaskType, AdvancedEnsemble, EnsembleMethod
 
 app = FastAPI(
     title="MultiMind Ensemble API",

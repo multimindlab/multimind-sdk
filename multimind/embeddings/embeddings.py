@@ -423,7 +423,13 @@ class SentenceT5Embedder(BaseLLM):
         return [[0.0]]  # Placeholder implementation
 
 from PIL import Image
-from transformers import CLIPProcessor, CLIPModel
+# Optional transformers import for image embedding features
+try:
+    from transformers import CLIPProcessor, CLIPModel
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
+    print("Warning: transformers not available. Image embedding features will be disabled.")
 
 class ImageEmbedder(BaseLLM):
     """Image embedding model implementation."""
@@ -435,8 +441,12 @@ class ImageEmbedder(BaseLLM):
             model_name: Name of the pre-trained image embedding model.
         """
         self.model_name = model_name
-        self.model = CLIPModel.from_pretrained(model_name)
-        self.processor = CLIPProcessor.from_pretrained(model_name)
+        if TRANSFORMERS_AVAILABLE:
+            self.model = CLIPModel.from_pretrained(model_name)
+            self.processor = CLIPProcessor.from_pretrained(model_name)
+        else:
+            self.model = None
+            self.processor = None
 
     def embed(self, images: List[Image.Image]) -> List[List[float]]:
         """Generate embeddings for a list of images.
@@ -447,6 +457,9 @@ class ImageEmbedder(BaseLLM):
         Returns:
             List of embedding vectors.
         """
+        if not TRANSFORMERS_AVAILABLE or self.model is None or self.processor is None:
+            raise ImportError("Transformers is required for ImageEmbedder. Please install transformers.")
+        
         inputs = self.processor(images=images, return_tensors="pt", padding=True)
         outputs = self.model.get_image_features(**inputs)
         return outputs.detach().numpy().tolist()

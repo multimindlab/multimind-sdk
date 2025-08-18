@@ -11,16 +11,44 @@ import csv
 import io
 from datetime import datetime
 import aiohttp
-import aiofiles
-import pdfplumber
-from docx import Document
-import html2text
-from bs4 import BeautifulSoup
-import pandas as pd
-from kafka import KafkaConsumer
-from notion_client import Client as NotionClient
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
+try:
+    import aiofiles
+except ImportError:
+    aiofiles = None
+try:
+    import pdfplumber
+except ImportError:
+    pdfplumber = None
+try:
+    from docx import Document
+except ImportError:
+    Document = None
+try:
+    import html2text
+except ImportError:
+    html2text = None
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    BeautifulSoup = None
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+try:
+    from kafka import KafkaConsumer
+except ImportError:
+    KafkaConsumer = None
+try:
+    from notion_client import Client as NotionClient
+except ImportError:
+    NotionClient = None
+try:
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+except ImportError:
+    Credentials = None
+    build = None
 from ..models.base import BaseLLM
 
 @dataclass

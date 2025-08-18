@@ -6,22 +6,43 @@ from typing import List, Dict, Any, Optional, Union, Tuple, Callable
 import re
 from dataclasses import dataclass
 from enum import Enum
-import spacy
-from bs4 import BeautifulSoup
+# Optional spacy import for NLP features
+try:
+    import spacy
+    SPACY_AVAILABLE = True
+except ImportError:
+    SPACY_AVAILABLE = False
+    print("Warning: spacy not available. NLP features will be disabled.")
+
+# Optional beautifulsoup import for HTML processing
+try:
+    from bs4 import BeautifulSoup
+    BEAUTIFULSOUP_AVAILABLE = True
+except ImportError:
+    BEAUTIFULSOUP_AVAILABLE = False
+    print("Warning: beautifulsoup4 not available. HTML processing features will be disabled.")
+
 import requests
 
-# Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
+# Optional transformers import for advanced document processing
 try:
     from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
     _AUTO_MODEL_CLASS = AutoModelForSeq2SeqLM
+    TRANSFORMERS_AVAILABLE = True
 except ImportError:
     try:
         from transformers import AutoTokenizer, AutoModelForSeq2SeqGeneration
         _AUTO_MODEL_CLASS = AutoModelForSeq2SeqGeneration
+        TRANSFORMERS_AVAILABLE = True
     except ImportError:
-        # Fallback for very old versions
-        from transformers import AutoTokenizer
-        _AUTO_MODEL_CLASS = None
+        try:
+            from transformers import AutoTokenizer
+            _AUTO_MODEL_CLASS = None
+            TRANSFORMERS_AVAILABLE = True
+        except ImportError:
+            TRANSFORMERS_AVAILABLE = False
+            _AUTO_MODEL_CLASS = None
+            print("Warning: transformers not available. Advanced document processing features will be disabled.")
 
 import numpy as np
 from ..models.base import BaseLLM

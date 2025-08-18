@@ -5,9 +5,7 @@ This script demonstrates how to use the Code Review workflow API to automate cod
 """
 
 import asyncio
-from multimind.mcp.workflows import CodeReviewWorkflow
-from multimind.models import OpenAIModel, ClaudeModel
-from multimind.integrations import GitHubIntegrationHandler, SlackIntegrationHandler, DiscordIntegrationHandler
+from multimind import CodeReviewWorkflow, OpenAIModel, ClaudeModel, GitHubIntegrationHandler, SlackIntegrationHandler, DiscordIntegrationHandler
 
 async def main():
     # Initialize models
