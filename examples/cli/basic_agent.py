@@ -16,17 +16,17 @@ async def main():
     
     # Create different model instances
     openai_model = OpenAIModel(
-        model="gpt-3.5-turbo",
+        model_name="gpt-3.5-turbo",
         temperature=0.7
     )
     
     claude_model = ClaudeModel(
-        model="claude-3-sonnet-20240229",
+        model_name="claude-3-sonnet-20240229",
         temperature=0.7
     )
     
     mistral_model = MistralModel(
-        model="mistral-medium",
+        model_name="mistral-medium",
         temperature=0.7
     )
     

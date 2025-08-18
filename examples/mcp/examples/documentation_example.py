@@ -1,11 +1,12 @@
 """
 Example usage of the Documentation workflow.
+
+This script demonstrates how to use the Documentation workflow API to automate documentation generation.
 """
 
 import asyncio
-from multimind.mcp.workflows import DocumentationWorkflow
-from multimind.models import OpenAIModel, ClaudeModel
-from multimind.integrations import GitHubIntegrationHandler, SlackIntegrationHandler, DiscordIntegrationHandler
+from multimind import DocumentationWorkflow, OpenAIModel, ClaudeModel, GitHubIntegrationHandler
+from multimind.integrations import SlackIntegrationHandler, DiscordIntegrationHandler
 
 async def main():
     # Initialize models

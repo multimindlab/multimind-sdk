@@ -3,8 +3,7 @@ Basic usage example of the MultiModelWrapper.
 """
 
 import asyncio
-from multimind.models.factory import ModelFactory
-from multimind.models.multi_model import MultiModelWrapper
+from multimind import ModelFactory, MultiModelWrapper
 
 async def main():
     # Initialize the model factory

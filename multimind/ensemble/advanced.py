@@ -9,7 +9,13 @@ import asyncio
 import numpy as np
 from ..core.provider import GenerationResult, EmbeddingResult, ImageAnalysisResult
 from ..core.router import Router, TaskType
-import optuna
+# Optional optuna import for hyperparameter tuning
+try:
+    import optuna
+    OPTUNA_AVAILABLE = True
+except ImportError:
+    OPTUNA_AVAILABLE = False
+    print("Warning: Optuna not available. Hyperparameter tuning features will be disabled.")
 
 class EnsembleMethod(str, Enum):
     """Methods for combining ensemble results."""
@@ -510,6 +516,9 @@ class AdvancedEnsemble:
         Returns:
             Dict of best weights
         """
+        if not OPTUNA_AVAILABLE:
+            raise ImportError("Optuna is required for hyperparameter tuning. Please install optuna.")
+        
         providers = [r.provider for r in results]
         def objective(trial):
             weights = {p: trial.suggest_float(f"weight_{p}", 0.01, 1.0) for p in providers}

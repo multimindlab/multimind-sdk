@@ -47,26 +47,28 @@ wrapper = MultiModelWrapper(
     fallback_models=["gpt-4", "claude"]
 )
 
-# Generate text
-response = await wrapper.generate("Explain quantum computing")
+async def example_generate_text():
+    # Generate text
+    response = await wrapper.generate("Explain quantum computing")
 ```
 
 2. Multi-Modal Processing:
 ```python
-from multimind.router.multi_modal_router import MultiModalRouter
+async def example_multi_modal():
+    from multimind.router.multi_modal_router import MultiModalRouter
 
-# Initialize
-router = MultiModalRouter()
+    # Initialize
+    router = MultiModalRouter()
 
-# Process multi-modal request
-request = {
-    "content": {
-        "image": "base64_encoded_image",
-        "text": "Describe this image"
-    },
-    "modalities": ["image", "text"]
-}
-response = await router.process(request)
+    # Process multi-modal request
+    request = {
+        "content": {
+            "image": "base64_encoded_image",
+            "text": "Describe this image"
+        },
+        "modalities": ["image", "text"]
+    }
+    response = await router.process(request)
 ```
 
 ## Model Management Examples
@@ -288,6 +290,5 @@ async def test_example():
 ## Support
 
 For issues and questions:
-1. Check the [documentation](https://multimind-sdk.readthedocs.io/)
-2. Open an issue on GitHub
-3. Contact support@multimind.ai 
+1. Open an issue on GitHub
+2. Contact contact@multimind.dev

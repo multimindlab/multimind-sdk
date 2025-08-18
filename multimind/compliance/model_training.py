@@ -9,8 +9,13 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 import numpy as np
 from dataclasses import dataclass
-import torch
-from torch.utils.data import Dataset, DataLoader
+try:
+    import torch
+    from torch.utils.data import Dataset, DataLoader
+except ImportError:
+    torch = None
+    Dataset = None
+    DataLoader = None
 import logging
 from pathlib import Path
 import json
@@ -24,12 +29,12 @@ class ComplianceMetrics:
     fairness_score: float
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
-class ComplianceDataset(Dataset):
+class ComplianceDataset:
     """Dataset wrapper that ensures compliance during training."""
     
     def __init__(
         self,
-        base_dataset: Dataset,
+        base_dataset,
         compliance_rules: Dict[str, Any],
         data_categories: List[str]
     ):
@@ -90,8 +95,8 @@ class ComplianceMonitor:
 
     def update_metrics(
         self,
-        predictions: torch.Tensor,
-        targets: torch.Tensor,
+        predictions,
+        targets,
         metadata: Dict[str, Any]
     ) -> ComplianceMetrics:
         """Update compliance metrics during training."""
@@ -109,8 +114,8 @@ class ComplianceMonitor:
 
     def _calculate_bias_score(
         self,
-        predictions: torch.Tensor,
-        targets: torch.Tensor
+        predictions,
+        targets
     ) -> float:
         """Calculate bias score for model predictions."""
         # Implementation would use appropriate bias metrics
@@ -118,22 +123,22 @@ class ComplianceMonitor:
 
     def _calculate_privacy_score(
         self,
-        predictions: torch.Tensor,
+        predictions,
         metadata: Dict[str, Any]
     ) -> float:
         """Calculate privacy score for model predictions."""
         # Implementation would check for privacy violations
         return 0.0
 
-    def _calculate_transparency_score(self, predictions: torch.Tensor) -> float:
+    def _calculate_transparency_score(self, predictions) -> float:
         """Calculate transparency score for model predictions."""
         # Implementation would assess model transparency
         return 0.0
 
     def _calculate_fairness_score(
         self,
-        predictions: torch.Tensor,
-        targets: torch.Tensor
+        predictions,
+        targets
     ) -> float:
         """Calculate fairness score for model predictions."""
         # Implementation would use fairness metrics
@@ -165,8 +170,8 @@ class ComplianceEvaluator:
 
     async def evaluate_model(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Evaluate model compliance on test data."""
@@ -226,8 +231,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_metric(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metric: str,
         metadata: Dict[str, Any]
     ) -> float:
@@ -247,8 +252,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_bias(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Evaluate model bias."""
@@ -287,8 +292,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_privacy(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Evaluate model privacy."""
@@ -322,8 +327,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_transparency(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Evaluate model transparency."""
@@ -356,8 +361,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_fairness(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Evaluate model fairness."""
@@ -395,8 +400,8 @@ class ComplianceEvaluator:
 
     async def _evaluate_hipaa(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Evaluate HIPAA compliance."""
@@ -428,8 +433,8 @@ class ComplianceEvaluator:
 
     async def _generate_detailed_metrics(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Generate detailed compliance metrics."""
@@ -453,7 +458,7 @@ class ComplianceEvaluator:
 
     async def _perform_statistical_analysis(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -513,7 +518,7 @@ class ComplianceEvaluator:
     # Helper methods for metric calculations
     def _calculate_demographic_parity(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> float:
@@ -523,7 +528,7 @@ class ComplianceEvaluator:
 
     def _calculate_equal_opportunity(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> float:
@@ -533,7 +538,7 @@ class ComplianceEvaluator:
 
     def _calculate_disparate_impact(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> float:
@@ -543,7 +548,7 @@ class ComplianceEvaluator:
 
     def _check_data_minimization(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> float:
@@ -553,7 +558,7 @@ class ComplianceEvaluator:
 
     def _check_privacy_preserving(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> float:
@@ -571,7 +576,7 @@ class ComplianceEvaluator:
 
     def _check_explainability(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader
     ) -> float:
         """Check model explainability."""
@@ -580,7 +585,7 @@ class ComplianceEvaluator:
 
     def _check_documentation(
         self,
-        model: torch.nn.Module,
+        model,
         metadata: Dict[str, Any]
     ) -> float:
         """Check documentation compliance."""
@@ -589,7 +594,7 @@ class ComplianceEvaluator:
 
     def _check_audit_trail(
         self,
-        model: torch.nn.Module,
+        model,
         metadata: Dict[str, Any]
     ) -> float:
         """Check audit trail compliance."""
@@ -598,8 +603,8 @@ class ComplianceEvaluator:
 
     def _check_equal_treatment(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
+        model,
+        test_data,
         metadata: Dict[str, Any]
     ) -> float:
         """Check equal treatment compliance."""
@@ -608,9 +613,9 @@ class ComplianceEvaluator:
 
     def _check_equal_outcomes(
         self,
-        model: torch.nn.Module,
-        test_data: DataLoader,
-        targets: torch.Tensor,
+        model,
+        test_data,
+        targets,
         metadata: Dict[str, Any]
     ) -> float:
         """Check equal outcomes compliance."""
@@ -627,7 +632,7 @@ class ComplianceEvaluator:
 
     def _check_data_security(
         self,
-        model: torch.nn.Module,
+        model,
         metadata: Dict[str, Any]
     ) -> float:
         """Check data security compliance."""
@@ -636,7 +641,7 @@ class ComplianceEvaluator:
 
     def _check_audit_controls(
         self,
-        model: torch.nn.Module,
+        model,
         metadata: Dict[str, Any]
     ) -> float:
         """Check audit controls compliance."""
@@ -645,7 +650,7 @@ class ComplianceEvaluator:
 
     def _analyze_bias_distribution(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -655,7 +660,7 @@ class ComplianceEvaluator:
 
     def _analyze_privacy_patterns(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -665,7 +670,7 @@ class ComplianceEvaluator:
 
     def _analyze_fairness_metrics(
         self,
-        model: torch.nn.Module,
+        model,
         test_data: DataLoader,
         metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -703,7 +708,7 @@ class ComplianceTrainer:
     
     def __init__(
         self,
-        model: torch.nn.Module,
+        model,
         compliance_rules: Dict[str, Any],
         training_config: Dict[str, Any]
     ):

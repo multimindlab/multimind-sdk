@@ -4,7 +4,7 @@ Example usage scenarios for the privacy compliance module.
 
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Set
-from multimind.compliance.privacy import (
+from multimind.compliance import (
     PrivacyCompliance,
     GovernanceConfig,
     DataCategory,

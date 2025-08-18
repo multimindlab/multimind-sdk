@@ -8,8 +8,7 @@ import json
 from pathlib import Path
 from typing import List, Optional
 
-from multimind import Router, TaskType
-from multimind.ensemble import AdvancedEnsemble, EnsembleMethod
+from multimind import Router, TaskType, AdvancedEnsemble, EnsembleMethod
 
 @click.group()
 def ensemble():

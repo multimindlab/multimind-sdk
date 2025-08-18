@@ -1,0 +1,177 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.1, pytest-8.3.5, pluggy-1.6.0 -- /opt/homebrew/opt/python@3.13/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk
+plugins: anyio-4.9.0, asyncio-1.0.0
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 95 items / 7 errors / 5 skipped
+
+==================================== ERRORS ====================================
+_______________ ERROR collecting tests/test_advanced_features.py _______________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_advanced_features.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_advanced_features.py:16: in <module>
+    from multimind.memory import (
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+------------------------------- Captured stdout --------------------------------
+Warning: PyTorch not available. Advanced routing strategies will be disabled.
+Warning: PyTorch not available. Advanced MoE features will be disabled.
+Warning: PyTorch not available. MoE features will be disabled.
+Warning: PyTorch not available. Unified MoE features will be disabled.
+Warning: PyTorch not available. MoE model features will be disabled.
+Warning: PyTorch not available. MoE base features will be disabled.
+Warning: pydantic-settings not available. Configuration features will be disabled.
+Warning: Optuna not available. Hyperparameter tuning features will be disabled.
+Warning: PyTorch not available. Non-transformer LLM features will be disabled.
+Warning: Transformers not available. Non-transformer LLM features will be disabled.
+Warning: PEFT not available. Adapter features will be disabled.
+Warning: tiktoken not available. Token counting features will be disabled.
+Warning: spacy not available. NLP features will be disabled.
+Warning: beautifulsoup4 not available. HTML processing features will be disabled.
+Warning: transformers not available. Advanced document processing features will be disabled.
+Warning: spacy not available. NLP features will be disabled.
+Warning: transformers not available. Advanced document processing features will be disabled.
+Warning: pytesseract not available. OCR features will be disabled.
+Warning: opencv-python not available. Image processing features will be disabled.
+Warning: transformers not available. Advanced document processing features will be disabled.
+Warning: PyTorch not available. Deep learning features will be disabled.
+Warning: transformers not available. Image embedding features will be disabled.
+_____________________ ERROR collecting tests/test_basic.py _____________________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_basic.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_basic.py:7: in <module>
+    from multimind import (
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+____________________ ERROR collecting tests/test_client.py _____________________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_client.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_client.py:2: in <module>
+    from multimind.client import FederatedRouter, ModelClient, RAGClient
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+_____________ ERROR collecting tests/test_client_model_clients.py ______________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_client_model_clients.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_client_model_clients.py:1: in <module>
+    from multimind.client.model_client import ImageModelClient, AudioModelClient, CodeModelClient
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+______________ ERROR collecting tests/test_compliance_controls.py ______________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_compliance_controls.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_compliance_controls.py:1: in <module>
+    from multimind.compliance.iso import ISOControl
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+_________________ ERROR collecting tests/test_config_utils.py __________________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_config_utils.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_config_utils.py:2: in <module>
+    from multimind.config import MoEConfig, MultiModalConfig
+multimind/__init__.py:155: in <module>
+    from .compliance import (
+multimind/compliance/__init__.py:35: in <module>
+    from multimind.cli.compliance import run_compliance
+multimind/cli/__init__.py:10: in <module>
+    from .compliance import compliance
+multimind/cli/compliance.py:14: in <module>
+    from ..gateway.compliance_api import (
+multimind/gateway/__init__.py:9: in <module>
+    from .api import MultiMindAPI, app, start
+multimind/gateway/api.py:12: in <module>
+    import uvicorn
+E   ModuleNotFoundError: No module named 'uvicorn'
+_________________ ERROR collecting tests/test_model_client.py __________________
+ImportError while importing test module '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_model_client.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.13/3.13.1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/importlib/__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+tests/test_model_client.py:1: in <module>
+    import torch
+E   ModuleNotFoundError: No module named 'torch'
+=========================== short test summary info ============================
+ERROR tests/test_advanced_features.py
+ERROR tests/test_basic.py
+ERROR tests/test_client.py
+ERROR tests/test_client_model_clients.py
+ERROR tests/test_compliance_controls.py
+ERROR tests/test_config_utils.py
+ERROR tests/test_model_client.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 7 errors during collection !!!!!!!!!!!!!!!!!!!!
+=================== 5 skipped, 5 warnings, 7 errors in 1.26s ===================

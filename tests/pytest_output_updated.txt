@@ -1,0 +1,388 @@
+/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/pytest_asyncio/plugin.py:208: PytestDeprecationWarning: The configuration option "asyncio_default_fixture_loop_scope" is unset.
+The event loop scope for asynchronous fixtures will default to the fixture caching scope. Future versions of pytest-asyncio will default the loop scope for asynchronous fixtures to function scope. Set the default fixture loop scope explicitly in order to avoid unexpected behavior in the future. Valid fixture loop scopes are: "function", "class", "module", "package", "session"
+
+  warnings.warn(PytestDeprecationWarning(_DEFAULT_FIXTURE_LOOP_SCOPE_UNSET))
+============================= test session starts ==============================
+platform darwin -- Python 3.10.10, pytest-8.3.5, pluggy-1.6.0 -- /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/bin/python3.10
+cachedir: .pytest_cache
+rootdir: /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk
+plugins: anyio-4.9.0, asyncio-1.0.0
+asyncio: mode=strict, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 200 items / 5 skipped
+
+tests/examples/api/test_ensemble_api.py::test_ensemble_api_imports PASSED [  0%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_api_main SKIPPED  [  1%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_model_initialization PASSED [  1%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_model_generation PASSED [  2%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_creation PASSED   [  2%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_prediction PASSED [  3%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_strategies PASSED [  3%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_evaluation PASSED [  4%]
+tests/examples/api/test_ensemble_api.py::test_model_comparison PASSED    [  4%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_model_embeddings PASSED [  5%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_model_chat PASSED [  5%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_workflow PASSED   [  6%]
+tests/examples/api/test_ensemble_api.py::test_error_handling PASSED      [  6%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_api_structure PASSED [  7%]
+tests/examples/api/test_ensemble_api.py::test_environment_variables FAILED [  7%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_configuration PASSED [  8%]
+tests/examples/api/test_ensemble_api.py::test_ensemble_performance_metrics PASSED [  8%]
+tests/examples/cli/test_basic_agent.py::test_basic_agent_imports PASSED  [  9%]
+tests/examples/cli/test_basic_agent.py::test_basic_agent_main_function PASSED [  9%]
+tests/examples/cli/test_basic_agent.py::test_model_initialization PASSED [ 10%]
+tests/examples/cli/test_basic_agent.py::test_agent_creation PASSED       [ 10%]
+tests/examples/cli/test_basic_agent.py::test_agent_execution PASSED      [ 11%]
+tests/examples/cli/test_basic_agent.py::test_model_generation PASSED     [ 11%]
+tests/examples/cli/test_basic_agent.py::test_model_streaming PASSED      [ 12%]
+tests/examples/cli/test_basic_agent.py::test_model_chat PASSED           [ 12%]
+tests/examples/cli/test_basic_agent.py::test_model_embeddings PASSED     [ 13%]
+tests/examples/cli/test_basic_agent.py::test_memory_operations PASSED    [ 13%]
+tests/examples/cli/test_basic_agent.py::test_calculator_tool PASSED      [ 14%]
+tests/examples/cli/test_basic_agent.py::test_environment_variables PASSED [ 14%]
+tests/examples/cli/test_basic_agent.py::test_error_handling PASSED       [ 15%]
+tests/examples/cli/test_basic_agent.py::test_example_structure PASSED    [ 15%]
+tests/examples/compliance/test_healthcare_compliance.py::test_healthcare_compliance_imports SKIPPED [ 16%]
+tests/examples/compliance/test_healthcare_compliance.py::test_clinical_trial_compliance_main SKIPPED [ 16%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_model_initialization PASSED [ 17%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_model_generation PASSED [ 17%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_trainer PASSED [ 18%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_evaluator PASSED [ 18%]
+tests/examples/compliance/test_healthcare_compliance.py::test_hipaa_compliance_check PASSED [ 19%]
+tests/examples/compliance/test_healthcare_compliance.py::test_fda_compliance_check PASSED [ 19%]
+tests/examples/compliance/test_healthcare_compliance.py::test_gdpr_compliance_check PASSED [ 20%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_model_embeddings PASSED [ 20%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_model_chat PASSED [ 21%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_training_workflow PASSED [ 21%]
+tests/examples/compliance/test_healthcare_compliance.py::test_error_handling FAILED [ 22%]
+tests/examples/compliance/test_healthcare_compliance.py::test_healthcare_compliance_structure FAILED [ 22%]
+tests/examples/compliance/test_healthcare_compliance.py::test_environment_variables FAILED [ 23%]
+tests/examples/compliance/test_healthcare_compliance.py::test_compliance_configuration PASSED [ 23%]
+tests/test_adapter_fusion_compat.py::test_adapterconfig_deprecated PASSED [ 24%]
+tests/test_adapter_fusion_compat.py::test_tasktype_deprecated PASSED     [ 24%]
+tests/test_adapter_fusion_compat.py::test_advanced_features_importable PASSED [ 25%]
+tests/test_advanced_features.py::TestSummaryMemoryCompression::test_summary_memory_compression SKIPPED [ 25%]
+tests/test_advanced_features.py::TestAdvancedDocumentProcessing::test_document_processor_validation SKIPPED [ 26%]
+tests/test_advanced_features.py::TestAdvancedDocumentProcessing::test_document_processing_error_handling SKIPPED [ 26%]
+tests/test_advanced_features.py::TestAgentToolRegistry::test_agent_tool_registry SKIPPED [ 27%]
+tests/test_advanced_features.py::TestAgentToolRegistry::test_agent_error_handling SKIPPED [ 27%]
+tests/test_advanced_features.py::TestAdvancedPipelineFeatures::test_pipeline_builder_validation SKIPPED [ 28%]
+tests/test_advanced_features.py::TestAdvancedPipelineFeatures::test_pipeline_error_handling SKIPPED [ 28%]
+tests/test_advanced_features.py::TestAdvancedRetrievalFeatures::test_enhanced_retriever_fusion PASSED [ 29%]
+tests/test_advanced_features.py::TestAdvancedRetrievalFeatures::test_retriever_feedback_loop PASSED [ 29%]
+tests/test_advanced_features.py::TestAdvancedEnsemblePerformanceTracking::test_ensemble_performance_tracking SKIPPED [ 30%]
+tests/test_advanced_features.py::TestAdvancedLLMInterfaceFeatures::test_llm_interface_error_strategies PASSED [ 30%]
+tests/test_advanced_features.py::TestAdvancedLLMInterfaceFeatures::test_llm_interface_fallback PASSED [ 31%]
+tests/test_advanced_features.py::TestAdvancedMCPParallelExecution::test_mcp_parallel_execution SKIPPED [ 31%]
+tests/test_advanced_features.py::TestIntegrationScenarios::test_full_rag_pipeline PASSED [ 32%]
+tests/test_advanced_features.py::TestIntegrationScenarios::test_agent_with_tools_and_memory PASSED [ 32%]
+tests/test_advanced_features.py::TestIntegrationScenarios::test_ensemble_with_multiple_models PASSED [ 33%]
+tests/test_advanced_features.py::TestEdgeCasesAndStressTests::test_large_data_handling PASSED [ 33%]
+tests/test_advanced_features.py::TestEdgeCasesAndStressTests::test_concurrent_access PASSED [ 34%]
+tests/test_advanced_features.py::TestEdgeCasesAndStressTests::test_model_rate_limiting PASSED [ 34%]
+tests/test_advanced_features.py::TestAdvancedMemoryFeatures::test_memory_edge_cases PASSED [ 35%]
+tests/test_advanced_features.py::TestAdvancedMemoryFeatures::test_memory_error_handling PASSED [ 35%]
+tests/test_advanced_features.py::TestAdvancedMemoryFeatures::test_memory_persistence PASSED [ 36%]
+tests/test_advanced_features.py::TestAdvancedMemoryFeatures::test_summary_memory_compression SKIPPED [ 36%]
+tests/test_advanced_features.py::TestAdvancedAgentFeatures::test_agent_error_handling PASSED [ 37%]
+tests/test_advanced_features.py::TestAdvancedAgentFeatures::test_agent_memory_integration PASSED [ 37%]
+tests/test_advanced_features.py::TestAdvancedAgentFeatures::test_agent_tool_registry PASSED [ 38%]
+tests/test_advanced_features.py::TestAdvancedEnsembleFeatures::test_ensemble_error_handling SKIPPED [ 38%]
+tests/test_advanced_features.py::TestAdvancedEnsembleFeatures::test_ensemble_performance_tracking SKIPPED [ 39%]
+tests/test_advanced_features.py::TestAdvancedMCPFeatures::test_mcp_executor_error_handling PASSED [ 39%]
+tests/test_advanced_features.py::TestAdvancedMCPFeatures::test_mcp_parallel_execution PASSED [ 40%]
+tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_compliance_shard_verification FAILED [ 40%]
+tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_self_healing_compliance FAILED [ 41%]
+tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_model_watermarking FAILED [ 41%]
+tests/test_advanced_features.py::TestAdvancedEvaluationFeatures::test_advanced_evaluator_metrics SKIPPED [ 42%]
+tests/test_advanced_features.py::TestAdvancedEvaluationFeatures::test_evaluation_error_handling SKIPPED [ 42%]
+tests/test_basic.py::test_imports PASSED                                 [ 43%]
+tests/test_basic.py::test_agent_creation PASSED                          [ 43%]
+tests/test_basic.py::test_prompt_chain PASSED                            [ 44%]
+tests/test_basic.py::test_mcp_parser PASSED                              [ 44%]
+tests/test_basic.py::test_usage_tracker PASSED                           [ 45%]
+tests/test_client.py::test_federated_router_init PASSED                  [ 45%]
+tests/test_client.py::test_model_client_init PASSED                      [ 46%]
+tests/test_client.py::test_rag_client_init PASSED                        [ 46%]
+tests/test_client.py::test_model_client_query PASSED                     [ 47%]
+tests/test_client.py::test_rag_client_query PASSED                       [ 47%]
+tests/test_client_model_clients.py::test_image_model_client PASSED       [ 48%]
+tests/test_client_model_clients.py::test_audio_model_client PASSED       [ 48%]
+tests/test_client_model_clients.py::test_code_model_client PASSED        [ 49%]
+tests/test_compliance_controls.py::test_iso_control_check_compliance PASSED [ 49%]
+tests/test_compliance_legacy_imports.py::test_legacy_imports FAILED      [ 50%]
+tests/test_config_utils.py::test_moe_config_init PASSED                  [ 50%]
+tests/test_config_utils.py::test_multi_modal_config_init PASSED          [ 51%]
+tests/test_context_transfer.py::TestContextTransferManager::test_extract_context_basic PASSED [ 51%]
+tests/test_context_transfer.py::TestContextTransferManager::test_extract_context_empty PASSED [ 52%]
+tests/test_context_transfer.py::TestContextTransferManager::test_extract_context_last_n_exceeds_messages PASSED [ 52%]
+tests/test_context_transfer.py::TestContextTransferManager::test_format_for_claude SKIPPED [ 53%]
+tests/test_context_transfer.py::TestContextTransferManager::test_format_for_deepseek SKIPPED [ 53%]
+tests/test_context_transfer.py::TestContextTransferManager::test_format_generic PASSED [ 54%]
+tests/test_context_transfer.py::TestContextTransferManager::test_load_conversation_file_not_found PASSED [ 54%]
+tests/test_context_transfer.py::TestContextTransferManager::test_load_conversation_from_file PASSED [ 55%]
+tests/test_context_transfer.py::TestContextTransferManager::test_load_conversation_with_messages_key PASSED [ 55%]
+tests/test_context_transfer.py::TestContextTransferManager::test_save_formatted_prompt PASSED [ 56%]
+tests/test_context_transfer.py::TestContextTransferManager::test_summarize_context PASSED [ 56%]
+tests/test_context_transfer.py::TestContextTransferManager::test_summarize_context_empty PASSED [ 57%]
+tests/test_context_transfer.py::TestAdapterFactory::test_get_adapter_case_insensitive PASSED [ 57%]
+tests/test_context_transfer.py::TestAdapterFactory::test_get_adapter_claude PASSED [ 58%]
+tests/test_context_transfer.py::TestAdapterFactory::test_get_adapter_deepseek PASSED [ 58%]
+tests/test_context_transfer.py::TestAdapterFactory::test_get_adapter_unsupported PASSED [ 59%]
+tests/test_context_transfer.py::TestAdapterFactory::test_get_supported_models PASSED [ 59%]
+tests/test_context_transfer.py::TestModelAdapters::test_claude_adapter PASSED [ 60%]
+tests/test_context_transfer.py::TestModelAdapters::test_deepseek_adapter PASSED [ 60%]
+tests/test_context_transfer.py::TestModelAdapters::test_gemini_adapter PASSED [ 61%]
+tests/test_context_transfer.py::TestIntegration::test_full_transfer_workflow PASSED [ 61%]
+tests/test_context_transfer_integration.py::TestContextTransferIntegration::test_adapter_functionality PASSED [ 62%]
+tests/test_context_transfer_integration.py::TestContextTransferIntegration::test_chrome_extension_workflow PASSED [ 62%]
+tests/test_context_transfer_integration.py::TestContextTransferIntegration::test_context_extraction_variations PASSED [ 63%]
+tests/test_context_transfer_integration.py::TestContextTransferIntegration::test_error_handling PASSED [ 63%]
+tests/test_context_transfer_integration.py::TestContextTransferIntegration::test_multiple_model_transfers PASSED [ 64%]
+tests/test_core_exceptions.py::test_multimind_error PASSED               [ 64%]
+tests/test_core_exceptions.py::test_retrieval_error PASSED               [ 65%]
+tests/test_core_exceptions.py::test_generation_error PASSED              [ 65%]
+tests/test_core_exceptions.py::test_document_processing_error PASSED     [ 66%]
+tests/test_core_exceptions.py::test_embedding_error PASSED               [ 66%]
+tests/test_core_exceptions.py::test_configuration_error PASSED           [ 67%]
+tests/test_document_loader.py::test_default_file_loader_loads_file PASSED [ 67%]
+tests/test_document_loader.py::test_default_file_loader_missing_file PASSED [ 68%]
+tests/test_document_loader.py::test_default_file_loader_init PASSED      [ 68%]
+tests/test_document_loader.py::test_data_ingestion_init FAILED           [ 69%]
+tests/test_document_loader.py::test_default_file_loader_load PASSED      [ 69%]
+tests/test_document_loader.py::test_data_ingestion_ingest FAILED         [ 70%]
+tests/test_ensemble.py::test_advanced_ensemble_init PASSED               [ 70%]
+tests/test_ensemble.py::test_advanced_ensemble_combine PASSED            [ 71%]
+tests/test_examples.py::test_import ERROR                                [ 71%]
+tests/test_import.py::test_import_with_warnings_disabled PASSED          [ 72%]
+tests/test_import.py::test_import_with_warnings_enabled PASSED           [ 72%]
+tests/test_import.py::test_basic_functionality PASSED                    [ 73%]
+tests/test_integrations.py::test_integration_handler_init SKIPPED (I...) [ 73%]
+tests/test_llm.py::test_qlora_llm_warns_and_returns PASSED               [ 74%]
+tests/test_llm.py::test_compacter_llm_warns_and_returns PASSED           [ 74%]
+tests/test_llm_interface.py::test_llm_interface_basic_generation PASSED  [ 75%]
+tests/test_llm_interface.py::test_llm_interface_ensemble_majority PASSED [ 75%]
+tests/test_llm_interface.py::test_llm_interface_error_handling PASSED    [ 76%]
+tests/test_llm_interface.py::test_llm_interface_metrics PASSED           [ 76%]
+tests/test_llm_interface.py::test_llm_interface_prompt_analysis PASSED   [ 77%]
+tests/test_llm_wrappers.py::test_qlora_llm_init PASSED                   [ 77%]
+tests/test_llm_wrappers.py::test_compacter_llm_init PASSED               [ 78%]
+tests/test_llm_wrappers.py::test_llm_interface_init SKIPPED (LLMInte...) [ 78%]
+tests/test_llm_wrappers.py::test_model_type_enum PASSED                  [ 79%]
+tests/test_memory.py::test_buffer_memory_basic SKIPPED (BufferMemory...) [ 79%]
+tests/test_memory.py::test_summary_buffer_memory_basic SKIPPED (Summ...) [ 80%]
+tests/test_memory_advanced.py::test_implicit_memory_basic SKIPPED (I...) [ 80%]
+tests/test_memory_advanced.py::test_implicit_memory_edge_cases SKIPPED   [ 81%]
+tests/test_memory_advanced.py::test_procedural_memory_basic PASSED       [ 81%]
+tests/test_memory_advanced.py::test_semantic_memory_basic PASSED         [ 82%]
+tests/test_model_client.py::test_lstm_model_client SKIPPED (DummyMod...) [ 82%]
+tests/test_model_client.py::test_rnn_model_client SKIPPED (DummyMode...) [ 83%]
+tests/test_model_client.py::test_gru_model_client SKIPPED (DummyMode...) [ 83%]
+tests/test_model_client.py::test_spacy_client PASSED                     [ 84%]
+tests/test_model_client.py::test_s4_client PASSED                        [ 84%]
+tests/test_model_client.py::test_hyena_client PASSED                     [ 85%]
+tests/test_model_client.py::test_moe_model_client PASSED                 [ 85%]
+tests/test_orchestration_router.py::test_prompt_chain PASSED             [ 86%]
+tests/test_orchestration_router.py::test_task_runner PASSED              [ 86%]
+tests/test_orchestration_router.py::test_model_router PASSED             [ 87%]
+tests/test_orchestration_router.py::test_pipeline PASSED                 [ 87%]
+tests/test_pipeline.py::test_pipeline PASSED                             [ 88%]
+tests/test_pipeline.py::test_pipeline_builder PASSED                     [ 88%]
+tests/test_pipeline.py::test_pipeline_init PASSED                        [ 89%]
+tests/test_pipeline.py::test_pipeline_builder_init PASSED                [ 89%]
+tests/test_pipeline.py::test_pipeline_builder_build PASSED               [ 90%]
+tests/test_retrieval.py::test_retriever_init PASSED                      [ 90%]
+tests/test_retrieval.py::test_enhanced_retriever_init PASSED             [ 91%]
+tests/test_retrieval.py::test_hybrid_retriever_init PASSED               [ 91%]
+tests/test_retrieval.py::test_retriever_retrieve_empty PASSED            [ 92%]
+tests/test_retrieval.py::test_enhanced_retriever_retrieve_empty PASSED   [ 92%]
+tests/test_retrieval.py::test_hybrid_retriever_retrieve_empty PASSED     [ 93%]
+tests/test_server_api.py::test_multimind_server_init PASSED              [ 93%]
+tests/test_server_api.py::test_multi_model_app_exists PASSED             [ 94%]
+tests/test_server_api.py::test_unified_app_exists PASSED                 [ 94%]
+tests/test_splitter.py::test_text_splitter_split_text PASSED             [ 95%]
+tests/test_splitter.py::test_text_splitter_split_by_sentences PASSED     [ 95%]
+tests/test_splitter.py::test_text_splitter_split_by_paragraphs PASSED    [ 96%]
+tests/test_transformers_compatibility.py::TestTransformersCompatibility::test_current_transformers_version PASSED [ 96%]
+tests/test_transformers_compatibility.py::TestTransformersCompatibility::test_model_class_selection_logic PASSED [ 97%]
+tests/test_transformers_compatibility.py::TestTransformersCompatibility::test_old_transformers_version PASSED [ 97%]
+tests/test_transformers_compatibility.py::TestTransformersCompatibility::test_very_old_transformers_version PASSED [ 98%]
+tests/test_vector_store.py::test_clarifai_backend SKIPPED (ClarifaiB...) [ 98%]
+tests/test_vector_store.py::test_dashvector_backend SKIPPED (DashVec...) [ 99%]
+tests/test_vector_store.py::test_dingodb_backend SKIPPED (DingoDBBac...) [ 99%]
+tests/test_vector_store.py::test_epsilla_backend SKIPPED (EpsillaBac...) [100%]
+
+==================================== ERRORS ====================================
+________________________ ERROR at setup of test_import _________________________
+file /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_examples.py, line 10
+  def test_import(module_name):
+E       fixture 'module_name' not found
+>       available fixtures: _class_event_loop, _function_event_loop, _module_event_loop, _package_event_loop, _session_event_loop, anyio_backend, anyio_backend_name, anyio_backend_options, cache, capfd, capfdbinary, caplog, capsys, capsysbinary, doctest_namespace, event_loop_policy, free_tcp_port, free_tcp_port_factory, free_udp_port, free_udp_port_factory, monkeypatch, pytestconfig, record_property, record_testsuite_property, record_xml_attribute, recwarn, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory, unused_tcp_port, unused_tcp_port_factory, unused_udp_port, unused_udp_port_factory
+>       use 'pytest --fixtures [testpath]' for help on them.
+
+/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/test_examples.py:10
+=================================== FAILURES ===================================
+__________________________ test_environment_variables __________________________
+tests/examples/api/test_ensemble_api.py:429: in test_environment_variables
+    with patch('examples.api.ensemble_api.load_dotenv') as mock_load_dotenv:
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1447: in __enter__
+    original, local = self.get_original()
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1420: in get_original
+    raise AttributeError(
+E   AttributeError: <module 'examples.api.ensemble_api' from '/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/examples/api/ensemble_api.py'> does not have the attribute 'load_dotenv'
+_____________________________ test_error_handling ______________________________
+tests/examples/compliance/test_healthcare_compliance.py:330: in test_error_handling
+    with pytest.raises(Exception, match="API Error"):
+E   Failed: DID NOT RAISE <class 'Exception'>
+_____________________ test_healthcare_compliance_structure _____________________
+tests/examples/compliance/test_healthcare_compliance.py:337: in test_healthcare_compliance_structure
+    assert examples_dir.exists(), "Healthcare compliance examples directory should exist"
+E   AssertionError: Healthcare compliance examples directory should exist
+E   assert False
+E    +  where False = exists()
+E    +    where exists = PosixPath('/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/tests/examples/compliance/healthcare').exists
+__________________________ test_environment_variables __________________________
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1248: in _dot_lookup
+    return getattr(thing, comp)
+E   AttributeError: module 'examples.compliance.healthcare' has no attribute 'clinical_trial_compliance'
+
+During handling of the above exception, another exception occurred:
+tests/examples/compliance/test_healthcare_compliance.py:360: in test_environment_variables
+    with patch('examples.compliance.healthcare.clinical_trial_compliance.load_dotenv') as mock_load_dotenv:
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1431: in __enter__
+    self.target = self.getter()
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1618: in <lambda>
+    getter = lambda: _importer(target)
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1261: in _importer
+    thing = _dot_lookup(thing, comp, import_path)
+/opt/local/Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/unittest/mock.py:1250: in _dot_lookup
+    __import__(import_path)
+examples/compliance/healthcare/clinical_trial_compliance.py:22: in <module>
+    from multimind.compliance.visualization import ComplianceVisualizer
+multimind/compliance/visualization.py:7: in <module>
+    import plotly.graph_objects as go
+E   ModuleNotFoundError: No module named 'plotly'
+______ TestAdvancedComplianceFeatures.test_compliance_shard_verification _______
+tests/test_advanced_features.py:489: in test_compliance_shard_verification
+    compliant, result = await shard.verify_compliance(data)
+multimind/compliance/advanced.py:108: in verify_compliance
+    "metadata": compliance_result["metadata"]
+E   KeyError: 'metadata'
+_________ TestAdvancedComplianceFeatures.test_self_healing_compliance __________
+tests/test_advanced_features.py:503: in test_self_healing_compliance
+    healed_state = await healing.check_and_heal(compliance_state)
+multimind/compliance/advanced.py:188: in check_and_heal
+    self._create_rollback_point(compliance_state)
+multimind/compliance/advanced.py:213: in _create_rollback_point
+    "metadata": self._get_state_metadata(state)
+E   AttributeError: 'SelfHealingCompliance' object has no attribute '_get_state_metadata'
+____________ TestAdvancedComplianceFeatures.test_model_watermarking ____________
+tests/test_advanced_features.py:512: in test_model_watermarking
+    watermarking = ModelWatermarking(config)
+multimind/compliance/advanced.py:286: in __init__
+    self.tamper_detection = self._initialize_tamper_detection()
+E   AttributeError: 'ModelWatermarking' object has no attribute '_initialize_tamper_detection'
+_____________________________ test_legacy_imports ______________________________
+tests/test_compliance_legacy_imports.py:8: in test_legacy_imports
+    from multimind.compliance import (
+E   ImportError: cannot import name 'run_example' from 'multimind.compliance' (/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/compliance/__init__.py)
+
+During handling of the above exception, another exception occurred:
+tests/test_compliance_legacy_imports.py:18: in test_legacy_imports
+    pytest.fail("Legacy import raised ImportError instead of warning.")
+E   Failed: Legacy import raised ImportError instead of warning.
+___________________________ test_data_ingestion_init ___________________________
+tests/test_document_loader.py:33: in test_data_ingestion_init
+    ingestion = DataIngestion(model="dummy")
+multimind/document_loader/data_ingestion.py:126: in __init__
+    self.html_converter = html2text.HTML2Text()
+E   AttributeError: 'NoneType' object has no attribute 'HTML2Text'
+__________________________ test_data_ingestion_ingest __________________________
+tests/test_document_loader.py:48: in test_data_ingestion_ingest
+    ingestion = DataIngestion(model="dummy")
+multimind/document_loader/data_ingestion.py:126: in __init__
+    self.html_converter = html2text.HTML2Text()
+E   AttributeError: 'NoneType' object has no attribute 'HTML2Text'
+=============================== warnings summary ===============================
+.venv/lib/python3.10/site-packages/faiss/loader.py:49
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/faiss/loader.py:49: DeprecationWarning: numpy.core._multiarray_umath is deprecated and has been renamed to numpy._core._multiarray_umath. The numpy._core namespace contains private NumPy internals and its use is discouraged, as NumPy internals can change without warning in any release. In practice, most real-world usage of numpy.core is to access functionality in the public NumPy API. If that is the case, use the public NumPy API. If not, you are using NumPy internals. If you would still like to access an internal attribute, use numpy._core._multiarray_umath.__cpu_features__.
+    from numpy.core._multiarray_umath import __cpu_features__
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:241
+  <frozen importlib._bootstrap>:241: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+.venv/lib/python3.10/site-packages/PyPDF2/__init__.py:21
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/PyPDF2/__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.
+    warnings.warn(
+
+multimind/compliance/privacy.py:73
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/compliance/privacy.py:73: PydanticDeprecatedSince20: Pydantic V1 style `@validator` validators are deprecated. You should migrate to Pydantic V2 style `@field_validator` validators, see the migration guide for more details. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.11/migration/
+    @validator('purposes')
+
+multimind/compliance/__init__.py:91
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/compliance/__init__.py:91: UserWarning: multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.
+    warnings.warn("multimind.compliance.cli legacy interface not found. If you rely on these functions, please update your code.")
+
+multimind/compliance/__init__.py:97
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/compliance/__init__.py:97: DeprecationWarning: multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code.
+    warnings.warn(
+
+.venv/lib/python3.10/site-packages/bitsandbytes/cextension.py:34
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/bitsandbytes/cextension.py:34: UserWarning: The installed version of bitsandbytes was compiled without GPU support. 8-bit optimizers, 8-bit multiplication, and GPU quantization are unavailable.
+    warn("The installed version of bitsandbytes was compiled without GPU support. "
+
+tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_compliance_shard_verification
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/compliance/advanced.py:22: UserWarning: cryptography.zkp is not installed; using dummy ZeroKnowledgeProof.
+    warnings.warn("cryptography.zkp is not installed; using dummy ZeroKnowledgeProof.")
+
+tests/test_import.py::test_import_with_warnings_disabled
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/_pytest/python.py:163: PytestReturnNotNoneWarning: Expected None, but tests/test_import.py::test_import_with_warnings_disabled returned True, which will be an error in a future version of pytest.  Did you mean to use `assert` instead of `return`?
+    warnings.warn(
+
+tests/test_import.py::test_import_with_warnings_enabled
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/_pytest/python.py:163: PytestReturnNotNoneWarning: Expected None, but tests/test_import.py::test_import_with_warnings_enabled returned True, which will be an error in a future version of pytest.  Did you mean to use `assert` instead of `return`?
+    warnings.warn(
+
+tests/test_import.py::test_basic_functionality
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/_pytest/python.py:163: PytestReturnNotNoneWarning: Expected None, but tests/test_import.py::test_basic_functionality returned False, which will be an error in a future version of pytest.  Did you mean to use `assert` instead of `return`?
+    warnings.warn(
+
+tests/test_llm.py::test_qlora_llm_warns_and_returns
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/llm/non_transformer_llm.py:737: UserWarning: QLoRALLM is a placeholder. Using base LLM.
+    warnings.warn("QLoRALLM is a placeholder. Using base LLM.")
+
+tests/test_llm.py::test_compacter_llm_warns_and_returns
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/llm/non_transformer_llm.py:746: UserWarning: CompacterLLM is a placeholder. Using base LLM.
+    warnings.warn("CompacterLLM is a placeholder. Using base LLM.")
+
+tests/test_retrieval.py::test_retriever_retrieve_empty
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/_pytest/python.py:159: RuntimeWarning: coroutine 'Retriever.retrieve' was never awaited
+    result = testfunction(**testargs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_retrieval.py::test_enhanced_retriever_retrieve_empty
+  /Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/.venv/lib/python3.10/site-packages/_pytest/python.py:159: RuntimeWarning: coroutine 'EnhancedRetriever.retrieve' was never awaited
+    result = testfunction(**testargs)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/examples/api/test_ensemble_api.py::test_environment_variables - ...
+FAILED tests/examples/compliance/test_healthcare_compliance.py::test_error_handling
+FAILED tests/examples/compliance/test_healthcare_compliance.py::test_healthcare_compliance_structure
+FAILED tests/examples/compliance/test_healthcare_compliance.py::test_environment_variables
+FAILED tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_compliance_shard_verification
+FAILED tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_self_healing_compliance
+FAILED tests/test_advanced_features.py::TestAdvancedComplianceFeatures::test_model_watermarking
+FAILED tests/test_compliance_legacy_imports.py::test_legacy_imports - Failed:...
+FAILED tests/test_document_loader.py::test_data_ingestion_init - AttributeErr...
+FAILED tests/test_document_loader.py::test_data_ingestion_ingest - AttributeE...
+ERROR tests/test_examples.py::test_import
+======= 10 failed, 157 passed, 37 skipped, 17 warnings, 1 error in 7.52s =======

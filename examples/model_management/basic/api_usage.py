@@ -1,10 +1,11 @@
 """
-Example usage of the MultiModelWrapper API interface.
+API usage example of the MultiModelWrapper.
 """
 
 import asyncio
 import aiohttp
 import json
+from multimind import ModelFactory, MultiModelWrapper
 
 async def run_api_examples():
     base_url = "http://localhost:8000"  # Default FastAPI port
