@@ -4,7 +4,7 @@ Example demonstrating chat completion using the Multimind SDK.
 
 import asyncio
 import os
-from multimind.core.router import ModelRouter
+from multimind.router import ModelRouter
 from multimind.models.openai import OpenAIModel
 
 async def main():
