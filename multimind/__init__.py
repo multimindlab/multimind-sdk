@@ -176,29 +176,59 @@ from .compliance import (
     ComplianceTrainer
 )
 
-# Fine-tuning components
-from .fine_tuning import (
-    AdapterDropTuner,
-    AdapterFusionTuner,
-    AdapterTuner,
-    LoRATrainer,
-    QLoraTuner,
-    PromptTuner,
-    PrefixTuner,
-    PEFTTuner,
-    UniPELTTuner,
-    UniPELTPlusTuner,
-    MoETrainer,
-    RAGFineTuner,
-    SSFTuner,
-    IntrinsicSAIDTuner,
-    IA3Tuner,
-    BitFitTuner,
-    PromptPoolingTuner,
-    CompacterTuner,
-    HyperLoRATuner,
-    MAMAdapterTuner
-)
+# Fine-tuning components (optional - requires additional dependencies)
+try:
+    from .fine_tuning import (
+        AdapterDropTuner,
+        AdapterFusionTuner,
+        AdapterTuner,
+        LoRATrainer,
+        QLoraTuner,
+        PromptTuner,
+        PrefixTuner,
+        PEFTTuner,
+        UniPELTTuner,
+        UniPELTPlusTuner,
+        MoETrainer,
+        RAGFineTuner,
+        SSFTuner,
+        IntrinsicSAIDTuner,
+        IA3Tuner,
+        BitFitTuner,
+        PromptPoolingTuner,
+        CompacterTuner,
+        HyperLoRATuner,
+        MAMAdapterTuner
+    )
+    FINE_TUNING_AVAILABLE = True
+except ImportError as e:
+    # Fine-tuning components not available due to missing dependencies
+    FINE_TUNING_AVAILABLE = False
+    # Create dummy classes to avoid import errors
+    class DummyTuner:
+        def __init__(self, *args, **kwargs):
+            raise ImportError(f"Fine-tuning not available: {e}")
+    
+    AdapterDropTuner = DummyTuner
+    AdapterFusionTuner = DummyTuner
+    AdapterTuner = DummyTuner
+    LoRATrainer = DummyTuner
+    QLoraTuner = DummyTuner
+    PromptTuner = DummyTuner
+    PrefixTuner = DummyTuner
+    PEFTTuner = DummyTuner
+    UniPELTTuner = DummyTuner
+    UniPELTPlusTuner = DummyTuner
+    MoETrainer = DummyTuner
+    RAGFineTuner = DummyTuner
+    SSFTuner = DummyTuner
+    IntrinsicSAIDTuner = DummyTuner
+    IA3Tuner = DummyTuner
+    BitFitTuner = DummyTuner
+    PromptPoolingTuner = DummyTuner
+    CompacterTuner = DummyTuner
+    HyperLoRATuner = DummyTuner
+    MAMAdapterTuner = DummyTuner
 
 # Model conversion components
 from .model_conversion import (

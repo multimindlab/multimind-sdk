@@ -160,7 +160,10 @@ class MistralModel(OllamaModel):
     def __init__(
         self,
         model: str = "mistral",
+        model_name: Optional[str] = None,
         base_url: str = "http://localhost:11434",
         **kwargs
     ):
-        super().__init__(model_name=model, base_url=base_url, **kwargs)
+        # Use model_name if provided, otherwise use model parameter
+        actual_model_name = model_name if model_name is not None else model
+        super().__init__(model_name=actual_model_name, base_url=base_url, **kwargs)
