@@ -55,7 +55,6 @@ logs/
 multimind.log
 
 # Model files and caches
-models/
 .cache/
 *.bin
 *.pt
