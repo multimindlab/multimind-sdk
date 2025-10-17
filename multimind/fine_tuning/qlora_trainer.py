@@ -19,9 +19,21 @@ from peft import (
     prepare_model_for_kbit_training,
     TaskType
 )
-import bitsandbytes as bnb
 import logging
-from datasets import Dataset as HFDataset
+
+try:
+    import bitsandbytes as bnb
+    BITSANDBYTES_AVAILABLE = True
+except ImportError:
+    bnb = None
+    BITSANDBYTES_AVAILABLE = False
+
+try:
+    from datasets import Dataset as HFDataset
+    DATASETS_AVAILABLE = True
+except ImportError:
+    HFDataset = None
+    DATASETS_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +49,12 @@ class QLoraTuner:
         quantization_config: Optional[Dict[str, Any]] = None,
         **kwargs
     ):
+        if not BITSANDBYTES_AVAILABLE:
+            raise ImportError("bitsandbytes is required for QLoRA training. Install it with: pip install bitsandbytes")
+        
+        if not DATASETS_AVAILABLE:
+            raise ImportError("datasets is required for QLoRA training. Install it with: pip install datasets")
+        
         self.base_model_name = base_model_name
         self.output_dir = output_dir
 

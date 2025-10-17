@@ -10,11 +10,41 @@ import asyncio
 import json
 import numpy as np
 from datetime import datetime
-import faiss
-import hnswlib
-import tiktoken
-import torch
-from transformers import AutoTokenizer, AutoModel
+try:
+    import faiss
+    FAISS_AVAILABLE = True
+except ImportError:
+    faiss = None
+    FAISS_AVAILABLE = False
+
+try:
+    import hnswlib
+    HNSWLIB_AVAILABLE = True
+except ImportError:
+    hnswlib = None
+    HNSWLIB_AVAILABLE = False
+
+try:
+    import tiktoken
+    TIKTOKEN_AVAILABLE = True
+except ImportError:
+    tiktoken = None
+    TIKTOKEN_AVAILABLE = False
+
+try:
+    import torch
+    TORCH_AVAILABLE = True
+except ImportError:
+    torch = None
+    TORCH_AVAILABLE = False
+
+try:
+    from transformers import AutoTokenizer, AutoModel
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    AutoTokenizer = None
+    AutoModel = None
+    TRANSFORMERS_AVAILABLE = False
 import logging
 from pathlib import Path
 import pickle
@@ -111,6 +141,21 @@ class ContextManager:
             config: Optional context window configuration
             **kwargs: Additional parameters
         """
+        # Check for required dependencies
+        missing_deps = []
+        if not FAISS_AVAILABLE:
+            missing_deps.append("faiss")
+        if not HNSWLIB_AVAILABLE:
+            missing_deps.append("hnswlib")
+        if not TIKTOKEN_AVAILABLE:
+            missing_deps.append("tiktoken")
+        if not TORCH_AVAILABLE:
+            missing_deps.append("torch")
+        if not TRANSFORMERS_AVAILABLE:
+            missing_deps.append("transformers")
+        
+        if missing_deps:
+            logger.warning(f"Some dependencies are missing: {missing_deps}. Some features may not work properly.")
         self.embedding_model = embedding_model
         self.llm = llm
         self.vector_store = vector_store
