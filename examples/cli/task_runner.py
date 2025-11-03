@@ -12,10 +12,26 @@ async def main():
     load_dotenv()
     
     # Create model
-    model = OpenAIModel(
-        model="gpt-3.5-turbo",
-        temperature=0.7
-    )
+    # Check if API key is available, otherwise use local HuggingFace
+    if os.getenv("OPENAI_API_KEY"):
+        model = OpenAIModel(
+            model_name="gpt-3.5-turbo",
+            temperature=0.7
+        )
+    else:
+        # Fallback to local HuggingFace model for testing
+        try:
+            from multimind import HuggingFaceModel
+            print("No OpenAI API key found. Using local HuggingFace model...")
+            model = HuggingFaceModel(
+                model_name="gpt2",
+                api_key=None,
+                temperature=0.7
+            )
+        except ImportError:
+            print("Error: No API keys available and transformers not installed.")
+            print("Please set OPENAI_API_KEY or install: pip install transformers torch")
+            return
     
     # Create task runner
     runner = TaskRunner(model)
