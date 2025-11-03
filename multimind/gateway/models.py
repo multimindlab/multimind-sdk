@@ -4,11 +4,25 @@ Model handlers for different AI providers in the MultiMind Gateway
 
 import logging
 from typing import Dict, List, Optional
+import asyncio
 
 import openai
 import anthropic
 import requests
-from huggingface_hub import InferenceClient
+
+# Try to import HuggingFace dependencies
+try:
+    from huggingface_hub import InferenceClient
+    HF_HUB_AVAILABLE = True
+except ImportError:
+    HF_HUB_AVAILABLE = False
+
+try:
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    import torch
+    TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    TRANSFORMERS_AVAILABLE = False
 
 from ..core.models import ModelHandler, ModelResponse
 from .config import ModelConfig, config
@@ -134,34 +148,126 @@ class OllamaHandler(ModelHandler):
         return await self.chat(messages, **kwargs)
 
 class HuggingFaceHandler(ModelHandler):
-    """Handler for HuggingFace models"""
+    """Handler for HuggingFace models - supports both API and local loading"""
 
     def __init__(self, model_config: ModelConfig):
         super().__init__(model_config)
-        self._client = InferenceClient(
-            model=self.config.model_name,
-            token=self.config.api_key
-        )
+        self.use_local = not self.config.api_key or self.config.api_key.strip() == ""
+        
+        if self.use_local:
+            # Use local transformers model
+            if not TRANSFORMERS_AVAILABLE:
+                raise ImportError(
+                    "Transformers and PyTorch are required for local HuggingFace models. "
+                    "Install with: pip install transformers torch"
+                )
+            
+            logger.info(f"Loading HuggingFace model locally: {self.config.model_name}")
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            
+            # Load tokenizer and model
+            hf_token = self.config.api_key if self.config.api_key else None
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.config.model_name, 
+                token=hf_token
+            )
+            
+            # Add padding token if it doesn't exist
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
+            
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.config.model_name,
+                token=hf_token
+            )
+            self.model.to(device)
+            self.model.eval()
+            self.device = device
+            
+            logger.info(f"HuggingFace model loaded successfully on {device}")
+        else:
+            # Use HuggingFace Inference API
+            if not HF_HUB_AVAILABLE:
+                raise ImportError(
+                    "huggingface_hub is required for HuggingFace API. "
+                    "Install with: pip install huggingface_hub"
+                )
+            
+            logger.info(f"Using HuggingFace Inference API for: {self.config.model_name}")
+            self._client = InferenceClient(
+                model=self.config.model_name,
+                token=self.config.api_key
+            )
 
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
         try:
-            # Convert messages to prompt format
-            prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
-
-            response = await self._client.text_generation(
-                prompt,
-                temperature=kwargs.get("temperature", self.config.temperature),
-                max_new_tokens=kwargs.get("max_tokens", self.config.max_tokens),
-                return_full_text=False
-            )
-
-            return ModelResponse(
-                content=response,
-                model=self.config.model_name
-            )
+            if self.use_local:
+                return await self._chat_local(messages, **kwargs)
+            else:
+                return await self._chat_api(messages, **kwargs)
         except Exception as e:
-            logger.error(f"HuggingFace API error: {str(e)}")
+            logger.error(f"HuggingFace error: {str(e)}")
             raise
+
+    async def _chat_local(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
+        """Generate response using local transformers model"""
+        # Convert messages to prompt format
+        prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+        
+        # Run in thread pool to avoid blocking
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            self._generate_local,
+            prompt,
+            kwargs.get("temperature", self.config.temperature),
+            kwargs.get("max_tokens", self.config.max_tokens or 200)
+        )
+        
+        return ModelResponse(
+            content=response,
+            model=self.config.model_name
+        )
+    
+    def _generate_local(self, prompt: str, temperature: float, max_tokens: int) -> str:
+        """Generate text using local model (runs in executor)"""
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=max_tokens,
+                temperature=temperature if temperature > 0 else None,
+                do_sample=temperature > 0,
+                pad_token_id=self.tokenizer.pad_token_id,
+                eos_token_id=self.tokenizer.eos_token_id
+            )
+        
+        # Decode only the new tokens (generated part)
+        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        # Remove the prompt from response
+        if generated_text.startswith(prompt):
+            generated_text = generated_text[len(prompt):].strip()
+        
+        return generated_text
+    
+    async def _chat_api(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
+        """Generate response using HuggingFace Inference API"""
+        # Convert messages to prompt format
+        prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
+
+        response = await self._client.text_generation(
+            prompt,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_new_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+            return_full_text=False
+        )
+
+        return ModelResponse(
+            content=response,
+            model=self.config.model_name
+        )
 
     async def generate(self, prompt: str, **kwargs) -> ModelResponse:
         messages = [{"role": "user", "content": prompt}]
