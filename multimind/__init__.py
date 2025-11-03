@@ -89,6 +89,14 @@ from .models.openai import OpenAIModel
 from .models.factory import ModelFactory
 from .models.multi_model import MultiModelWrapper
 
+# Try to import HuggingFace model
+try:
+    from .models.huggingface import HuggingFaceModel
+    HUGGINGFACE_AVAILABLE = True
+except ImportError:
+    HUGGINGFACE_AVAILABLE = False
+    HuggingFaceModel = None
+
 # LLM Interface
 from .llm import LLMInterface, LLMConfig, ModelType
 
@@ -361,6 +369,7 @@ __all__ = [
     "ClaudeModel",
     "OllamaModel",
     "MistralModel",
+    "HuggingFaceModel",
     "ModelFactory",
     "MultiModelWrapper",
 

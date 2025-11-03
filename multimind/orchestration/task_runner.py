@@ -32,7 +32,7 @@ class TaskRunner:
             "name": name,
             "prompt": prompt,
             "dependencies": dependencies or [],
-            "retry_prompt": retry_promp
+            "retry_prompt": retry_prompt
         })
 
     async def run(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -45,8 +45,8 @@ class TaskRunner:
 
         for task in sorted_tasks:
             result = await self._run_task(task, context)
-            self.results[task["name"]] = resul
-            context[task["name"]] = resul
+            self.results[task["name"]] = result
+            context[task["name"]] = result
 
         return self.results
 
@@ -55,7 +55,7 @@ class TaskRunner:
         # Create dependency graph
         graph = {task["name"]: set(task["dependencies"]) for task in self.tasks}
 
-        # Topological sor
+        # Topological sort
         visited = set()
         temp = set()
         order = []
@@ -95,7 +95,7 @@ class TaskRunner:
                     results = await prompt.run(context)
                     return results[-1]["response"] if results else None
                 else:
-                    # Format prompt with contex
+                    # Format prompt with context
                     formatted_prompt = self._format_prompt(prompt, context)
                     return await self.model.generate(formatted_prompt)
 
@@ -110,7 +110,7 @@ class TaskRunner:
 
     def _format_prompt(self, prompt: str, context: Dict[str, Any]) -> str:
         """Format prompt with context variables."""
-        formatted = promp
+        formatted = prompt
         for key, value in context.items():
             placeholder = f"{{{key}}}"
             if placeholder in formatted:

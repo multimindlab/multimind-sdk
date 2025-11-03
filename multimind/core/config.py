@@ -67,8 +67,8 @@ class GatewayConfig(BaseSettings):
     # HuggingFace Configuration
     huggingface: ModelConfig = Field(
         default_factory=lambda: ModelConfig(
-            api_key=os.getenv("HUGGINGFACE_API_KEY"),
-            model_name=os.getenv("HUGGINGFACE_MODEL_NAME", "mistralai/Mistral-7B-Instruct-v0.2")
+            api_key=os.getenv("HUGGINGFACE_API_KEY"),  # Optional - if None, uses local transformers
+            model_name=os.getenv("HUGGINGFACE_MODEL_NAME", "gpt2")  # Default to small model for local testing
         )
     )
 
