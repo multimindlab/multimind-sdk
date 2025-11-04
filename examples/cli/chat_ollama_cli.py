@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import time
+import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -169,48 +170,64 @@ class OllamaChat:
         })
 
         try:
-            cmd = ["ollama", "run", self.model_name]
+            # Prepare messages for chat API (include history context)
+            messages = []
+            # Include recent history (last 10 messages to avoid token limits)
+            for msg in self.chat_history[-10:-1]:  # Exclude the just-added user message
+                messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+            # Add current user message
+            messages.append({
+                "role": "user",
+                "content": prompt
+            })
+
+            # Use Ollama HTTP API
+            api_url = "http://localhost:11434/api/chat"
+            payload = {
+                "model": self.model_name,
+                "messages": messages,
+                "stream": stream
+            }
+
             if stream:
-                # For streaming, we'll use subprocess.Popen
-                process = subprocess.Popen(
-                    cmd,
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                # Streaming response
+                response = requests.post(
+                    api_url,
+                    json=payload,
+                    stream=True,
+                    timeout=300
                 )
+                response.raise_for_status()
                 
-                # Send the prompt
-                process.stdin.write(prompt + "\n")
-                process.stdin.flush()
-                
-                # Collect the response
-                response = []
-                start_time = time.time()
-                while True:
-                    line = process.stdout.readline()
-                    if not line and process.poll() is not None:
-                        break
+                full_response = ""
+                for line in response.iter_lines():
                     if line:
-                        print(line, end='', flush=True)
-                        response.append(line)
-                        # Add a small delay to prevent CPU overuse
-                        time.sleep(0.01)
+                        try:
+                            chunk = json.loads(line)
+                            if "message" in chunk and "content" in chunk["message"]:
+                                content = chunk["message"]["content"]
+                                print(content, end='', flush=True)
+                                full_response += content
+                            if chunk.get("done", False):
+                                break
+                        except json.JSONDecodeError:
+                            continue
                 
-                full_response = ''.join(response).strip()
-                elapsed_time = time.time() - start_time
-                logger.debug(f"Response time: {elapsed_time:.2f} seconds")
+                print()  # New line after streaming
+                full_response = full_response.strip()
             else:
-                # For non-streaming, use subprocess.run
-                result = subprocess.run(
-                    cmd,
-                    input=prompt,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=300  # 5-minute timeout
+                # Non-streaming response
+                response = requests.post(
+                    api_url,
+                    json=payload,
+                    timeout=300
                 )
-                full_response = result.stdout.strip()
+                response.raise_for_status()
+                result = response.json()
+                full_response = result["message"]["content"]
                 print(full_response)
 
             # Add assistant response to history
@@ -223,12 +240,16 @@ class OllamaChat:
             self._save_history()
             return full_response
 
-        except subprocess.CalledProcessError as e:
-            error_msg = f"Error communicating with Ollama: {e.stderr}"
+        except requests.exceptions.ConnectionError:
+            error_msg = "Cannot connect to Ollama API. Is Ollama running? (Expected at http://localhost:11434)"
             logger.error(error_msg)
             raise OllamaError(error_msg)
-        except subprocess.TimeoutExpired:
+        except requests.exceptions.Timeout:
             error_msg = "Request timed out after 5 minutes"
+            logger.error(error_msg)
+            raise OllamaError(error_msg)
+        except requests.exceptions.HTTPError as e:
+            error_msg = f"HTTP error communicating with Ollama: {e}"
             logger.error(error_msg)
             raise OllamaError(error_msg)
         except Exception as e:
