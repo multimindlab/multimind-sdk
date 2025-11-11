@@ -1,7 +1,10 @@
-from typing import Any, Dict, List, Optional, Callable, Union, Set
+from typing import Any, Dict, List, Optional, Callable, Union, Set, TYPE_CHECKING
 import abc
 from enum import Enum
 import logging
+
+if TYPE_CHECKING:
+    from .vector_store import VectorStore
 
 class VectorStoreType(Enum):
     """
@@ -264,16 +267,16 @@ class VectorStoreType(Enum):
     def get_description(self) -> str:
         """Get a human-readable description of this vector store type."""
         descriptions = {
-            cls.FAISS: "Facebook AI Similarity Search - Fast in-memory vector search",
-            cls.CHROMA: "ChromaDB - Local file-based vector database",
-            cls.WEAVIATE: "Weaviate - Vector search engine with GraphQL API",
-            cls.QDRANT: "Qdrant - Vector similarity search engine",
-            cls.MILVUS: "Milvus - Open-source vector database",
-            cls.PINECONE: "Pinecone - Managed vector database service",
-            cls.ELASTICSEARCH: "Elasticsearch - Distributed search and analytics engine",
-            cls.PGVECTOR: "PGVector - PostgreSQL extension for vector operations",
-            cls.SKLEARN: "Scikit-learn - Machine learning library with vector search",
-            cls.ANNOY: "Annoy - Approximate nearest neighbors library",
+            VectorStoreType.FAISS: "Facebook AI Similarity Search - Fast in-memory vector search",
+            VectorStoreType.CHROMA: "ChromaDB - Local file-based vector database",
+            VectorStoreType.WEAVIATE: "Weaviate - Vector search engine with GraphQL API",
+            VectorStoreType.QDRANT: "Qdrant - Vector similarity search engine",
+            VectorStoreType.MILVUS: "Milvus - Open-source vector database",
+            VectorStoreType.PINECONE: "Pinecone - Managed vector database service",
+            VectorStoreType.ELASTICSEARCH: "Elasticsearch - Distributed search and analytics engine",
+            VectorStoreType.PGVECTOR: "PGVector - PostgreSQL extension for vector operations",
+            VectorStoreType.SKLEARN: "Scikit-learn - Machine learning library with vector search",
+            VectorStoreType.ANNOY: "Annoy - Approximate nearest neighbors library",
             # Add more descriptions as needed
         }
         return descriptions.get(self, f"{self.value} - Vector store backend")
@@ -372,6 +375,11 @@ class VectorStoreConfig:
         if store_type in required_params:
             self.validate_required_params(required_params[store_type])
     
+    @property
+    def backend_type(self) -> Optional[VectorStoreType]:
+        """Get the backend type as a VectorStoreType enum (alias for compatibility)."""
+        return self._store_type
+    
     def get_store_type_enum(self) -> Optional[VectorStoreType]:
         """Get the store type as a VectorStoreType enum."""
         return self._store_type
@@ -465,6 +473,43 @@ class VectorStoreConfig:
     def __str__(self) -> str:
         """String representation of the configuration."""
         return self.__repr__()
+
+class VectorStoreFactory:
+    """
+    Factory class for creating VectorStore instances.
+    
+    This factory provides a convenient way to create vector stores
+    with different backends without directly instantiating VectorStore.
+    """
+    
+    @staticmethod
+    def create_store(store_type: Union[str, VectorStoreType], config: VectorStoreConfig):
+        """
+        Create a VectorStore instance with the specified backend type.
+        
+        Args:
+            store_type: The type of vector store backend (string or VectorStoreType enum)
+            config: VectorStoreConfig instance with connection parameters
+            
+        Returns:
+            VectorStore instance configured with the specified backend
+            
+        Example:
+            >>> config = VectorStoreConfig.create_faiss_config(dimension=1536)
+            >>> store = VectorStoreFactory.create_store("faiss", config)
+        """
+        from .vector_store import VectorStore
+        
+        # Convert string to VectorStoreType if needed
+        if isinstance(store_type, str):
+            store_type = VectorStoreType.from_string(store_type)
+        
+        # Ensure config has the correct store type
+        if config._store_type is None or config._store_type != store_type:
+            config._store_type = store_type
+            config.connection_params["store_type"] = store_type.value
+        
+        return VectorStore(config)
 
 class VectorStoreBackend(abc.ABC):
     """
