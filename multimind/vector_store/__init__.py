@@ -5,7 +5,7 @@ Vector store package for managing vector storage and retrieval.
 import logging
 import os
 from typing import Dict, Type, Optional
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType
+from .base import VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType, VectorStoreFactory
 from .vector_store import VectorStore
 
 # Configure logging
@@ -130,6 +130,7 @@ __all__ = [
     'SearchResult',
     'VectorStoreType',
     'VectorStore',
+    'VectorStoreFactory',
     # Utility functions
     'get_available_backends',
     'is_backend_available',
