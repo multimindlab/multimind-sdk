@@ -32,10 +32,35 @@ jobs:
         run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
       - name: Install multimind in editable mode
         run: pip install -e .
-      - name: Run tests with bypass for failures
+      - name: Install test dependencies
         run: |
-          pip install pytest
-          pip install pytest-mock
-          pytest || echo "Some tests failed but were bypassed."
+          pip install pytest pytest-cov pytest-asyncio pytest-mock
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ --cov=multimind --cov-report=term-missing --cov-report=xml -v
+      - name: Check test pass rate (95% threshold)
+        run: |
+          python -c "
+          import subprocess
+          import re
+          result = subprocess.run(['pytest', 'tests/', '-v', '--tb=no', '-q'], 
+                                capture_output=True, text=True)
+          output = result.stdout + result.stderr
+          # Extract test counts
+          match = re.search(r'(\d+) passed', output)
+          passed = int(match.group(1)) if match else 0
+          match = re.search(r'(\d+) failed', output)
+          failed = int(match.group(1)) if match else 0
+          match = re.search(r'(\d+) skipped', output)
+          skipped = int(match.group(1)) if match else 0
+          total = passed + failed + skipped
+          pass_rate = (passed / total * 100) if total > 0 else 0
+          print(f'Test Results: {passed} passed, {failed} failed, {skipped} skipped')
+          print(f'Pass Rate: {pass_rate:.1f}%')
+          if pass_rate < 95.0:
+              print(f'ERROR: Test pass rate {pass_rate:.1f}% is below 95% threshold!')
+              exit(1)
+          print('SUCCESS: Test pass rate meets 95% threshold!')
+          "
       - name: Set OpenAI API Key
         run: echo "OPENAI_API_KEY=your_openai_api_key" >> $GITHUB_ENV

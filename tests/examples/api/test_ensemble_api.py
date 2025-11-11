@@ -467,12 +467,13 @@ async def test_ensemble_performance_metrics():
     ]
     
     # Make multiple predictions to test performance
-    start_time = asyncio.get_event_loop().time()
+    import time
+    start_time = time.perf_counter()
     
     for _ in range(5):
         await ensemble.predict("Performance test prompt")
     
-    end_time = asyncio.get_event_loop().time()
+    end_time = time.perf_counter()
     total_time = end_time - start_time
     
     # Evaluate ensemble
