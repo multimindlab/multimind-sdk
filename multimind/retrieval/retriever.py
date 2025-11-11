@@ -64,21 +64,31 @@ class Retriever:
             # Search vector store
             results = await self.vector_store.search(
                 query_embedding,
-                top_k=top_k or self.config.top_k,
+                k=top_k or self.config.top_k,
                 **kwargs
             )
             
             # Convert to RetrievalResult objects
             retrieval_results = []
             for result in results:
-                if result.get("score", 0) >= self.config.similarity_threshold:
+                if result.score >= self.config.similarity_threshold:
+                    # Extract content from document (can be dict or string)
+                    if isinstance(result.document, dict):
+                        content = result.document.get("content", str(result.document))
+                    else:
+                        content = str(result.document) if result.document else ""
+                    
+                    # Extract source and chunk_id from metadata if available
+                    source = result.metadata.get("source") if isinstance(result.metadata, dict) else None
+                    chunk_id = result.metadata.get("chunk_id") if isinstance(result.metadata, dict) else None
+                    
                     retrieval_results.append(RetrievalResult(
-                        content=result.get("content", ""),
-                        score=result.get("score", 0.0),
-                        metadata=result.get("metadata", {}),
-                        document_id=result.get("document_id"),
-                        source=result.get("source"),
-                        chunk_id=result.get("chunk_id")
+                        content=content,
+                        score=result.score,
+                        metadata=result.metadata if isinstance(result.metadata, dict) else {},
+                        document_id=result.id,
+                        source=source,
+                        chunk_id=chunk_id
                     ))
             
             return retrieval_results

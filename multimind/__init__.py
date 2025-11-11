@@ -157,7 +157,7 @@ from .document_loader import DataIngestion
 from .embeddings import EmbeddingGenerator, EmbeddingConfig, Embedding, EmbeddingType
 
 # Vector store components
-from .vector_store import VectorStore, VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType
+from .vector_store import VectorStore, VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType, VectorStoreFactory
 
 # Compliance components
 from .compliance import (
@@ -450,6 +450,7 @@ __all__ = [
     "VectorStoreConfig",
     "SearchResult",
     "VectorStoreType",
+    "VectorStoreFactory",
 
     # Compliance
     "ComplianceShard",

@@ -85,11 +85,23 @@ def _load_backend(backend_type: VectorStoreType) -> Optional[Type[VectorStoreBac
     module_path = backend_modules[backend_type]
     backend_name = backend_type.value
     
+    # Map enum values to class names
+    backend_class_names = {
+        'faiss': 'FAISSBackend',
+        'chroma': 'ChromaBackend',
+        'sklearn': 'SklearnBackend',
+        'annoy': 'AnnoyBackend',
+        # Add more mappings as needed
+    }
+    
+    # Get the class name, defaulting to capitalized version if not in mapping
+    class_name = backend_class_names.get(backend_name, backend_name.capitalize() + 'Backend')
+    
     try:
         # Import the module dynamically
-        module = __import__(f'multimind.vector_store{module_path}', fromlist=[backend_name])
-        backend_class = getattr(module, backend_name)
-        logging.debug(f"✅ {backend_name} loaded successfully on demand")
+        module = __import__(f'multimind.vector_store{module_path}', fromlist=[class_name])
+        backend_class = getattr(module, class_name)
+        logging.debug(f"✅ {class_name} loaded successfully on demand")
         return backend_class
     except (ImportError, AttributeError, Exception) as e:
         # Only log if warnings are enabled

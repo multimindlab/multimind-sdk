@@ -4,6 +4,7 @@ Enhanced document processing with semantic chunking and metadata extraction.
 
 from typing import List, Dict, Any, Optional, Union, Tuple, Callable
 import re
+import asyncio
 from dataclasses import dataclass
 from enum import Enum
 # Optional spacy import for NLP features
@@ -251,7 +252,14 @@ class EnhancedDocumentProcessor:
         # Generate embeddings for chunks if configured
         if self.config.generate_embeddings:
             for chunk in chunks:
-                chunk.embedding = await self.model.embeddings([chunk.text])[0]
+                # Handle both dict and object chunks
+                chunk_text = chunk.get('text') if isinstance(chunk, dict) else getattr(chunk, 'text', str(chunk))
+                embeddings_result = await self.model.embeddings([chunk_text])
+                embedding = embeddings_result[0] if isinstance(embeddings_result, list) and len(embeddings_result) > 0 else embeddings_result
+                if isinstance(chunk, dict):
+                    chunk['embedding'] = embedding
+                else:
+                    chunk.embedding = embedding
         
         # Postprocess chunks if configured
         if self.config.postprocess_fn:

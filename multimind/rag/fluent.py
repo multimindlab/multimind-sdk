@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any, Union, Callable
 from pydantic import BaseModel
 import asyncio
 from ..core.router import Router, TaskType
-from ..vector_store.base import VectorStore, VectorStoreConfig, EmbeddingStandardizer
+from multimind import VectorStore, VectorStoreConfig, EmbeddingStandardizer
 from ..core.provider import GenerationResult, EmbeddingResult
 
 class RAGConfig(BaseModel):
