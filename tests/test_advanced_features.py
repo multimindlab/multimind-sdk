@@ -452,7 +452,11 @@ class TestAdvancedMCPFeatures:
     @pytest.mark.asyncio
     async def test_mcp_parallel_execution(self):
         """Test MCP parallel execution."""
-        executor = AdvancedMCPExecutor(parser=MCPParser(schema_path="/Users/darshankumar/Daemongodwiz/multimind-dev/multimind-sdk/multimind/mcp/schema.json"))
+        import os
+        from pathlib import Path
+        # Use relative path to schema.json
+        schema_path = Path(__file__).parent.parent / "multimind" / "mcp" / "schema.json"
+        executor = AdvancedMCPExecutor(parser=MCPParser(schema_path=str(schema_path)))
         
         spec = {
             "version": "1.0.0",
@@ -513,10 +517,8 @@ class TestAdvancedComplianceFeatures:
         
         # Test watermarking process
         model = Mock()
-        with patch.object(watermarking, '_initialize_watermark_generator'):
-            with patch.object(watermarking, '_apply_watermark'):
-                watermarked_model = await watermarking.watermark_model(model)
-                assert watermarked_model is not None
+        watermarked_model = await watermarking.watermark_model(model)
+        assert watermarked_model is not None
 
 
 @pytest.mark.skipif(AdvancedEvaluator is None, reason="AdvancedEvaluator not available")

@@ -123,9 +123,12 @@ class DataIngestion:
         self.kwargs = kwargs
         
         # Initialize HTML converter
-        self.html_converter = html2text.HTML2Text()
-        self.html_converter.ignore_links = False
-        self.html_converter.ignore_images = False
+        if html2text is not None:
+            self.html_converter = html2text.HTML2Text()
+            self.html_converter.ignore_links = False
+            self.html_converter.ignore_images = False
+        else:
+            self.html_converter = None
         
         # Initialize session for web requests
         self.session = None
@@ -231,7 +234,15 @@ class DataIngestion:
             doc_type = DocumentType.HTML
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 content = await f.read()
-            text = self.html_converter.handle(content)
+            if self.html_converter is not None:
+                text = self.html_converter.handle(content)
+            else:
+                # Fallback: use BeautifulSoup if available, otherwise return raw HTML
+                if BeautifulSoup is not None:
+                    soup = BeautifulSoup(content, 'html.parser')
+                    text = soup.get_text()
+                else:
+                    text = content
             return text, doc_type
         
         elif file_path.endswith(".txt"):
