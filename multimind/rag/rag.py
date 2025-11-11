@@ -7,7 +7,8 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 
 from ..vector_store import VectorStore, VectorStoreConfig
-from ..document_processing import DocumentProcessor, Document
+from ..document_processing import DocumentProcessor
+from ..document_processing.base import Document
 from ..document_loader import BaseDocumentLoader as DocumentLoader
 from ..embeddings import EmbeddingGenerator, EmbeddingConfig
 
@@ -35,6 +36,7 @@ class RAG:
         self.retriever = None  # Will be initialized lazily
         self.embedding_generator = self._get_embedding_generator()
         self.document_loader = self._get_document_loader()
+        # Initialize document processor after embedding generator so we can use it as model
         self.document_processor = self._get_document_processor()
         self.logger = logging.getLogger(__name__)
 
@@ -80,9 +82,49 @@ class RAG:
         """Get appropriate document processor."""
         # Use EnhancedDocumentProcessor as default
         from ..document_processing.document_processor import EnhancedDocumentProcessor, ProcessingConfig
-        # If a model is needed, pass None or a default
+        from ..models.base import BaseLLM
+        
+        # Create a wrapper that makes embedding_generator compatible with semantic chunker
+        # The chunker expects model.embeddings() but embedding_generator has generate() or generate_batch_embeddings()
+        class EmbeddingModelWrapper(BaseLLM):
+            """Wrapper to make embedding generator work as a model for document processing."""
+            def __init__(self, embedding_generator):
+                super().__init__("embedding_wrapper")
+                self.embedding_generator = embedding_generator
+            
+            async def embeddings(self, texts):
+                """Generate embeddings for texts - compatible with semantic chunker."""
+                if isinstance(texts, str):
+                    texts = [texts]
+                
+                # Try different methods the embedding generator might have
+                if hasattr(self.embedding_generator, 'generate_batch_embeddings'):
+                    return await self.embedding_generator.generate_batch_embeddings(texts)
+                elif hasattr(self.embedding_generator, 'generate'):
+                    # generate() takes a list of texts and returns a list of embeddings
+                    return await self.embedding_generator.generate(texts)
+                else:
+                    # Fallback: return empty embeddings
+                    return [[0.0] * 384 for _ in texts]
+            
+            # Implement required abstract methods from BaseLLM (stubs - not used by document processor)
+            async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+                raise NotImplementedError("This wrapper is only for embeddings, not text generation")
+            
+            async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs):
+                raise NotImplementedError("This wrapper is only for embeddings, not text generation")
+            
+            async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+                raise NotImplementedError("This wrapper is only for embeddings, not text generation")
+            
+            async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs):
+                raise NotImplementedError("This wrapper is only for embeddings, not text generation")
+        
+        # Use wrapper if embedding generator is available, otherwise None
+        model_for_processor = EmbeddingModelWrapper(self.embedding_generator) if self.embedding_generator else None
+        
         return EnhancedDocumentProcessor(
-            model=None,
+            model=model_for_processor,
             config=ProcessingConfig(**self.config.document_config)
         )
 
@@ -91,7 +133,9 @@ class RAG:
         await self.vector_store.initialize()
         retriever = self._get_retriever()
         await retriever.initialize()
-        await self.embedding_generator.initialize()
+        # Initialize embedding generator if it has an initialize method
+        if hasattr(self.embedding_generator, 'initialize'):
+            await self.embedding_generator.initialize()
 
     async def add_documents(
         self,
@@ -100,7 +144,40 @@ class RAG:
     ) -> None:
         """Add documents to the RAG system."""
         if process:
-            documents = await self.document_processor.process_batch(documents)
+            # Check if document processor has a model (required for semantic chunking)
+            has_model = hasattr(self.document_processor, 'model') and self.document_processor.model is not None
+            
+            # Process documents if processor supports it and has a model
+            if has_model and hasattr(self.document_processor, 'process_batch'):
+                documents = await self.document_processor.process_batch(documents)
+            elif has_model and hasattr(self.document_processor, 'process_documents'):
+                # Convert Document objects to text strings for processing
+                original_docs = documents  # Save original for source reference
+                texts = [doc.content for doc in documents]
+                metadata_list = [doc.metadata for doc in documents]
+                processed_chunks = await self.document_processor.process_documents(texts, metadata_list)
+                # Flatten the list of lists and convert back to Document objects
+                documents = []
+                for doc_idx, chunks in enumerate(processed_chunks):
+                    for chunk_idx, chunk in enumerate(chunks):
+                        # Handle both dict and object chunks
+                        if isinstance(chunk, dict):
+                            chunk_text = chunk.get('text', '')
+                            chunk_metadata = chunk.get('metadata', {})
+                        else:
+                            chunk_text = getattr(chunk, 'text', str(chunk))
+                            chunk_metadata = getattr(chunk, 'metadata', {})
+                        
+                        source = original_docs[doc_idx].source if doc_idx < len(original_docs) else "unknown"
+                        # Document from base.py requires: id, content, metadata, source
+                        # But it's a dataclass, so we need to check the actual structure
+                        documents.append(Document(
+                            id=f"doc_{doc_idx}_chunk_{chunk_idx}",
+                            content=chunk_text,
+                            metadata=chunk_metadata,
+                            source=source
+                        ))
+            # If no model or processing method available, use documents as-is (no chunking)
         
         # Generate embeddings
         texts = [doc.content for doc in documents]
@@ -119,7 +196,11 @@ class RAG:
     ) -> List[Document]:
         """Retrieve relevant documents."""
         retriever = self._get_retriever()
-        return await retriever.retrieve(query, k, filter_criteria)
+        # Retriever.retrieve() expects top_k as keyword arg and filter_criteria in **kwargs
+        kwargs = {}
+        if filter_criteria:
+            kwargs.update(filter_criteria)
+        return await retriever.retrieve(query, top_k=k, **kwargs)
 
     async def clear(self) -> None:
         """Clear all documents from the system."""

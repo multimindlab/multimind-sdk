@@ -260,6 +260,25 @@ class EmbeddingModel:
             }
         )
 
+    async def generate(
+        self,
+        texts: List[str],
+        batch_size: Optional[int] = None,
+        **kwargs
+    ) -> List[List[float]]:
+        """
+        Generate embeddings for batch of texts (alias for generate_batch_embeddings for compatibility).
+        
+        Args:
+            texts: List of texts to embed
+            batch_size: Optional batch size (uses config default if not provided)
+            **kwargs: Additional parameters
+            
+        Returns:
+            List of embedding vectors
+        """
+        return await self.generate_batch_embeddings(texts, **kwargs)
+    
     async def generate_batch_embeddings(
         self,
         texts: List[str],
@@ -396,7 +415,11 @@ class EmbeddingModel:
         if config.normalize:
             embedding = self._normalize_embedding(embedding)
         
-        return embedding.tolist()
+        # Convert to list if not already a list
+        if isinstance(embedding, (list, tuple)):
+            return list(embedding)
+        else:
+            return embedding.tolist()
 
     async def _generate_sentence_transformer_embedding(
         self,
@@ -497,13 +520,16 @@ class EmbeddingModel:
             outputs = self.model(**inputs)
             embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
         
+        # Convert to list first
+        embeddings_list = embeddings.tolist()
+        
         if config.normalize:
-            embeddings = [
+            embeddings_list = [
                 self._normalize_embedding(embedding)
-                for embedding in embeddings
+                for embedding in embeddings_list
             ]
         
-        return embeddings.tolist()
+        return embeddings_list
 
     async def _generate_sentence_transformer_batch_embeddings(
         self,

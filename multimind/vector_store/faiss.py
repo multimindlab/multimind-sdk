@@ -23,17 +23,36 @@ class FAISSBackend(VectorStoreBackend):
 
     async def initialize(self) -> None:
         """Initialize FAISS index."""
-        index_params = self.config.index_params
-        self.index = faiss.IndexFlatL2(self.config.dimension)
+        # Get dimension from config
+        dimension = self.config.get("dimension", 768)
         
+        # Get index_params from config, default to empty dict
+        index_params = self.config.get("index_params", {})
+        
+        # Determine index type from config
+        index_type = self.config.get("index_type", "flat")
+        
+        # Create index based on type
+        if index_type == "flat":
+            metric = self.config.get("metric", "l2")
+            if metric == "cosine":
+                # For cosine similarity, we need to normalize vectors
+                self.index = faiss.IndexFlatIP(dimension)  # Inner product for cosine
+            else:
+                self.index = faiss.IndexFlatL2(dimension)
+        else:
+            # Default to L2 flat index
+            self.index = faiss.IndexFlatL2(dimension)
+        
+        # Apply advanced index types if specified
         if "nlist" in index_params:
             self.index = faiss.IndexIVFFlat(
-                self.index,
-                self.config.dimension,
+                faiss.IndexFlatL2(dimension),
+                dimension,
                 index_params["nlist"]
             )
         
-        if "nprobe" in index_params:
+        if "nprobe" in index_params and hasattr(self.index, "nprobe"):
             self.index.nprobe = index_params["nprobe"]
 
     async def add_vectors(
@@ -71,15 +90,17 @@ class FAISSBackend(VectorStoreBackend):
         
         results = []
         for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
-            if idx < len(self.metadata):
+            if idx >= 0 and idx < len(self.metadata):  # Check idx >= 0 (FAISS returns -1 for invalid)
                 id = f"vec_{idx}"
-                results.append(SearchResult(
-                    id=id,
-                    vector=query_vector,  # FAISS doesn't store vectors
-                    metadata=self.metadata[id],
-                    document=self.documents[id],
-                    score=float(1 / (1 + distance))  # Convert distance to similarity
-                ))
+                # Check if metadata and document exist for this ID
+                if id in self.metadata and id in self.documents:
+                    results.append(SearchResult(
+                        id=id,
+                        vector=query_vector,  # FAISS doesn't store vectors
+                        metadata=self.metadata[id],
+                        document=self.documents[id],
+                        score=float(1 / (1 + distance))  # Convert distance to similarity
+                    ))
         
         return results
 
@@ -89,7 +110,8 @@ class FAISSBackend(VectorStoreBackend):
             return
         
         # Create new index
-        new_index = faiss.IndexFlatL2(self.config.dimension)
+        dimension = self.config.get("dimension", 768)
+        new_index = faiss.IndexFlatL2(dimension)
         new_metadata = {}
         new_documents = {}
         
