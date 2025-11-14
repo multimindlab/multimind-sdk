@@ -22,29 +22,6 @@ class OpenAIProvider(ProviderAdapter):
         """Initialize the OpenAI provider adapter."""
         super().__init__(config)
         self.client = openai.AsyncOpenAI(api_key=config.api_key)
-        self.metadata = ProviderMetadata(
-            name="openai",
-            version="1.0.0",
-            capabilities=[
-                ProviderCapability.TEXT_GENERATION,
-                ProviderCapability.CHAT,
-                ProviderCapability.EMBEDDINGS,
-                ProviderCapability.IMAGE_ANALYSIS,
-                ProviderCapability.CODE_GENERATION
-            ],
-            pricing={
-                "gpt-4": 0.03,
-                "gpt-3.5-turbo": 0.0015,
-                "text-embedding-ada-002": 0.0001
-            },
-            typical_latency_ms={
-                "gpt-4": 500,
-                "gpt-3.5-turbo": 200
-            },
-            max_context_length=4096,
-            max_tokens_per_request=2048,
-            supported_models=["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]
-        )
     
     async def generate_text(
         self,
@@ -80,10 +57,10 @@ class OpenAIProvider(ProviderAdapter):
             ) / 1000  # Convert to USD
             
             return GenerationResult(
+                text=result,
+                tokens_used=tokens_used,
                 provider_name="openai",
                 model_name=model,
-                result=result,
-                tokens_used=tokens_used,
                 latency_ms=latency_ms,
                 cost_estimate_usd=cost
             )
@@ -125,10 +102,10 @@ class OpenAIProvider(ProviderAdapter):
             ) / 1000  # Convert to USD
             
             return GenerationResult(
+                text=result,
+                tokens_used=tokens_used,
                 provider_name="openai",
                 model_name=model,
-                result=result,
-                tokens_used=tokens_used,
                 latency_ms=latency_ms,
                 cost_estimate_usd=cost
             )
@@ -152,7 +129,7 @@ class OpenAIProvider(ProviderAdapter):
                 **kwargs
             )
             
-            embeddings = response.data[0].embedding
+            embedding_vector = response.data[0].embedding
             tokens_used = response.usage.total_tokens
             latency_ms = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -163,7 +140,7 @@ class OpenAIProvider(ProviderAdapter):
             return EmbeddingResult(
                 provider_name="openai",
                 model_name=model,
-                embeddings=embeddings,
+                embedding=embedding_vector,
                 tokens_used=tokens_used,
                 latency_ms=latency_ms,
                 cost_estimate_usd=cost
@@ -233,7 +210,34 @@ class OpenAIProvider(ProviderAdapter):
     
     def _get_metadata(self) -> ProviderMetadata:
         """Return metadata about the OpenAI provider."""
-        return self.metadata
+        return ProviderMetadata(
+            name="openai",
+            version="1.0.0",
+            capabilities=[
+                ProviderCapability.TEXT_GENERATION,
+                ProviderCapability.CHAT,
+                ProviderCapability.EMBEDDINGS,
+                ProviderCapability.IMAGE_ANALYSIS,
+                ProviderCapability.CODE_GENERATION
+            ],
+            pricing={
+                "gpt-4": {"input": 0.03, "output": 0.06},
+                "gpt-3.5-turbo": {"input": 0.0015, "output": 0.002},
+                "text-embedding-ada-002": {"input": 0.0001, "output": 0.0}
+            },
+            typical_latency_ms={
+                "gpt-4": 500,
+                "gpt-3.5-turbo": 200,
+                "text-embedding-ada-002": 100
+            },
+            latency={
+                "gpt-4": {"p50": 500, "p95": 1000},
+                "gpt-3.5-turbo": {"p50": 200, "p95": 400}
+            },
+            max_context_length=4096,
+            max_tokens_per_request=2048,
+            supported_models=["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]
+        )
 
     def get_cost_estimate(self, model: str, tokens: int) -> float:
         """Estimate the cost for a given model and token usage."""
@@ -242,7 +246,9 @@ class OpenAIProvider(ProviderAdapter):
 
     def get_latency_estimate(self, model: str) -> Dict[str, int]:
         """Return latency estimates for a given model."""
-        return self.metadata.latency.get(model, {"p50": 0, "p95": 0})
+        if self.metadata.latency:
+            return self.metadata.latency.get(model, {"p50": 0, "p95": 0})
+        return {"p50": 0, "p95": 0}
     
     async def estimate_cost(
         self,
@@ -270,5 +276,40 @@ class OpenAIProvider(ProviderAdapter):
         output_tokens: Optional[int] = None
     ) -> float:
         """Estimate latency for a given task."""
-        latency = self.metadata.latency.get(model, {"p50": 0, "p95": 0})
-        return latency["p50"]  # Return median latency
+        if self.metadata.latency:
+            latency = self.metadata.latency.get(model, {"p50": 0, "p95": 0})
+            return latency["p50"]  # Return median latency
+        return 0.0
+    
+    async def get_cost_estimate(
+        self,
+        operation: str,
+        input_tokens: int,
+        output_tokens: Optional[int] = None,
+        **kwargs
+    ) -> float:
+        """Estimate cost for an operation (abstract method implementation)."""
+        # Extract model from kwargs or use default
+        model = kwargs.get("model", "gpt-3.5-turbo")
+        pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
+        
+        if operation == "embeddings":
+            return pricing["input"] * input_tokens / 1000
+        else:
+            return (
+                pricing["input"] * input_tokens +
+                pricing["output"] * (output_tokens or 0)
+            ) / 1000
+    
+    async def get_latency_estimate(
+        self,
+        operation: str,
+        **kwargs
+    ) -> float:
+        """Estimate latency for an operation (abstract method implementation)."""
+        # Extract model from kwargs or use default
+        model = kwargs.get("model", "gpt-3.5-turbo")
+        if self.metadata.latency:
+            latency = self.metadata.latency.get(model, {"p50": 0, "p95": 0})
+            return latency["p50"]  # Return median latency
+        return 0.0
