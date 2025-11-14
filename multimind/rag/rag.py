@@ -65,11 +65,16 @@ class RAG:
         cfg = self.config.embedding_config
         # Assume cfg has model_type as string, convert to EmbeddingType
         model_type = EmbeddingType(cfg.model_type)
+        
+        # Extract api_key separately to avoid duplicate keyword argument
+        custom_params = (cfg.custom_params or {}).copy()
+        api_key = custom_params.pop('api_key', None)
+        
         return EmbeddingModel(
             model_type=model_type,
             model_name=cfg.model_name,
-            api_key=cfg.custom_params.get('api_key') if cfg.custom_params else None,
-            **(cfg.custom_params or {})
+            api_key=api_key,
+            **custom_params
         )
 
     def _get_document_loader(self) -> DocumentLoader:

@@ -131,29 +131,37 @@ class Router:
             
             # Record successful request metrics
             latency_ms = (time.time() - start_time) * 1000
+            provider_name = getattr(result, "provider", None) or getattr(result, "provider_name", "unknown")
+            model_name = getattr(result, "model", None) or getattr(result, "model_name", kwargs.get("model", "unknown"))
             self.metrics.record_latency(
-                provider=result.provider,
+                provider=provider_name,
                 task_type=task_type,
-                model=kwargs.get("model", "unknown"),
+                model=model_name,
                 latency_ms=latency_ms,
                 metadata={"request_id": kwargs.get("request_id")}
             )
             
-            if hasattr(result, "cost"):
+            cost_value = getattr(result, "cost", None)
+            if cost_value is None:
+                cost_value = getattr(result, "cost_estimate_usd", None)
+            if cost_value is not None:
                 self.metrics.record_cost(
-                    provider=result.provider,
+                    provider=provider_name,
                     task_type=task_type,
-                    model=kwargs.get("model", "unknown"),
-                    cost=result.cost,
+                    model=model_name,
+                    cost=cost_value,
                     metadata={"request_id": kwargs.get("request_id")}
                 )
             
-            if hasattr(result, "tokens"):
+            tokens_value = getattr(result, "tokens", None)
+            if tokens_value is None:
+                tokens_value = getattr(result, "tokens_used", None)
+            if tokens_value is not None:
                 self.metrics.record_tokens(
-                    provider=result.provider,
+                    provider=provider_name,
                     task_type=task_type,
-                    model=kwargs.get("model", "unknown"),
-                    tokens=result.tokens,
+                    model=model_name,
+                    tokens=tokens_value,
                     metadata={"request_id": kwargs.get("request_id")}
                 )
             
@@ -185,14 +193,26 @@ class Router:
         else:
             provider_name = config.preferred_providers[0]
         provider = self.providers[provider_name]
+        call_kwargs = dict(kwargs)
+        call_kwargs.pop("provider", None)
+        model_arg = call_kwargs.pop("model", None)
         start = time.time()
         try:
             if task_type == TaskType.TEXT_GENERATION:
-                result = await provider.generate_text(input_data, **kwargs)
+                if model_arg is not None:
+                    result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                else:
+                    result = await provider.generate_text(prompt=input_data, **call_kwargs)
             elif task_type == TaskType.EMBEDDINGS:
-                result = await provider.generate_embeddings(input_data, **kwargs)
+                if model_arg is not None:
+                    result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                else:
+                    result = await provider.generate_embeddings(text=input_data, **call_kwargs)
             elif task_type == TaskType.IMAGE_ANALYSIS:
-                result = await provider.analyze_image(input_data, **kwargs)
+                if model_arg is not None:
+                    result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                else:
+                    result = await provider.analyze_image(image_data=input_data, **call_kwargs)
             else:
                 raise ValueError(f"Unsupported task type: {task_type}")
             latency = time.time() - start
@@ -237,17 +257,29 @@ class Router:
         results = []
         for provider_name in config.preferred_providers:
             provider = self.providers[provider_name]
+            call_kwargs = dict(kwargs)
+            call_kwargs.pop("provider", None)
+            model_arg = call_kwargs.pop("model", None)
             try:
                 if task_type == TaskType.TEXT_GENERATION:
-                    result = await provider.generate_text(input_data, **kwargs)
+                    if model_arg is not None:
+                        result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                    else:
+                        result = await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
-                    result = await provider.generate_embeddings(input_data, **kwargs)
+                    if model_arg is not None:
+                        result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        result = await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
-                    result = await provider.analyze_image(input_data, **kwargs)
+                    if model_arg is not None:
+                        result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        result = await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
                 
-                results.append(result)
+                results.append((provider_name, result))
             except Exception as e:
                 self.metrics.record_error(
                     provider=provider_name,
@@ -265,15 +297,16 @@ class Router:
         if config.ensemble_config["method"] == "weighted_voting":
             weights = config.ensemble_config["weights"]
             weighted_results = []
-            for result in results:
-                weight = weights.get(result.provider, 1.0)
+            for provider_name, result in results:
+                provider_key = provider_name or getattr(result, "provider", None) or getattr(result, "provider_name", None)
+                weight = weights.get(provider_key, 1.0)
                 weighted_results.append((result, weight))
             
             # For now, just return the result with highest weight
             return max(weighted_results, key=lambda x: x[1])[0]
         else:
             # Default to first successful result
-            return results[0]
+            return results[0][1]
     
     async def _handle_cascade(
         self,
@@ -288,13 +321,25 @@ class Router:
         # Try preferred providers first
         for provider_name in config.preferred_providers:
             provider = self.providers[provider_name]
+            call_kwargs = dict(kwargs)
+            call_kwargs.pop("provider", None)
+            model_arg = call_kwargs.pop("model", None)
             try:
                 if task_type == TaskType.TEXT_GENERATION:
-                    return await provider.generate_text(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                    else:
+                        return await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
-                    return await provider.generate_embeddings(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        return await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
-                    return await provider.analyze_image(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        return await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
             except Exception as e:
@@ -303,13 +348,25 @@ class Router:
         # Try fallback providers if all preferred providers fail
         for provider_name in config.fallback_providers:
             provider = self.providers[provider_name]
+            call_kwargs = dict(kwargs)
+            call_kwargs.pop("provider", None)
+            model_arg = call_kwargs.pop("model", None)
             try:
                 if task_type == TaskType.TEXT_GENERATION:
-                    return await provider.generate_text(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                    else:
+                        return await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
-                    return await provider.generate_embeddings(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        return await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
-                    return await provider.analyze_image(input_data, **kwargs)
+                    if model_arg is not None:
+                        return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        return await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
             except Exception as e:

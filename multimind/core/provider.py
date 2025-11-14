@@ -36,9 +36,10 @@ class ProviderMetadata(BaseModel):
     capabilities: List[ProviderCapability]
     max_context_length: int
     max_tokens_per_request: int
-    pricing: Dict[str, float]  # e.g. {"input": 0.001, "output": 0.002}
-    typical_latency_ms: Dict[str, int]  # e.g. {"text_generation": 200}
+    pricing: Dict[str, Dict[str, float]]  # e.g. {"model_name": {"input": 0.001, "output": 0.002}}
+    typical_latency_ms: Dict[str, int]  # e.g. {"model_name": 200}
     supported_models: List[str]
+    latency: Optional[Dict[str, Dict[str, int]]] = None  # e.g. {"model_name": {"p50": 200, "p95": 400}}
 
 class GenerationResult(BaseModel):
     """Standardized result from text generation."""
