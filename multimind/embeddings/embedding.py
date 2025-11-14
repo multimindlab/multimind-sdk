@@ -117,7 +117,14 @@ class EmbeddingModel:
         if model_type == EmbeddingType.OPENAI:
             if not api_key:
                 raise ValueError("OpenAI API key required")
-            openai.api_key = api_key
+            # Use new OpenAI client API (v1.0+)
+            try:
+                from openai import AsyncOpenAI
+                self.openai_client = AsyncOpenAI(api_key=api_key, **kwargs)
+            except ImportError:
+                # Fallback for older versions
+                openai.api_key = api_key
+                self.openai_client = None
             self.model = None  # OpenAI uses API calls
         
         elif model_type == EmbeddingType.COHERE:
@@ -360,13 +367,22 @@ class EmbeddingModel:
         config: EmbeddingConfig
     ) -> List[float]:
         """Generate embedding using OpenAI."""
-        response = await openai.Embedding.acreate(
-            input=text,
-            model=self.model_name,
-            **config.custom_params
-        )
-        
-        embedding = response["data"][0]["embedding"]
+        # Use new OpenAI client API (v1.0+)
+        if hasattr(self, 'openai_client') and self.openai_client is not None:
+            response = await self.openai_client.embeddings.create(
+                input=text,
+                model=self.model_name,
+                **config.custom_params
+            )
+            embedding = response.data[0].embedding
+        else:
+            # Fallback for older OpenAI versions
+            response = await openai.Embedding.acreate(
+                input=text,
+                model=self.model_name,
+                **config.custom_params
+            )
+            embedding = response["data"][0]["embedding"]
         
         if config.normalize:
             embedding = self._normalize_embedding(embedding)
@@ -462,13 +478,22 @@ class EmbeddingModel:
         config: EmbeddingConfig
     ) -> List[List[float]]:
         """Generate batch embeddings using OpenAI."""
-        response = await openai.Embedding.acreate(
-            input=texts,
-            model=self.model_name,
-            **config.custom_params
-        )
-        
-        embeddings = [item["embedding"] for item in response["data"]]
+        # Use new OpenAI client API (v1.0+)
+        if hasattr(self, 'openai_client') and self.openai_client is not None:
+            response = await self.openai_client.embeddings.create(
+                input=texts,
+                model=self.model_name,
+                **config.custom_params
+            )
+            embeddings = [item.embedding for item in response.data]
+        else:
+            # Fallback for older OpenAI versions
+            response = await openai.Embedding.acreate(
+                input=texts,
+                model=self.model_name,
+                **config.custom_params
+            )
+            embeddings = [item["embedding"] for item in response["data"]]
         
         if config.normalize:
             embeddings = [

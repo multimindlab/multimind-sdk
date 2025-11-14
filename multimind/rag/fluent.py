@@ -11,6 +11,8 @@ from ..core.provider import GenerationResult, EmbeddingResult
 
 class RAGConfig(BaseModel):
     """Configuration for RAG pipeline."""
+    model_config = {"arbitrary_types_allowed": True}
+    
     vector_store: VectorStore
     embedding_provider: str
     embedding_model: str
@@ -48,13 +50,19 @@ class RAGPipeline:
             # Chunk documents
             chunks = []
             chunk_metadata = []
+            chunk_documents = []
             for i, doc in enumerate(documents):
                 doc_chunks = self._chunk_text(doc)
                 chunks.extend(doc_chunks)
-                if metadata:
-                    chunk_metadata.extend([metadata[i]] * len(doc_chunks))
-                else:
-                    chunk_metadata.extend([{}] * len(doc_chunks))
+                # Create metadata with text for each chunk
+                for chunk in doc_chunks:
+                    chunk_meta = {}
+                    if metadata:
+                        chunk_meta.update(metadata[i])
+                    chunk_meta["text"] = chunk
+                    chunk_metadata.append(chunk_meta)
+                    # Create document dict for vector store
+                    chunk_documents.append({"content": chunk})
             
             # Generate embeddings
             embeddings = []
@@ -68,11 +76,17 @@ class RAGPipeline:
                 embeddings.append(result.embedding)
             
             # Standardize embeddings
+            # Get dimension from vector store config
+            target_dimension = self.config.vector_store.config.get("dimension")
+            if target_dimension is None:
+                # Fallback: use the dimension of the first embedding
+                target_dimension = len(embeddings[0]) if embeddings else 1536
+            
             standardized = [
                 self.standardizer.standardize(
                     emb,
                     len(emb),
-                    target_dimension=self.config.vector_store.dimension
+                    target_dimension=target_dimension
                 )
                 for emb in embeddings
             ]
@@ -80,7 +94,8 @@ class RAGPipeline:
             # Add to vector store
             vector_ids = await self.config.vector_store.add_vectors(
                 standardized,
-                chunk_metadata
+                chunk_metadata,
+                chunk_documents
             )
             
             self._context["chunks"] = chunks
@@ -105,10 +120,16 @@ class RAGPipeline:
             )
             
             # Standardize query embedding
+            # Get dimension from vector store config
+            target_dimension = self.config.vector_store.config.get("dimension")
+            if target_dimension is None:
+                # Fallback: use the dimension of the query embedding
+                target_dimension = len(result.embedding) if result.embedding else 1536
+            
             query_embedding = self.standardizer.standardize(
                 result.embedding,
                 len(result.embedding),
-                target_dimension=self.config.vector_store.dimension
+                target_dimension=target_dimension
             )
             
             # Search vector store
@@ -133,8 +154,10 @@ class RAGPipeline:
         async def _generate():
             # Prepare context
             context = "\n\n".join([
-                result["metadata"].get("text", "")
-                for result in self._context["search_results"]
+                (r.document.get("content", "") if isinstance(r.document, dict) else str(r.document))
+                if hasattr(r, "document") and r.document
+                else (r.metadata.get("text", "") if isinstance(r.metadata, dict) else "")
+                for r in self._context["search_results"]
             ])
             
             # Format prompt
@@ -152,11 +175,14 @@ class RAGPipeline:
                 **kwargs
             )
             
-            self._context["answer"] = result.result
+            self._context["answer"] = result.text
             self._context["sources"] = [
                 {
-                    "text": r["metadata"].get("text", ""),
-                    "metadata": r["metadata"]
+                    "text": (r.document.get("content", "") if isinstance(r.document, dict) else str(r.document))
+                            if hasattr(r, "document") and r.document
+                            else (r.metadata.get("text", "") if isinstance(r.metadata, dict) else ""),
+                    "metadata": r.metadata if hasattr(r, "metadata") else {},
+                    "score": r.score if hasattr(r, "score") else 0.0
                 }
                 for r in self._context["search_results"]
             ]
@@ -166,7 +192,7 @@ class RAGPipeline:
     
     def filter(
         self,
-        filter_fn: Callable[[Dict[str, Any]], bool]
+        filter_fn: Callable[[Any], bool]
     ) -> 'RAGPipeline':
         """Filter search results."""
         async def _filter():
@@ -180,7 +206,7 @@ class RAGPipeline:
     
     def transform(
         self,
-        transform_fn: Callable[[Dict[str, Any]], Dict[str, Any]]
+        transform_fn: Callable[[Any], Any]
     ) -> 'RAGPipeline':
         """Transform search results."""
         async def _transform():
@@ -215,6 +241,10 @@ class RAGPipeline:
         if chunk_overlap is None:
             chunk_overlap = self.config.chunk_overlap
         
+        # Ensure overlap is smaller than chunk size to guarantee progress
+        if chunk_overlap >= chunk_size:
+            chunk_overlap = max(0, chunk_size // 2)
+        
         chunks = []
         start = 0
         text_len = len(text)
@@ -231,6 +261,14 @@ class RAGPipeline:
                     end = last_space
             
             chunks.append(text[start:end].strip())
-            start = end - chunk_overlap
+            
+            if end >= text_len:
+                break
+            
+            # Compute next start ensuring forward progress
+            next_start = end - chunk_overlap
+            if next_start <= start:
+                next_start = start + max(1, chunk_size - chunk_overlap)
+            start = next_start
         
         return chunks 
