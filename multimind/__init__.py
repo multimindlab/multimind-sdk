@@ -154,7 +154,7 @@ from .rag import RAG, RAGConfig, BaseRAG, RAGError, PostProcessor, PostProcessin
 from .document_loader import DataIngestion
 
 # Embeddings components
-from .embeddings import EmbeddingGenerator, EmbeddingConfig, Embedding, EmbeddingType
+from .embeddings import EmbeddingGenerator, EmbeddingConfig, Embedding, EmbeddingType, EmbeddingStandardizer
 
 # Vector store components
 from .vector_store import VectorStore, VectorStoreBackend, VectorStoreConfig, SearchResult, VectorStoreType, VectorStoreFactory
@@ -443,6 +443,7 @@ __all__ = [
     "EmbeddingConfig",
     "Embedding",
     "EmbeddingType",
+    "EmbeddingStandardizer",
 
     # Vector Store
     "VectorStore",
