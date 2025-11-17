@@ -289,6 +289,37 @@ class SearchResult:
         self.document = document
         self.score = score
         self.explanation = explanation
+    
+    def get_content(self) -> str:
+        """
+        Get text content from document or metadata consistently.
+        
+        This method handles different formats across vector store backends:
+        - If document is a dict, extracts 'content' key
+        - If document is a string, returns it directly
+        - Falls back to metadata['text'] if document is not available
+        - Returns empty string if no content is found
+        
+        Returns:
+            str: The text content from the search result
+        """
+        # Try document first
+        if self.document:
+            if isinstance(self.document, dict):
+                return self.document.get("content", str(self.document))
+            return str(self.document)
+        
+        # Fallback to metadata
+        if self.metadata:
+            if isinstance(self.metadata, dict):
+                return self.metadata.get("text", "")
+            return str(self.metadata)
+        
+        return ""
+    
+    def get_text(self) -> str:
+        """Alias for get_content() for convenience."""
+        return self.get_content()
 
 class VectorStoreConfig:
     """
