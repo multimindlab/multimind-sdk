@@ -72,11 +72,8 @@ class Retriever:
             retrieval_results = []
             for result in results:
                 if result.score >= self.config.similarity_threshold:
-                    # Extract content from document (can be dict or string)
-                    if isinstance(result.document, dict):
-                        content = result.document.get("content", str(result.document))
-                    else:
-                        content = str(result.document) if result.document else ""
+                    # Extract content using get_content() method for consistent extraction
+                    content = result.get_content()
                     
                     # Extract source and chunk_id from metadata if available
                     source = result.metadata.get("source") if isinstance(result.metadata, dict) else None

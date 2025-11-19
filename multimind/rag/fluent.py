@@ -152,12 +152,9 @@ class RAGPipeline:
     ) -> 'RAGPipeline':
         """Generate an answer using the context."""
         async def _generate():
-            # Prepare context
+            # Prepare context using get_content() for consistent content extraction
             context = "\n\n".join([
-                (r.document.get("content", "") if isinstance(r.document, dict) else str(r.document))
-                if hasattr(r, "document") and r.document
-                else (r.metadata.get("text", "") if isinstance(r.metadata, dict) else "")
-                for r in self._context["search_results"]
+                r.get_content() for r in self._context["search_results"]
             ])
             
             # Format prompt
@@ -178,9 +175,7 @@ class RAGPipeline:
             self._context["answer"] = result.text
             self._context["sources"] = [
                 {
-                    "text": (r.document.get("content", "") if isinstance(r.document, dict) else str(r.document))
-                            if hasattr(r, "document") and r.document
-                            else (r.metadata.get("text", "") if isinstance(r.metadata, dict) else ""),
+                    "text": r.get_content(),
                     "metadata": r.metadata if hasattr(r, "metadata") else {},
                     "score": r.score if hasattr(r, "score") else 0.0
                 }
