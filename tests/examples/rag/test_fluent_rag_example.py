@@ -316,18 +316,8 @@ async def test_rag_pipeline_with_filtering(mock_rag_pipeline):
     
     def filter_quantum(result):
         """Filter results to only include quantum computing content."""
-        text = ""
-        if hasattr(result, "document") and result.document:
-            if isinstance(result.document, dict):
-                text = result.document.get("content", "")
-            else:
-                text = str(result.document)
-        elif hasattr(result, "metadata") and result.metadata:
-            if isinstance(result.metadata, dict):
-                text = result.metadata.get("text", "")
-            else:
-                text = str(result.metadata)
-        return "quantum" in text.lower()
+        # Use get_content() method for consistent content extraction
+        return "quantum" in result.get_content().lower()
     
     result = await (
         mock_rag_pipeline
@@ -381,26 +371,17 @@ async def test_rag_pipeline_with_transformation(mock_rag_pipeline):
     
     def add_relevance_score(result):
         """Add a relevance score to each result."""
-        text = ""
-        if hasattr(result, "document") and result.document:
-            if isinstance(result.document, dict):
-                text = result.document.get("content", "")
-            else:
-                text = str(result.document)
-        elif hasattr(result, "metadata") and result.metadata:
-            if isinstance(result.metadata, dict):
-                text = result.metadata.get("text", "")
-            else:
-                text = str(result.metadata)
+        # Use get_content() method for consistent content extraction
+        text = result.get_content().lower()
         
         query = "quantum computing applications"
         words = query.split()
-        score = sum(1 for word in words if word in text.lower())
+        score = sum(1 for word in words if word in text)
         
-        if hasattr(result, "metadata") and isinstance(result.metadata, dict):
-            result.metadata["relevance_score"] = score
-        else:
-            result.metadata = {"relevance_score": score}
+        # Add relevance score to metadata
+        if not isinstance(result.metadata, dict):
+            result.metadata = {}
+        result.metadata["relevance_score"] = score
         
         return result
     

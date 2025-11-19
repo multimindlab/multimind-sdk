@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional, Union, Tuple, Set
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
+import time
 import networkx as nx
 import numpy as np
 from ..models.base import BaseLLM
@@ -410,12 +411,24 @@ class SelfImprovingRAG:
         model: BaseLLM,
         retriever: HybridRetriever,
         memory: TokenAwareMemory,
+        peft_tuner: Optional[Any] = None,
+        retrain_threshold: float = 0.8,
+        retrain_window: int = 10,
+        retrain_cooldown: int = 3600,
         **kwargs
     ):
         self.model = model
         self.retriever = retriever
         self.memory = memory
+        self.peft_tuner = peft_tuner
+        self.retrain_threshold = retrain_threshold
+        self.retrain_window = retrain_window
+        self.retrain_cooldown = retrain_cooldown
         self.kwargs = kwargs
+        
+        # Feedback tracking
+        self.feedback_history: List[Dict[str, Any]] = []
+        self.last_retrain_time: Optional[float] = None
 
     async def process_query(
         self,
@@ -521,4 +534,131 @@ class SelfImprovingRAG:
         # 2. Adjust prompt templates
         # 3. Fine-tune models
         # 4. Update memory importance
-        pass 
+        pass
+
+    def submit_feedback(
+        self,
+        query: str,
+        response: str,
+        feedback: Dict[str, Any]
+    ) -> None:
+        """
+        Submit feedback for a query-response pair.
+        
+        Args:
+            query: The original query
+            response: The generated response
+            feedback: Feedback dictionary (e.g., {"thumbs": "down"})
+        """
+        feedback_entry = {
+            "query": query,
+            "response": response,
+            "feedback": feedback,
+            "timestamp": time.time()
+        }
+        self.feedback_history.append(feedback_entry)
+        
+        # Check if retraining is needed
+        if self.peft_tuner is not None:
+            self._check_retrain_conditions()
+
+    async def analyze_feedback(self) -> Dict[str, Any]:
+        """
+        Analyze collected feedback and return statistics.
+        
+        Returns:
+            Dictionary with feedback analytics
+        """
+        if not self.feedback_history:
+            return {
+                "stats": {
+                    "total_feedbacks": 0,
+                    "positive": 0,
+                    "negative": 0,
+                    "average_quality": 0.0
+                }
+            }
+        
+        total = len(self.feedback_history)
+        positive = sum(1 for f in self.feedback_history 
+                      if f.get("feedback", {}).get("thumbs") == "up")
+        negative = sum(1 for f in self.feedback_history 
+                      if f.get("feedback", {}).get("thumbs") == "down")
+        
+        # Calculate average quality (simple heuristic)
+        quality_scores = []
+        for f in self.feedback_history:
+            thumbs = f.get("feedback", {}).get("thumbs", "")
+            if thumbs == "up":
+                quality_scores.append(1.0)
+            elif thumbs == "down":
+                quality_scores.append(0.0)
+            else:
+                # If no explicit feedback, assume neutral
+                quality_scores.append(0.5)
+        
+        avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+        
+        return {
+            "stats": {
+                "total_feedbacks": total,
+                "positive": positive,
+                "negative": negative,
+                "average_quality": avg_quality
+            }
+        }
+
+    def _check_retrain_conditions(self) -> None:
+        """Check if retraining conditions are met and trigger retraining if needed."""
+        if self.peft_tuner is None:
+            return
+        
+        # Check cooldown period
+        current_time = time.time()
+        if self.last_retrain_time is not None:
+            time_since_retrain = current_time - self.last_retrain_time
+            if time_since_retrain < self.retrain_cooldown:
+                return
+        
+        # Check if we have enough feedback in the window
+        recent_feedback = self.feedback_history[-self.retrain_window:]
+        if len(recent_feedback) < self.retrain_window:
+            return
+        
+        # Calculate average quality for recent feedback
+        quality_scores = []
+        for f in recent_feedback:
+            thumbs = f.get("feedback", {}).get("thumbs", "")
+            if thumbs == "up":
+                quality_scores.append(1.0)
+            elif thumbs == "down":
+                quality_scores.append(0.0)
+            else:
+                quality_scores.append(0.5)
+        
+        avg_quality = sum(quality_scores) / len(quality_scores) if quality_scores else 0.0
+        
+        # Trigger retraining if quality is below threshold
+        if avg_quality < self.retrain_threshold:
+            print(f"[SelfImprovingRAG] Quality ({avg_quality:.2f}) below threshold ({self.retrain_threshold}), triggering retraining...")
+            self._trigger_retraining(recent_feedback)
+            self.last_retrain_time = current_time
+
+    def _trigger_retraining(self, training_data: List[Dict[str, Any]]) -> None:
+        """Trigger model retraining with collected feedback data."""
+        if self.peft_tuner is None:
+            return
+        
+        # Prepare training data format expected by PEFT tuner
+        train_data = []
+        for entry in training_data:
+            train_data.append({
+                "query": entry["query"],
+                "response": entry["response"],
+                "feedback": entry["feedback"]
+            })
+        
+        # Train and save model
+        self.peft_tuner.train(train_data)
+        self.peft_tuner.save_model()
+        print(f"[SelfImprovingRAG] Retraining completed on {len(train_data)} samples.") 

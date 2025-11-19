@@ -636,10 +636,11 @@ class ContextManager:
             # Convert results to chunks
             chunks = []
             for result in results:
+                content = result.get_content()
                 chunk = ContextChunk(
-                    content=result.document["content"],
+                    content=content,
                     metadata=result.metadata,
-                    tokens=len(self.tokenizer.encode(result.document["content"])),
+                    tokens=len(self.tokenizer.encode(content)),
                     embedding=result.vector,
                     relevance_score=result.score,
                     timestamp=datetime.now().timestamp()
