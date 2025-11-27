@@ -127,7 +127,7 @@ class AdvancedEnsemble:
     ) -> EnsembleResult:
         """Combine results using weighted voting (adaptive if enabled)."""
         if use_adaptive_weights or not weights:
-            providers = [result.provider for result in results]
+            providers = [self._get_provider_name(result) for result in results]
             weights = self.performance_tracker.get_all_weights(providers)
         # Normalize weights
         total_weight = sum(weights.values())
@@ -135,7 +135,8 @@ class AdvancedEnsemble:
         # Calculate weighted scores for each result
         weighted_scores = []
         for result in results:
-            weight = normalized_weights.get(result.provider, 0.0)
+            provider_name = self._get_provider_name(result)
+            weight = normalized_weights.get(provider_name, 0.0)
             weighted_scores.append((result, weight))
         # Select result with highest weight
         best_result, best_weight = max(weighted_scores, key=lambda x: x[1])
@@ -143,7 +144,7 @@ class AdvancedEnsemble:
             result=best_result,
             confidence=ConfidenceScore(
                 score=best_weight,
-                explanation=f"Selected result from {best_result.provider} with adaptive weight {best_weight:.2f}"
+                explanation=f"Selected result from {self._get_provider_name(best_result)} with adaptive weight {best_weight:.2f}"
             ),
             provider_votes=normalized_weights
         )
@@ -171,7 +172,7 @@ class AdvancedEnsemble:
                 return EnsembleResult(
                     result=result,
                     confidence=confidence,
-                    provider_votes={r.provider: c.score for r, c in confidence_scores}
+                    provider_votes={self._get_provider_name(r): c.score for r, c in confidence_scores}
                 )
         
         # If no result meets threshold, return highest confidence
@@ -179,7 +180,7 @@ class AdvancedEnsemble:
         return EnsembleResult(
             result=best_result,
             confidence=best_confidence,
-            provider_votes={r.provider: c.score for r, c in confidence_scores}
+            provider_votes={self._get_provider_name(r): c.score for r, c in confidence_scores}
         )
     
     async def _parallel_voting(
@@ -203,7 +204,7 @@ class AdvancedEnsemble:
         
         # Normalize scores
         total_score = sum(score for _, score in scores)
-        normalized_scores = {r.provider: s/total_score for r, s in scores}
+        normalized_scores = {self._get_provider_name(r): s/total_score for r, s in scores}
         
         # Select best result
         best_result, best_score = max(scores, key=lambda x: x[1])
@@ -212,7 +213,7 @@ class AdvancedEnsemble:
             result=best_result,
             confidence=ConfidenceScore(
                 score=best_score,
-                explanation=f"Selected result from {best_result.provider} with LLM evaluation score {best_score:.2f}"
+                explanation=f"Selected result from {self._get_provider_name(best_result)} with LLM evaluation score {best_score:.2f}"
             ),
             provider_votes=normalized_scores
         )
@@ -234,7 +235,7 @@ class AdvancedEnsemble:
                 # Fallback to string equality if no embedder available
                 embedder = None
 
-        texts = [str(r.result) for r in results]
+        texts = [self._extract_result_content(r) for r in results]
         if embedder is not None:
             embeddings = embedder.encode(texts, convert_to_tensor=True)
             import torch
@@ -264,19 +265,19 @@ class AdvancedEnsemble:
             vote_count = len(largest_group)
             total_votes = len(results)
             explanation = f"Selected result by semantic majority voting: {vote_count}/{total_votes} semantically similar."
-            provider_votes = {r.provider: 1.0 if idx in largest_group else 0.0 for idx, r in enumerate(results)}
+            provider_votes = {self._get_provider_name(r): 1.0 if idx in largest_group else 0.0 for idx, r in enumerate(results)}
         else:
             # Fallback: string equality
             result_counts = {}
             for result in results:
-                key = str(result.result)
+                key = self._extract_result_content(result)
                 if key not in result_counts:
                     result_counts[key] = (result, 0)
                 result_counts[key] = (result, result_counts[key][1] + 1)
             best_result, vote_count = max(result_counts.values(), key=lambda x: x[1])
             total_votes = len(results)
             explanation = f"Selected result with {vote_count}/{total_votes} votes (string equality fallback)"
-            provider_votes = {r.provider: 1.0 for r in results}
+            provider_votes = {self._get_provider_name(r): 1.0 for r in results}
         return EnsembleResult(
             result=best_result,
             confidence=ConfidenceScore(
@@ -303,7 +304,7 @@ class AdvancedEnsemble:
         borda_scores = {}
         for result, ranking in zip(results, rankings):
             score = self._calculate_borda_score(ranking, len(results))
-            borda_scores[result.provider] = score
+            borda_scores[self._get_provider_name(result)] = score
         
         # Normalize scores
         total_score = sum(borda_scores.values())
@@ -311,7 +312,7 @@ class AdvancedEnsemble:
         
         # Select result with highest Borda score
         best_provider = max(borda_scores.items(), key=lambda x: x[1])[0]
-        best_result = next(r for r in results if r.provider == best_provider)
+        best_result = next(r for r in results if self._get_provider_name(r) == best_provider)
         
         return EnsembleResult(
             result=best_result,
@@ -322,6 +323,29 @@ class AdvancedEnsemble:
             provider_votes=normalized_scores
         )
     
+    def _extract_result_content(self, result: Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]) -> str:
+        """Extract text content from any result type for evaluation."""
+        if isinstance(result, GenerationResult):
+            return result.text
+        elif isinstance(result, EmbeddingResult):
+            return f"Embedding vector of length {len(result.embedding)}"
+        elif isinstance(result, ImageAnalysisResult):
+            # Combine text, captions, and objects for evaluation
+            parts = []
+            if result.text:
+                parts.append(f"Text: {result.text}")
+            if result.captions:
+                parts.append(f"Captions: {', '.join(result.captions)}")
+            if result.objects:
+                parts.append(f"Objects: {len(result.objects)} detected")
+            return " | ".join(parts) if parts else "No content extracted"
+        else:
+            return str(result)
+    
+    def _get_provider_name(self, result: Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]) -> str:
+        """Extract provider name from any result type."""
+        return getattr(result, 'provider', None) or getattr(result, 'provider_name', 'unknown')
+    
     async def _evaluate_confidence(
         self,
         result: Union[GenerationResult, EmbeddingResult, ImageAnalysisResult],
@@ -329,9 +353,10 @@ class AdvancedEnsemble:
         **kwargs
     ) -> ConfidenceScore:
         """Evaluate confidence in a result using LLM."""
+        content = self._extract_result_content(result)
         prompt = f"""
         Evaluate the confidence in this {task_type} result:
-        {result.result}
+        {content}
         
         Consider:
         1. Completeness of the response
@@ -342,21 +367,33 @@ class AdvancedEnsemble:
         Provide a confidence score (0.0 to 1.0) and explanation.
         """
         
+        provider_name = self._get_provider_name(result)
+        evaluation_models = kwargs.get("evaluation_models", {})
+        evaluation_providers = kwargs.get("evaluation_providers", {})
+        default_model = kwargs.get("evaluation_model", "gpt-4")
+        eval_model = evaluation_models.get(provider_name, default_model)
+        eval_provider = evaluation_providers.get(provider_name, kwargs.get("evaluation_provider", provider_name))
+        route_kwargs = {
+            k: v for k, v in kwargs.items()
+            if k not in {"evaluation_models", "evaluation_providers", "evaluation_model", "evaluation_provider"}
+        }
         evaluation = await self.router.route(
             TaskType.TEXT_GENERATION,
             prompt,
-            model="gpt-4",
-            **kwargs
+            provider=eval_provider,
+            model=eval_model,
+            **route_kwargs
         )
         
         # Parse confidence score from evaluation
-        score = self._parse_confidence_score(evaluation.result)
-        explanation = self._parse_confidence_explanation(evaluation.result)
+        eval_content = self._extract_result_content(evaluation)
+        score = self._parse_confidence_score(eval_content)
+        explanation = self._parse_confidence_explanation(eval_content)
         
         return ConfidenceScore(
             score=score,
             explanation=explanation,
-            metadata={"raw_evaluation": evaluation.result}
+            metadata={"raw_evaluation": eval_content}
         )
     
     async def _evaluate_with_llm(
@@ -366,9 +403,10 @@ class AdvancedEnsemble:
         **kwargs
     ) -> str:
         """Evaluate a result using LLM."""
+        content = self._extract_result_content(result)
         prompt = f"""
         Evaluate this {task_type} result:
-        {result.result}
+        {content}
         
         Consider:
         1. Accuracy and correctness
@@ -379,14 +417,25 @@ class AdvancedEnsemble:
         Provide a detailed evaluation with a numerical score (0-100).
         """
         
+        provider_name = self._get_provider_name(result)
+        evaluation_models = kwargs.get("evaluation_models", {})
+        evaluation_providers = kwargs.get("evaluation_providers", {})
+        default_model = kwargs.get("evaluation_model", "gpt-4")
+        eval_model = evaluation_models.get(provider_name, default_model)
+        eval_provider = evaluation_providers.get(provider_name, kwargs.get("evaluation_provider", provider_name))
+        route_kwargs = {
+            k: v for k, v in kwargs.items()
+            if k not in {"evaluation_models", "evaluation_providers", "evaluation_model", "evaluation_provider"}
+        }
         evaluation = await self.router.route(
             TaskType.TEXT_GENERATION,
             prompt,
-            model="gpt-4",
-            **kwargs
+            provider=eval_provider,
+            model=eval_model,
+            **route_kwargs
         )
         
-        return evaluation.result
+        return self._extract_result_content(evaluation)
     
     async def _get_provider_ranking(
         self,
@@ -395,9 +444,10 @@ class AdvancedEnsemble:
         **kwargs
     ) -> List[str]:
         """Get ranking of results from a provider."""
+        content = self._extract_result_content(result)
         prompt = f"""
         Rank the following {task_type} results from best to worst:
-        {result.result}
+        {content}
         
         Consider:
         1. Quality and accuracy
@@ -408,14 +458,36 @@ class AdvancedEnsemble:
         Provide a ranked list of provider names.
         """
         
+        provider_name = self._get_provider_name(result)
+        evaluation_models = kwargs.get("evaluation_models", {})
+        evaluation_providers = kwargs.get("evaluation_providers", {})
+        default_model = kwargs.get("evaluation_model", "gpt-4")
+        
+        # Use provider-specific model if available, otherwise use smart defaults
+        eval_model = evaluation_models.get(provider_name)
+        if not eval_model:
+            # Use provider-appropriate default models
+            if provider_name == "ollama":
+                eval_model = "mistral"  # Ollama doesn't have gpt-4
+            elif provider_name == "anthropic" or provider_name == "claude":
+                eval_model = "claude-3-sonnet"
+            else:
+                eval_model = default_model  # Use gpt-4 for OpenAI and others
+        
+        eval_provider = evaluation_providers.get(provider_name, kwargs.get("evaluation_provider", provider_name))
+        route_kwargs = {
+            k: v for k, v in kwargs.items()
+            if k not in {"evaluation_models", "evaluation_providers", "evaluation_model", "evaluation_provider"}
+        }
         ranking = await self.router.route(
             TaskType.TEXT_GENERATION,
             prompt,
-            model="gpt-4",
-            **kwargs
+            provider=eval_provider,
+            model=eval_model,
+            **route_kwargs
         )
         
-        return self._parse_ranking(ranking.result)
+        return self._parse_ranking(self._extract_result_content(ranking))
     
     def _parse_confidence_score(self, evaluation: str) -> float:
         """Parse confidence score from evaluation text."""
@@ -519,7 +591,7 @@ class AdvancedEnsemble:
         if not OPTUNA_AVAILABLE:
             raise ImportError("Optuna is required for hyperparameter tuning. Please install optuna.")
         
-        providers = [r.provider for r in results]
+        providers = [self._get_provider_name(r) for r in results]
         def objective(trial):
             weights = {p: trial.suggest_float(f"weight_{p}", 0.01, 1.0) for p in providers}
             # Normalize

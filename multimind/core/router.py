@@ -115,19 +115,28 @@ class Router:
         **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """Route a request to the appropriate provider(s)."""
-        if task_type not in self.task_configs:
+        provider_override = kwargs.get("provider")
+        if not provider_override and task_type not in self.task_configs:
             raise ValueError(f"No configuration found for task type: {task_type}")
         
-        config = self.task_configs[task_type]
         start_time = time.time()
         
         try:
-            if config.routing_strategy == RoutingStrategy.ENSEMBLE:
-                result = await self._handle_ensemble(task_type, input_data, config, **kwargs)
-            elif config.routing_strategy == RoutingStrategy.CASCADE:
-                result = await self._handle_cascade(task_type, input_data, config, **kwargs)
+            if provider_override:
+                result = await self._route_specific_provider(
+                    provider_override,
+                    task_type,
+                    input_data,
+                    **kwargs
+                )
             else:
-                result = await self._handle_single_provider(task_type, input_data, config, **kwargs)
+                config = self.task_configs[task_type]
+                if config.routing_strategy == RoutingStrategy.ENSEMBLE:
+                    result = await self._handle_ensemble(task_type, input_data, config, **kwargs)
+                elif config.routing_strategy == RoutingStrategy.CASCADE:
+                    result = await self._handle_cascade(task_type, input_data, config, **kwargs)
+                else:
+                    result = await self._handle_single_provider(task_type, input_data, config, **kwargs)
             
             # Record successful request metrics
             latency_ms = (time.time() - start_time) * 1000
@@ -178,6 +187,35 @@ class Router:
                 metadata={"request_id": kwargs.get("request_id")}
             )
             raise
+    
+    async def _route_specific_provider(
+        self,
+        provider_name: str,
+        task_type: TaskType,
+        input_data: Any,
+        **kwargs
+    ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
+        """
+        Route directly to a specific provider when explicitly requested.
+        This bypasses task configuration while still leveraging the same execution pipeline.
+        """
+        if provider_name not in self.providers:
+            raise ValueError(f"Provider '{provider_name}' is not registered with the router")
+        
+        single_provider_config = TaskConfig(
+            preferred_providers=[provider_name],
+            fallback_providers=[],
+            routing_strategy=RoutingStrategy.COST_BASED
+        )
+        call_kwargs = dict(kwargs)
+        call_kwargs.pop("provider", None)
+        return await self._handle_single_provider(
+            task_type,
+            input_data,
+            single_provider_config,
+            use_adaptive_routing=False,
+            **call_kwargs
+        )
     
     async def _handle_single_provider(
         self,
