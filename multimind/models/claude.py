@@ -2,6 +2,7 @@
 Anthropic Claude model implementation.
 """
 
+import os
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
 from anthropic import AsyncAnthropic
 from .base import BaseLLM
@@ -16,6 +17,9 @@ class ClaudeModel(BaseLLM):
         **kwargs
     ):
         super().__init__(model_name, **kwargs)
+        # Load API key from environment if not provided
+        if api_key is None:
+            api_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
         self.client = AsyncAnthropic(api_key=api_key)
 
     async def generate(
@@ -26,6 +30,9 @@ class ClaudeModel(BaseLLM):
         **kwargs
     ) -> str:
         """Generate text using Claude's completion API."""
+        # Anthropic API requires max_tokens to be set
+        if max_tokens is None:
+            max_tokens = 1024  # Default value
         response = await self.client.messages.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -43,6 +50,9 @@ class ClaudeModel(BaseLLM):
         **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text using Claude's completion API."""
+        # Anthropic API requires max_tokens to be set
+        if max_tokens is None:
+            max_tokens = 1024  # Default value
         stream = await self.client.messages.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -63,6 +73,9 @@ class ClaudeModel(BaseLLM):
         **kwargs
     ) -> str:
         """Generate chat completion using Claude's chat API."""
+        # Anthropic API requires max_tokens to be set
+        if max_tokens is None:
+            max_tokens = 1024  # Default value
         response = await self.client.messages.create(
             model=self.model_name,
             messages=messages,
@@ -70,7 +83,7 @@ class ClaudeModel(BaseLLM):
             max_tokens=max_tokens,
             **kwargs
         )
-        return response.content[0].tex
+        return response.content[0].text
 
     async def chat_stream(
         self,
@@ -80,6 +93,9 @@ class ClaudeModel(BaseLLM):
         **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion using Claude's chat API."""
+        # Anthropic API requires max_tokens to be set
+        if max_tokens is None:
+            max_tokens = 1024  # Default value
         stream = await self.client.messages.create(
             model=self.model_name,
             messages=messages,
@@ -90,7 +106,7 @@ class ClaudeModel(BaseLLM):
         )
         async for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.text:
-                yield chunk.delta.tex
+                yield chunk.delta.text
 
     async def embeddings(
         self,

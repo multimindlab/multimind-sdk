@@ -64,7 +64,7 @@ class MCPExecutor:
             raise ValueError(f"Unsupported step type: {step_type}")
 
         # Update workflow state
-        self.workflow_state[step_id] = resul
+        self.workflow_state[step_id] = result
 
     def _get_step_inputs(
         self,
@@ -74,12 +74,20 @@ class MCPExecutor:
         """Get inputs for a step from workflow state."""
         inputs = {}
 
-        # Find incoming connections
+        # Find incoming connections (outputs from previous steps)
         for conn in spec["workflow"]["connections"]:
             if conn["to"] == step["id"]:
                 from_step = conn["from"]
                 if from_step in self.workflow_state:
                     inputs[from_step] = self.workflow_state[from_step]
+
+        # Also include initial context values (like 'topic') that aren't step outputs
+        # Get all step IDs to distinguish between step outputs and initial context
+        step_ids = {s["id"] for s in spec["workflow"]["steps"]}
+        for key, value in self.workflow_state.items():
+            # Include values that are not step outputs (initial context)
+            if key not in step_ids and key not in inputs:
+                inputs[key] = value
 
         return inputs
 
@@ -119,9 +127,9 @@ class MCPExecutor:
             return separator.join(str(v) for v in inputs.values())
 
         elif transform_type == "extract":
-            # Extract specific fields from inpu
+            # Extract specific fields from input
             field = config["field"]
-            input_key = list(inputs.keys())[0]  # Use first inpu
+            input_key = list(inputs.keys())[0]  # Use first input
             return inputs[input_key].get(field)
 
         else:
@@ -135,7 +143,7 @@ class MCPExecutor:
     ) -> bool:
         """Execute a condition step."""
         condition_type = config["type"]
-        input_key = list(inputs.keys())[0]  # Use first inpu
+        input_key = list(inputs.keys())[0]  # Use first input
         value = inputs[input_key]
 
         if condition_type == "equals":
@@ -164,4 +172,4 @@ class MCPExecutor:
             if placeholder in prompt:
                 prompt = prompt.replace(placeholder, str(value))
 
-        return promp
+        return prompt
