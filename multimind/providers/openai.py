@@ -3,6 +3,7 @@ OpenAI provider adapter for the MultimindSDK.
 """
 
 from typing import Dict, List, Optional, Union, Any
+import base64
 import openai
 from datetime import datetime
 from ..core.provider import (
@@ -153,13 +154,14 @@ class OpenAIProvider(ProviderAdapter):
         self,
         image_data: bytes,
         prompt: str,
-        model: str = "gpt-4-vision-preview",
+        model: str = "gpt-4o-mini",
         **kwargs
     ) -> ImageAnalysisResult:
         """Analyze image using OpenAI's API."""
         start_time = datetime.now()
         
         try:
+            image_base64 = base64.b64encode(image_data).decode("utf-8")
             response = await self.client.chat.completions.create(
                 model=model,
                 messages=[
@@ -170,7 +172,7 @@ class OpenAIProvider(ProviderAdapter):
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/jpeg;base64,{image_data.hex()}"
+                                    "url": f"data:image/jpeg;base64,{image_base64}"
                                 }
                             }
                         ]
@@ -197,9 +199,11 @@ class OpenAIProvider(ProviderAdapter):
             ) / 1000  # Convert to USD
             
             return ImageAnalysisResult(
+                objects=[],
+                captions=[result] if result else [],
+                text=result,
                 provider_name="openai",
                 model_name=model,
-                result=result,
                 tokens_used=tokens_used,
                 latency_ms=latency_ms,
                 cost_estimate_usd=cost
