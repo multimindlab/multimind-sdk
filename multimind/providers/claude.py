@@ -97,10 +97,10 @@ class ClaudeProvider(ProviderAdapter):
             ) / 1000  # Convert to USD
             
             return GenerationResult(
+                text=result,
+                tokens_used=tokens_used,
                 provider_name="claude",
                 model_name=model,
-                result=result,
-                tokens_used=tokens_used,
                 latency_ms=latency_ms,
                 cost_estimate_usd=cost
             )
