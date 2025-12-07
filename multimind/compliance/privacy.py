@@ -2712,11 +2712,11 @@ class PrivacyCompliance(BaseModel):
         findings = []
         recommendations = []
         
-        # Get audit logs
-        logs = await self.get_audit_logs(
-            start_date=period_start,
-            end_date=period_end
-        )
+        # Get audit logs filtered by date range
+        logs = [
+            log for log in self.audit_logs
+            if period_start <= log.timestamp <= period_end
+        ]
         
         # Analyze logs
         critical_events = [log for log in logs if log.level == AuditLogLevel.CRITICAL]
@@ -2986,7 +2986,8 @@ class PrivacyCompliance(BaseModel):
         description: str,
         steps: List[Dict[str, Any]],
         assigned_to: Optional[str] = None,
-        due_date: Optional[datetime] = None
+        due_date: Optional[datetime] = None,
+        metadata: Optional[Dict[str, Any]] = None
     ) -> ComplianceWorkflow:
         """Create a new compliance workflow."""
         workflow = ComplianceWorkflow(
@@ -2995,7 +2996,8 @@ class PrivacyCompliance(BaseModel):
             description=description,
             steps=steps,
             assigned_to=assigned_to,
-            due_date=due_date
+            due_date=due_date,
+            metadata=metadata or {}
         )
         
         self.workflows[workflow_id] = workflow
