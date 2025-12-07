@@ -2,6 +2,7 @@
 OpenAI model implementation.
 """
 
+import os
 import openai
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union, cast
 from openai.types.chat import ChatCompletionMessageParam
@@ -17,6 +18,9 @@ class OpenAIModel(BaseLLM):
         **kwargs
     ):
         super().__init__(model_name, **kwargs)
+        # Load API key from environment if not provided
+        if api_key is None:
+            api_key = os.getenv("OPENAI_API_KEY")
         self.client = openai.AsyncOpenAI(api_key=api_key)
         # Set pricing based on model
         if "gpt-4" in model_name:
