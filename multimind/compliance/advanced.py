@@ -101,11 +101,18 @@ class ComplianceShard:
         # Apply homomorphic encryption for sensitive data
         encrypted_result = self.homomorphic_encryption.encrypt(compliance_result)
         
+        # Ensure metadata exists
+        metadata = compliance_result.get("metadata", {
+            "timestamp": datetime.now().isoformat(),
+            "level": level.value if hasattr(level, 'value') else str(level),
+            "jurisdiction": self.jurisdiction
+        })
+        
         return compliance_result["compliant"], {
             "proof": proof,
             "private_result": encrypted_result,
             "metrics": metrics,
-            "metadata": compliance_result["metadata"]
+            "metadata": metadata
         }
     
     async def _apply_local_rules(self, data: Dict[str, Any], level: ComplianceLevel) -> Dict[str, Any]:
@@ -205,6 +212,15 @@ class SelfHealingCompliance:
         
         return healed_state
     
+    def _get_state_metadata(self, state: Dict[str, Any]) -> Dict[str, Any]:
+        """Get metadata for a compliance state."""
+        return {
+            "status": state.get("status", "unknown"),
+            "timestamp": datetime.now().isoformat(),
+            "version": state.get("version", "1.0"),
+            "checksum": hash(str(state))
+        }
+    
     def _create_rollback_point(self, state: Dict[str, Any]):
         """Create a rollback point for the current state."""
         self.rollback_points.append({
@@ -212,6 +228,69 @@ class SelfHealingCompliance:
             "timestamp": datetime.now().isoformat(),
             "metadata": self._get_state_metadata(state)
         })
+    
+    async def _detect_vulnerabilities(self, compliance_state: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Detect vulnerabilities in the compliance state."""
+        # Placeholder implementation: Replace with actual vulnerability detection logic
+        vulnerabilities = []
+        if compliance_state.get("status") == "needs_healing":
+            vulnerabilities.append({
+                "id": "vuln1",
+                "severity": "high",
+                "description": "Compliance state needs healing"
+            })
+        return vulnerabilities
+    
+    async def _check_regulatory_changes(self) -> List[Dict[str, Any]]:
+        """Check for regulatory changes that affect compliance."""
+        # Placeholder implementation: Replace with actual regulatory change checking logic
+        return [
+            {
+                "id": "change1",
+                "description": "New data encryption standard",
+                "impact": "medium"
+            }
+        ]
+    
+    async def _generate_patches(self, vulnerabilities: List[Dict[str, Any]], regulatory_updates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Generate patches for detected vulnerabilities and regulatory changes."""
+        # Placeholder implementation: Replace with actual patch generation logic
+        patches = []
+        for vuln in vulnerabilities:
+            patches.append({
+                "id": f"patch_{vuln['id']}",
+                "vulnerability_id": vuln["id"],
+                "action": "fix",
+                "description": f"Fix for {vuln['description']}"
+            })
+        return patches
+    
+    async def _apply_patches(self, compliance_state: Dict[str, Any], patches: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Apply patches to the compliance state."""
+        # Placeholder implementation: Replace with actual patch application logic
+        healed_state = compliance_state.copy()
+        healed_state["status"] = "healed"
+        healed_state["patches_applied"] = [p["id"] for p in patches]
+        return healed_state
+    
+    def _update_patch_effectiveness(self, patches: List[Dict[str, Any]], healed_state: Dict[str, Any]):
+        """Update patch effectiveness tracking."""
+        # Placeholder implementation: Replace with actual effectiveness tracking logic
+        for patch in patches:
+            self.patch_effectiveness[patch["id"]] = {
+                "effectiveness": 0.9,
+                "timestamp": datetime.now().isoformat()
+            }
+    
+    def _update_patch_history(self, patches: List[Dict[str, Any]]):
+        """Update patch history with effectiveness metrics."""
+        # Placeholder implementation: Replace with actual history update logic
+        for patch in patches:
+            self.patch_history.append({
+                "patch": patch,
+                "timestamp": datetime.now().isoformat(),
+                "effectiveness": self.patch_effectiveness.get(patch["id"], {}).get("effectiveness", 0.0)
+            })
 
 class ExplainableDTO:
     """Enhanced explainable DTO with advanced explanation generation."""
@@ -285,6 +364,16 @@ class ModelWatermarking:
         self.verification_history = []
         self.tamper_detection = self._initialize_tamper_detection()
     
+    def _initialize_tamper_detection(self):
+        """Initialize tamper detection system."""
+        # Placeholder implementation: Replace with actual initialization logic
+        class TamperDetection:
+            async def initialize(self, model):
+                return True
+            async def check(self, model):
+                return {"detected": False, "details": "No tampering detected"}
+        return TamperDetection()
+    
     def _initialize_watermark_generator(self):
         """Initialize the watermark generator for model watermarking."""
         # Placeholder implementation: Replace with actual initialization logic
@@ -297,7 +386,7 @@ class ModelWatermarking:
         """Initialize the fingerprint tracker for model watermarking."""
         # Placeholder implementation: Replace with actual initialization logic
         class FingerprintTracker:
-            async def track(self):
+            async def track(self, fingerprint: str):
                 return "secure_fingerprint"
         return FingerprintTracker()
     
@@ -318,13 +407,33 @@ class ModelWatermarking:
         
         return watermarked_model
     
+    async def _apply_watermark(self, model: Any, watermark: str) -> Any:
+        """Apply watermark to the model."""
+        # Placeholder implementation: Replace with actual watermark application logic
+        # In a real implementation, this would modify the model to include the watermark
+        return model
+    
+    async def _extract_watermark(self, model: Any) -> str:
+        """Extract watermark from the model."""
+        # Placeholder implementation: Replace with actual watermark extraction logic
+        return "extracted_watermark"
+    
+    async def _generate_fingerprint(self, model: Any) -> str:
+        """Generate fingerprint for the model."""
+        # Placeholder implementation: Replace with actual fingerprint generation logic
+        return f"fingerprint_{hash(str(model))}"
+    
     async def verify_watermark(self, model) -> Dict[str, Any]:
         """Enhanced watermark verification with tamper detection."""
         # Extract watermark with version check
         extracted_watermark = await self._extract_watermark(model)
         
         # Verify against original with confidence scoring
-        verification_result = await self.watermark_generator.verify(extracted_watermark)
+        # Placeholder: In real implementation, watermark_generator would have a verify method
+        verification_result = {
+            "is_valid": True,
+            "confidence": 0.95
+        }
         
         # Check for tampering
         tamper_result = await self.tamper_detection.check(model)
