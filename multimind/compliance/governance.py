@@ -24,6 +24,7 @@ class Regulation(str, Enum):
     PCI_DSS = "PCI_DSS"  # Payment Card Industry Data Security Standard
     FERPA = "FERPA"  # Family Educational Rights and Privacy Act
     COPPA = "COPPA"  # Children's Online Privacy Protection Act
+    CCPA = "CCPA"  # California Consumer Privacy Act
     GLBA = "GLBA"  # Gramm-Leach-Bliley Act
     SOX = "SOX"  # Sarbanes-Oxley Act
     FISMA = "FISMA"  # Federal Information Security Management Act
