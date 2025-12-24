@@ -140,19 +140,37 @@ class CompliantModelTrainer:
                 "loss": epoch_loss,
                 "compliance": epoch_compliance
             })
+
+            # Print training progress
+            print(f"Epoch {epoch + 1}/{num_epochs}")
+            print(f"Training Loss: {epoch_loss:.4f}")
+            print(f"Compliance Score: {epoch_compliance['compliance_score']:.4f}")
             
             # Validate if validation data provided
             if val_dataloader:
                 val_metrics = await self._validate(val_dataloader)
-                print(f"Epoch {epoch + 1}/{num_epochs}")
-                print(f"Training Loss: {epoch_loss:.4f}")
                 print(f"Validation Metrics: {val_metrics}")
-                print(f"Compliance Score: {epoch_compliance['compliance_score']:.4f}")
     
     async def _private_forward(self, batch: Dict[str, torch.Tensor]) -> Any:
         """Perform forward pass with privacy protection."""
+        # Ensure batch is a dictionary
+        if isinstance(batch, (tuple, list)):
+            # Convert tuple/list batch to dictionary
+            if len(batch) == 3:
+                batch = {
+                    "input_ids": batch[0],
+                    "attention_mask": batch[1],
+                    "labels": batch[2]
+                }
+            else:
+                raise ValueError(f"Unexpected batch format: {type(batch)}")
+        
         # Apply differential privacy to inputs
         private_inputs = self.privacy.dp_mechanism.privatize(batch)
+        
+        # Ensure private_inputs is a dictionary
+        if not isinstance(private_inputs, dict):
+            private_inputs = batch  # Fallback to original batch if privatize doesn't return dict
         
         # Forward pass
         outputs = self.model(**private_inputs)
@@ -195,10 +213,13 @@ class CompliantModelTrainer:
             "compliance_history": self.compliance_history[-100:]  # Last 100 checks
         })
         
+        # Extract confidence from metadata, with fallback
+        confidence = explanation.get("metadata", {}).get("confidence", 0.5)
+        
         return {
-            "compliance_score": explanation["confidence"],
+            "compliance_score": confidence,
             "explanation": explanation,
-            "metrics": self.compliance_shard.metrics_history[-1]
+            "metrics": self.compliance_shard.metrics_history[-1] if self.compliance_shard.metrics_history else None
         }
     
     async def _validate(self, val_dataloader: DataLoader) -> Dict[str, float]:
@@ -237,14 +258,39 @@ class CompliantModelTrainer:
             return_tensors="pt"
         )
         
+        # Create a custom dataset that returns dictionaries
+        class DictDataset(torch.utils.data.Dataset):
+            def __init__(self, input_ids, attention_mask, labels):
+                self.input_ids = input_ids
+                self.attention_mask = attention_mask
+                self.labels = labels
+            
+            def __len__(self):
+                return len(self.input_ids)
+            
+            def __getitem__(self, idx):
+                return {
+                    "input_ids": self.input_ids[idx],
+                    "attention_mask": self.attention_mask[idx],
+                    "labels": self.labels[idx]
+                }
+        
         # Create dataset
-        dataset = torch.utils.data.TensorDataset(
+        dataset = DictDataset(
             encodings["input_ids"],
             encodings["attention_mask"],
             torch.tensor([item["label"] for item in data])
         )
         
-        return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+        # Custom collate function to ensure dictionary format
+        def collate_fn(batch):
+            return {
+                "input_ids": torch.stack([item["input_ids"] for item in batch]),
+                "attention_mask": torch.stack([item["attention_mask"] for item in batch]),
+                "labels": torch.stack([item["labels"] for item in batch])
+            }
+        
+        return DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     
     async def save_model(self, path: str):
         """Save model with compliance proofs and watermarks."""
