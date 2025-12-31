@@ -13,7 +13,7 @@ async def main():
     
     # Create model
     model = OpenAIModel(
-        model="gpt-3.5-turbo",
+        model_name="gpt-3.5-turbo",
         temperature=0.7
     )
     
