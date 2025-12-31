@@ -46,8 +46,8 @@ class ExampleDataset(Dataset):
     
     def __getitem__(self, idx):
         return {
-            "data": self.data[idx],
-            "label": self.labels[idx],
+            "input": self.data[idx],
+            "target": self.labels[idx],
             "metadata": self.metadata
         }
 
@@ -79,7 +79,12 @@ class ExampleModel(nn.Module):
         )
         
         # Compliance monitoring
-        self.compliance_metrics = ComplianceMetrics()
+        self.compliance_metrics = ComplianceMetrics(
+            bias_score=1.0,
+            privacy_score=1.0,
+            transparency_score=1.0,
+            fairness_score=1.0
+        )
     
     def forward(self, x):
         # Extract features
@@ -170,32 +175,37 @@ async def main():
     val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False)
     
     # Configure compliance training
+    # Thresholds apply to the numeric compliance metrics
+    metric_thresholds = {
+        "bias": 0.1,
+        "privacy": 0.9,
+        "transparency": 0.9,
+        "fairness": 0.9,
+    }
+
+    # Boolean flags and other non-metric rules
     compliance_rules = {
-        "bias_threshold": 0.1,
-        "privacy_threshold": 0.9,
-        "transparency_threshold": 0.9,
-        "fairness_threshold": 0.9,
         "data_minimization": True,
         "audit_trail": True,
-        "explainability": True
+        "explainability": True,
     }
     
     training_config = {
         "epochs": 10,
-        "thresholds": compliance_rules,
+        "thresholds": metric_thresholds,
         "evaluation_metrics": [
             "bias",
             "privacy",
             "transparency",
-            "fairness"
-        ]
+            "fairness",
+        ],
     }
     
     # Initialize compliance trainer
     trainer = ComplianceTrainer(
         model=model,
         compliance_rules=compliance_rules,
-        training_config=training_config
+        training_config=training_config,
     )
     
     # Train model with compliance monitoring
@@ -211,10 +221,22 @@ async def main():
         }
     )
     
-    # Save results
+    # Save results (convert non-serializable objects)
     results_path = "compliance_results.json"
+    serializable_results = {
+        **results,
+        "metrics_history": [
+            {
+                "bias_score": m.bias_score,
+                "privacy_score": m.privacy_score,
+                "transparency_score": m.transparency_score,
+                "fairness_score": m.fairness_score,
+            }
+            for m in results["metrics_history"]
+        ],
+    }
     with open(results_path, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(serializable_results, f, indent=2)
     
     # Print compliance evaluation results
     print("\nCompliance Evaluation Results:")

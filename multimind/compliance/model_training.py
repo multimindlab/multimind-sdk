@@ -622,6 +622,17 @@ class ComplianceEvaluator:
         # Implementation would check equal outcomes
         return 0.0
 
+    def _check_equal_opportunity(
+        self,
+        model,
+        test_data,
+        targets,
+        metadata: Dict[str, Any]
+    ) -> float:
+        """Check equal opportunity compliance."""
+        # Implementation would check equal opportunity
+        return 0.0
+
     def _check_phi_protection(
         self,
         metadata: Dict[str, Any]
