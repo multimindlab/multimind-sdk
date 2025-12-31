@@ -451,6 +451,16 @@ class ModelWatermarking:
             "tamper_detected": tamper_result["detected"],
             "tamper_details": tamper_result["details"]
         }
+    
+    async def track_fingerprint(self, model: Any) -> Dict[str, Any]:
+        """Track and return fingerprint information for a model."""
+        fingerprint = await self._generate_fingerprint(model)
+        await self.fingerprint_tracker.track(fingerprint)
+        return {
+            "fingerprint": fingerprint,
+            "timestamp": datetime.now().isoformat(),
+            "model_id": str(hash(str(model)))
+        }
 
 class AdaptivePrivacy:
     """Enhanced adaptive privacy with advanced feedback mechanisms."""
@@ -461,6 +471,7 @@ class AdaptivePrivacy:
         self.feedback_history = []
         self.adaptation_strategy = self._initialize_adaptation_strategy()
         self.privacy_metrics = {}
+        self.dp_mechanism = self._initialize_dp_mechanism()
     
     async def adapt_privacy(self, feedback: Dict[str, Any]) -> None:
         """Enhanced privacy adaptation with advanced feedback processing."""
@@ -487,17 +498,88 @@ class AdaptivePrivacy:
         """Update DP mechanism with validation and constraints."""
         if self._validate_epsilon(new_epsilon):
             self.homomorphic_encryption.update_epsilon(new_epsilon)
+            self.dp_mechanism.epsilon = new_epsilon
             await self._verify_privacy_guarantees()
 
     def _validate_epsilon(self, epsilon: float) -> bool:
         """Validate the epsilon value for differential privacy."""
-        # Placeholder implementation
-        return epsilon > 0 and epsilon < 1
+        min_epsilon = self.config.get("min_epsilon", 0.1)
+        max_epsilon = self.config.get("max_epsilon", 10.0)
+        return epsilon > 0 and min_epsilon <= epsilon <= max_epsilon
 
     async def _verify_privacy_guarantees(self):
         """Verify privacy guarantees after updating epsilon."""
         # Placeholder implementation
         pass
+    
+    def _initialize_adaptation_strategy(self):
+        """Initialize the adaptation strategy for privacy parameter adjustment."""
+        # Placeholder implementation: Replace with actual strategy initialization logic
+        class AdaptationStrategy:
+            def __init__(self, config: Dict[str, Any]):
+                self.config = config
+                self.initial_epsilon = config.get("initial_epsilon", 1.0)
+                self.min_epsilon = config.get("min_epsilon", 0.1)
+                self.max_epsilon = config.get("max_epsilon", 10.0)
+                self.adaptation_rate = config.get("adaptation_rate", 0.1)
+            
+            async def calculate_epsilon(
+                self,
+                feedback_history: List[Dict[str, Any]],
+                privacy_metrics: Dict[str, Any]
+            ) -> float:
+                """Calculate new epsilon based on feedback and metrics."""
+                if not feedback_history:
+                    return self.initial_epsilon
+                
+                # Simple adaptation: adjust epsilon based on recent feedback
+                recent_feedback = feedback_history[-10:]  # Last 10 feedback entries
+                avg_compliance = sum(
+                    f.get("compliance_score", 0.5) for f in recent_feedback
+                ) / len(recent_feedback)
+                
+                # Adjust epsilon: lower compliance -> higher epsilon (more privacy)
+                current_epsilon = feedback_history[-1].get("current_epsilon", self.initial_epsilon)
+                if avg_compliance < 0.7:
+                    new_epsilon = min(current_epsilon + self.adaptation_rate, self.max_epsilon)
+                elif avg_compliance > 0.9:
+                    new_epsilon = max(current_epsilon - self.adaptation_rate, self.min_epsilon)
+                else:
+                    new_epsilon = current_epsilon
+                
+                return new_epsilon
+        
+        return AdaptationStrategy(self.config)
+    
+    def _update_privacy_metrics(self, feedback: Dict[str, Any]):
+        """Update privacy metrics based on feedback."""
+        # Placeholder implementation: Replace with actual metrics update logic
+        if "loss" in feedback:
+            self.privacy_metrics["avg_loss"] = (
+                self.privacy_metrics.get("avg_loss", 0.0) * 0.9 + feedback["loss"] * 0.1
+            )
+        if "compliance_score" in feedback:
+            self.privacy_metrics["avg_compliance"] = (
+                self.privacy_metrics.get("avg_compliance", 0.5) * 0.9 + feedback["compliance_score"] * 0.1
+            )
+    
+    def _initialize_dp_mechanism(self):
+        """Initialize the differential privacy mechanism."""
+        # Placeholder implementation: Replace with actual DP mechanism initialization
+        class DPMechanism:
+            def __init__(self, epsilon: float):
+                self.epsilon = epsilon
+            
+            def privatize(self, data: Any) -> Any:
+                """Apply differential privacy to data."""
+                # Placeholder implementation: In a real implementation, this would add noise
+                # For now, just return the data as-is, ensuring dictionary format is preserved
+                if isinstance(data, dict):
+                    return data.copy() if hasattr(data, 'copy') else dict(data)
+                return data
+        
+        initial_epsilon = self.config.get("initial_epsilon", 1.0)
+        return DPMechanism(initial_epsilon)
 
 class RegulatoryChangeDetector:
     """Enhanced regulatory change detection with advanced analysis."""
