@@ -28,6 +28,8 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Dict, Any
+from datetime import datetime
+import numpy as np
 
 # Import healthcare-specific examples
 from examples.compliance.healthcare.medical_diagnosis_compliance import (
@@ -91,6 +93,29 @@ from examples.compliance.healthcare.fraud_detection_compliance import (
     FraudDetectionCompliance
 )
 
+def _make_json_serializable(obj: Any) -> Any:
+    """Convert objects to JSON-serializable format."""
+    if isinstance(obj, ComplianceMetrics):
+        return {
+            "bias_score": obj.bias_score,
+            "privacy_score": obj.privacy_score,
+            "transparency_score": obj.transparency_score,
+            "fairness_score": obj.fairness_score,
+            "timestamp": obj.timestamp.isoformat() if isinstance(obj.timestamp, datetime) else str(obj.timestamp)
+        }
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {key: _make_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_make_json_serializable(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.floating)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        return obj
+
 async def run_healthcare_compliance_example(
     dataset_class,
     model_class,
@@ -110,14 +135,27 @@ async def run_healthcare_compliance_example(
             "privacy_threshold": 0.9,
             "fairness_threshold": 0.9,
             "transparency_threshold": 0.9,
-            "documentation_complete": True
+            "documentation_complete": True,
+            "handle_sensitive_data": True  # Required for MedicalDiagnosisCompliance
         },
         data_categories=config["data_categories"]
     )
     
+    # Custom collate function to handle variable-length metadata
+    def custom_collate_fn(batch):
+        """Custom collate function to handle variable-length metadata."""
+        inputs = torch.stack([item["input"] for item in batch])
+        targets = torch.stack([item["target"] for item in batch])
+        metadata = [item["metadata"] for item in batch]  # Keep as list of dicts
+        return {
+            "input": inputs,
+            "target": targets,
+            "metadata": metadata
+        }
+    
     # Create data loaders
-    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate_fn)
+    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate_fn)
     
     # Configure compliance training
     compliance_rules = {
@@ -362,11 +400,11 @@ async def main():
         # Save results
         results_path = f"{use_case}_results.json"
         with open(results_path, "w") as f:
-            json.dump(results[use_case], f, indent=2)
+            json.dump(_make_json_serializable(results[use_case]), f, indent=2)
         
         # Print compliance evaluation results
         print(f"\n{use_case.title()} Compliance Evaluation Results:")
-        print(json.dumps(results[use_case]["final_evaluation"], indent=2))
+        print(json.dumps(_make_json_serializable(results[use_case]["final_evaluation"]), indent=2))
         
         # Print recommendations
         print("\nRecommendations:")

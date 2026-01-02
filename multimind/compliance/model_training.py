@@ -147,7 +147,19 @@ class ComplianceMonitor:
     def _check_violations(self, metrics: ComplianceMetrics) -> None:
         """Check for compliance violations."""
         for metric_name, threshold in self.thresholds.items():
-            metric_value = getattr(metrics, f"{metric_name}_score")
+            # Skip non-numeric thresholds (e.g., boolean flags)
+            if not isinstance(threshold, (int, float)):
+                continue
+            
+            # Strip '_threshold' suffix if present to get the base metric name
+            base_metric_name = metric_name.replace("_threshold", "")
+            
+            # Try to get the metric value, skip if attribute doesn't exist
+            attr_name = f"{base_metric_name}_score"
+            if not hasattr(metrics, attr_name):
+                continue
+                
+            metric_value = getattr(metrics, attr_name)
             if metric_value > threshold:
                 self.violations.append({
                     "metric": metric_name,
@@ -784,6 +796,29 @@ class ComplianceTrainer:
         # Implementation would check violation severity and frequency
         return False
 
+    def _make_json_serializable(self, obj: Any) -> Any:
+        """Convert objects to JSON-serializable format."""
+        if isinstance(obj, ComplianceMetrics):
+            return {
+                "bias_score": obj.bias_score,
+                "privacy_score": obj.privacy_score,
+                "transparency_score": obj.transparency_score,
+                "fairness_score": obj.fairness_score,
+                "timestamp": obj.timestamp.isoformat() if isinstance(obj.timestamp, datetime) else str(obj.timestamp)
+            }
+        elif isinstance(obj, datetime):
+            return obj.isoformat()
+        elif isinstance(obj, dict):
+            return {key: self._make_json_serializable(value) for key, value in obj.items()}
+        elif isinstance(obj, (list, tuple)):
+            return [self._make_json_serializable(item) for item in obj]
+        elif isinstance(obj, (np.integer, np.floating)):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return obj
+
     def save_training_results(
         self,
         results: Dict[str, Any],
@@ -791,9 +826,9 @@ class ComplianceTrainer:
     ) -> None:
         """Save training results and compliance documentation."""
         output = {
-            "training_results": results,
-            "compliance_rules": self.compliance_rules,
-            "training_config": self.training_config,
+            "training_results": self._make_json_serializable(results),
+            "compliance_rules": self._make_json_serializable(self.compliance_rules),
+            "training_config": self._make_json_serializable(self.training_config),
             "timestamp": datetime.utcnow().isoformat()
         }
         
