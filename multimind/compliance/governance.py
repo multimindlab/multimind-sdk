@@ -54,6 +54,11 @@ class Regulation(str, Enum):
     SCA = "SCA"  # Software Composition Analysis
     BCP = "BCP"  # Business Continuity Planning
     DR = "DR"  # Disaster Recovery
+    # Pharmaceutical and Clinical Trial Regulations
+    FDA = "FDA"  # Food and Drug Administration (US)
+    EMA = "EMA"  # European Medicines Agency
+    ICH = "ICH"  # International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use
+    GCP = "GCP"  # Good Clinical Practice
 
 class RiskLevel(Enum):
     """AI system risk levels."""

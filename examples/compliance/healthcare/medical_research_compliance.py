@@ -272,9 +272,21 @@ async def main():
         data_categories=["research_data", "personal_data"]
     )
     
+    # Custom collate function to handle variable-length metadata
+    def custom_collate_fn(batch):
+        """Custom collate function to handle variable-length metadata."""
+        inputs = torch.stack([item["input"] for item in batch])
+        targets = torch.stack([item["target"] for item in batch])
+        metadata = [item["metadata"] for item in batch]  # Keep as list of dicts
+        return {
+            "input": inputs,
+            "target": targets,
+            "metadata": metadata
+        }
+    
     # Create data loaders
-    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False)
+    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate_fn)
+    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate_fn)
     
     # Configure compliance training
     compliance_rules = {
