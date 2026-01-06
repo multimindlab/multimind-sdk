@@ -288,7 +288,14 @@ class Router:
         config: TaskConfig,
         **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
-        """Handle ensemble routing strategy."""
+        """
+        Handle ensemble routing strategy.
+        
+        System behavior:
+        - 2+ LLMs: Full ensemble logic
+        - 1 LLM: Acts like fallback router (returns the single result)
+        - 0 LLMs: Hard failure (raises exception)
+        """
         if not config.ensemble_config:
             raise ValueError("Ensemble configuration is required for ensemble routing")
         
@@ -328,23 +335,29 @@ class Router:
                     metadata={"request_id": kwargs.get("request_id")}
                 )
         
-        if not results:
-            raise Exception("All providers failed in ensemble routing")
-        
-        # Use weighted voting for ensemble results
-        if config.ensemble_config["method"] == "weighted_voting":
-            weights = config.ensemble_config["weights"]
-            weighted_results = []
-            for provider_name, result in results:
-                provider_key = provider_name or getattr(result, "provider", None) or getattr(result, "provider_name", None)
-                weight = weights.get(provider_key, 1.0)
-                weighted_results.append((result, weight))
-            
-            # For now, just return the result with highest weight
-            return max(weighted_results, key=lambda x: x[1])[0]
-        else:
-            # Default to first successful result
+        # System behavior based on successful LLM count
+        if len(results) == 0:
+            # 0 LLMs: Hard failure
+            raise Exception("All providers failed in ensemble routing. Hard failure.")
+        elif len(results) == 1:
+            # 1 LLM: Act like fallback router - just return the single result
             return results[0][1]
+        else:
+            # 2+ LLMs: Full ensemble logic
+            # Use weighted voting for ensemble results
+            if config.ensemble_config["method"] == "weighted_voting":
+                weights = config.ensemble_config["weights"]
+                weighted_results = []
+                for provider_name, result in results:
+                    provider_key = provider_name or getattr(result, "provider", None) or getattr(result, "provider_name", None)
+                    weight = weights.get(provider_key, 1.0)
+                    weighted_results.append((result, weight))
+                
+                # For now, just return the result with highest weight
+                return max(weighted_results, key=lambda x: x[1])[0]
+            else:
+                # Default to first successful result
+                return results[0][1]
     
     async def _handle_cascade(
         self,
