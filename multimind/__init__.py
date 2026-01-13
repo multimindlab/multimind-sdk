@@ -243,9 +243,7 @@ from .model_conversion import (
     BaseModelConverter,
     HuggingFaceConverter,
     OllamaConverter,
-    ONNXConverter,
     TensorFlowConverter,
-    ONNXRuntimeConverter,
     SafetensorsConverter,
     GGMLConverter,
     OptimizationConverter,
@@ -256,6 +254,17 @@ from .model_conversion import (
     PipelineConverter,
     ModelConversionManager
 )
+
+# Try to import ONNX-related converters, but handle gracefully if not available
+try:
+    from .model_conversion import ONNXConverter
+except ImportError:
+    ONNXConverter = None
+
+try:
+    from .model_conversion import ONNXRuntimeConverter
+except ImportError:
+    ONNXRuntimeConverter = None
 
 # Context window components
 from .context_window import (
