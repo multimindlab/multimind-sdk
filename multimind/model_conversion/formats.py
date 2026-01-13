@@ -1,8 +1,6 @@
 from typing import Dict, Any, Optional
 from pathlib import Path
 import torch
-import onnx
-import onnxruntime
 from .base import BaseModelConverter
 
 # Try to import tensorflow, but handle gracefully if not available
@@ -12,6 +10,16 @@ try:
 except ImportError:
     TENSORFLOW_AVAILABLE = False
     tf = None
+
+# Try to import onnx and onnxruntime, but handle gracefully if not available
+try:
+    import onnx
+    import onnxruntime
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+    onnx = None
+    onnxruntime = None
 
 class TensorFlowConverter(BaseModelConverter):
     """Converter for TensorFlow models."""
@@ -85,6 +93,9 @@ class ONNXRuntimeConverter(BaseModelConverter):
                 output_path: str,
                 config: Optional[Dict[str, Any]] = None) -> str:
         """Convert ONNX model to optimized ONNX Runtime format."""
+        if not ONNX_AVAILABLE:
+            raise ImportError("ONNX is not available. Please install onnx and onnxruntime to use this converter.")
+        
         config = config or {}
         
         # Load ONNX model
@@ -104,6 +115,8 @@ class ONNXRuntimeConverter(BaseModelConverter):
     
     def validate(self, model_path: str) -> bool:
         """Validate ONNX model."""
+        if not ONNX_AVAILABLE:
+            return False
         try:
             onnx.load(model_path)
             return True
@@ -112,6 +125,9 @@ class ONNXRuntimeConverter(BaseModelConverter):
     
     def get_metadata(self, model_path: str) -> Dict[str, Any]:
         """Get ONNX model metadata."""
+        if not ONNX_AVAILABLE:
+            return {"format": "onnx", "error": "ONNX not available"}
+        
         model = onnx.load(model_path)
         return {
             "format": "onnx",
