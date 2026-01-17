@@ -22,6 +22,26 @@ from multimind.compliance.model_training import (
 from multimind.compliance.visualization import ComplianceVisualizer
 from multimind.compliance import GovernanceConfig, Regulation
 
+def custom_collate_fn(batch):
+    """Custom collate function that handles variable-length metadata."""
+    from torch.utils.data._utils.collate import default_collate
+    
+    # Separate inputs, targets, and metadata
+    inputs = [item["input"] for item in batch]
+    targets = [item["target"] for item in batch]
+    metadata_list = [item["metadata"] for item in batch]
+    
+    # Collate inputs and targets normally
+    collated_inputs = default_collate(inputs)
+    collated_targets = default_collate(targets)
+    
+    # Keep metadata as a list (don't try to collate it)
+    return {
+        "input": collated_inputs,
+        "target": collated_targets,
+        "metadata": metadata_list
+    }
+
 class EHRDataset(Dataset):
     """Dataset for electronic health records with synthetic data."""
     
@@ -274,8 +294,9 @@ async def main():
     )
     
     # Create data loaders
-    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True)
-    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False)
+    # Create data loaders with custom collate function to handle variable-length metadata
+    train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate_fn)
+    val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate_fn)
     
     # Configure compliance training
     compliance_rules = {

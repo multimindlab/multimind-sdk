@@ -26,6 +26,40 @@ class ComplianceVisualizer:
         self.metrics_history: List[Dict[str, Any]] = []
         if results_path:
             self.load_results(results_path)
+    
+    def _get_metric_value(self, metrics: Any, metric_name: str) -> float:
+        """Get metric value from either dict or ComplianceMetrics object."""
+        if isinstance(metrics, dict):
+            return metrics.get(f"{metric_name}_score", 0.0)
+        else:
+            # Handle ComplianceMetrics object
+            return getattr(metrics, f"{metric_name}_score", 0.0)
+    
+    def _get_timestamp(self, metrics: Any) -> Any:
+        """Get timestamp from either dict or ComplianceMetrics object."""
+        if isinstance(metrics, dict):
+            timestamp = metrics.get('timestamp')
+        else:
+            # Handle ComplianceMetrics object
+            timestamp = getattr(metrics, 'timestamp', None)
+        
+        # Handle None or invalid timestamps
+        if timestamp is None:
+            return datetime.now().isoformat()
+        
+        # If it's already a datetime object, convert to ISO string
+        if isinstance(timestamp, datetime):
+            return timestamp.isoformat()
+        
+        # If it's a string, return as-is (should be ISO format)
+        if isinstance(timestamp, str):
+            # Skip if it looks like a field definition
+            if 'annotation=' in timestamp or 'default_factory' in timestamp:
+                return datetime.now().isoformat()
+            return timestamp
+        
+        # Fallback: convert to string
+        return str(timestamp)
 
     def load_results(self, path: str) -> None:
         """Load training results from file."""
@@ -82,12 +116,24 @@ class ComplianceVisualizer:
             for metric in ['bias', 'privacy', 'transparency', 'fairness']:
                 violations.append({
                     'metric': metric,
-                    'timestamp': metrics['timestamp'],
-                    'value': getattr(metrics, f"{metric}_score")
+                    'timestamp': self._get_timestamp(metrics),
+                    'value': self._get_metric_value(metrics, metric)
                 })
         
+        if not violations:
+            # Return empty figure if no valid data
+            return go.Figure()
+        
         df = pd.DataFrame(violations)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        # Filter out None or invalid timestamps before converting
+        df = df[df['timestamp'].notna()]
+        if len(df) == 0:
+            return go.Figure()
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        # Drop rows where timestamp conversion failed
+        df = df[df['timestamp'].notna()]
+        if len(df) == 0:
+            return go.Figure()
         df['hour'] = df['timestamp'].dt.hour
         
         pivot = df.pivot_table(
@@ -158,13 +204,13 @@ class ComplianceVisualizer:
             recommendations = []
             for metrics in self.metrics_history[-5:]:  # Last 5 recommendations
                 for metric in ['bias', 'privacy', 'transparency', 'fairness']:
-                    score = getattr(metrics, f"{metric}_score")
+                    score = self._get_metric_value(metrics, metric)
                     if score < 0.8:  # Threshold
                         recommendations.append(
                             html.Div([
                                 html.H4(f"{metric.capitalize()} Alert"),
                                 html.P(f"Score: {score:.2f}"),
-                                html.P(f"Time: {metrics['timestamp']}")
+                                html.P(f"Time: {self._get_timestamp(metrics)}")
                             ])
                         )
             
@@ -174,7 +220,7 @@ class ComplianceVisualizer:
             webbrowser.open_new(f'http://localhost:{port}/')
         
         Timer(1, open_browser).start()
-        app.run_server(debug=debug, port=port)
+        app.run(debug=debug, port=port)
 
     def plot_compliance_radar(
         self,
@@ -217,11 +263,11 @@ class ComplianceVisualizer:
         violations = []
         for metrics in self.metrics_history:
             for metric in ['bias', 'privacy', 'transparency', 'fairness']:
-                score = getattr(metrics, f"{metric}_score")
+                score = self._get_metric_value(metrics, metric)
                 if score < 0.8:  # Threshold
                     violations.append({
                         'metric': metric,
-                        'timestamp': metrics['timestamp'],
+                        'timestamp': self._get_timestamp(metrics),
                         'score': score
                     })
         

@@ -1,9 +1,16 @@
 import os
-import onnx
 import torch
 from typing import Dict, Any, Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from .base import BaseModelConverter
+
+# Try to import onnx, but handle gracefully if not available
+try:
+    import onnx
+    ONNX_AVAILABLE = True
+except ImportError:
+    ONNX_AVAILABLE = False
+    onnx = None
 
 class ONNXConverter(BaseModelConverter):
     """Converter for ONNX models."""
@@ -33,6 +40,9 @@ class ONNXConverter(BaseModelConverter):
         Returns:
             str: Path to the converted model
         """
+        if not ONNX_AVAILABLE:
+            raise ImportError("ONNX is not available. Please install onnx to use this converter.")
+        
         if not self.validate(model_path):
             raise ValueError(f"Invalid model path: {model_path}")
         
@@ -118,6 +128,9 @@ class ONNXConverter(BaseModelConverter):
         Returns:
             Dict[str, Any]: Model metadata
         """
+        if not ONNX_AVAILABLE:
+            return {"error": "ONNX is not available"}
+        
         model = AutoModelForCausalLM.from_pretrained(model_path)
         tokenizer = AutoTokenizer.from_pretrained(model_path)
         
