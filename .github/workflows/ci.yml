@@ -21,15 +21,21 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
+          # Install PyTorch >= 2.1 first (required by transformers and sentence-transformers)
+          # Use CPU version for CI to avoid GPU dependencies
+          pip install "torch>=2.1.0" --index-url https://download.pytorch.org/whl/cpu
+          # Install remaining dependencies (torch>=2.1.0 in requirements.txt will be satisfied)
           pip install -r requirements.txt
           pip install onnx
-          python -m pip install --upgrade pip
           pip install -e .[dev]
           pip install transformers pyyaml
           pip install aiohttp
-          pip install torch pydantic_settings
+          pip install pydantic_settings
           pip install peft
           pip install datasets
+          # Ensure torch version is correct after all installs
+          pip install --upgrade "torch>=2.1.0" --index-url https://download.pytorch.org/whl/cpu
       - name: Set PYTHONPATH
         run: echo "PYTHONPATH=$PWD" >> $GITHUB_ENV
       - name: Install multimind in editable mode
