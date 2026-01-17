@@ -16,6 +16,7 @@ import asyncio
 import json
 from pathlib import Path
 from typing import Dict, Any, List
+from datetime import datetime
 import numpy as np
 
 class MentalHealthDataset(Dataset):
@@ -57,13 +58,22 @@ class MentalHealthDataset(Dataset):
         return self.size
     
     def __getitem__(self, idx):
+        metadata = {}
+        for k, v in self.metadata.items():
+            if isinstance(v, (list, np.ndarray)):
+                # Only index if the list/array has the same length as the dataset
+                if len(v) == self.size:
+                    metadata[k] = v[idx]
+                else:
+                    # It's a fixed list/array, use as-is
+                    metadata[k] = v
+            else:
+                metadata[k] = v
+        
         return {
-            "data": self.data[idx],
-            "label": self.labels[idx],
-            "metadata": {
-                k: v[idx] if isinstance(v, (list, np.ndarray)) else v
-                for k, v in self.metadata.items()
-            }
+            "input": self.data[idx],
+            "target": self.labels[idx],
+            "metadata": metadata
         }
 
 class MentalHealthModel(nn.Module):
@@ -103,7 +113,12 @@ class MentalHealthModel(nn.Module):
         )
         
         # Compliance monitoring
-        self.compliance_metrics = ComplianceMetrics()
+        self.compliance_metrics = ComplianceMetrics(
+            bias_score=0.0,
+            privacy_score=0.0,
+            transparency_score=0.0,
+            fairness_score=0.0
+        )
     
     def forward(self, x):
         # Extract features
@@ -168,6 +183,29 @@ class MentalHealthCompliance(ComplianceDataset):
             "audit_trail": True,
             "crisis_intervention": data["metadata"]["crisis_intervention"]
         }
+
+def _make_json_serializable(obj: Any) -> Any:
+    """Convert objects to JSON-serializable format."""
+    if isinstance(obj, ComplianceMetrics):
+        return {
+            "bias_score": obj.bias_score,
+            "privacy_score": obj.privacy_score,
+            "transparency_score": obj.transparency_score,
+            "fairness_score": obj.fairness_score,
+            "timestamp": obj.timestamp.isoformat() if isinstance(obj.timestamp, datetime) else str(obj.timestamp)
+        }
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {key: _make_json_serializable(value) for key, value in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return [_make_json_serializable(item) for item in obj]
+    elif isinstance(obj, (np.integer, np.floating)):
+        return float(obj)
+    elif isinstance(obj, np.ndarray):
+        return obj.tolist()
+    else:
+        return obj
 
 async def main():
     # Initialize governance config
@@ -254,11 +292,11 @@ async def main():
     # Save results
     results_path = "mental_health_results.json"
     with open(results_path, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(_make_json_serializable(results), f, indent=2)
     
     # Print compliance evaluation results
     print("\nMental Health Compliance Evaluation Results:")
-    print(json.dumps(results["final_evaluation"], indent=2))
+    print(json.dumps(_make_json_serializable(results["final_evaluation"]), indent=2))
     
     # Print recommendations
     print("\nRecommendations:")
