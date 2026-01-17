@@ -20,7 +20,7 @@ def run_cli_examples():
     cmd = [
         "python", "-m", "examples.cli.ensemble_cli", "generate",
         "Explain the concept of ensemble learning in machine learning.",
-        "--providers", "openai", "anthropic", "ollama",
+        "--providers", "openai", "--providers", "anthropic", "--providers", "ollama",
         "--method", "weighted_voting"
     ]
     subprocess.run(cmd)
@@ -42,7 +42,7 @@ def run_cli_examples():
     cmd = [
         "python", "-m", "examples.cli.ensemble_cli", "review",
         str(code_file),
-        "--providers", "openai", "anthropic", "ollama"
+        "--providers", "openai", "--providers", "anthropic", "--providers", "ollama"
     ]
     subprocess.run(cmd)
     code_file.unlink()
@@ -52,7 +52,7 @@ def run_cli_examples():
     cmd = [
         "python", "-m", "examples.cli.ensemble_cli", "embed",
         "This is a sample text for embedding generation.",
-        "--providers", "openai", "huggingface"
+        "--providers", "openai", "--providers", "huggingface"
     ]
     subprocess.run(cmd)
 
@@ -65,24 +65,65 @@ async def run_api_examples():
     server_process = subprocess.Popen(
         [sys.executable, "-m", "examples.api.ensemble_api"],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
     )
     
-    # Wait for the server to start
-    await asyncio.sleep(2)
+    # Wait for the server to start with retries
+    max_retries = 15
+    retry_count = 0
+    server_ready = False
+    
+    # Check if process is still running
+    if server_process.poll() is not None:
+        print("Error: Server process failed to start")
+        stderr_output = server_process.stderr.read().decode() if server_process.stderr else ""
+        print(f"Server error: {stderr_output}")
+        return
+    
+    while retry_count < max_retries and not server_ready:
+        await asyncio.sleep(1)
+        # Check if process is still running
+        if server_process.poll() is not None:
+            print("Error: Server process terminated unexpectedly")
+            stderr_output = server_process.stderr.read().decode() if server_process.stderr else ""
+            print(f"Server error: {stderr_output}")
+            return
+        try:
+            response = requests.get("http://localhost:8000/docs", timeout=2)
+            if response.status_code == 200:
+                server_ready = True
+                break
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            retry_count += 1
+    
+    if not server_ready:
+        print("Warning: Server may not be ready, but continuing with requests...")
+        print("Note: Make sure the server is running on http://localhost:8000")
     
     try:
         # 1. Text Generation
         print("\n1. Text Generation:")
-        response = requests.post(
-            "http://localhost:8000/generate",
-            json={
-                "prompt": "Explain the concept of ensemble learning in machine learning.",
-                "providers": ["openai", "anthropic", "ollama"],
-                "method": "weighted_voting"
-            }
-        )
-        print(json.dumps(response.json(), indent=2))
+        try:
+            response = requests.post(
+                "http://localhost:8000/generate",
+                json={
+                    "prompt": "Explain the concept of ensemble learning in machine learning.",
+                    "providers": ["openai", "anthropic", "ollama"],
+                    "method": "weighted_voting"
+                },
+                timeout=120  # Increased timeout to 120 seconds
+            )
+            response.raise_for_status()
+            print(json.dumps(response.json(), indent=2))
+        except requests.exceptions.HTTPError as e:
+            try:
+                error_detail = response.json().get("detail", str(e))
+                print(f"Error: {error_detail}")
+            except:
+                print(f"Error: {e}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error: {e}")
         
         # 2. Code Review
         print("\n2. Code Review:")
@@ -95,43 +136,79 @@ async def run_api_examples():
                 result *= i
             return result
         """
-        response = requests.post(
-            "http://localhost:8000/review",
-            json={
-                "code": code,
-                "providers": ["openai", "anthropic", "ollama"]
-            }
-        )
-        print(json.dumps(response.json(), indent=2))
+        try:
+            response = requests.post(
+                "http://localhost:8000/review",
+                json={
+                    "code": code,
+                    "providers": ["openai", "anthropic", "ollama"]
+                },
+                timeout=120  # Increased timeout to 120 seconds
+            )
+            response.raise_for_status()
+            print(json.dumps(response.json(), indent=2))
+        except requests.exceptions.HTTPError as e:
+            try:
+                error_detail = response.json().get("detail", str(e))
+                print(f"Error: {error_detail}")
+            except:
+                print(f"Error: {e}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error: {e}")
         
         # 3. Embedding Generation
         print("\n3. Embedding Generation:")
-        response = requests.post(
-            "http://localhost:8000/embed",
-            json={
-                "text": "This is a sample text for embedding generation.",
-                "providers": ["openai", "huggingface"]
-            }
-        )
-        print(json.dumps(response.json(), indent=2))
+        try:
+            response = requests.post(
+                "http://localhost:8000/embed",
+                json={
+                    "text": "This is a sample text for embedding generation.",
+                    "providers": ["openai", "ollama"]  # Changed from huggingface to ollama
+                },
+                timeout=120  # Increased timeout to 120 seconds
+            )
+            response.raise_for_status()
+            print(json.dumps(response.json(), indent=2))
+        except requests.exceptions.HTTPError as e:
+            try:
+                error_detail = response.json().get("detail", str(e))
+                print(f"Error: {error_detail}")
+            except:
+                print(f"Error: {e}")
+        except requests.exceptions.RequestException as e:
+            print(f"Error: {e}")
         
         # 4. Image Analysis (if image file exists)
         image_path = Path("sample_image.jpg")
         if image_path.exists():
             print("\n4. Image Analysis:")
-            with open(image_path, "rb") as f:
-                files = {"image": f}
-                response = requests.post(
-                    "http://localhost:8000/analyze-image",
-                    files=files,
-                    params={"providers": ["openai", "anthropic"]}
-                )
-            print(json.dumps(response.json(), indent=2))
+            try:
+                with open(image_path, "rb") as f:
+                    files = {"image": f}
+                    response = requests.post(
+                        "http://localhost:8000/analyze-image",
+                        files=files,
+                        params={"providers": ["openai", "anthropic"]},
+                        timeout=120  # Increased timeout to 120 seconds
+                    )
+                    response.raise_for_status()
+                    print(json.dumps(response.json(), indent=2))
+            except requests.exceptions.RequestException as e:
+                print(f"Error: {e}")
     
     finally:
         # Stop the server
-        server_process.terminate()
-        server_process.wait()
+        try:
+            if sys.platform == "win32":
+                server_process.terminate()
+            else:
+                server_process.terminate()
+            server_process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            server_process.kill()
+            server_process.wait()
+        except Exception as e:
+            print(f"Error stopping server: {e}")
 
 async def main():
     """Run all examples."""
