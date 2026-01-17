@@ -397,9 +397,23 @@ class AdvancedEnsemble:
         provider_name = self._get_provider_name(result)
         evaluation_models = kwargs.get("evaluation_models", {})
         evaluation_providers = kwargs.get("evaluation_providers", {})
-        default_model = kwargs.get("evaluation_model", "gpt-4")
-        eval_model = evaluation_models.get(provider_name, default_model)
         eval_provider = evaluation_providers.get(provider_name, kwargs.get("evaluation_provider", provider_name))
+        
+        # Use provider-appropriate default model if not specified
+        if provider_name in evaluation_models:
+            eval_model = evaluation_models[provider_name]
+        else:
+            # Prefer OpenAI for evaluation if available, otherwise use provider-appropriate model
+            if "openai" in self.router.providers:
+                eval_provider = "openai"
+                eval_model = kwargs.get("evaluation_model", "gpt-4")
+            elif eval_provider == "ollama":
+                eval_model = kwargs.get("evaluation_model", "mistral")
+            elif eval_provider == "anthropic":
+                eval_model = kwargs.get("evaluation_model", "claude-3-sonnet")
+            else:
+                eval_model = kwargs.get("evaluation_model", "gpt-4")
+        
         route_kwargs = {
             k: v for k, v in kwargs.items()
             if k not in {"evaluation_models", "evaluation_providers", "evaluation_model", "evaluation_provider"}
@@ -447,9 +461,23 @@ class AdvancedEnsemble:
         provider_name = self._get_provider_name(result)
         evaluation_models = kwargs.get("evaluation_models", {})
         evaluation_providers = kwargs.get("evaluation_providers", {})
-        default_model = kwargs.get("evaluation_model", "gpt-4")
-        eval_model = evaluation_models.get(provider_name, default_model)
         eval_provider = evaluation_providers.get(provider_name, kwargs.get("evaluation_provider", provider_name))
+        
+        # Use provider-appropriate default model if not specified
+        if provider_name in evaluation_models:
+            eval_model = evaluation_models[provider_name]
+        else:
+            # Prefer OpenAI for evaluation if available, otherwise use provider-appropriate model
+            if "openai" in self.router.providers:
+                eval_provider = "openai"
+                eval_model = kwargs.get("evaluation_model", "gpt-4")
+            elif eval_provider == "ollama":
+                eval_model = kwargs.get("evaluation_model", "mistral")
+            elif eval_provider == "anthropic":
+                eval_model = kwargs.get("evaluation_model", "claude-3-sonnet")
+            else:
+                eval_model = kwargs.get("evaluation_model", "gpt-4")
+        
         route_kwargs = {
             k: v for k, v in kwargs.items()
             if k not in {"evaluation_models", "evaluation_providers", "evaluation_model", "evaluation_provider"}
