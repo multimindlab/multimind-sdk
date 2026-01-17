@@ -102,21 +102,48 @@ class AdvancedEnsemble:
         task_type: TaskType,
         **kwargs
     ) -> EnsembleResult:
-        """Combine results using the specified method or a registered custom strategy."""
-        if isinstance(method, str) and method in self.custom_strategies:
-            return await self.custom_strategies[method](results, task_type, **kwargs)
-        if method == EnsembleMethod.WEIGHTED_VOTING:
-            return await self._weighted_voting(results, **kwargs)
-        elif method == EnsembleMethod.CONFIDENCE_CASCADE:
-            return await self._confidence_cascade(results, task_type, **kwargs)
-        elif method == EnsembleMethod.PARALLEL_VOTING:
-            return await self._parallel_voting(results, task_type, **kwargs)
-        elif method == EnsembleMethod.MAJORITY_VOTING:
-            return await self._majority_voting(results, **kwargs)
-        elif method == EnsembleMethod.RANK_BASED:
-            return await self._rank_based(results, task_type, **kwargs)
+        """
+        Combine results using the specified method or a registered custom strategy.
+        
+        System behavior:
+        - 2+ LLMs: Full ensemble logic
+        - 1 LLM: Acts like fallback router (returns the single result)
+        - 0 LLMs: Hard failure (raises exception)
+        """
+        # Filter out None results (failed providers)
+        valid_results = [r for r in results if r is not None]
+        
+        # System behavior based on LLM count
+        if len(valid_results) == 0:
+            raise ValueError("No valid results provided. All providers failed. Hard failure.")
+        elif len(valid_results) == 1:
+            # Single LLM: Act like fallback router - just return the result
+            single_result = valid_results[0]
+            provider_name = self._get_provider_name(single_result)
+            return EnsembleResult(
+                result=single_result,
+                confidence=ConfidenceScore(
+                    score=1.0,
+                    explanation=f"Single provider result from {provider_name} (fallback router mode)"
+                ),
+                provider_votes={provider_name: 1.0}
+            )
         else:
-            raise ValueError(f"Unsupported ensemble method: {method}")
+            # 2+ LLMs: Full ensemble logic
+            if isinstance(method, str) and method in self.custom_strategies:
+                return await self.custom_strategies[method](valid_results, task_type, **kwargs)
+            if method == EnsembleMethod.WEIGHTED_VOTING:
+                return await self._weighted_voting(valid_results, **kwargs)
+            elif method == EnsembleMethod.CONFIDENCE_CASCADE:
+                return await self._confidence_cascade(valid_results, task_type, **kwargs)
+            elif method == EnsembleMethod.PARALLEL_VOTING:
+                return await self._parallel_voting(valid_results, task_type, **kwargs)
+            elif method == EnsembleMethod.MAJORITY_VOTING:
+                return await self._majority_voting(valid_results, **kwargs)
+            elif method == EnsembleMethod.RANK_BASED:
+                return await self._rank_based(valid_results, task_type, **kwargs)
+            else:
+                raise ValueError(f"Unsupported ensemble method: {method}")
     
     async def _weighted_voting(
         self,
