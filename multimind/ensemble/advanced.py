@@ -158,7 +158,12 @@ class AdvancedEnsemble:
             weights = self.performance_tracker.get_all_weights(providers)
         # Normalize weights
         total_weight = sum(weights.values())
-        normalized_weights = {k: v/total_weight for k, v in weights.items()}
+        if total_weight == 0 or not weights:
+            # Fallback to equal weights if total is zero or weights is empty
+            providers = [self._get_provider_name(result) for result in results]
+            normalized_weights = {p: 1.0/len(providers) for p in providers} if providers else {}
+        else:
+            normalized_weights = {k: v/total_weight for k, v in weights.items()}
         # Calculate weighted scores for each result
         weighted_scores = []
         for result in results:
@@ -321,6 +326,9 @@ class AdvancedEnsemble:
         **kwargs
     ) -> EnsembleResult:
         """Combine results using rank-based selection."""
+        if not results:
+            raise ValueError("Cannot perform rank-based selection on empty results list")
+        
         # Get rankings from each provider
         rankings = await asyncio.gather(*[
             self._get_provider_ranking(result, task_type, **kwargs)
@@ -335,11 +343,21 @@ class AdvancedEnsemble:
         
         # Normalize scores
         total_score = sum(borda_scores.values())
-        normalized_scores = {k: v/total_score for k, v in borda_scores.items()}
-        
-        # Select result with highest Borda score
-        best_provider = max(borda_scores.items(), key=lambda x: x[1])[0]
-        best_result = next(r for r in results if self._get_provider_name(r) == best_provider)
+        if total_score == 0 or not borda_scores:
+            # Fallback to equal scores if all scores are zero (e.g., all rankings failed)
+            normalized_scores = {k: 1.0/len(borda_scores) for k in borda_scores.keys()} if borda_scores else {}
+            # If no scores, just pick first result
+            if not borda_scores:
+                best_result = results[0] if results else None
+                best_provider = self._get_provider_name(best_result) if best_result else "unknown"
+            else:
+                best_provider = max(borda_scores.items(), key=lambda x: x[1])[0]
+                best_result = next(r for r in results if self._get_provider_name(r) == best_provider)
+        else:
+            normalized_scores = {k: v/total_score for k, v in borda_scores.items()}
+            # Select result with highest Borda score
+            best_provider = max(borda_scores.items(), key=lambda x: x[1])[0]
+            best_result = next(r for r in results if self._get_provider_name(r) == best_provider)
         
         return EnsembleResult(
             result=best_result,
@@ -593,16 +611,24 @@ class AdvancedEnsemble:
             return []
     
     def _calculate_borda_score(self, ranking: List[str], total_providers: int) -> float:
-        """Calculate Borda count score for a ranking."""
-        if not ranking:
+        """Calculate Borda count score for a ranking.
+        
+        Borda count: For a ranking of n items, the first place gets (n-1) points,
+        second place gets (n-2) points, etc. The score is the sum of points
+        for the provider's position in this ranking.
+        """
+        if not ranking or total_providers == 0:
             return 0.0
         
-        # Assign points based on position (highest for first place)
-        points = {provider: total_providers - i for i, provider in enumerate(ranking)}
+        # Calculate score based on position in ranking
+        # First place (index 0) gets (total_providers - 1) points
+        # Second place (index 1) gets (total_providers - 2) points, etc.
+        score = 0.0
+        for i, provider in enumerate(ranking):
+            if i < total_providers:
+                score += (total_providers - i - 1)
         
-        # Normalize scores
-        total_points = sum(points.values())
-        return total_points / (total_providers * (total_providers + 1) / 2)
+        return score
 
     def submit_feedback(self, provider: str, feedback: float):
         """Submit user feedback for a provider (1.0=good, 0.0=bad, or any float)."""
