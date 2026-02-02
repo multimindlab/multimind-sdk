@@ -5,10 +5,10 @@ Example demonstrating cost-optimized multi-modal processing with dynamic model s
 import asyncio
 import base64
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from multimind.router.multi_modal_router import MultiModalRouter
-from multimind.models.advanced import CostOptimizedWrapper
+# from multimind.models.advanced import CostOptimizedWrapper
 from multimind.types import UnifiedRequest, ModalityInput, ModalityOutput
 from multimind.metrics.cost_tracker import CostTracker
 from multimind.metrics.performance import PerformanceTracker
@@ -100,6 +100,8 @@ class CostOptimizedMultiModalProcessor:
         
         # Get available models
         models = self.router.get_available_models(modality)
+        if not models:
+            return "default"
         
         # Get cost metrics
         cost_metrics = self.cost_tracker.get_modality_metrics(modality)
@@ -122,7 +124,7 @@ class CostOptimizedMultiModalProcessor:
                 best_score = score
                 best_model = model
         
-        return best_model or models[0]
+        return best_model or (models[0] if models else "default")
 
 
 async def main():
