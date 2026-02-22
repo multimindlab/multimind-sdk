@@ -248,9 +248,10 @@ async def process_request(request: UnifiedRequest):
                     ctx_parts.append(f"IMAGE:\n{image_text}")
                 if audio_text:
                     ctx_parts.append(f"AUDIO:\n{audio_text}")
+                ctx_joined = "\n\n".join(ctx_parts)
                 synthesis_prompt = (
                     f"{prompt}\n\n"
-                    f"Context from other experts:\n\n{'\n\n'.join(ctx_parts)}\n\n"
+                    f"Context from other experts:\n\n{ctx_joined}\n\n"
                     "Using the context above, produce the best final answer."
                 )
                 synthesized_text = await experts["text_expert"].process({"text": synthesis_prompt})
