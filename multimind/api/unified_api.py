@@ -3,36 +3,12 @@ Unified API endpoint for multi-modal processing with MoE support.
 """
 
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, Any
 import asyncio
 from ..models.moe import MoEFactory
+from ..types import UnifiedRequest, UnifiedResponse
 
 app = FastAPI(title="Unified Multi-Modal API")
-
-class ModalityInput(BaseModel):
-    """Input for a specific modality."""
-    content: Any
-    modality: str
-
-class UnifiedRequest(BaseModel):
-    """Unified request structure for multi-modal processing."""
-    inputs: List[ModalityInput]
-    use_moe: bool = Field(default=True, description="Whether to use MoE processing")
-    constraints: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Processing constraints (cost, latency, etc.)"
-    )
-    workflow: Optional[str] = Field(
-        default=None,
-        description="Optional MCP workflow to use"
-    )
-
-class UnifiedResponse(BaseModel):
-    """Unified response structure."""
-    outputs: Dict[str, Any]
-    expert_weights: Optional[Dict[str, float]] = None
-    metrics: Dict[str, Any]
 
 # Initialize components
 try:
