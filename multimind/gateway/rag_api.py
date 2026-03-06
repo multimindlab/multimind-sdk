@@ -8,7 +8,6 @@ import os
 import logging
 import json
 import tempfile
-import hashlib
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -19,7 +18,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, Field
 import jwt
 
-# Try to import passlib for password hashing, fallback to simple hash
+# Require passlib for secure password hashing.
 try:
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -63,31 +62,41 @@ security = HTTPBearer(auto_error=False)
 # Password hashing helper
 def hash_password(password: str) -> str:
     """Hash a password."""
-    if HAS_PASSLIB:
-        return pwd_context.hash(password)
-    else:
-        # Simple hash fallback (not secure, but works for development)
-        return hashlib.sha256(password.encode()).hexdigest()
+    if not HAS_PASSLIB:
+        raise RuntimeError("passlib[bcrypt] is required for secure password hashing")
+    return pwd_context.hash(password)
 
 def verify_password(password: str, hashed: str) -> bool:
     """Verify a password."""
-    if HAS_PASSLIB:
-        return pwd_context.verify(password, hashed)
-    else:
-        # Simple hash verification fallback
-        return hashlib.sha256(password.encode()).hexdigest() == hashed
+    if not HAS_PASSLIB:
+        raise RuntimeError("passlib[bcrypt] is required for secure password verification")
+    return pwd_context.verify(password, hashed)
 
 # Get API keys from environment
 API_KEYS = os.getenv("API_KEYS", "").split(",") if os.getenv("API_KEYS") else []
-JWT_SECRET = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
+JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 30
 
-# Default users for JWT authentication (in production, use a database)
-DEFAULT_USERS = {
-    "testuser": hash_password("secret"),
-    "admin": hash_password("admin123")
-}
+def _load_jwt_users() -> Dict[str, str]:
+    """
+    Load JWT users from environment variable JWT_USERS_JSON.
+    Format: {"username":"hashed_password", ...}
+    """
+    raw_users = os.getenv("JWT_USERS_JSON")
+    if not raw_users:
+        return {}
+    try:
+        users = json.loads(raw_users)
+        if isinstance(users, dict) and all(isinstance(k, str) and isinstance(v, str) for k, v in users.items()):
+            return users
+        logger.error("JWT_USERS_JSON must be a JSON object of username->hashed_password")
+        return {}
+    except json.JSONDecodeError:
+        logger.error("JWT_USERS_JSON is not valid JSON")
+        return {}
+
+JWT_USERS = _load_jwt_users()
 
 # Global RAG instance and model
 rag_instance: Optional[RAG] = None
@@ -162,6 +171,8 @@ def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> 
 
 def verify_token(credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)) -> Dict[str, Any]:
     """Verify JWT token."""
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT authentication is not configured")
     if not credentials:
         raise HTTPException(status_code=401, detail="Authorization header required")
     
@@ -298,11 +309,15 @@ async def startup_event():
 @app.post("/token", response_model=TokenResponse)
 async def login(username: str = Form(...), password: str = Form(...)):
     """Get JWT token for authentication."""
-    # In production, verify against database
-    if username not in DEFAULT_USERS:
+    if not JWT_SECRET:
+        raise HTTPException(status_code=503, detail="JWT authentication is not configured")
+    if not JWT_USERS:
+        raise HTTPException(status_code=503, detail="No JWT users configured")
+
+    if username not in JWT_USERS:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
-    if not verify_password(password, DEFAULT_USERS[username]):
+    if not verify_password(password, JWT_USERS[username]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     # Create token

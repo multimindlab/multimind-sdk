@@ -5,10 +5,12 @@ Unified API endpoint for multi-modal processing with MoE support.
 from fastapi import FastAPI, HTTPException
 from typing import Dict, Any
 import asyncio
+import logging
 from ..models.moe import MoEFactory
 from ..types import UnifiedRequest, UnifiedResponse
 
 app = FastAPI(title="Unified Multi-Modal API")
+logger = logging.getLogger(__name__)
 
 # Initialize components
 try:
@@ -87,10 +89,13 @@ async def process_request(request: UnifiedRequest):
                 }
             )
             
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error processing unified API request")
         raise HTTPException(
             status_code=500,
-            detail=f"Error processing request: {str(e)}"
+            detail="Internal server error"
         )
 
 @app.get("/v1/models")

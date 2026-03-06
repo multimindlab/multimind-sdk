@@ -173,10 +173,19 @@ class BufferMemory(BaseMemory):
                 self.metadata = new_metadata
 
         elif self.strategy == "lru":
-            # Remove least recently used message
-            # This is a simplified implementation
-            # In practice, you would track access times
-            self._remove_oldest()
+            # Remove least recently used message.
+            # Access-time tracking is not available yet, so use FIFO eviction
+            # as a safe, non-recursive fallback.
+            self.total_tokens -= self.message_tokens[0]
+            self.messages.pop(0)
+            self.message_tokens.pop(0)
+            if self.enable_metadata:
+                self.metadata.pop("0", None)
+                # Shift metadata indices
+                new_metadata = {}
+                for i in range(len(self.messages)):
+                    new_metadata[str(i)] = self.metadata.get(str(i + 1), {})
+                self.metadata = new_metadata
 
         else:  # sliding
             # Remove messages from start until we have space

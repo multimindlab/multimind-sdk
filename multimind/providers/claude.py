@@ -3,6 +3,7 @@ Claude provider adapter for the MultimindSDK.
 """
 
 from typing import Dict, List, Optional, Union, Any
+import base64
 import anthropic
 import logging
 from datetime import datetime
@@ -141,7 +142,7 @@ class ClaudeProvider(ProviderAdapter):
                                 "source": {
                                     "type": "base64",
                                     "media_type": "image/jpeg",
-                                    "data": image_data.hex()
+                                    "data": base64.b64encode(image_data).decode("utf-8")
                                 }
                             }
                         ]
@@ -162,12 +163,14 @@ class ClaudeProvider(ProviderAdapter):
             ) / 1000  # Convert to USD
             
             return ImageAnalysisResult(
+                objects=[],
+                captions=[result] if result else [],
+                text=result,
                 provider_name="claude",
                 model_name=model,
-                result=result,
-                tokens_used=tokens_used,
                 latency_ms=latency_ms,
-                cost_estimate_usd=cost
+                cost_estimate_usd=cost,
+                metadata={"tokens_used": tokens_used}
             )
             
         except Exception as e:
