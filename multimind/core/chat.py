@@ -8,8 +8,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-from dataclasses import dataclass, asdict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -18,17 +17,17 @@ class ChatMessage(BaseModel):
     role: str
     content: str
     model: str
-    timestamp: datetime = datetime.now()
-    metadata: Dict = {}
+    timestamp: datetime = Field(default_factory=datetime.now)
+    metadata: Dict = Field(default_factory=dict)
 
 class ChatSession(BaseModel):
     """A chat session with history and metadata"""
     session_id: str
     model: str
-    created_at: datetime = datetime.now()
-    updated_at: datetime = datetime.now()
-    messages: List[ChatMessage] = []
-    metadata: Dict = {}
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    messages: List[ChatMessage] = Field(default_factory=list)
+    metadata: Dict = Field(default_factory=dict)
     system_prompt: Optional[str] = None
 
     def add_message(self, role: str, content: str, model: str, metadata: Optional[Dict[str, Union[str, int, float]]] = None) -> None:
@@ -50,10 +49,11 @@ class ChatSession(BaseModel):
 
     def export(self, format: str = "json") -> Union[str, Dict]:
         """Export session to different formats"""
+        session_data = self.model_dump(mode="json")
         if format == "json":
-            return json.dumps(asdict(self), default=str)
+            return json.dumps(session_data)
         elif format == "dict":
-            return asdict(self)
+            return session_data
         else:
             raise ValueError(f"Unsupported export format: {format}")
 
@@ -75,7 +75,7 @@ class ChatSession(BaseModel):
         directory.mkdir(parents=True, exist_ok=True)
         file_path = directory / f"chat_{self.session_id}.json"
         with open(file_path, "w") as f:
-            json.dump(asdict(self), f, default=str, indent=2)
+            json.dump(self.model_dump(mode="json"), f, indent=2)
         return file_path
 
 class ChatManager:

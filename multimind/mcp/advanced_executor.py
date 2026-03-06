@@ -32,14 +32,13 @@ class AdvancedMCPExecutor:
         retry_delay: float = 1.0
     ):
         self.parser = parser or MCPParser()
-        self.metrics_collector = self.MetricsCollector()
-        self.model_registry = {
+        self.metrics_collector = metrics_collector or self.MetricsCollector()
+        self.model_registry = model_registry or {
             "ollama": OllamaModel(),
             "openai": OpenAIModel(),
             "claude": ClaudeModel(),
             "gemini": GeminiModel()
         }
-        print(f"Model registry contents: {self.model_registry}")
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.workflow_state: Dict[str, Any] = {}
