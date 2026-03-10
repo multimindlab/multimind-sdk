@@ -30,7 +30,6 @@ class TimeWeightedMemory(BaseMemory):
         self.decay_function = decay_function
         self.time_units = time_units
         self.messages: List[Dict[str, Any]] = []
-        self._load_sync()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message with timestamp and weight."""

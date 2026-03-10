@@ -47,7 +47,6 @@ class ActiveLearningMemory(BaseMemory):
         self.reinforcement: Dict[str, List[Dict[str, Any]]] = {}  # item_id -> reinforcement data
         self.last_analysis = datetime.now()
         self.last_optimization = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and track feedback."""
@@ -210,7 +209,7 @@ class ActiveLearningMemory(BaseMemory):
         if item_id in self.reinforcement:
             del self.reinforcement[item_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""
         messages = []
         for item in self.items:
@@ -241,7 +240,7 @@ class ActiveLearningMemory(BaseMemory):
                     "last_optimization": self.last_optimization.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load items and feedback from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

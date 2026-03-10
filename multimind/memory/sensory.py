@@ -111,7 +111,6 @@ class SensoryMemory(BaseMemory):
         self.last_cross_modal = datetime.now()
         self.last_fusion = datetime.now()
         self.last_advanced_pattern = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and analyze sensory information."""
@@ -567,7 +566,7 @@ class SensoryMemory(BaseMemory):
         if experience_id in self.validation_history:
             del self.validation_history[experience_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all experiences."""
         messages = []
         for experience in self.experiences:
@@ -616,7 +615,7 @@ class SensoryMemory(BaseMemory):
                     "last_advanced_pattern": self.last_advanced_pattern.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load experiences from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

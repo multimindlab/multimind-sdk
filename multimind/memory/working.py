@@ -78,7 +78,6 @@ class WorkingMemory(BaseMemory):
         self.last_consolidation = datetime.now()
         self.last_attention_update = datetime.now()
         self.last_backup = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to working memory."""
@@ -301,6 +300,72 @@ class WorkingMemory(BaseMemory):
             )
         
         await self.save()
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all working-memory items."""
+        return self.items
+
+    async def clear(self) -> None:
+        """Clear all working-memory state."""
+        self.items = []
+        self.item_embeddings = []
+        self.attention_scores = {}
+        self.attention_history = {}
+        self.consolidation_history = {}
+        self.priority_scores = {}
+        self.compression_history = {}
+        self.backup_history = []
+        self.last_decay = datetime.now()
+        self.last_consolidation = datetime.now()
+        self.last_attention_update = datetime.now()
+        self.last_backup = datetime.now()
+        if self.storage_path and self.storage_path.exists():
+            self.storage_path.unlink()
+
+    async def save(self) -> None:
+        """Persist working-memory state."""
+        if not self.storage_path:
+            return
+
+        data = {
+            "items": self.items,
+            "item_embeddings": self.item_embeddings,
+            "attention_scores": self.attention_scores,
+            "attention_history": self.attention_history,
+            "consolidation_history": self.consolidation_history,
+            "priority_scores": self.priority_scores,
+            "compression_history": self.compression_history,
+            "backup_history": self.backup_history,
+            "last_decay": self.last_decay.isoformat(),
+            "last_consolidation": self.last_consolidation.isoformat(),
+            "last_attention_update": self.last_attention_update.isoformat(),
+            "last_backup": self.last_backup.isoformat(),
+        }
+
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.storage_path, "w") as f:
+            json.dump(data, f)
+
+    async def load(self) -> None:
+        """Load working-memory state from disk."""
+        if not self.storage_path or not self.storage_path.exists():
+            return
+
+        with open(self.storage_path, "r") as f:
+            data = json.load(f)
+
+        self.items = data.get("items", [])
+        self.item_embeddings = data.get("item_embeddings", [])
+        self.attention_scores = data.get("attention_scores", {})
+        self.attention_history = data.get("attention_history", {})
+        self.consolidation_history = data.get("consolidation_history", {})
+        self.priority_scores = data.get("priority_scores", {})
+        self.compression_history = data.get("compression_history", {})
+        self.backup_history = data.get("backup_history", [])
+        self.last_decay = datetime.fromisoformat(data.get("last_decay", datetime.now().isoformat()))
+        self.last_consolidation = datetime.fromisoformat(data.get("last_consolidation", datetime.now().isoformat()))
+        self.last_attention_update = datetime.fromisoformat(data.get("last_attention_update", datetime.now().isoformat()))
+        self.last_backup = datetime.fromisoformat(data.get("last_backup", datetime.now().isoformat()))
 
     async def get_backup_info(self) -> List[Dict[str, Any]]:
         """Get information about available backups."""

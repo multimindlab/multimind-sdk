@@ -59,9 +59,36 @@ class VectorStoreMemory(BaseMemory):
         self.backup_history: List[Dict[str, Any]] = []
         self.last_pruning = datetime.now()
 
-        # Initialize vector store
-        if vector_store_config.storage_path:
-            self.vector_store.load(vector_store_config.storage_path)
+        # Load explicitly via await memory.load() when needed.
+
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a message using an auto-generated memory ID."""
+        memory_id = f"memory_{datetime.now().timestamp()}"
+        await self.add(
+            memory_id=memory_id,
+            content=message["content"],
+            metadata={"role": message.get("role", "user")},
+        )
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Return stored message payloads."""
+        results = await self.vector_store.search(
+            query_vector=[0] * self.vector_store.config.vector_dim,
+            k=self.vector_store.config.max_vectors,
+        )
+        messages: List[Dict[str, str]] = []
+        for result in results:
+            metadata = getattr(result, "metadata", None) or {}
+            content = metadata.get("content")
+            if content is None and isinstance(result, dict):
+                content = result.get("content")
+            if content is None:
+                continue
+            messages.append({
+                "role": metadata.get("role", "user"),
+                "content": content,
+            })
+        return messages
 
     async def add(
         self,
@@ -193,11 +220,27 @@ class VectorStoreMemory(BaseMemory):
         
         self.last_backup = datetime.now()
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all vectors."""
-        self.vector_store.clear()
+        await self.vector_store.clear()
         self.last_backup = datetime.now()
         self.backup_history = []
+        self.last_pruning = datetime.now()
+
+    async def save(self) -> None:
+        """Persist the vector store when storage is configured."""
+        storage_path = self.vector_store.config.storage_path
+        if not storage_path:
+            return
+        await self.vector_store.persist(storage_path)
+
+    async def load(self) -> None:
+        """Load the vector store from persistent storage."""
+        storage_path = self.vector_store.config.storage_path
+        if not storage_path:
+            return
+        self.vector_store = await VectorStore.load(storage_path, self.vector_store.config)
+        self.last_backup = datetime.now()
         self.last_pruning = datetime.now()
 
     def get_stats(self) -> Dict[str, Any]:
