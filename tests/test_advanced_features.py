@@ -259,7 +259,7 @@ class TestAdvancedMemoryFeatures:
         """Test memory systems with edge cases."""
         # Test empty memory
         memory = BufferMemory()
-        assert memory.get_messages() == []
+        assert await memory.get_messages() == []
         
         # Test memory with None values
         memory = BufferMemory()
@@ -270,7 +270,7 @@ class TestAdvancedMemoryFeatures:
         long_content = "x" * 10000
         memory = BufferMemory()
         await memory.add_message({"role": "user", "content": long_content})
-        messages = memory.get_messages()
+        messages = await memory.get_messages()
         assert len(messages) == 1
         assert messages[0]["content"] == long_content
     
@@ -299,11 +299,12 @@ class TestAdvancedMemoryFeatures:
             # Create memory and add data
             memory = BufferMemory(storage_path=temp_path)
             await memory.add_message({"role": "user", "content": "test"})
-            memory.save()
+            await memory.save()
             
-            # Create new memory instance and load
+            # Create new memory instance and load explicitly
             new_memory = BufferMemory(storage_path=temp_path)
-            assert new_memory.get_messages() != []
+            await new_memory.load()
+            assert await new_memory.get_messages() != []
         
         finally:
             os.unlink(temp_path)
@@ -686,7 +687,7 @@ class TestEdgeCasesAndStressTests:
                 "content": f"Message {i}"
             })
         
-        messages = memory.get_messages()
+        messages = await memory.get_messages()
         assert len(messages) == 1000
     
     @pytest.mark.asyncio
@@ -705,7 +706,7 @@ class TestEdgeCasesAndStressTests:
         
         await asyncio.gather(*tasks)
         
-        messages = memory.get_messages()
+        messages = await memory.get_messages()
         assert len(messages) == 10
     
     @pytest.mark.asyncio

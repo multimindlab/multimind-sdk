@@ -62,7 +62,6 @@ class EpisodicMemory(BaseMemory):
         self.episode_importance: Dict[str, float] = {}  # episode_id -> importance score
         self.emotional_profiles: Dict[str, Dict[str, float]] = {}  # episode_id -> emotion -> intensity
         self.last_consolidation = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message as a new episode with context."""
@@ -395,7 +394,7 @@ class EpisodicMemory(BaseMemory):
         # Remove weight
         del self.episode_weights[episode_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all episodes."""
         messages = []
         for episode in self.episodes:
@@ -440,7 +439,7 @@ class EpisodicMemory(BaseMemory):
                     "last_consolidation": self.last_consolidation.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load episodes from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

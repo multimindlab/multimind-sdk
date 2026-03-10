@@ -45,7 +45,6 @@ class SemanticMemory(BaseMemory):
         self.concept_metadata: Dict[str, Dict[str, Any]] = {}  # concept_id -> metadata
         self.inference_cache: Dict[str, List[Dict[str, Any]]] = {}  # concept_id -> inferred relationships
         self.last_validation = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message as new semantic knowledge."""
@@ -355,7 +354,7 @@ class SemanticMemory(BaseMemory):
         if concept_id in self.inference_cache:
             del self.inference_cache[concept_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all concepts."""
         messages = []
         for concept in self.concepts:
@@ -398,7 +397,7 @@ class SemanticMemory(BaseMemory):
                     "last_validation": self.last_validation.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load concepts from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

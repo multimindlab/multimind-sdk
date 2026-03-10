@@ -64,7 +64,6 @@ class ContextualMemory(BaseMemory):
         self.context_summaries: Dict[str, str] = {}  # context_id -> summary
         self.context_evolution: Dict[str, List[Dict[str, Any]]] = {}  # context_id -> evolution history
         self.last_summarization = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to the appropriate context."""
@@ -423,7 +422,7 @@ class ContextualMemory(BaseMemory):
         del self.context_metadata[context_id]
         del self.context_weights[context_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all contexts."""
         messages = []
         for context in self.contexts:
@@ -465,7 +464,7 @@ class ContextualMemory(BaseMemory):
                     "last_summarization": self.last_summarization.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load contexts from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:
@@ -540,9 +539,10 @@ class ContextualMemory(BaseMemory):
 
     async def get_context_stats(self) -> Dict[str, Any]:
         """Get statistics about contexts."""
+        messages = await self.get_messages()
         stats = {
             "total_contexts": len(self.contexts),
-            "total_messages": len(self.get_messages()),
+            "total_messages": len(messages),
             "relationship_types": {
                 rel_type: 0 for rel_type in self.relationship_types
             },
