@@ -5,7 +5,7 @@ GDPR compliance implementation.
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, ComplianceMetadata, DataCategory
+from .governance import GovernanceConfig, ComplianceMetadata, DataCategory, Regulation
 
 class GDPRCompliance(BaseModel):
     """GDPR compliance manager."""

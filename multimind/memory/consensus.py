@@ -76,10 +76,33 @@ class ConsensusMemory(BaseMemory):
         self.consensus_rounds = 0
         self.leader_changes = 0
         self.last_heartbeat = datetime.now()
-        
-        # Start background tasks
-        asyncio.create_task(self._run_election_timer())
-        asyncio.create_task(self._run_heartbeat())
+        self._running = False
+        self._election_task: Optional[asyncio.Task] = None
+        self._heartbeat_task: Optional[asyncio.Task] = None
+
+    async def start_background_tasks(self) -> None:
+        """Start background RAFT tasks when an event loop is available."""
+        if self._running:
+            return
+        self._running = True
+        self._election_task = asyncio.create_task(self._run_election_timer())
+        self._heartbeat_task = asyncio.create_task(self._run_heartbeat())
+
+    async def stop_background_tasks(self) -> None:
+        """Stop background RAFT tasks gracefully."""
+        self._running = False
+        tasks = [t for t in [self._election_task, self._heartbeat_task] if t is not None]
+        for task in tasks:
+            task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self._election_task = None
+        self._heartbeat_task = None
+
+    async def _ensure_background_tasks_started(self) -> None:
+        """Lazily start background tasks from async call sites."""
+        if not self._running:
+            await self.start_background_tasks()
 
     async def add_memory(
         self,
@@ -88,6 +111,7 @@ class ConsensusMemory(BaseMemory):
         metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a new memory through consensus."""
+        await self._ensure_background_tasks_started()
         if self.state == NodeState.LEADER:
             # Create log entry
             entry = LogEntry(
@@ -133,6 +157,7 @@ class ConsensusMemory(BaseMemory):
         updates: Dict[str, Any]
     ) -> None:
         """Update a memory through consensus."""
+        await self._ensure_background_tasks_started()
         if self.state == NodeState.LEADER:
             # Create log entry
             entry = LogEntry(
@@ -163,6 +188,7 @@ class ConsensusMemory(BaseMemory):
 
     async def remove_memory(self, memory_id: str) -> None:
         """Remove a memory through consensus."""
+        await self._ensure_background_tasks_started()
         if self.state == NodeState.LEADER:
             # Create log entry
             entry = LogEntry(
@@ -213,19 +239,25 @@ class ConsensusMemory(BaseMemory):
 
     async def _run_election_timer(self) -> None:
         """Run election timer for leader election."""
-        while True:
-            if self.state != NodeState.LEADER:
-                # Check if election timeout
-                if (datetime.now() - self.last_heartbeat).total_seconds() > self.election_timeout:
-                    await self._start_election()
-            await asyncio.sleep(self.election_timeout)
+        try:
+            while self._running:
+                if self.state != NodeState.LEADER:
+                    # Check if election timeout
+                    if (datetime.now() - self.last_heartbeat).total_seconds() > self.election_timeout:
+                        await self._start_election()
+                await asyncio.sleep(self.election_timeout)
+        except asyncio.CancelledError:
+            return
 
     async def _run_heartbeat(self) -> None:
         """Run heartbeat for leader."""
-        while True:
-            if self.state == NodeState.LEADER:
-                await self._send_heartbeat()
-            await asyncio.sleep(self.heartbeat_interval)
+        try:
+            while self._running:
+                if self.state == NodeState.LEADER:
+                    await self._send_heartbeat()
+                await asyncio.sleep(self.heartbeat_interval)
+        except asyncio.CancelledError:
+            return
 
     async def _start_election(self) -> None:
         """Start leader election."""

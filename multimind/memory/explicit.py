@@ -5,6 +5,7 @@ Explicit Memory implementation for storing conscious, declarative knowledge.
 from typing import Dict, Any, Optional, List, Set, Tuple
 from datetime import datetime, timedelta
 import numpy as np
+import networkx as nx
 from .base import BaseMemory
 from .declarative import DeclarativeMemory
 from .semantic import SemanticMemory

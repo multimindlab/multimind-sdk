@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 import hashlib
 import hmac
 import json
+import os
 from cryptography.fernet import Fernet
 from .governance import GovernanceConfig, DataCategory
 
@@ -34,7 +35,6 @@ class DataProtectionManager(BaseModel):
     ) -> Dict[str, Any]:
         """Protect data according to its category."""
         protected_data = {
-            "original_data": data,
             "category": category,
             "metadata": metadata or {},
             "protection_applied": []
