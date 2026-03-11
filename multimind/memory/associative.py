@@ -88,7 +88,6 @@ class AssociativeMemory(BaseMemory):
         self.last_cluster_update = datetime.now()
         self.last_analysis = datetime.now()
         self.last_evolution = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message as new association."""
@@ -407,7 +406,7 @@ class AssociativeMemory(BaseMemory):
         if association_id in self.learning_history:
             del self.learning_history[association_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all associations."""
         messages = []
         for association in self.associations:
@@ -448,7 +447,7 @@ class AssociativeMemory(BaseMemory):
                     "last_evolution": self.last_evolution.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load associations from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

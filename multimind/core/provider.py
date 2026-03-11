@@ -5,7 +5,7 @@ Core provider interface and structures for the MultimindSDK.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Union, Any
 from enum import Enum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 
 class ProviderCapability(str, Enum):
@@ -49,8 +49,8 @@ class GenerationResult(BaseModel):
     model_name: str
     latency_ms: float
     cost_estimate_usd: float
-    metadata: Dict[str, Any] = {}
-    created_at: datetime = datetime.now()
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.now)
 
 class EmbeddingResult(BaseModel):
     """Standardized result from embeddings generation."""
@@ -60,7 +60,7 @@ class EmbeddingResult(BaseModel):
     model_name: str
     latency_ms: float
     cost_estimate_usd: float
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ImageAnalysisResult(BaseModel):
     """Standardized result from image analysis."""
@@ -71,7 +71,7 @@ class ImageAnalysisResult(BaseModel):
     model_name: str
     latency_ms: float
     cost_estimate_usd: float
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ProviderAdapter(ABC):
     """Base class for provider adapters."""

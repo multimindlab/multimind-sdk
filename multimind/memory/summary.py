@@ -62,9 +62,11 @@ class SummaryMemory(BaseMemory):
         self.last_backup = datetime.now()
         self.backup_history: List[Dict[str, Any]] = []
 
-        # Load if storage path exists
-        if self.storage_path and self.storage_path.exists():
-            self.load()
+        # Load explicitly via await memory.load() when needed.
+
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a single message to summary memory."""
+        await self.add_messages([message])
 
     async def add_messages(
         self,
@@ -277,7 +279,17 @@ Summary:"""
 
         # Save to disk if storage path exists
         if self.storage_path:
-            self.save()
+            await self.save()
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Return summaries in message format."""
+        return [
+            {
+                "role": "system",
+                "content": summary.get("summary", ""),
+            }
+            for summary in self.summaries
+        ]
 
     def get_summaries(self) -> List[Dict[str, Any]]:
         """Get all summaries."""
@@ -293,7 +305,7 @@ Summary:"""
             for i, summary in enumerate(self.summaries)
         ]
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all summaries."""
         self.summaries = []
         self.summary_metadata = {}
@@ -302,7 +314,7 @@ Summary:"""
         if self.storage_path and self.storage_path.exists():
             self.storage_path.unlink()
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save summaries to persistent storage."""
         if not self.storage_path:
             return
@@ -320,7 +332,7 @@ Summary:"""
         with open(self.storage_path, "w") as f:
             json.dump(data, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load summaries from persistent storage."""
         if not self.storage_path or not self.storage_path.exists():
             return
@@ -337,7 +349,7 @@ Summary:"""
             self.backup_history = data["backup_history"]
         except Exception as e:
             print(f"Error loading summaries: {e}")
-            self.clear()
+            await self.clear()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get summary statistics."""

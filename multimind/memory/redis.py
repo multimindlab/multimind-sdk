@@ -21,7 +21,7 @@ class RedisMemory(BaseMemory):
         self.redis_client = redis.from_url(redis_url)
         self.ttl = ttl  # Time to live in seconds
 
-    def add_message(self, message: Dict[str, str]) -> None:
+    async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to Redis."""
         message_with_timestamp = {
             **message,
@@ -38,20 +38,20 @@ class RedisMemory(BaseMemory):
         if self.ttl:
             self.redis_client.expire(self.memory_key, self.ttl)
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from Redis."""
         messages = self.redis_client.lrange(self.memory_key, 0, -1)
         return [json.loads(msg) for msg in messages]
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all messages from Redis."""
         self.redis_client.delete(self.memory_key)
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save is handled automatically by Redis."""
         pass
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load is handled automatically by Redis."""
         pass
 
@@ -61,7 +61,8 @@ class RedisMemory(BaseMemory):
 
     def get_messages_since(self, timestamp: datetime) -> List[Dict[str, str]]:
         """Get messages since a specific timestamp."""
-        all_messages = self.get_messages()
+        all_messages = self.redis_client.lrange(self.memory_key, 0, -1)
+        all_messages = [json.loads(msg) for msg in all_messages]
         return [
             msg for msg in all_messages
             if datetime.fromisoformat(msg["timestamp"]) > timestamp

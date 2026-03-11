@@ -70,7 +70,6 @@ class ProceduralMemory(BaseMemory):
         self.last_optimization = datetime.now()
         self.last_validation = datetime.now()
         self.last_monitoring = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message as new procedural knowledge."""
@@ -419,7 +418,7 @@ class ProceduralMemory(BaseMemory):
         if procedure_id in self.optimization_cache:
             del self.optimization_cache[procedure_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all procedures."""
         messages = []
         for procedure in self.procedures:
@@ -468,7 +467,7 @@ class ProceduralMemory(BaseMemory):
                     "last_monitoring": self.last_monitoring.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load procedures from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

@@ -36,7 +36,7 @@ class SQLAlchemyMemory(BaseMemory):
         self.Session = sessionmaker(bind=self.engine)
         Base.metadata.create_all(self.engine)
 
-    def add_message(self, message: Dict[str, str]) -> None:
+    async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to database."""
         session = self.Session()
         try:
@@ -50,7 +50,7 @@ class SQLAlchemyMemory(BaseMemory):
         finally:
             session.close()
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from database."""
         session = self.Session()
         try:
@@ -67,7 +67,7 @@ class SQLAlchemyMemory(BaseMemory):
         finally:
             session.close()
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all messages from database."""
         session = self.Session()
         try:
@@ -76,11 +76,11 @@ class SQLAlchemyMemory(BaseMemory):
         finally:
             session.close()
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save is handled automatically by SQLAlchemy."""
         pass
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load is handled automatically by SQLAlchemy."""
         pass
 

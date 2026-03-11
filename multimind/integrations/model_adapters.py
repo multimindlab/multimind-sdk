@@ -2,19 +2,19 @@
 Integration adapters for fine-tuned models to work with various frameworks.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Se
+from typing import List, Dict, Any, Optional, Union, Tuple, Sequence
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from langchain.llms.base import LLM
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.embeddings.base import Embeddings
-from langchain.schema import Documen
+from langchain.schema import Document
 from lite_llm import LiteLLM
-from superagi.agent import Agen
+from superagi.agent import Agent
 from superagi.tools import Tool
 from semantic_kernel import Kernel, KernelFunction
-from crewai import Agent as CrewAgen
+from crewai import Agent as CrewAgent
 from crewai import Task
 import logging
 from ..fine_tuning import (
@@ -254,7 +254,7 @@ class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
 
         # Update context with response
         context["response"] = response
-        return contex
+        return context
 
 class CrewAIAdapter(CrewAgent, BaseModelAdapter):
     """Adapter for CrewAI integration."""
