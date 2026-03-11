@@ -3,6 +3,7 @@ HuggingFace model implementation for local model loading.
 """
 
 import asyncio
+import functools
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
 from .base import BaseLLM
 
@@ -107,15 +108,15 @@ class HuggingFaceModel(BaseLLM):
         **kwargs
     ) -> str:
         """Generate text from the model."""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
+        loop = asyncio.get_running_loop()
+        generate_fn = functools.partial(
             self._generate_text,
             prompt,
             temperature,
             max_tokens,
             **kwargs
         )
+        return await loop.run_in_executor(None, generate_fn)
 
     async def generate_stream(
         self,
@@ -173,17 +174,46 @@ class HuggingFaceModel(BaseLLM):
         async for chunk in self.generate_stream(prompt, temperature, max_tokens, **kwargs):
             yield chunk
 
+    def _compute_embeddings(
+        self,
+        texts: List[str],
+        max_length: int = 512
+    ) -> List[List[float]]:
+        """Compute embeddings using mean pooling over the last hidden state."""
+        inputs = self.tokenizer(
+            texts,
+            return_tensors="pt",
+            padding=True,
+            truncation=True,
+            max_length=max_length
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            outputs = self.model(**inputs, output_hidden_states=True, return_dict=True)
+
+        last_hidden = outputs.hidden_states[-1]
+        attention_mask = inputs["attention_mask"].unsqueeze(-1).type_as(last_hidden)
+        masked_hidden = last_hidden * attention_mask
+        token_counts = attention_mask.sum(dim=1).clamp(min=1)
+        pooled = masked_hidden.sum(dim=1) / token_counts
+
+        return pooled.cpu().tolist()
+
     async def embeddings(
         self,
         text: Union[str, List[str]],
         **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
-        # Use the model's embedding layer if available
-        # For now, return a placeholder - embeddings should use a dedicated embedding model
+        texts = [text] if isinstance(text, str) else text
+        max_length = kwargs.get("max_length", 512)
+
+        loop = asyncio.get_running_loop()
+        compute_fn = functools.partial(self._compute_embeddings, texts, max_length)
+        embeddings = await loop.run_in_executor(None, compute_fn)
+
         if isinstance(text, str):
-            # Return a dummy embedding vector (768 dimensions)
-            return [0.0] * 768
-        else:
-            return [[0.0] * 768 for _ in text]
+            return embeddings[0]
+        return embeddings
 

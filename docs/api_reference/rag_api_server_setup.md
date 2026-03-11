@@ -72,6 +72,68 @@ echo %ANTHROPIC_API_KEY%
 
 You should see your API key printed. If nothing shows, the server will use local HuggingFace models.
 
+## Step 2.1: Configure JWT/Auth Security Variables (`.env`)
+
+If you want to use `/token` JWT auth (production-style), add these values to your `.env`.
+This matches `.env.example` (`API_KEYS`, `JWT_SECRET`, `JWT_USERS_JSON`).
+
+### Required/Optional fields
+
+- `API_KEYS` (optional): comma-separated API keys for `X-API-Key` auth
+- `JWT_SECRET` (required for `/token`): long random secret (32+ chars)
+- `JWT_USERS_JSON` (required for `/token`): JSON mapping username -> bcrypt hash
+
+### 1) Generate `JWT_SECRET`
+
+PowerShell:
+```powershell
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Copy output into:
+```env
+JWT_SECRET=your_generated_secret_here
+```
+
+### 2) Generate bcrypt password hash
+
+Install passlib+bcrypt (if needed):
+```bash
+pip install passlib[bcrypt]
+```
+
+Generate hash:
+```powershell
+python -c "from passlib.context import CryptContext; c=CryptContext(schemes=['bcrypt'], deprecated='auto'); print(c.hash('YourStrongPassword123!'))"
+```
+
+### 3) Set `JWT_USERS_JSON`
+
+Use the generated hash in JSON (single line):
+```env
+JWT_USERS_JSON={"admin":"$2b$12$replace_with_bcrypt_hash","testuser":"$2b$12$replace_with_bcrypt_hash"}
+```
+
+### 4) Optional `API_KEYS`
+
+```env
+API_KEYS=key_one,key_two,key_three
+```
+
+### Example secure `.env` block
+
+```env
+OPENAI_API_KEY=your-openai-key
+API_KEYS=internal_key_1,internal_key_2
+JWT_SECRET=replace_with_long_random_secret_32plus_chars
+JWT_USERS_JSON={"admin":"$2b$12$replace_with_bcrypt_hash"}
+```
+
+**Important:**
+- Do not commit real secrets to git.
+- Do not use default/fallback secrets in production.
+- If `JWT_SECRET`/`JWT_USERS_JSON` are missing, `/token` auth should be considered not securely configured.
+
 ## Step 3: Start the RAG API Server
 
 ### Method 1: Run as module (RECOMMENDED)

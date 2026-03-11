@@ -83,7 +83,6 @@ class SpatialMemory(BaseMemory):
         self.last_cluster_update = datetime.now()
         self.last_evolution = datetime.now()
         self.last_validation = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and analyze spatial information."""
@@ -503,7 +502,7 @@ class SpatialMemory(BaseMemory):
         if location_id in self.validation_history:
             del self.validation_history[location_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all locations."""
         messages = []
         for location in self.locations:
@@ -546,7 +545,7 @@ class SpatialMemory(BaseMemory):
                     "last_validation": self.last_validation.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load locations from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

@@ -90,7 +90,6 @@ class EmotionalMemory(BaseMemory):
         self.last_pattern_update = datetime.now()
         self.last_evolution = datetime.now()
         self.last_cluster_update = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and analyze emotional state."""
@@ -177,6 +176,75 @@ class EmotionalMemory(BaseMemory):
         await self._maintain_state_limit()
         
         await self.save()
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all emotional-memory states."""
+        return self.states
+
+    async def clear(self) -> None:
+        """Clear all emotional-memory state."""
+        self.states = []
+        self.state_embeddings = []
+        self.emotion_patterns = {}
+        self.adaptation_history = {}
+        self.learning_history = {}
+        self.emotion_history = []
+        self.evolution_history = {}
+        self.relationships = {}
+        self.clusters = {}
+        self.last_analysis = datetime.now()
+        self.last_pattern_update = datetime.now()
+        self.last_evolution = datetime.now()
+        self.last_cluster_update = datetime.now()
+        if self.storage_path and self.storage_path.exists():
+            self.storage_path.unlink()
+
+    async def save(self) -> None:
+        """Persist emotional-memory state."""
+        if not self.storage_path:
+            return
+
+        data = {
+            "states": self.states,
+            "state_embeddings": self.state_embeddings,
+            "emotion_patterns": self.emotion_patterns,
+            "adaptation_history": self.adaptation_history,
+            "learning_history": self.learning_history,
+            "emotion_history": self.emotion_history,
+            "evolution_history": self.evolution_history,
+            "relationships": self.relationships,
+            "clusters": self.clusters,
+            "last_analysis": self.last_analysis.isoformat(),
+            "last_pattern_update": self.last_pattern_update.isoformat(),
+            "last_evolution": self.last_evolution.isoformat(),
+            "last_cluster_update": self.last_cluster_update.isoformat(),
+        }
+
+        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.storage_path, "w") as f:
+            json.dump(data, f)
+
+    async def load(self) -> None:
+        """Load emotional-memory state from disk."""
+        if not self.storage_path or not self.storage_path.exists():
+            return
+
+        with open(self.storage_path, "r") as f:
+            data = json.load(f)
+
+        self.states = data.get("states", [])
+        self.state_embeddings = data.get("state_embeddings", [])
+        self.emotion_patterns = data.get("emotion_patterns", {})
+        self.adaptation_history = data.get("adaptation_history", {})
+        self.learning_history = data.get("learning_history", {})
+        self.emotion_history = data.get("emotion_history", [])
+        self.evolution_history = data.get("evolution_history", {})
+        self.relationships = data.get("relationships", {})
+        self.clusters = data.get("clusters", {})
+        self.last_analysis = datetime.fromisoformat(data.get("last_analysis", datetime.now().isoformat()))
+        self.last_pattern_update = datetime.fromisoformat(data.get("last_pattern_update", datetime.now().isoformat()))
+        self.last_evolution = datetime.fromisoformat(data.get("last_evolution", datetime.now().isoformat()))
+        self.last_cluster_update = datetime.fromisoformat(data.get("last_cluster_update", datetime.now().isoformat()))
 
     async def _find_relationships(self, state_id: str) -> None:
         """Find relationships between emotional states."""

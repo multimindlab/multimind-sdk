@@ -130,7 +130,6 @@ class DeclarativeMemory(BaseMemory):
         self.last_temporal = datetime.now()
         self.last_causal = datetime.now()
         self.last_graph_update = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and analyze factual information."""
@@ -649,7 +648,7 @@ class DeclarativeMemory(BaseMemory):
         if fact_id in self.validation_history:
             del self.validation_history[fact_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all facts."""
         messages = []
         for fact in self.facts:
@@ -706,7 +705,7 @@ class DeclarativeMemory(BaseMemory):
                     "last_graph_update": self.last_graph_update.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load facts from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

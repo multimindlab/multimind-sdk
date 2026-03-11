@@ -8,7 +8,7 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 from datetime import datetime
 from pydantic import BaseModel, Field
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 try:
     import torch
     from torch.utils.data import Dataset, DataLoader
@@ -27,7 +27,7 @@ class ComplianceMetrics:
     privacy_score: float
     transparency_score: float
     fairness_score: float
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=datetime.utcnow)
 
 class ComplianceDataset:
     """Dataset wrapper that ensures compliance during training."""

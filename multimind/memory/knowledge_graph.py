@@ -32,7 +32,6 @@ class KnowledgeGraphMemory(BaseMemory):
         ]
         self.graph = nx.DiGraph()
         self.messages: List[Dict[str, str]] = []
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and extract entities and relationships."""
@@ -54,7 +53,7 @@ class KnowledgeGraphMemory(BaseMemory):
         
         await self.save()
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages."""
         return self.messages
 
@@ -74,7 +73,7 @@ class KnowledgeGraphMemory(BaseMemory):
                     "graph": nx.node_link_data(self.graph)
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load messages and graph from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

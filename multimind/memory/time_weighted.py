@@ -30,9 +30,8 @@ class TimeWeightedMemory(BaseMemory):
         self.decay_function = decay_function
         self.time_units = time_units
         self.messages: List[Dict[str, Any]] = []
-        self.load()
 
-    def add_message(self, message: Dict[str, str]) -> None:
+    async def add_message(self, message: Dict[str, str]) -> None:
         """Add message with timestamp and weight."""
         message_with_metadata = {
             **message,
@@ -42,26 +41,34 @@ class TimeWeightedMemory(BaseMemory):
         }
         self.messages.append(message_with_metadata)
         self._update_weights()
-        self.save()
+        self._save_sync()
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages with their current weights."""
         self._update_weights()  # Update weights before returning
         return self.messages
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all messages."""
         self.messages.clear()
-        self.save()
+        self._save_sync()
 
-    def save(self) -> None:
+    async def save(self) -> None:
+        """Save messages to persistent storage."""
+        self._save_sync()
+
+    def _save_sync(self) -> None:
         """Save messages to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.storage_path, 'w') as f:
                 json.dump(self.messages, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
+        """Load messages from persistent storage."""
+        self._load_sync()
+
+    def _load_sync(self) -> None:
         """Load messages from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:
@@ -184,7 +191,7 @@ class TimeWeightedMemory(BaseMemory):
         if 0 <= message_index < len(self.messages):
             self.messages[message_index]["importance"] = max(0.0, min(1.0, importance))
             self._update_weights()
-            self.save()
+            self._save_sync()
 
     def get_weight_distribution(self) -> Dict[str, float]:
         """Get distribution of message weights."""

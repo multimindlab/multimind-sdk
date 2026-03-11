@@ -52,7 +52,6 @@ class EventSourcedMemory(BaseMemory):
         self.causal_chains: Dict[str, List[Dict[str, Any]]] = {}  # chain_id -> causal chain
         self.last_analysis = datetime.now()
         self.last_optimization = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and create events."""
@@ -351,7 +350,7 @@ class EventSourcedMemory(BaseMemory):
                 c for c in chain_data if c["item_id"] != item_id
             ]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""
         messages = []
         for item in self.items:
@@ -384,7 +383,7 @@ class EventSourcedMemory(BaseMemory):
                     "last_optimization": self.last_optimization.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load items and events from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

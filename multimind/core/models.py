@@ -6,7 +6,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class ModelResponse:
     model: str
     usage: Optional[Dict[str, int]] = None
     finish_reason: Optional[str] = None
-    timestamp: str = datetime.now().isoformat()
+    timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
 class ModelHandler(ABC):
     """Abstract base class for model handlers"""

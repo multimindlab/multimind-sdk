@@ -234,52 +234,55 @@ class Router:
         call_kwargs = dict(kwargs)
         call_kwargs.pop("provider", None)
         model_arg = call_kwargs.pop("model", None)
-        start = time.time()
-        try:
-            if task_type == TaskType.TEXT_GENERATION:
-                if model_arg is not None:
-                    result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+        max_attempts = self.fallback_policy.max_retries + 1 if self.fallback_policy.strategy == "retry" else 1
+        last_error = None
+
+        for _ in range(max_attempts):
+            start = time.time()
+            try:
+                if task_type == TaskType.TEXT_GENERATION:
+                    if model_arg is not None:
+                        result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                    else:
+                        result = await provider.generate_text(prompt=input_data, **call_kwargs)
+                elif task_type == TaskType.EMBEDDINGS:
+                    if model_arg is not None:
+                        result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        result = await provider.generate_embeddings(text=input_data, **call_kwargs)
+                elif task_type == TaskType.IMAGE_ANALYSIS:
+                    if model_arg is not None:
+                        result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                    else:
+                        result = await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
-                    result = await provider.generate_text(prompt=input_data, **call_kwargs)
-            elif task_type == TaskType.EMBEDDINGS:
-                if model_arg is not None:
-                    result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
-                else:
-                    result = await provider.generate_embeddings(text=input_data, **call_kwargs)
-            elif task_type == TaskType.IMAGE_ANALYSIS:
-                if model_arg is not None:
-                    result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
-                else:
-                    result = await provider.analyze_image(image_data=input_data, **call_kwargs)
-            else:
-                raise ValueError(f"Unsupported task type: {task_type}")
-            latency = time.time() - start
-            quality = getattr(result, 'quality', None) or (result.metadata.get('quality') if hasattr(result, 'metadata') else None)
-            feedback = getattr(result, 'feedback', None) or (result.metadata.get('feedback') if hasattr(result, 'metadata') else None)
-            self.performance_tracker.record(provider_name, success=True, latency=latency, quality=quality, feedback=feedback)
-            return result
-        except Exception as e:
-            latency = time.time() - start
-            self.performance_tracker.record(provider_name, success=False, latency=latency)
-            self.fallback_policy.record_failure(provider_name)
-            # Centralized fallback logic
-            if self.fallback_policy.strategy == "retry" and self.fallback_policy.failure_counts[provider_name] <= self.fallback_policy.max_retries:
-                # Retry the same provider
-                return await self._handle_single_provider(task_type, input_data, config, use_adaptive_routing, **kwargs)
-            elif self.fallback_policy.strategy == "switch_provider" and len(config.preferred_providers) > 1:
-                # Switch to next best provider
-                remaining = [p for p in config.preferred_providers if p != provider_name]
-                if remaining:
-                    next_provider = self.performance_tracker.get_best_provider(remaining)
-                    if self.fallback_policy.notify_user:
-                        print(self.fallback_policy.get_fallback_message(provider_name, e))
-                    # Try next provider
-                    config_copy = config.copy()
-                    config_copy.preferred_providers = remaining
-                    return await self._handle_single_provider(task_type, input_data, config_copy, use_adaptive_routing, **kwargs)
-            if self.fallback_policy.notify_user:
-                print(self.fallback_policy.get_fallback_message(provider_name, e))
-            raise
+                    raise ValueError(f"Unsupported task type: {task_type}")
+                latency = time.time() - start
+                quality = getattr(result, 'quality', None) or (result.metadata.get('quality') if hasattr(result, 'metadata') else None)
+                feedback = getattr(result, 'feedback', None) or (result.metadata.get('feedback') if hasattr(result, 'metadata') else None)
+                self.performance_tracker.record(provider_name, success=True, latency=latency, quality=quality, feedback=feedback)
+                return result
+            except Exception as e:
+                latency = time.time() - start
+                self.performance_tracker.record(provider_name, success=False, latency=latency)
+                self.fallback_policy.record_failure(provider_name)
+                last_error = e
+
+        # Centralized fallback logic after retry attempts are exhausted.
+        if self.fallback_policy.strategy == "switch_provider" and len(config.preferred_providers) > 1:
+            # Switch to next best provider
+            remaining = [p for p in config.preferred_providers if p != provider_name]
+            if remaining:
+                next_provider = self.performance_tracker.get_best_provider(remaining)
+                if self.fallback_policy.notify_user:
+                    print(self.fallback_policy.get_fallback_message(provider_name, last_error))
+                # Try next provider
+                config_copy = config.copy()
+                config_copy.preferred_providers = remaining
+                return await self._handle_single_provider(task_type, input_data, config_copy, use_adaptive_routing, **kwargs)
+        if self.fallback_policy.notify_user:
+            print(self.fallback_policy.get_fallback_message(provider_name, last_error))
+        raise last_error
     
     async def _handle_ensemble(
         self,

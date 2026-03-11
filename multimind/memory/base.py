@@ -3,7 +3,7 @@ Base memory class for all memory implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any
 from datetime import datetime
 
 class BaseMemory(ABC):
@@ -14,26 +14,26 @@ class BaseMemory(ABC):
         self.created_at = datetime.now()
 
     @abstractmethod
-    def add_message(self, message: Dict[str, str]) -> None:
+    async def add_message(self, message: Dict[str, str]) -> None:
         """Add a message to memory."""
         pass
 
     @abstractmethod
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from memory."""
         pass
 
     @abstractmethod
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all messages from memory."""
         pass
 
     @abstractmethod
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save memory to persistent storage."""
         pass
 
     @abstractmethod
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load memory from persistent storage."""
         pass 

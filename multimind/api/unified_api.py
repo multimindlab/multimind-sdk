@@ -13,6 +13,7 @@ import io
 from ..models.base import BaseLLM
 from ..models.factory import ModelFactory
 from ..models.moe import Expert
+from ..types import UnifiedRequest, UnifiedResponse, ModalityInput
 
 app = FastAPI(title="Unified Multi-Modal API")
 
@@ -162,30 +163,6 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
                 pass
 
     return experts
-
-class ModalityInput(BaseModel):
-    """Input for a specific modality."""
-    content: Any
-    modality: str
-
-class UnifiedRequest(BaseModel):
-    """Unified request structure for multi-modal processing."""
-    inputs: List[ModalityInput]
-    use_moe: bool = Field(default=True, description="Whether to use MoE processing")
-    constraints: Optional[Dict[str, Any]] = Field(
-        default=None,
-        description="Processing constraints (cost, latency, etc.)"
-    )
-    workflow: Optional[str] = Field(
-        default=None,
-        description="Optional MCP workflow to use"
-    )
-
-class UnifiedResponse(BaseModel):
-    """Unified response structure."""
-    outputs: Dict[str, Any]
-    expert_weights: Optional[Dict[str, float]] = None
-    metrics: Dict[str, Any]
 
 @app.post("/v1/process", response_model=UnifiedResponse)
 async def process_request(request: UnifiedRequest):

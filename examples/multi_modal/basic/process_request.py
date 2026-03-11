@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 from typing import Dict, Any, Optional
 import requests
-from multimind.api.unified_api import UnifiedRequest, ModalityInput
+from multimind.types import UnifiedRequest, ModalityInput
 
 def get_data_path(filename: str) -> Path:
     """Get the absolute path to a data file."""
