@@ -8,6 +8,7 @@ from ..models.base import BaseLLM
 from .router import ModelRouter
 from .strategy import RoutingStrategy
 from ..api.mcp.registry import WorkflowRegistry
+from ..types import ModalityInput, ModalityOutput
 
 class ModalityType:
     """Supported modality types."""
@@ -102,6 +103,65 @@ class MultiModalRouter(ModelRouter):
         if modality not in self.modality_registry:
             self.modality_registry[modality] = {}
         self.modality_registry[modality][model_id] = model
+
+    def get_available_models(self, modality: str) -> List[str]:
+        """Return available model IDs for a modality."""
+        models = list(self.modality_registry.get(modality, {}).keys())
+        # Examples expect at least one model to pick from; provide a safe default.
+        return models or ["default"]
+
+    async def process_modality(
+        self,
+        input_data: ModalityInput,
+        model: Optional[str] = None,
+        **kwargs: Any
+    ) -> ModalityOutput:
+        """
+        Process a single modality input.
+
+        This is a compatibility method used by SDK examples. If a model_id is provided
+        and registered for that modality, we will call the model's `process()` method.
+        Otherwise we return a lightweight placeholder `ModalityOutput`.
+        """
+
+        modality = getattr(input_data, "modality", None) or "unknown"
+        content = getattr(input_data, "content", None)
+
+        model_id = model or "default"
+        model_obj: Optional[BaseLLM] = None
+        if modality in self.modality_registry and model:
+            model_obj = self.modality_registry[modality].get(model)
+
+        # If we have a real model, call it; otherwise return a placeholder output.
+        if model_obj is not None and hasattr(model_obj, "process"):
+            result = await model_obj.process(content, **kwargs)
+
+            # Heuristic mapping to ModalityOutput
+            if isinstance(result, dict):
+                out_content = result.get("content") or result.get("output") or result.get("text") or result
+                confidence = float(result.get("confidence") or 0.0) if "confidence" in result else 0.0
+                metadata = dict(result)
+                metadata.setdefault("model_id", model_id)
+                return ModalityOutput(
+                    content=out_content,
+                    modality=modality,
+                    confidence=confidence,
+                    metadata=metadata,
+                )
+
+            return ModalityOutput(
+                content=result,
+                modality=modality,
+                confidence=0.0,
+                metadata={"model_id": model_id},
+            )
+
+        return ModalityOutput(
+            content=f"[placeholder] processed {modality}",
+            modality=modality,
+            confidence=0.0,
+            metadata={"model_id": model_id, "note": "No registered model for modality"},
+        )
     
     async def _analyze_modalities(
         self,

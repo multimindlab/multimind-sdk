@@ -86,7 +86,6 @@ class NoveltyMemory(BaseMemory):
         self.last_salience = datetime.now()
         self.last_optimization = datetime.now()
         self.last_adaptation = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and calculate novelty/salience scores."""
@@ -465,7 +464,7 @@ class NoveltyMemory(BaseMemory):
         if item_id in self.temporal_windows:
             del self.temporal_windows[item_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""
         messages = []
         for item in self.items:
@@ -510,7 +509,7 @@ class NoveltyMemory(BaseMemory):
                     "last_adaptation": self.last_adaptation.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load items from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

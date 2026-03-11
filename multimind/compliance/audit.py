@@ -3,7 +3,7 @@ Compliance audit logging implementation.
 """
 
 from typing import List, Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig
 import json

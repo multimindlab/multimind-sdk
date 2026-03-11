@@ -82,7 +82,6 @@ class VersionedMemory(BaseMemory):
         self.last_analysis = datetime.now()
         self.last_optimization = datetime.now()
         self.last_graph_update = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message and create version."""
@@ -512,7 +511,7 @@ class VersionedMemory(BaseMemory):
         for version_id in versions_to_remove:
             del self.version_graph[version_id]
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""
         messages = []
         for item in self.items:
@@ -560,7 +559,7 @@ class VersionedMemory(BaseMemory):
                     "last_graph_update": self.last_graph_update.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load items from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

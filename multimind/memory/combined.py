@@ -17,32 +17,33 @@ class CombinedMemory(BaseMemory):
         super().__init__(memory_key)
         self.memories = memories
 
-    def add_message(self, message: Dict[str, str]) -> None:
+    async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to all memory types."""
         for memory in self.memories:
-            memory.add_message(message)
+            await memory.add_message(message)
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get messages from all memory types."""
         all_messages = []
         for memory in self.memories:
-            all_messages.extend(memory.get_messages())
+            msgs = await memory.get_messages()
+            all_messages.extend(msgs)
         return all_messages
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all memory types."""
         for memory in self.memories:
-            memory.clear()
+            await memory.clear()
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save all memory types."""
         for memory in self.memories:
-            memory.save()
+            await memory.save()
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load all memory types."""
         for memory in self.memories:
-            memory.load()
+            await memory.load()
 
     def get_memory(self, memory_type: type) -> Optional[BaseMemory]:
         """Get a specific memory type instance."""

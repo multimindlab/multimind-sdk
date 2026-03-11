@@ -125,7 +125,6 @@ class HybridMemory(BaseMemory):
         
         # Initialize memories
         self._initialize_memories()
-        self.load()
 
     def _initialize_memories(self) -> None:
         """Initialize memory instances."""
@@ -547,7 +546,7 @@ class HybridMemory(BaseMemory):
         except Exception as e:
             print(f"Error creating backup: {e}")
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all memory types."""
         all_messages = []
         for memory in self.memories.values():
@@ -595,7 +594,7 @@ class HybridMemory(BaseMemory):
                     "last_evolution": self.last_evolution.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load memory state from persistent storage."""
         if self.storage_path and (self.storage_path / "hybrid_memory.json").exists():
             with open(self.storage_path / "hybrid_memory.json", 'r') as f:

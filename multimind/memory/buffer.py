@@ -50,9 +50,7 @@ class BufferMemory(BaseMemory):
         self.last_backup = datetime.now()
         self.backup_history: List[Dict[str, Any]] = []
 
-        # Load if storage path exists
-        if self.storage_path and self.storage_path.exists():
-            self.load()
+        # Load explicitly via await memory.load() when needed.
 
     async def add_message(
         self,
@@ -94,7 +92,7 @@ class BufferMemory(BaseMemory):
         if self.enable_backup and (datetime.now() - self.last_backup).total_seconds() >= self.backup_interval:
             await self._backup()
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from the buffer."""
         return self.messages
 
@@ -108,7 +106,7 @@ class BufferMemory(BaseMemory):
             for i, msg in enumerate(self.messages)
         ]
 
-    def clear(self) -> None:
+    async def clear(self) -> None:
         """Clear all messages from the buffer."""
         self.messages = []
         self.message_tokens = []
@@ -117,7 +115,7 @@ class BufferMemory(BaseMemory):
         if self.storage_path and self.storage_path.exists():
             self.storage_path.unlink()
 
-    def save(self) -> None:
+    async def save(self) -> None:
         """Save buffer to persistent storage."""
         if not self.storage_path:
             return
@@ -135,7 +133,7 @@ class BufferMemory(BaseMemory):
         with open(self.storage_path, "w") as f:
             json.dump(data, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load buffer from persistent storage."""
         if not self.storage_path or not self.storage_path.exists():
             return
@@ -152,7 +150,7 @@ class BufferMemory(BaseMemory):
             self.backup_history = data["backup_history"]
         except Exception as e:
             print(f"Error loading buffer: {e}")
-            self.clear()
+            await self.clear()
 
     def _remove_oldest(self) -> None:
         """Remove the oldest message based on strategy."""
@@ -173,10 +171,19 @@ class BufferMemory(BaseMemory):
                 self.metadata = new_metadata
 
         elif self.strategy == "lru":
-            # Remove least recently used message
-            # This is a simplified implementation
-            # In practice, you would track access times
-            self._remove_oldest()
+            # Remove least recently used message.
+            # Access-time tracking is not available yet, so use FIFO eviction
+            # as a safe, non-recursive fallback.
+            self.total_tokens -= self.message_tokens[0]
+            self.messages.pop(0)
+            self.message_tokens.pop(0)
+            if self.enable_metadata:
+                self.metadata.pop("0", None)
+                # Shift metadata indices
+                new_metadata = {}
+                for i in range(len(self.messages)):
+                    new_metadata[str(i)] = self.metadata.get(str(i + 1), {})
+                self.metadata = new_metadata
 
         else:  # sliding
             # Remove messages from start until we have space
@@ -254,7 +261,7 @@ class BufferMemory(BaseMemory):
 
         # Save to disk if storage path exists
         if self.storage_path:
-            self.save()
+            await self.save()
 
     def get_stats(self) -> Dict[str, Any]:
         """Get buffer statistics."""

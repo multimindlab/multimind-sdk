@@ -87,7 +87,6 @@ class DNCMemory(BaseMemory):
         self.last_optimization = datetime.now()
         self.last_analysis = datetime.now()
         self.last_backup = datetime.now()
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to DNC memory."""
@@ -368,7 +367,7 @@ class DNCMemory(BaseMemory):
         except Exception as e:
             print(f"Error creating backup: {e}")
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from memory."""
         messages = []
         for item in self.items:
@@ -426,7 +425,7 @@ class DNCMemory(BaseMemory):
                     "last_backup": self.last_backup.isoformat()
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load memory from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:

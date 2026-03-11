@@ -60,7 +60,6 @@ class HierarchicalMemory(BaseMemory):
         self.node_map: Dict[str, Dict[str, Any]] = {"root": self.root}
         self.category_embeddings: Dict[str, List[float]] = {}
         self.semantic_index: Dict[str, Set[str]] = {}  # tag -> node_ids
-        self.load()
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to the appropriate node in the hierarchy."""
@@ -101,7 +100,7 @@ class HierarchicalMemory(BaseMemory):
         await self._maintain_hierarchy()
         await self.save()
 
-    def get_messages(self) -> List[Dict[str, str]]:
+    async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from the hierarchy."""
         messages = []
         self._collect_messages(self.root, messages)
@@ -129,7 +128,7 @@ class HierarchicalMemory(BaseMemory):
                     "node_map": self.node_map
                 }, f)
 
-    def load(self) -> None:
+    async def load(self) -> None:
         """Load hierarchy from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:
@@ -720,9 +719,10 @@ class HierarchicalMemory(BaseMemory):
 
     async def get_hierarchy_stats(self) -> Dict[str, Any]:
         """Get statistics about the hierarchy."""
+        messages = await self.get_messages()
         stats = {
             "total_nodes": len(self.node_map),
-            "total_messages": len(self.get_messages()),
+            "total_messages": len(messages),
             "max_depth": max(self._get_node_depth(node_id) for node_id in self.node_map),
             "node_distribution": {},
             "message_distribution": {},
