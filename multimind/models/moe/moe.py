@@ -105,8 +105,8 @@ if TORCH_AVAILABLE:
             self.num_experts = num_experts or len(experts)
             self.kwargs = kwargs
             
-            # Initialize router
-            self.router = ExpertRouter(experts, **kwargs)
+            # Initialize a concrete router implementation (ExpertRouter is abstract).
+            self.router = ModalityRouter(experts, **kwargs)
             
             # Initialize metrics
             self.metrics = {
@@ -128,7 +128,24 @@ if TORCH_AVAILABLE:
             for expert_id, weight in weights.items():
                 if weight > 0.0 and expert_id in self.experts:
                     expert = self.experts[expert_id]
-                    output = await expert.process(input_data)
+                    # Pass only the matching modality payload to each expert when possible.
+                    expert_input: Any = input_data
+                    if isinstance(input_data, dict):
+                        expert_type = expert.__class__.__name__.lower()
+                        expert_key = expert_id.lower()
+                        for modality in input_data.keys():
+                            m = str(modality).lower()
+                            if m in expert_type or m in expert_key:
+                                # For non-text experts, include text prompt if available.
+                                if m in ("image", "audio") and "text" in input_data:
+                                    expert_input = {
+                                        "text": input_data.get("text"),
+                                        modality: input_data.get(modality),
+                                    }
+                                else:
+                                    expert_input = input_data.get(modality)
+                                break
+                    output = await expert.process(expert_input)
                     expert_outputs[expert_id] = {
                         "output": output,
                         "weight": weight
@@ -157,23 +174,29 @@ if TORCH_AVAILABLE:
         def _combine_outputs(self, expert_outputs: Dict[str, Dict[str, Any]]) -> Any:
             """Combine outputs from multiple experts."""
             if not expert_outputs:
-                return None
+                return "No expert produced output."
             
-            # Simple weighted combination
-            # This can be overridden for specific implementations
-            combined = None
             total_weight = sum(output["weight"] for output in expert_outputs.values())
-            
-            for expert_id, expert_data in expert_outputs.items():
-                weight = expert_data["weight"] / total_weight if total_weight > 0 else 0
-                output = expert_data["output"]
-                
-                if combined is None:
-                    combined = weight * output
-                else:
+            normalized = []
+            for expert_data in expert_outputs.values():
+                weight = expert_data["weight"] / total_weight if total_weight > 0 else 0.0
+                normalized.append((weight, expert_data["output"]))
+
+            outputs = [o for _, o in normalized]
+            if all(isinstance(o, str) for o in outputs):
+                parts = [str(o).strip() for _, o in normalized if str(o).strip()]
+                return "\n\n".join(parts) if parts else ""
+            if all(torch.is_tensor(o) for o in outputs):
+                combined = torch.zeros_like(outputs[0])
+                for weight, output in normalized:
                     combined += weight * output
-            
-            return combined
+                return combined
+
+            if all(isinstance(o, (int, float)) for o in outputs):
+                return sum(weight * output for weight, output in normalized)
+
+            # For structured outputs, return highest-weight expert output.
+            return max(normalized, key=lambda item: item[0])[1]
         
         def get_metrics(self) -> Dict[str, Any]:
             """Get current metrics."""
@@ -257,21 +280,31 @@ class ModalityRouter(ExpertRouter):
     """Router that routes based on input modality."""
     
     async def route(self, input_data: Dict[str, Any]) -> Dict[str, float]:
-        """Route input based on detected modality."""
-        modality = self._detect_modality(input_data)
-        weights = {}
-        
+        """Rule-based routing with equal weights among matched experts.
+
+        Behavior:
+        - If 3 experts match -> 0.33 each
+        - If 2 experts match -> 0.50 each
+        - If 1 expert matches -> 1.00
+        """
+        detected_modalities = [str(k).lower() for k in input_data.keys()]
+
+        weights: Dict[str, float] = {}
         for expert_id, expert in self.experts.items():
-            if self._expert_matches_modality(expert, modality):
-                weights[expert_id] = 1.0
-            else:
-                weights[expert_id] = 0.0
-        
-        # Normalize weights
-        total_weight = sum(weights.values())
-        if total_weight > 0:
-            weights = {k: v / total_weight for k, v in weights.items()}
-        
+            expert_type = expert.__class__.__name__.lower()
+            expert_key = str(expert_id).lower()
+
+            match = any(
+                (modality in expert_type) or (modality in expert_key)
+                for modality in detected_modalities
+            )
+            weights[expert_id] = 1.0 if match else 0.0
+
+        total = sum(weights.values())
+        if total > 0:
+            return {k: v / total for k, v in weights.items()}
+
+        # If nothing matches, return all zeros (explicitly "no route").
         return weights
     
     def _detect_modality(self, input_data: Dict[str, Any]) -> str:
