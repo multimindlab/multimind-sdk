@@ -1,0 +1,4 @@
+pipeline:
+  - name: retriever
+  - name: llm
+  - name: judge 

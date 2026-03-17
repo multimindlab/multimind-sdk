@@ -1,0 +1,10 @@
+pipeline:
+  - name: retriever
+  - name: llm
+  - name: judge
+  - if:
+      condition: judge.latency > 2.0
+      then:
+        - name: fast_llm
+      else:
+        - name: standard_llm 
