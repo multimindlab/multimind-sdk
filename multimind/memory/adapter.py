@@ -37,12 +37,15 @@ class AdapterMemory(BaseMemory):
         self.learning_rate = learning_rate
         
         # Initialize adapter
+        # A global adapter can be useful for default behavior, but session adapters
+        # are what get trained during `_adapt_session`.
         self.adapter = AdapterLayer(input_size, adapter_size)
         self.optimizer = torch.optim.Adam(self.adapter.parameters(), lr=learning_rate)
         
         # Session tracking
         self.session_memories: Dict[str, List[torch.Tensor]] = {}
         self.session_adapters: Dict[str, AdapterLayer] = {}
+        self.session_optimizers: Dict[str, torch.optim.Optimizer] = {}
         
         # Statistics
         self.total_sessions = 0
@@ -68,6 +71,10 @@ class AdapterMemory(BaseMemory):
             self.session_adapters[session_id] = AdapterLayer(
                 self.input_size,
                 self.adapter_size
+            )
+            self.session_optimizers[session_id] = torch.optim.Adam(
+                self.session_adapters[session_id].parameters(),
+                lr=self.learning_rate,
             )
             self.total_sessions += 1
         
@@ -163,6 +170,10 @@ class AdapterMemory(BaseMemory):
         """Adapt session using stored memories."""
         memories = self.session_memories[session_id]
         adapter = self.session_adapters[session_id]
+        optimizer = self.session_optimizers.get(session_id)
+        if optimizer is None:
+            optimizer = torch.optim.Adam(adapter.parameters(), lr=self.learning_rate)
+            self.session_optimizers[session_id] = optimizer
         
         if len(memories) > 1:
             # Create pairs for adaptation
@@ -175,9 +186,9 @@ class AdapterMemory(BaseMemory):
                 loss = torch.nn.functional.mse_loss(adapted, target)
                 
                 # Backward pass
-                self.optimizer.zero_grad()
+                optimizer.zero_grad()
                 loss.backward()
-                self.optimizer.step()
+                optimizer.step()
                 
                 # Update statistics
                 self.total_updates += 1

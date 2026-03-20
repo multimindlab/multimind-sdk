@@ -8,9 +8,11 @@ import json
 import zlib
 import base64
 from pathlib import Path
+import inspect
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 from .vector_store import VectorStoreMemory
 from .knowledge_graph import KnowledgeGraphMemory
 from .time_weighted import TimeWeightedMemory
@@ -56,6 +58,13 @@ class HybridMemory(BaseMemory):
         super().__init__(memory_key)
         self.llm = llm
         self.storage_path = Path(storage_path) if storage_path else None
+        # `storage_path` is treated as a directory throughout this class (backups, hybrid_memory.json,
+        # and child memory state files). If a file path is passed, use its parent directory.
+        self.storage_dir = (
+            self.storage_path
+            if self.storage_path and self.storage_path.suffix == ""
+            else (self.storage_path.parent if self.storage_path else None)
+        )
         self.routing_threshold = routing_threshold
         self.max_memories = max_memories
         self.sync_interval = sync_interval
@@ -126,15 +135,36 @@ class HybridMemory(BaseMemory):
         # Initialize memories
         self._initialize_memories()
 
+    def _instantiate_memory(
+        self, memory_type: Type[BaseMemory], *, memory_name: str
+    ) -> BaseMemory:
+        """Instantiate a memory type with only supported constructor kwargs."""
+        kwargs: Dict[str, Any] = {
+            "llm": self.llm,
+            "memory_key": f"{self.memory_key}_{memory_name}",
+            "storage_path": str(self.storage_dir / f"{memory_name}.json") if self.storage_dir else None,
+        }
+
+        try:
+            sig = inspect.signature(memory_type.__init__)
+            params = sig.parameters
+            has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+
+            filtered = {
+                k: v
+                for k, v in kwargs.items()
+                if has_varkw or (k in params and k != "self")
+            }
+            return memory_type(**filtered)
+        except (TypeError, ValueError):
+            # Fallback: try minimal kwargs that should work for BaseMemory subclasses.
+            return memory_type(memory_key=kwargs["memory_key"])
+
     def _initialize_memories(self) -> None:
         """Initialize memory instances."""
         for memory_type in self.memory_types[:self.max_memories]:
             memory_name = memory_type.__name__
-            memory_instance = memory_type(
-                llm=self.llm,
-                memory_key=f"{self.memory_key}_{memory_name}",
-                storage_path=str(self.storage_path / f"{memory_name}.json") if self.storage_path else None
-            )
+            memory_instance = self._instantiate_memory(memory_type, memory_name=memory_name)
             self.memories[memory_name] = memory_instance
             self.memory_configs[memory_name] = {
                 "type": memory_name,
@@ -221,7 +251,7 @@ class HybridMemory(BaseMemory):
             3. confidence: float
             """
             response = await self.llm.generate(prompt)
-            routing = json.loads(response)
+            routing = MemoryUtils.safe_json_loads(response)
 
             # Record routing decision
             self.routing_history.append({
@@ -256,7 +286,7 @@ class HybridMemory(BaseMemory):
             2. learning_reason: string
             """
             response = await self.llm.generate(prompt)
-            learning = json.loads(response)
+            learning = MemoryUtils.safe_json_loads(response)
 
             # Update learning history
             for memory_name, update_data in learning["learning_updates"].items():
@@ -296,7 +326,7 @@ class HybridMemory(BaseMemory):
             3. metrics: dict of string -> float
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
 
             # Record analysis
             self.performance_metrics["analysis"] = {
@@ -329,7 +359,7 @@ class HybridMemory(BaseMemory):
             2. optimization_reason: string
             """
             response = await self.llm.generate(prompt)
-            optimization = json.loads(response)
+            optimization = MemoryUtils.safe_json_loads(response)
 
             # Apply optimizations
             for memory_name, optimization_data in optimization["optimizations"].items():
@@ -359,7 +389,7 @@ class HybridMemory(BaseMemory):
             2. update_reason: string
             """
             response = await self.llm.generate(prompt)
-            metadata = json.loads(response)
+            metadata = MemoryUtils.safe_json_loads(response)
 
             # Update metadata history
             for memory_name, metadata_update in metadata["metadata_updates"].items():
@@ -394,7 +424,7 @@ class HybridMemory(BaseMemory):
             2. analysis_reason: string
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
 
             # Update cross-memory links
             for memory_pair, relationship_data in analysis["relationships"].items():
@@ -432,7 +462,7 @@ class HybridMemory(BaseMemory):
             2. consolidation_reason: string
             """
             response = await self.llm.generate(prompt)
-            consolidation = json.loads(response)
+            consolidation = MemoryUtils.safe_json_loads(response)
 
             # Record consolidation
             self.consolidation_history.append({
@@ -464,7 +494,7 @@ class HybridMemory(BaseMemory):
             2. validation_reason: string
             """
             response = await self.llm.generate(prompt)
-            validation = json.loads(response)
+            validation = MemoryUtils.safe_json_loads(response)
 
             # Record validation
             self.validation_history.append({
@@ -496,7 +526,7 @@ class HybridMemory(BaseMemory):
             2. evolution_reason: string
             """
             response = await self.llm.generate(prompt)
-            evolution = json.loads(response)
+            evolution = MemoryUtils.safe_json_loads(response)
 
             # Record evolution
             self.evolution_history.append({
@@ -536,8 +566,8 @@ class HybridMemory(BaseMemory):
                 }
 
             # Save backup
-            if self.storage_path:
-                backup_path = self.storage_path / f"backup_{datetime.now().isoformat()}.json"
+            if self.storage_dir:
+                backup_path = self.storage_dir / f"backup_{datetime.now().isoformat()}.json"
                 with open(backup_path, 'w') as f:
                     json.dump(backup, f)
 
@@ -550,7 +580,7 @@ class HybridMemory(BaseMemory):
         """Get all messages from all memory types."""
         all_messages = []
         for memory in self.memories.values():
-            all_messages.extend(memory.get_messages())
+            all_messages.extend(await memory.get_messages())
         return sorted(all_messages, key=lambda x: x["timestamp"])
 
     async def clear(self) -> None:
@@ -570,9 +600,9 @@ class HybridMemory(BaseMemory):
 
     async def save(self) -> None:
         """Save memory state to persistent storage."""
-        if self.storage_path:
-            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path / "hybrid_memory.json", 'w') as f:
+        if self.storage_dir:
+            self.storage_dir.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_dir / "hybrid_memory.json", 'w') as f:
                 json.dump({
                     "memory_configs": self.memory_configs,
                     "performance_metrics": self.performance_metrics,
@@ -596,8 +626,8 @@ class HybridMemory(BaseMemory):
 
     async def load(self) -> None:
         """Load memory state from persistent storage."""
-        if self.storage_path and (self.storage_path / "hybrid_memory.json").exists():
-            with open(self.storage_path / "hybrid_memory.json", 'r') as f:
+        if self.storage_dir and (self.storage_dir / "hybrid_memory.json").exists():
+            with open(self.storage_dir / "hybrid_memory.json", 'r') as f:
                 data = json.load(f)
                 self.memory_configs = data.get("memory_configs", {})
                 self.performance_metrics = data.get("performance_metrics", {})
@@ -638,14 +668,16 @@ class HybridMemory(BaseMemory):
 
     async def get_hybrid_stats(self) -> Dict[str, Any]:
         """Get statistics about hybrid memory."""
+        total_messages = 0
+        for memory in self.memories.values():
+            msgs = await memory.get_messages()
+            total_messages += len(msgs)
+
         stats = {
             "memory_stats": {
                 "total_memories": len(self.memories),
                 "memory_types": list(self.memories.keys()),
-                "total_messages": sum(
-                    len(memory.get_messages())
-                    for memory in self.memories.values()
-                )
+                "total_messages": total_messages
             },
             "routing_stats": {
                 "total_routes": len(self.routing_history),

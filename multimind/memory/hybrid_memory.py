@@ -84,8 +84,15 @@ class AdvancedMemory:
         self.model = model
         self.max_tokens = max_tokens
         self.compression_threshold = compression_threshold
-        self.tokenizer = AutoTokenizer.from_pretrained("gpt2")
-        self.embedding_model = AutoModel.from_pretrained("sentence-transformers/all-mpnet-base-v2")
+        # Lazy-load heavyweight HF artifacts (tokenizer + embedding model) to avoid
+        # downloading models during __init__ / import-time.
+        self.tokenizer = None
+        self.embedding_model = None
+        self._device: Optional[str] = None
+        self._models_lock = asyncio.Lock()
+        # Cache computed embeddings to avoid recomputation on repeated texts.
+        self._embedding_cache: Dict[str, List[float]] = {}
+        self._embedding_cache_lock = asyncio.Lock()
         
         # Initialize memory stores
         self.episodic_memory: List[EpisodicMemory] = []
@@ -100,6 +107,28 @@ class AdvancedMemory:
         }
         
         self.kwargs = kwargs
+
+    async def _ensure_embedding_models_loaded(self) -> None:
+        """Lazily load tokenizer + embedding model on first real use."""
+        if self.tokenizer is not None and self.embedding_model is not None:
+            return
+
+        async with self._models_lock:
+            if self.tokenizer is not None and self.embedding_model is not None:
+                return
+
+            def _load():
+                model_name = "sentence-transformers/all-mpnet-base-v2"
+                tokenizer = AutoTokenizer.from_pretrained(model_name)
+                embedding_model = AutoModel.from_pretrained(model_name)
+                device = self._device or ("cuda" if torch.cuda.is_available() else "cpu")
+                embedding_model.to(device)
+                embedding_model.eval()
+                return tokenizer, embedding_model
+
+            # Decide device once on first use (and reuse thereafter).
+            self._device = self._device or ("cuda" if torch.cuda.is_available() else "cpu")
+            self.tokenizer, self.embedding_model = await asyncio.to_thread(_load)
 
     async def add_to_memory(
         self,
@@ -117,6 +146,7 @@ class AdvancedMemory:
             metadata: Optional metadata
             **kwargs: Additional parameters
         """
+        await self._ensure_embedding_models_loaded()
         # Calculate tokens and importance
         tokens = len(self.tokenizer.encode(content))
         importance = await self._calculate_importance(content, **kwargs)
@@ -280,30 +310,37 @@ class AdvancedMemory:
             )
         ]
         
-        # Compress items until under token budget
+        # Compress items until under token budget.
+        # Important: keep both compressed items and remaining uncompressed items.
         total_tokens = sum(item.tokens for item in all_items)
-        compressed_items = []
-        
-        for item in sorted_items:
+        new_items: List[MemoryItem] = []
+        compressed_items: List[MemoryItem] = []
+
+        for idx, item in enumerate(sorted_items):
             if total_tokens <= self.max_tokens:
+                # Preserve the rest (uncompressed) to avoid losing information.
+                new_items.extend(sorted_items[idx:])
                 break
-            
-            # Compress item
+
             compressed_item = await self._compress_item(item, **kwargs)
             compressed_items.append(compressed_item)
-            
+            new_items.append(compressed_item)
+
             # Update total tokens
             total_tokens -= (item.tokens - compressed_item.tokens)
-        
-        # Update memory stores
-        self._update_memory_stores(compressed_items)
+
+        if not new_items:
+            new_items = list(all_items)
+
+        # Update memory stores with both compressed + untouched items.
+        self._update_memory_stores(new_items)
         
         # Update compression state
         self.compression_state["last_compression"] = datetime.now()
         self.compression_state["compression_count"] += 1
         self.compression_state["total_tokens_compressed"] += (
             sum(item.tokens for item in all_items) -
-            sum(item.tokens for item in compressed_items)
+            sum(item.tokens for item in new_items)
         )
 
     async def _create_episodic_memory(
@@ -451,17 +488,56 @@ class AdvancedMemory:
         text: str
     ) -> List[float]:
         """Generate embedding for text."""
-        inputs = self.tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-            max_length=512
-        )
-        
-        with torch.no_grad():
-            outputs = self.embedding_model(**inputs)
-        
-        return outputs.last_hidden_state.mean(dim=1).numpy()[0].tolist()
+        await self._ensure_embedding_models_loaded()
+        cached = self._embedding_cache.get(text)
+        if cached is not None:
+            return cached
+
+        async with self._embedding_cache_lock:
+            cached = self._embedding_cache.get(text)
+            if cached is not None:
+                return cached
+
+            inputs = self.tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=False,
+            )
+
+            # Ensure tensors live on the same device as the embedding model.
+            device = self._device or ("cuda" if torch.cuda.is_available() else "cpu")
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+
+            with torch.no_grad():
+                outputs = self.embedding_model(**inputs)
+
+            token_embeddings = outputs.last_hidden_state  # [batch, seq, hidden]
+            attention_mask = inputs.get("attention_mask")
+            if attention_mask is None:
+                attention_mask = torch.ones(
+                    token_embeddings.shape[:2],
+                    device=token_embeddings.device,
+                    dtype=token_embeddings.dtype,
+                )
+
+            # Sentence-Transformers style mean pooling with attention mask.
+            input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+            sum_embeddings = (token_embeddings * input_mask_expanded).sum(dim=1)
+            sum_mask = input_mask_expanded.sum(dim=1).clamp(min=1e-9)
+            pooled = sum_embeddings / sum_mask
+
+            emb = pooled[0].detach().cpu().numpy().astype(float).tolist()
+            self._embedding_cache[text] = emb
+            return emb
+
+    def close(self) -> None:
+        """Best-effort cleanup for long-running services."""
+        self._embedding_cache.clear()
+        self.tokenizer = None
+        self.embedding_model = None
+        self._device = None
 
     async def _calculate_importance(
         self,
@@ -523,6 +599,7 @@ class AdvancedMemory:
         **kwargs
     ) -> MemoryItem:
         """Compress memory item."""
+        await self._ensure_embedding_models_loaded()
         # Use LLM to compress content
         prompt = f"""
         Compress the following content while preserving key information.

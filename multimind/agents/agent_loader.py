@@ -33,8 +33,22 @@ class AgentLoader:
     ) -> Agent:
         """Load an agent from a configuration file."""
         # Load config
-        with open(config_path, 'r') as f:
-            config = json.load(f)
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                config = json.load(f)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Agent config file not found: {config_path}") from e
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"Invalid JSON in agent config file: {config_path}. {e}"
+            ) from e
+        except OSError as e:
+            raise RuntimeError(
+                f"Failed to read agent config file: {config_path}. {e}"
+            ) from e
+
+        if not isinstance(config, dict):
+            raise ValueError(f"Agent config must be a JSON object: {config_path}")
 
         # Validate config
         required_keys = {"model", "system_prompt"}

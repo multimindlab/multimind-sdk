@@ -359,6 +359,8 @@ class AssociativeMemory(BaseMemory):
         )
         
         # Record learning update
+        if association_id not in self.learning_history:
+            self.learning_history[association_id] = []
         self.learning_history[association_id].append({
             "timestamp": datetime.now().isoformat(),
             "relationship_count": relationship_count,
@@ -477,7 +479,7 @@ class AssociativeMemory(BaseMemory):
                 self.association_embeddings = []
                 for association in self.associations:
                     self.association_embeddings.append(
-                        self.llm.embeddings(association["content"])
+                        await self.llm.embeddings(association["content"])
                     )
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:

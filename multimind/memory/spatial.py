@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class SpatialMemory(BaseMemory):
     """Memory that manages spatial relationships and locations."""
@@ -185,7 +186,7 @@ class SpatialMemory(BaseMemory):
             4. spatial_type: string (e.g., point, area, volume)
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
             
             # Update location metadata
             location["metadata"]["coordinates"] = analysis.get("coordinates")
@@ -431,7 +432,7 @@ class SpatialMemory(BaseMemory):
             4. suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            validation = json.loads(response)
+            validation = MemoryUtils.safe_json_loads(response)
             
             # Update location metadata
             location["metadata"]["validation_score"] = validation["validation_score"]

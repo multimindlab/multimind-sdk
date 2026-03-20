@@ -8,6 +8,7 @@ import asyncio
 import aiohttp
 import json
 from datetime import datetime
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from ..core.provider import (
     ProviderAdapter,
     ProviderConfig,
@@ -28,13 +29,11 @@ class OllamaProvider(ProviderAdapter):
         self.base_url = (config.api_base or "http://localhost:11434").rstrip("/")
         # For local models, use a longer default timeout (600s = 10 minutes)
         # Local models on CPU can be slow, especially for large requests
-        if config.timeout == 30:  # If using default timeout, increase it for Ollama
-            import os
-            timeout_override = os.getenv("OLLAMA_TIMEOUT")
-            if timeout_override:
-                self.config.timeout = int(timeout_override)
-            else:
-                self.config.timeout = 600  # 10 minutes default for local models
+        import os
+        timeout_override = os.getenv("OLLAMA_TIMEOUT")
+        default_timeout = int(timeout_override) if timeout_override else 600
+        # If no timeout explicitly configured, fall back to default_timeout
+        self.config.timeout = getattr(self.config, "timeout", None) or default_timeout
     
     async def _make_request(
         self,
@@ -47,34 +46,63 @@ class OllamaProvider(ProviderAdapter):
         # Use provided timeout or default from config
         # For Ollama, default timeout is longer (600s) since local models can be slow on CPU
         request_timeout = timeout or getattr(self.config, 'timeout', 600)
+        return await self._make_request_with_retry(url, data, request_timeout)
+
+    @retry(
+        retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _make_request_with_retry(
+        self,
+        url: str,
+        data: Dict[str, Any],
+        request_timeout: int,
+    ) -> Dict[str, Any]:
+        """Low-level JSON request with retry for connection issues."""
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=data, timeout=aiohttp.ClientTimeout(total=request_timeout)) as response:
+                async with session.post(
+                    url,
+                    json=data,
+                    timeout=aiohttp.ClientTimeout(total=request_timeout),
+                ) as response:
                     if response.status != 200:
                         # Try to parse as JSON first for better error messages
                         try:
                             error_json = await response.json()
                             error_msg = error_json.get("error", str(error_json))
-                        except:
+                        except Exception:
                             # If not JSON, get text
                             error_text = await response.text()
                             error_msg = error_text or f"HTTP {response.status}"
-                        raise Exception(f"Ollama API error ({response.status}): {error_msg}")
+                        raise Exception(
+                            f"Ollama API error ({response.status}): {error_msg}"
+                        )
                     try:
                         return await response.json()
-                    except Exception as json_error:
+                    except Exception:
                         # If response is not valid JSON, try to get text for debugging
                         text_response = await response.text()
-                        raise Exception(f"Invalid JSON response from Ollama: {text_response[:200]}")
+                        raise Exception(
+                            f"Invalid JSON response from Ollama: {text_response[:200]}"
+                        )
         except asyncio.TimeoutError:
-            raise Exception(f"Ollama request timeout after {request_timeout} seconds. Operations can take longer on CPU - consider using GPU or increasing timeout.")
+            raise Exception(
+                f"Ollama request timeout after {request_timeout} seconds. Operations can take longer on CPU - consider using GPU or increasing timeout."
+            )
         except aiohttp.ClientError as e:
             error_msg = str(e) if e else repr(e)
             raise Exception(f"Ollama connection error: {error_msg}")
         except Exception as e:
             # If it's already an Ollama error, re-raise it
             error_str = str(e) if e else repr(e)
-            if "Ollama API error" in error_str or "Ollama connection error" in error_str or "Ollama request timeout" in error_str:
+            if (
+                "Ollama API error" in error_str
+                or "Ollama connection error" in error_str
+                or "Ollama request timeout" in error_str
+            ):
                 raise
             # Otherwise, wrap it with more context
             if not error_str or error_str.strip() == "":
@@ -106,7 +134,7 @@ class OllamaProvider(ProviderAdapter):
             tokens_used = response.get("eval_count", 0) + response.get("prompt_eval_count", 0)
             if tokens_used == 0:
                 # Rough estimation: ~4 characters per token
-                tokens_used = len(prompt + result) // 4
+                tokens_used = max(1, len(prompt + result) // 4)
             
             latency_ms = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -149,7 +177,7 @@ class OllamaProvider(ProviderAdapter):
             if tokens_used == 0:
                 # Rough estimation: ~4 characters per token
                 total_text = " ".join([msg.get("content", "") for msg in messages]) + result
-                tokens_used = len(total_text) // 4
+                tokens_used = max(1, len(total_text) // 4)
             
             latency_ms = (datetime.now() - start_time).total_seconds() * 1000
             
@@ -176,10 +204,10 @@ class OllamaProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            # Ollama embeddings endpoint expects a single prompt
+            # Ollama embeddings endpoint expects a single prompt string.
+            # If a list is provided, concatenate all texts so none are silently dropped.
             if isinstance(text, list):
-                # For multiple texts, use the first one or concatenate
-                text_input = text[0] if text else ""
+                text_input = "\n\n".join(text)
             else:
                 text_input = text
             
@@ -194,7 +222,7 @@ class OllamaProvider(ProviderAdapter):
             
             embedding_vector = response.get("embedding", [])
             # Ollama doesn't provide token counts for embeddings
-            tokens_used = len(text_input) // 4  # Rough estimation
+            tokens_used = max(1, len(text_input) // 4)  # Rough estimation
             latency_ms = (datetime.now() - start_time).total_seconds() * 1000
             
             # Ollama is free (local), so cost is 0
@@ -252,7 +280,7 @@ class OllamaProvider(ProviderAdapter):
             
             tokens_used = response.get("eval_count", 0) + response.get("prompt_eval_count", 0)
             if tokens_used == 0:
-                tokens_used = len(prompt + result) // 4
+                tokens_used = max(1, len(prompt + result) // 4)
             
             latency_ms = (datetime.now() - start_time).total_seconds() * 1000
             

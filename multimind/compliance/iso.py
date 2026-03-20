@@ -4,6 +4,7 @@ ISO standards compliance implementation.
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import json
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig, ComplianceMetadata
 
@@ -268,7 +269,11 @@ class ISOCompliance(BaseModel):
         assessment = self.assessments[assessment_key]
         
         if format == "json":
-            return assessment.json()
+            if hasattr(assessment, "model_dump_json"):
+                return assessment.model_dump_json()
+            if hasattr(assessment, "json"):
+                return assessment.json()
+            return json.dumps(assessment, default=str)
         elif format == "html":
             # Implementation for HTML export
             pass

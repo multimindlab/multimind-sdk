@@ -122,16 +122,56 @@ if TORCH_AVAILABLE:
             top_k_weights = top_k_weights / top_k_weights.sum(dim=-1, keepdim=True)
 
             # Apply experts
-            expert_outputs = []
-            for i in range(self.k):
-                expert_idx = top_k_indices[:, i]
-                expert_output = torch.stack([
-                    self.experts[idx](x_reshaped[j]) for j, idx in enumerate(expert_idx)
-                ])
-                expert_outputs.append(expert_output * top_k_weights[:, i].unsqueeze(-1))
+            n_tokens = x_reshaped.size(0)
+            device = x_reshaped.device
 
-            # Combine expert outputs
-            output = sum(expert_outputs)
+            # Flatten top-k assignments so we avoid a Python loop over k slots.
+            # token_positions: [N*k] mapping each assignment back to its token index.
+            token_positions = (
+                torch.arange(n_tokens, device=device)
+                .unsqueeze(1)
+                .expand(n_tokens, self.k)
+                .reshape(-1)
+            )
+            assignment_expert_ids = top_k_indices.reshape(-1)  # [N*k]
+            assignment_weights = top_k_weights.reshape(-1)  # [N*k]
+
+            output = torch.zeros(
+                (n_tokens, self.input_dim),
+                device=device,
+                dtype=x_reshaped.dtype,
+            )
+
+            # Dispatch tokens to experts by grouping assignments.
+            # This avoids constructing a boolean mask for every expert.
+            sorted_idx = torch.argsort(assignment_expert_ids)  # [N*k]
+            sorted_expert_ids = assignment_expert_ids[sorted_idx]  # [N*k]
+            sorted_token_positions = token_positions[sorted_idx]  # [N*k]
+            sorted_assignment_weights = assignment_weights[sorted_idx]  # [N*k]
+
+            # Compute contiguous group boundaries where expert_id changes.
+            changes = sorted_expert_ids[1:] != sorted_expert_ids[:-1]
+            device = sorted_expert_ids.device
+            group_starts = torch.cat(
+                [torch.zeros(1, device=device, dtype=torch.long), torch.nonzero(changes, as_tuple=False).flatten() + 1]
+            )  # [G]
+            group_ends = torch.cat(
+                [group_starts[1:], torch.tensor([sorted_expert_ids.numel()], device=device, dtype=torch.long)]
+            )  # [G]
+
+            group_count = int(group_starts.numel())
+            for g in range(group_count):
+                expert_id_t = sorted_expert_ids[group_starts[g]]
+                expert_id = int(expert_id_t.item())
+                start = group_starts[g]
+                end = group_ends[g]
+
+                selected_token_idx = sorted_token_positions[start:end]  # [M]
+                selected_x = x_reshaped[selected_token_idx]  # [M, input_dim]
+                processed = self.experts[expert_id](selected_x)  # [M, input_dim]
+                w = sorted_assignment_weights[start:end].unsqueeze(-1)  # [M, 1]
+                output.index_add_(0, selected_token_idx, processed * w)
+
             output = output.view(batch_size, seq_len, self.input_dim)
 
             # Calculate auxiliary losses if requested
@@ -144,8 +184,8 @@ if TORCH_AVAILABLE:
             # Update expert usage statistics
             if self.training:
                 with torch.no_grad():
-                    for i in range(self.k):
-                        self.expert_usage.scatter_add_(0, top_k_indices[:, i], top_k_weights[:, i])
+                    # Sum router weights assigned to each expert across the batch.
+                    self.expert_usage.scatter_add_(0, assignment_expert_ids, assignment_weights)
 
             return output, aux_loss
 

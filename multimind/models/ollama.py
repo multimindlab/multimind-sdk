@@ -3,8 +3,10 @@ Ollama model implementation for local model running.
 """
 
 import json
+import asyncio
 import aiohttp
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from .base import BaseLLM
 
 class OllamaModel(BaseLLM):
@@ -28,12 +30,29 @@ class OllamaModel(BaseLLM):
         data: Dict[str, Any]
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Make a streaming request to the Ollama API."""
+        async for line in self._make_request_stream_raw(endpoint, data):
+            if line:
+                yield json.loads(line.decode().strip())
+
+    @retry(
+        retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _make_request_stream_raw(
+        self,
+        endpoint: str,
+        data: Dict[str, Any],
+    ) -> AsyncGenerator[bytes, None]:
+        """Low-level streaming request with retry for connection issues."""
+        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data) as response:
+            async with session.post(url, json=data, timeout=timeout) as response:
+                response.raise_for_status()
                 async for line in response.content:
-                    if line:
-                        yield json.loads(line)
+                    yield line
 
     async def _make_request(
         self,
@@ -41,9 +60,25 @@ class OllamaModel(BaseLLM):
         data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Make a regular request to the Ollama API."""
+        return await self._make_request_with_retry(endpoint, data)
+
+    @retry(
+        retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _make_request_with_retry(
+        self,
+        endpoint: str,
+        data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Low-level JSON request with retry for connection issues."""
+        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data) as response:
+            async with session.post(url, json=data, timeout=timeout) as response:
+                response.raise_for_status()
                 return await response.json()
 
     async def generate(
@@ -64,7 +99,7 @@ class OllamaModel(BaseLLM):
             data["max_tokens"] = max_tokens
 
         response = await self._make_request("api/generate", data)
-        return response["response"]
+        return response.get("response", "")
 
     async def generate_stream(
         self,
@@ -106,7 +141,7 @@ class OllamaModel(BaseLLM):
             data["max_tokens"] = max_tokens
 
         response = await self._make_request("api/chat", data)
-        return response["message"]["content"]
+        return response.get("message", {}).get("content", "")
 
     async def chat_stream(
         self,
@@ -149,7 +184,7 @@ class OllamaModel(BaseLLM):
                 **kwargs
             }
             response = await self._make_request("api/embeddings", data)
-            embeddings.append(response["embedding"])
+            embeddings.append(response.get("embedding", []))
 
         return embeddings[0] if isinstance(text, str) else embeddings
 

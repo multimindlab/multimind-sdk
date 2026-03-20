@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class ForgettingCurveMemory(BaseMemory):
     """Memory that implements the Ebbinghaus forgetting curve model."""
@@ -153,7 +154,7 @@ class ForgettingCurveMemory(BaseMemory):
             3. importance_reason: string
             """
             response = await self.llm.generate(prompt)
-            importance = json.loads(response)
+            importance = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["importance"] = importance["importance_score"]
@@ -199,7 +200,7 @@ class ForgettingCurveMemory(BaseMemory):
             4. interference_reason: string
             """
             response = await self.llm.generate(prompt)
-            interference = json.loads(response)
+            interference = MemoryUtils.safe_json_loads(response)
             
             # Update interference graph
             for interfering_item in interference["interfering_items"]:

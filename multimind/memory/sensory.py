@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class SensoryMemory(BaseMemory):
     """Memory that manages sensory experiences across different modalities."""
@@ -239,7 +240,7 @@ class SensoryMemory(BaseMemory):
             7. context: string or null
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
             
             # Update experience metadata
             experience["metadata"]["modalities"] = analysis.get("modalities", [])
@@ -494,7 +495,7 @@ class SensoryMemory(BaseMemory):
             4. suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            validation = json.loads(response)
+            validation = MemoryUtils.safe_json_loads(response)
             
             # Update experience metadata
             experience["metadata"]["validation_score"] = validation["validation_score"]
@@ -1033,7 +1034,7 @@ class SensoryMemory(BaseMemory):
             8. fusion_reason: string
             """
             response = await self.llm.generate(prompt)
-            fusion = json.loads(response)
+            fusion = MemoryUtils.safe_json_loads(response)
             
             return {
                 "id": fused_id,

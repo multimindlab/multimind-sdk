@@ -6,6 +6,7 @@ import os
 from typing import Dict, Optional, List, Type
 from dotenv import load_dotenv
 
+from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
 from .openai import OpenAIModel
 from .claude import ClaudeModel
@@ -84,9 +85,22 @@ class ModelFactory:
 
         # Add API keys if needed
         if provider == "openai":
-            kwargs["api_key"] = kwargs.get("api_key", self.openai_key)
+            api_key = kwargs.get("api_key", self.openai_key)
+            if not api_key:
+                raise ConfigurationError(
+                    "OpenAI API key is not configured. "
+                    "Set the OPENAI_API_KEY environment variable or pass api_key explicitly."
+                )
+            kwargs["api_key"] = api_key
         elif provider == "claude":
-            kwargs["api_key"] = kwargs.get("api_key", self.claude_key)
+            api_key = kwargs.get("api_key", self.claude_key)
+            if not api_key:
+                raise ConfigurationError(
+                    "Claude API key is not configured. "
+                    "Set ANTHROPIC_API_KEY or CLAUDE_API_KEY environment variable, "
+                    "or pass api_key explicitly."
+                )
+            kwargs["api_key"] = api_key
 
         # Create and store instance
         instance = model_class(model_name=model_name, **kwargs)

@@ -204,12 +204,28 @@ DEFAULT_FEDERATED_CONFIG = FederatedComplianceConfig(
 def load_advanced_config(config_path: str) -> Dict[str, Any]:
     """Load advanced compliance configuration from file."""
     import json
-    with open(config_path) as f:
-        config_data = json.load(f)
-    return config_data
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Advanced compliance config file not found: {config_path}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Invalid JSON in advanced compliance config: {config_path}") from e
+    except OSError as e:
+        raise RuntimeError(f"Failed to read advanced compliance config: {config_path}") from e
 
 def save_advanced_config(config: Dict[str, Any], config_path: str):
     """Save advanced compliance configuration to file."""
     import json
-    with open(config_path, 'w') as f:
-        json.dump(config, f, indent=2) 
+    import os
+    try:
+        parent = os.path.dirname(config_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
+        tmp_path = f"{config_path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(config, f, indent=2, default=str)
+        os.replace(tmp_path, config_path)
+    except OSError as e:
+        raise RuntimeError(f"Failed to write advanced compliance config: {config_path}") from e

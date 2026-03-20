@@ -55,14 +55,46 @@ class MoEFactory:
         Returns:
             Dictionary of model information
         """
-        return {
-            model_id: {
-                "config": model.config,
-                "experts": list(model.experts.keys()),
-                "gateway": model.gateway.__class__.__name__ if model.gateway else None
+        result: Dict[str, Dict[str, Any]] = {}
+
+        for model_id, model in self._models.items():
+            # config: prefer `model.config`, fallback to `model.get_config()`
+            if hasattr(model, "config"):
+                config = getattr(model, "config")
+            elif hasattr(model, "get_config") and callable(getattr(model, "get_config")):
+                config = model.get_config()
+            else:
+                config = None
+
+            # experts: if an `experts` dict exists, return its keys; otherwise derive from `num_experts` when possible.
+            experts: list = []
+            if hasattr(model, "experts"):
+                exp = getattr(model, "experts")
+                if isinstance(exp, dict):
+                    experts = list(exp.keys())
+                elif isinstance(exp, (list, tuple, set)):
+                    experts = list(exp)
+
+            if not experts and hasattr(model, "num_experts"):
+                try:
+                    n = int(getattr(model, "num_experts"))
+                    experts = [f"expert_{i}" for i in range(n)]
+                except Exception:
+                    experts = []
+
+            # gateway name if present
+            gateway = None
+            if hasattr(model, "gateway"):
+                gw = getattr(model, "gateway")
+                gateway = gw.__class__.__name__ if gw is not None else None
+
+            result[model_id] = {
+                "config": config,
+                "experts": experts,
+                "gateway": gateway,
             }
-            for model_id, model in self._models.items()
-        }
+
+        return result
     
     def remove_model(self, model_id: str) -> bool:
         """
