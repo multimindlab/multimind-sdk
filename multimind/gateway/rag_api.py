@@ -44,13 +44,25 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="MultiMind RAG API",
     description="RESTful API for the MultiMind RAG system",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Add CORS middleware
+
+def _get_allowed_origins() -> List[str]:
+    """
+    Get allowed CORS origins from MULTIMIND_ALLOWED_ORIGINS (comma-separated).
+    Defaults to localhost-only when not set.
+    """
+    raw = os.getenv("MULTIMIND_ALLOWED_ORIGINS")
+    if not raw:
+        return ["http://localhost", "http://127.0.0.1", "http://localhost:3000"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+# Add CORS middleware with restricted origins when using credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

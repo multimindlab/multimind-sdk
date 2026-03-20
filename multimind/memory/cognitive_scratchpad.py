@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class CognitiveScratchpadMemory(BaseMemory):
     """Memory that implements cognitive scratchpad/chain-of-thought memory."""
@@ -97,7 +98,7 @@ class CognitiveScratchpadMemory(BaseMemory):
             3. confidence: list of floats (confidence in each step)
             """
             response = await self.llm.generate(prompt)
-            steps = json.loads(response)
+            steps = MemoryUtils.safe_json_loads(response)
             
             # Create reasoning steps
             chain_id = f"chain_{len(self.reasoning_chains)}"
@@ -147,7 +148,7 @@ class CognitiveScratchpadMemory(BaseMemory):
                 3. improvement_suggestions: list of strings
                 """
                 response = await self.llm.generate(prompt)
-                analysis = json.loads(response)
+                analysis = MemoryUtils.safe_json_loads(response)
                 
                 # Update chain metadata
                 if chain_id in self.reasoning_chains:

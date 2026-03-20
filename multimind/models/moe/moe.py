@@ -4,6 +4,7 @@ Base classes for Mixture of Experts (MoE) implementation.
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Union
+from datetime import datetime
 # Optional torch import for MoE base features
 try:
     import torch
@@ -50,6 +51,8 @@ class ExpertRouter(ABC):
         self.experts = experts
         self.kwargs = kwargs
         self.routing_history = []
+        # Prevent unbounded growth in high-throughput systems.
+        self.max_routing_history: int = int(kwargs.get("max_routing_history", 1000))
     
     @abstractmethod
     async def route(self, input_data: Any) -> Dict[str, float]:
@@ -58,18 +61,17 @@ class ExpertRouter(ABC):
     
     def update_routing_history(self, input_data: Any, weights: Dict[str, float]):
         """Update routing history."""
-        if TORCH_AVAILABLE:
-            self.routing_history.append({
+        # Use a real wall-clock timestamp; CUDA timing events are not general timestamps.
+        self.routing_history.append(
+            {
                 "input": input_data,
                 "weights": weights,
-                "timestamp": torch.cuda.Event() if torch.cuda.is_available() else None
-            })
-        else:
-            self.routing_history.append({
-                "input": input_data,
-                "weights": weights,
-                "timestamp": None
-            })
+                "timestamp": datetime.now().isoformat(),
+            }
+        )
+        if self.max_routing_history > 0 and len(self.routing_history) > self.max_routing_history:
+            # Keep only the most recent entries.
+            self.routing_history = self.routing_history[-self.max_routing_history:]
     
     def get_routing_stats(self) -> Dict[str, Any]:
         """Get routing statistics."""

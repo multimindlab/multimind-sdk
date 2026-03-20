@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class ActiveLearningMemory(BaseMemory):
     """Memory that implements active learning/reinforced memory."""
@@ -98,7 +99,7 @@ class ActiveLearningMemory(BaseMemory):
             3. reinforcement_suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            feedback = json.loads(response)
+            feedback = MemoryUtils.safe_json_loads(response)
             
             # Create feedback entries
             for i, feedback_type in enumerate(feedback["feedback_types"]):
@@ -153,7 +154,7 @@ class ActiveLearningMemory(BaseMemory):
                 3. improvement_suggestions: list of strings
                 """
                 response = await self.llm.generate(prompt)
-                analysis = json.loads(response)
+                analysis = MemoryUtils.safe_json_loads(response)
                 
                 # Update reinforcement data
                 if item_id in self.reinforcement:

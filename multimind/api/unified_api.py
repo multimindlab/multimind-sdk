@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional, Union
 import asyncio
-import traceback
+import logging
 import os
 import base64
 import io
@@ -15,7 +15,12 @@ from ..models.factory import ModelFactory
 from ..models.moe import Expert
 from ..types import UnifiedRequest, UnifiedResponse, ModalityInput
 
+logger = logging.getLogger(__name__)
+
 app = FastAPI(title="Unified Multi-Modal API")
+
+# Reuse a single factory across requests to avoid re-creating model caches.
+_MODEL_FACTORY = ModelFactory()
 
 
 class _TextExpertAdapter(Expert):
@@ -113,7 +118,6 @@ class _AudioExpertAdapter(Expert):
 def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
     """Build available experts for modality MoE."""
     experts: Dict[str, Expert] = {}
-    factory = ModelFactory()
 
     for modality in modalities:
         model = None
@@ -122,9 +126,9 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
             model = next(iter(model_map.values()), None)
 
         if model is None and modality == "text":
-            for provider in factory.available_models():
+            for provider in _MODEL_FACTORY.available_models():
                 try:
-                    model = factory.get_model(provider)
+                    model = _MODEL_FACTORY.get_model(provider)
                     break
                 except Exception:
                     continue
@@ -280,10 +284,8 @@ async def process_request(request: UnifiedRequest):
         # Preserve intended HTTP status codes (e.g., 400 for invalid input).
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error processing request: {str(e)}\nTraceback:\n{traceback.format_exc()}"
-        )
+        logger.exception("Error processing request")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/v1/models")
 async def list_models():

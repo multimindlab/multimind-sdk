@@ -22,7 +22,39 @@ class AgentRegistry:
     def get_agent(self, name: str) -> Optional[Callable]:
         return self.agents.get(name)
 
-    def run_agent(self, name: str, *args, session_id: Optional[str] = None, **kwargs):
+    def run_agent(
+        self,
+        name: str,
+        *args,
+        session_id: Optional[str] = None,
+        _visited: Optional[set] = None,
+        _depth: int = 0,
+        _max_depth: int = 10,
+        **kwargs,
+    ):
+        """
+        Run an agent by name with fallback support.
+
+        Cycle-protected: if fallbacks point back to an already tried agent (A->B->A),
+        we stop to avoid infinite recursion.
+        """
+        if _visited is None:
+            _visited = set()
+
+        if name in _visited:
+            self.logger.error(
+                f"Fallback recursion detected for agent '{name}'. Aborting. Visited={_visited}"
+            )
+            return None
+
+        if _depth >= _max_depth:
+            self.logger.error(
+                f"Max fallback depth reached while running agent '{name}'. Aborting."
+            )
+            return None
+
+        _visited.add(name)
+
         agent = self.get_agent(name)
         if not agent:
             self.logger.warning(f"Agent {name} not found.")
@@ -33,14 +65,29 @@ class AgentRegistry:
             result = agent(*args, state=state, **kwargs)
             # Optionally update state
             if session_id is not None:
-                self.state_memory[session_id] = result.get("state", state) if isinstance(result, dict) else state
+                self.state_memory[session_id] = (
+                    result.get("state", state) if isinstance(result, dict) else state
+                )
             return result
         except Exception as e:
             self.logger.error(f"Agent {name} failed: {e}")
             fallback = self.fallbacks.get(name)
             if fallback:
+                if fallback in _visited:
+                    self.logger.error(
+                        f"Fallback cycle detected: '{name}' -> '{fallback}'. Aborting."
+                    )
+                    return None
                 self.logger.info(f"Retrying with fallback agent: {fallback}")
-                return self.run_agent(fallback, *args, session_id=session_id, **kwargs)
+                return self.run_agent(
+                    fallback,
+                    *args,
+                    session_id=session_id,
+                    _visited=_visited,
+                    _depth=_depth + 1,
+                    _max_depth=_max_depth,
+                    **kwargs,
+                )
             return None
 
     def get_state(self, session_id: str):

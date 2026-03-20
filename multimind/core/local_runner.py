@@ -28,12 +28,14 @@ class LocalRunner(BaseLLM):
         data: Dict[str, Any]
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Make a streaming request to the Ollama API."""
+        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data) as response:
+            async with session.post(url, json=data, timeout=timeout) as response:
+                response.raise_for_status()
                 async for line in response.content:
                     if line:
-                        yield json.loads(line)
+                        yield json.loads(line.decode().strip())
 
     async def _make_request(
         self,
@@ -41,9 +43,11 @@ class LocalRunner(BaseLLM):
         data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Make a regular request to the Ollama API."""
+        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
         async with aiohttp.ClientSession() as session:
             url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data) as response:
+            async with session.post(url, json=data, timeout=timeout) as response:
+                response.raise_for_status()
                 return await response.json()
 
     async def generate(
@@ -64,7 +68,7 @@ class LocalRunner(BaseLLM):
             data["max_tokens"] = max_tokens
 
         response = await self._make_request("api/generate", data)
-        return response["response"]
+        return response.get("response", "")
 
     async def generate_stream(
         self,
@@ -106,7 +110,7 @@ class LocalRunner(BaseLLM):
             data["max_tokens"] = max_tokens
 
         response = await self._make_request("api/chat", data)
-        return response["message"]["content"]
+        return response.get("message", {}).get("content", "")
 
     async def chat_stream(
         self,
@@ -146,7 +150,7 @@ class LocalRunner(BaseLLM):
         }
 
         response = await self._make_request("api/embeddings", data)
-        embeddings = response["embeddings"]
+        embeddings = response.get("embeddings", [])
         return embeddings[0] if len(text) == 1 else embeddings
 
     async def get_quality(self) -> Optional[float]:

@@ -380,7 +380,31 @@ class WorkingMemory(BaseMemory):
 
     async def get_working_memory_stats(self) -> Dict[str, Any]:
         """Get statistics about working memory."""
-        stats = await super().get_working_memory_stats()
+        stats: Dict[str, Any] = {
+            "memory_stats": {
+                "total_items": len(self.items),
+                "max_items": self.max_items,
+            },
+            "attention_stats": {
+                "average_attention": (
+                    sum(self.attention_scores.values()) / len(self.attention_scores)
+                    if self.attention_scores
+                    else 0
+                ),
+                "high_attention_items": sum(
+                    1 for score in self.attention_scores.values() if score > 0.7
+                ),
+                "low_attention_items": sum(
+                    1 for score in self.attention_scores.values() if score < 0.3
+                ),
+            },
+            "timing": {
+                "last_decay": self.last_decay.isoformat(),
+                "last_consolidation": self.last_consolidation.isoformat(),
+                "last_attention_update": self.last_attention_update.isoformat(),
+                "last_backup": self.last_backup.isoformat(),
+            },
+        }
         
         # Add priority statistics
         stats["priority_stats"] = {
@@ -412,7 +436,7 @@ class WorkingMemory(BaseMemory):
 
     async def get_working_memory_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for working memory optimization."""
-        suggestions = await super().get_working_memory_suggestions()
+        suggestions: List[Dict[str, Any]] = []
         
         # Add priority-related suggestions
         stats = await self.get_working_memory_stats()

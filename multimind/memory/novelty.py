@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class NoveltyMemory(BaseMemory):
     """Memory that implements novelty and salience filtering."""
@@ -173,7 +174,7 @@ class NoveltyMemory(BaseMemory):
             3. novelty_reason: string
             """
             response = await self.llm.generate(prompt)
-            novelty = json.loads(response)
+            novelty = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["novelty_score"] = novelty["novelty_score"]
@@ -199,7 +200,7 @@ class NoveltyMemory(BaseMemory):
             3. salience_reason: string
             """
             response = await self.llm.generate(prompt)
-            salience = json.loads(response)
+            salience = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["salience_score"] = salience["salience_score"]
@@ -224,7 +225,7 @@ class NoveltyMemory(BaseMemory):
             2. vector_dimensions: list of strings
             """
             response = await self.llm.generate(prompt)
-            semantic = json.loads(response)
+            semantic = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["semantic_vector"] = semantic["semantic_vector"]
@@ -250,7 +251,7 @@ class NoveltyMemory(BaseMemory):
             3. pattern_confidence: list of floats
             """
             response = await self.llm.generate(prompt)
-            patterns = json.loads(response)
+            patterns = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["patterns"] = patterns["patterns"]
@@ -294,7 +295,7 @@ class NoveltyMemory(BaseMemory):
             3. temporal_reason: string
             """
             response = await self.llm.generate(prompt)
-            temporal = json.loads(response)
+            temporal = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["temporal_novelty"] = temporal["temporal_novelty"]
@@ -328,7 +329,7 @@ class NoveltyMemory(BaseMemory):
             3. concept_reason: string
             """
             response = await self.llm.generate(prompt)
-            concepts = json.loads(response)
+            concepts = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["concepts"] = concepts["concepts"]
@@ -358,7 +359,7 @@ class NoveltyMemory(BaseMemory):
             3. relation_reason: string
             """
             response = await self.llm.generate(prompt)
-            relations = json.loads(response)
+            relations = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["relations"] = relations["relations"]

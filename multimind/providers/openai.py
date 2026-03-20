@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Union, Any
 import base64
 import openai
 from datetime import datetime
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from ..core.provider import (
     ProviderAdapter,
     ProviderConfig,
@@ -23,6 +24,40 @@ class OpenAIProvider(ProviderAdapter):
         """Initialize the OpenAI provider adapter."""
         super().__init__(config)
         self.client = openai.AsyncOpenAI(api_key=config.api_key)
+
+    @retry(
+        retry=retry_if_exception_type(
+            (
+                openai.RateLimitError,
+                openai.APIError,
+                openai.APIConnectionError,
+                openai.APITimeoutError,
+            )
+        ),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _chat_completions_create(self, **kwargs: Any):
+        """Internal helper with retry for chat.completions.create."""
+        return await self.client.chat.completions.create(**kwargs)
+
+    @retry(
+        retry=retry_if_exception_type(
+            (
+                openai.RateLimitError,
+                openai.APIError,
+                openai.APIConnectionError,
+                openai.APITimeoutError,
+            )
+        ),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _embeddings_create(self, **kwargs: Any):
+        """Internal helper with retry for embeddings.create."""
+        return await self.client.embeddings.create(**kwargs)
     
     async def generate_text(
         self,
@@ -34,10 +69,10 @@ class OpenAIProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._chat_completions_create(
                 model=model,
                 messages=[{"role": "user", "content": prompt}],
-                **kwargs
+                **kwargs,
             )
             
             result = response.choices[0].message.content
@@ -66,8 +101,8 @@ class OpenAIProvider(ProviderAdapter):
                 cost_estimate_usd=cost
             )
             
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+        except openai.OpenAIError as e:
+            raise RuntimeError(f"OpenAI API error: {e}") from e
     
     async def chat(
         self,
@@ -79,10 +114,10 @@ class OpenAIProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.chat.completions.create(
+            response = await self._chat_completions_create(
                 model=model,
                 messages=messages,
-                **kwargs
+                **kwargs,
             )
             
             result = response.choices[0].message.content
@@ -111,8 +146,8 @@ class OpenAIProvider(ProviderAdapter):
                 cost_estimate_usd=cost
             )
             
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+        except openai.OpenAIError as e:
+            raise RuntimeError(f"OpenAI API error: {e}") from e
     
     async def generate_embeddings(
         self,
@@ -124,10 +159,10 @@ class OpenAIProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.embeddings.create(
+            response = await self._embeddings_create(
                 model=model,
                 input=text,
-                **kwargs
+                **kwargs,
             )
             
             embedding_vector = response.data[0].embedding
@@ -147,8 +182,8 @@ class OpenAIProvider(ProviderAdapter):
                 cost_estimate_usd=cost
             )
             
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+        except openai.OpenAIError as e:
+            raise RuntimeError(f"OpenAI API error: {e}") from e
     
     async def analyze_image(
         self,
@@ -162,7 +197,7 @@ class OpenAIProvider(ProviderAdapter):
         
         try:
             image_base64 = base64.b64encode(image_data).decode("utf-8")
-            response = await self.client.chat.completions.create(
+            response = await self._chat_completions_create(
                 model=model,
                 messages=[
                     {
@@ -173,12 +208,12 @@ class OpenAIProvider(ProviderAdapter):
                                 "type": "image_url",
                                 "image_url": {
                                     "url": f"data:image/jpeg;base64,{image_base64}"
-                                }
-                            }
-                        ]
+                                },
+                            },
+                        ],
                     }
                 ],
-                **kwargs
+                **kwargs,
             )
             
             result = response.choices[0].message.content
@@ -209,8 +244,8 @@ class OpenAIProvider(ProviderAdapter):
                 cost_estimate_usd=cost
             )
             
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+        except openai.OpenAIError as e:
+            raise RuntimeError(f"OpenAI API error: {e}") from e
     
     def _get_metadata(self) -> ProviderMetadata:
         """Return metadata about the OpenAI provider."""
@@ -243,17 +278,6 @@ class OpenAIProvider(ProviderAdapter):
             supported_models=["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]
         )
 
-    def get_cost_estimate(self, model: str, tokens: int) -> float:
-        """Estimate the cost for a given model and token usage."""
-        pricing = self.metadata.pricing.get(model, {"input": 0.0, "output": 0.0})
-        return (pricing["input"] + pricing["output"]) * tokens / 1000  # Convert to USD
-
-    def get_latency_estimate(self, model: str) -> Dict[str, int]:
-        """Return latency estimates for a given model."""
-        if self.metadata.latency:
-            return self.metadata.latency.get(model, {"p50": 0, "p95": 0})
-        return {"p50": 0, "p95": 0}
-    
     async def estimate_cost(
         self,
         task_type: str,
