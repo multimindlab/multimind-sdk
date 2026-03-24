@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class VersionedMemory(BaseMemory):
     """Memory that implements versioned/snapshot memory."""
@@ -172,7 +173,7 @@ class VersionedMemory(BaseMemory):
             3. metadata_reason: string
             """
             response = await self.llm.generate(prompt)
-            metadata = json.loads(response)
+            metadata = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             self.metadata[item_id] = metadata["metadata"]
@@ -326,7 +327,7 @@ class VersionedMemory(BaseMemory):
             3. analysis_reason: string
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
             
             # Update item metadata
             item["metadata"]["analysis_version"] = analysis["analysis_version"]

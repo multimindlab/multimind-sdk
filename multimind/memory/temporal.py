@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class TemporalMemory(BaseMemory):
     """Memory that manages time-based information and temporal relationships."""
@@ -187,7 +188,7 @@ class TemporalMemory(BaseMemory):
             6. recurrence: dict with pattern info or null
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
             
             # Update event metadata
             event["metadata"]["start_time"] = analysis.get("start_time")
@@ -425,7 +426,7 @@ class TemporalMemory(BaseMemory):
             4. suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            validation = json.loads(response)
+            validation = MemoryUtils.safe_json_loads(response)
             
             # Update event metadata
             event["metadata"]["validation_score"] = validation["validation_score"]

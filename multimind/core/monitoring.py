@@ -45,6 +45,13 @@ class ModelMonitor:
                 "tokens_per_minute": 100000
             }
         )
+        self._rate_windows: Dict[str, Dict[str, float]] = defaultdict(
+            lambda: {
+                "window_start": time.time(),
+                "requests": 0.0,
+                "tokens": 0.0,
+            }
+        )
         self._lock = asyncio.Lock()
 
     async def track_request(
@@ -125,9 +132,27 @@ class ModelMonitor:
 
     async def check_rate_limit(self, model: str, tokens: int) -> bool:
         """Check if a request would exceed rate limits"""
-        # Implement rate limiting logic here
-        # This is a placeholder for actual rate limiting implementation
-        return True
+        async with self._lock:
+            limits = self.rate_limits[model]
+            window = self._rate_windows[model]
+            now = time.time()
+
+            # Fixed 60-second rolling window per model.
+            if now - window["window_start"] >= 60:
+                window["window_start"] = now
+                window["requests"] = 0.0
+                window["tokens"] = 0.0
+
+            requested_tokens = max(0, int(tokens))
+            if window["requests"] + 1 > limits["requests_per_minute"]:
+                return False
+            if window["tokens"] + requested_tokens > limits["tokens_per_minute"]:
+                return False
+
+            # Reserve capacity for this request.
+            window["requests"] += 1
+            window["tokens"] += requested_tokens
+            return True
 
 # Global monitor instance
 monitor = ModelMonitor() 

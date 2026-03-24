@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class EventSourcedMemory(BaseMemory):
     """Memory that implements event-sourced memory."""
@@ -130,7 +131,7 @@ class EventSourcedMemory(BaseMemory):
             3. pattern_confidence: list of floats
             """
             response = await self.llm.generate(prompt)
-            patterns = json.loads(response)
+            patterns = MemoryUtils.safe_json_loads(response)
             
             # Create pattern events
             for i, pattern in enumerate(patterns["patterns"]):
@@ -178,7 +179,7 @@ class EventSourcedMemory(BaseMemory):
             3. confidence: list of floats
             """
             response = await self.llm.generate(prompt)
-            causality = json.loads(response)
+            causality = MemoryUtils.safe_json_loads(response)
             
             # Create causality events
             for i, cause in enumerate(causality["causes"]):
@@ -248,7 +249,7 @@ class EventSourcedMemory(BaseMemory):
                 3. pattern_confidence: list of floats
                 """
                 response = await self.llm.generate(prompt)
-                patterns = json.loads(response)
+                patterns = MemoryUtils.safe_json_loads(response)
                 
                 # Update patterns
                 for i, pattern in enumerate(patterns["patterns"]):
@@ -288,7 +289,7 @@ class EventSourcedMemory(BaseMemory):
                 3. confidence: list of floats
                 """
                 response = await self.llm.generate(prompt)
-                causality = json.loads(response)
+                causality = MemoryUtils.safe_json_loads(response)
                 
                 # Update causal chains
                 for i, cause in enumerate(causality["causes"]):

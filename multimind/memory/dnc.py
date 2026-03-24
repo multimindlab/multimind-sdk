@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class DNCMemory(BaseMemory):
     """Memory that implements Differentiable Neural Computer architecture."""
@@ -124,9 +125,10 @@ class DNCMemory(BaseMemory):
         if self.enable_learning:
             await self._update_learning(new_item)
 
+        current_time = datetime.now()
+
         # Check for optimization
         if self.enable_optimization:
-            current_time = datetime.now()
             if (current_time - self.last_optimization).total_seconds() > self.optimization_interval:
                 await self._optimize_memory()
 
@@ -321,7 +323,7 @@ class DNCMemory(BaseMemory):
             3. metrics: dict of string -> float
             """
             response = await self.llm.generate(prompt)
-            analysis = json.loads(response)
+            analysis = MemoryUtils.safe_json_loads(response)
 
             # Record analysis
             self.analysis_history.append({

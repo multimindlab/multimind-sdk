@@ -7,6 +7,7 @@ import base64
 import anthropic
 import logging
 from datetime import datetime
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from ..core.provider import (
     ProviderAdapter,
     ProviderConfig,
@@ -26,6 +27,23 @@ class ClaudeProvider(ProviderAdapter):
         """Initialize the Claude provider adapter."""
         super().__init__(config)
         self.client = anthropic.AsyncAnthropic(api_key=config.api_key)
+
+    @retry(
+        retry=retry_if_exception_type(
+            (
+                anthropic.RateLimitError,
+                anthropic.APIError,
+                anthropic.APIConnectionError,
+                anthropic.APITimeoutError,
+            )
+        ),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _messages_create(self, **kwargs: Any):
+        """Internal helper with retry for messages.create."""
+        return await self.client.messages.create(**kwargs)
     
     async def generate_text(
         self,
@@ -37,11 +55,11 @@ class ClaudeProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.messages.create(
+            response = await self._messages_create(
                 model=model,
                 max_tokens=kwargs.pop("max_tokens", 1000),
                 messages=[{"role": "user", "content": prompt}],
-                **kwargs
+                **kwargs,
             )
             
             result = response.content[0].text
@@ -67,7 +85,7 @@ class ClaudeProvider(ProviderAdapter):
             raise RuntimeError("Claude API client is outdated or incompatible.")
         except Exception as e:
             logger.error(f"Error generating text with Claude API: {e}")
-            raise
+            raise RuntimeError(f"Claude API error: {e}") from e
     
     async def chat(
         self,
@@ -79,11 +97,11 @@ class ClaudeProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.messages.create(
+            response = await self._messages_create(
                 model=model,
                 max_tokens=kwargs.pop("max_tokens", 1000),
                 messages=messages,
-                **kwargs
+                **kwargs,
             )
             
             result = response.content[0].text
@@ -107,7 +125,7 @@ class ClaudeProvider(ProviderAdapter):
             )
             
         except Exception as e:
-            raise Exception(f"Claude API error: {str(e)}")
+            raise RuntimeError(f"Claude API error: {e}") from e
     
     async def generate_embeddings(
         self,
@@ -116,7 +134,7 @@ class ClaudeProvider(ProviderAdapter):
         **kwargs
     ) -> EmbeddingResult:
         """Generate embeddings using Claude's API."""
-        raise NotImplementedError("Claude does not support embeddings")
+        raise NotImplementedError("Claude API does not provide embeddings.")
     
     async def analyze_image(
         self,
@@ -129,7 +147,7 @@ class ClaudeProvider(ProviderAdapter):
         start_time = datetime.now()
         
         try:
-            response = await self.client.messages.create(
+            response = await self._messages_create(
                 model=model,
                 max_tokens=kwargs.pop("max_tokens", 1000),
                 messages=[
@@ -142,13 +160,15 @@ class ClaudeProvider(ProviderAdapter):
                                 "source": {
                                     "type": "base64",
                                     "media_type": "image/jpeg",
-                                    "data": base64.b64encode(image_data).decode("utf-8")
-                                }
-                            }
-                        ]
+                                    "data": base64.b64encode(image_data).decode(
+                                        "utf-8"
+                                    ),
+                                },
+                            },
+                        ],
                     }
                 ],
-                **kwargs
+                **kwargs,
             )
             
             result = response.content[0].text
@@ -174,7 +194,7 @@ class ClaudeProvider(ProviderAdapter):
             )
             
         except Exception as e:
-            raise Exception(f"Claude API error: {str(e)}")
+            raise RuntimeError(f"Claude API error: {e}") from e
     
     async def estimate_cost(
         self,

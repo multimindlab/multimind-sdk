@@ -4,18 +4,7 @@ Configuration for MultiMind compliance features.
 
 from typing import Dict, Any, List
 from pydantic import BaseModel
-from enum import Enum
-
-class Regulation(str, Enum):
-    """Available regulations."""
-    HIPAA = "HIPAA"
-    GDPR = "GDPR"
-    CCPA = "CCPA"
-    AI_ACT = "AI_ACT"
-    FDA = "FDA"
-    EMA = "EMA"
-    ICH = "ICH"
-    GCP = "GCP"
+from .governance import Regulation
 
 class ComplianceRule(BaseModel):
     """Compliance rule configuration."""
@@ -108,12 +97,33 @@ DEFAULT_HEALTHCARE_RULES = DEFAULT_COMPLIANCE_RULES + [
 def load_config(config_path: str) -> ComplianceConfig:
     """Load compliance configuration from file."""
     import json
-    with open(config_path) as f:
-        config_data = json.load(f)
-    return ComplianceConfig(**config_data)
+    from pydantic import ValidationError
+    try:
+        with open(config_path, encoding="utf-8") as f:
+            config_data = json.load(f)
+        return ComplianceConfig(**config_data)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Compliance config file not found: {config_path}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Invalid JSON in compliance config: {config_path}") from e
+    except ValidationError as e:
+        raise RuntimeError(f"Invalid compliance config schema: {config_path}") from e
+    except OSError as e:
+        raise RuntimeError(f"Failed to read compliance config: {config_path}") from e
 
 def save_config(config: ComplianceConfig, config_path: str):
     """Save compliance configuration to file."""
     import json
-    with open(config_path, 'w') as f:
-        json.dump(config.dict(), f, indent=2) 
+    import os
+    try:
+        parent = os.path.dirname(config_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+
+        data = config.model_dump() if hasattr(config, "model_dump") else config.dict()
+        tmp_path = f"{config_path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, default=str)
+        os.replace(tmp_path, config_path)
+    except OSError as e:
+        raise RuntimeError(f"Failed to write compliance config: {config_path}") from e

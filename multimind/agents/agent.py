@@ -2,6 +2,7 @@
 Base Agent class for Multimind SDK.
 """
 
+import re
 from typing import List, Dict, Any, Optional
 from multimind.models.base import BaseLLM
 from multimind.agents.memory import AgentMemory
@@ -38,8 +39,11 @@ class Agent:
     async def _process_task(self, task: str, **kwargs) -> Dict[str, Any]:
         """Process a task using available tools and the model."""
         # Try to match a tool by name
+        task_lower = task.lower()
         for tool in self.tools:
-            if tool.name.lower() in task.lower():
+            tool_name = tool.name.lower().strip()
+            # Match on whole tokens only (e.g., `calc` won't match `calculate`).
+            if re.search(rf"\b{re.escape(tool_name)}\b", task_lower):
                 try:
                     # Extract parameters for the tool from kwargs
                     params = {k: v for k, v in kwargs.items() if k in tool.get_parameters().get("required", [])}

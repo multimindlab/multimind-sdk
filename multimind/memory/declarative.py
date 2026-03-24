@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+from .utils import MemoryUtils
 
 class DeclarativeMemory(BaseMemory):
     """Memory that manages factual knowledge with verification and confidence scoring."""
@@ -265,7 +266,7 @@ class DeclarativeMemory(BaseMemory):
             6. verification_notes: string
             """
             response = await self.llm.generate(prompt)
-            verification = json.loads(response)
+            verification = MemoryUtils.safe_json_loads(response)
             
             # Update fact metadata
             fact["metadata"]["verification_score"] = verification["verification_score"]
@@ -306,7 +307,7 @@ class DeclarativeMemory(BaseMemory):
             5. resolution_suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            consistency = json.loads(response)
+            consistency = MemoryUtils.safe_json_loads(response)
             
             # Update fact metadata
             fact["metadata"]["consistency_score"] = consistency["consistency_score"]
@@ -346,7 +347,7 @@ class DeclarativeMemory(BaseMemory):
             5. related_domains: list of strings
             """
             response = await self.llm.generate(prompt)
-            integration = json.loads(response)
+            integration = MemoryUtils.safe_json_loads(response)
             
             # Create integration record
             integration_id = f"integration_{len(self.integrated_knowledge)}"
@@ -392,7 +393,7 @@ class DeclarativeMemory(BaseMemory):
             6. reasoning_notes: string
             """
             response = await self.llm.generate(prompt)
-            reasoning = json.loads(response)
+            reasoning = MemoryUtils.safe_json_loads(response)
             
             # Create reasoning record
             reasoning_id = f"reasoning_{len(self.semantic_reasoning)}"
@@ -439,7 +440,7 @@ class DeclarativeMemory(BaseMemory):
             6. uncertainty_notes: string
             """
             response = await self.llm.generate(prompt)
-            uncertainty = json.loads(response)
+            uncertainty = MemoryUtils.safe_json_loads(response)
             
             # Update uncertainty measures
             self.uncertainty_measures[fact_id] = {
@@ -480,7 +481,7 @@ class DeclarativeMemory(BaseMemory):
             5. contradiction_notes: string
             """
             response = await self.llm.generate(prompt)
-            contradiction = json.loads(response)
+            contradiction = MemoryUtils.safe_json_loads(response)
             
             # Record contradiction
             self.contradictions[fact_id].append({
@@ -522,6 +523,8 @@ class DeclarativeMemory(BaseMemory):
         )
         
         # Record learning update
+        if fact_id not in self.learning_history:
+            self.learning_history[fact_id] = []
         self.learning_history[fact_id].append({
             "timestamp": datetime.now().isoformat(),
             "verification_score": verification_score,
@@ -579,7 +582,7 @@ class DeclarativeMemory(BaseMemory):
             4. suggestions: list of strings
             """
             response = await self.llm.generate(prompt)
-            validation = json.loads(response)
+            validation = MemoryUtils.safe_json_loads(response)
             
             # Update fact metadata
             fact["metadata"]["validation_score"] = validation["validation_score"]
@@ -763,7 +766,7 @@ class DeclarativeMemory(BaseMemory):
                 self.fact_embeddings = []
                 for fact in self.facts:
                     self.fact_embeddings.append(
-                        self.llm.embeddings(fact["content"])
+                        await self.llm.embeddings(fact["content"])
                     )
 
     async def get_declarative_memory_stats(self) -> Dict[str, Any]:

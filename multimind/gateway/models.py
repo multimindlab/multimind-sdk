@@ -8,7 +8,7 @@ import asyncio
 
 import openai
 import anthropic
-import requests
+import httpx
 
 # Try to import HuggingFace dependencies
 try:
@@ -114,38 +114,43 @@ class AnthropicHandler(ModelHandler):
         return await self.chat(messages, **kwargs)
 
 class OllamaHandler(ModelHandler):
-    """Handler for Ollama models"""
+    """Handler for Ollama models (async HTTP via httpx)."""
+
+    def __init__(self, model_config: ModelConfig):
+        super().__init__(model_config)
+        timeout = self.config.timeout if hasattr(self.config, "timeout") else 30
+        self._client = httpx.AsyncClient(
+            base_url=str(self.config.api_base).rstrip("/"),
+            timeout=timeout,
+        )
 
     async def chat(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
         try:
-            # Convert messages to Ollama format
             prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
 
-            response = requests.post(
-                f"{self.config.api_base}/api/generate",
+            response = await self._client.post(
+                "/api/generate",
                 json={
                     "model": self.config.model_name,
                     "prompt": prompt,
                     "temperature": kwargs.get("temperature", self.config.temperature),
-                    "max_tokens": kwargs.get("max_tokens", self.config.max_tokens)
+                    "max_tokens": kwargs.get("max_tokens", self.config.max_tokens),
                 },
-                timeout=self.config.timeout if hasattr(self.config, 'timeout') else 30
             )
             response.raise_for_status()
-
             result = response.json()
+
             return ModelResponse(
-                content=result["response"],
+                content=result.get("response", ""),
                 model=self.config.model_name,
-                finish_reason=result.get("done", True) and "stop" or None
+                finish_reason="stop" if result.get("done", True) else None,
             )
         except Exception as e:
             logger.error(f"Ollama API error: {str(e)}")
             raise
 
     async def generate(self, prompt: str, **kwargs) -> ModelResponse:
-        messages = [{"role": "user", "content": prompt}]
-        return await self.chat(messages, **kwargs)
+        return await self.chat([{"role": "user", "content": prompt}], **kwargs)
 
 class HuggingFaceHandler(ModelHandler):
     """Handler for HuggingFace models - supports both API and local loading"""

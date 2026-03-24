@@ -73,7 +73,11 @@ class ComplianceShard:
         self.zk_proofs = {}
         self.homomorphic_encryption = HomomorphicEncryption()
         self.compliance_level = ComplianceLevel(config.get("level", "standard"))
-        self.metrics_history = []
+        self.metrics_history: List[ComplianceMetrics] = []
+        # Simple in-memory stores used by gateway/compliance_api.
+        self.history: List[Dict[str, Any]] = []
+        self.alert_rules: Dict[str, Any] = config.get("alert_rules", {})
+        self.alerts: List[Dict[str, Any]] = []
     
     def _load_local_rules(self) -> Dict[str, Any]:
         """Load local compliance rules for the shard."""
@@ -97,6 +101,21 @@ class ComplianceShard:
         # Calculate metrics
         metrics = self._calculate_metrics(compliance_result, start_time)
         self.metrics_history.append(metrics)
+        # Record basic history entry for potential retrieval APIs.
+        self.history.append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "result": compliance_result,
+                "metrics": {
+                    "score": metrics.score,
+                    "confidence": metrics.confidence,
+                    "risk_level": metrics.risk_level,
+                    "verification_time": metrics.verification_time,
+                },
+                "jurisdiction": self.jurisdiction,
+                "level": (level.value if hasattr(level, "value") else str(level or self.compliance_level)),
+            }
+        )
         
         # Apply homomorphic encryption for sensitive data
         encrypted_result = self.homomorphic_encryption.encrypt(compliance_result)
@@ -163,6 +182,64 @@ class ComplianceShard:
             return psutil.net_io_counters().bytes_sent + psutil.net_io_counters().bytes_recv
         except ImportError:
             return 0.0
+
+    async def get_compliance_history(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        use_case: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return recorded compliance history entries within the given time range.
+
+        Currently uses in-memory history recorded by verify_compliance.
+        """
+        results: List[Dict[str, Any]] = []
+        for entry in self.history:
+            ts_str = entry.get("timestamp")
+            if not ts_str:
+                continue
+            try:
+                ts = datetime.fromisoformat(ts_str)
+            except ValueError:
+                continue
+            if start_date <= ts <= end_date:
+                # Optional future use_case filtering can inspect entry["result"] / config
+                results.append(entry)
+        return results
+
+    async def get_active_alerts(
+        self,
+        use_case: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return active alerts, optionally filtered by use case."""
+        alerts: List[Dict[str, Any]] = []
+        for alert in self.alerts:
+            status = alert.get("status", "active")
+            if status != "active":
+                continue
+            if use_case is not None and alert.get("use_case") != use_case:
+                continue
+            alerts.append(alert)
+        return alerts
+
+    async def configure_alerts(self, alert_rules: Dict[str, Any]) -> None:
+        """Configure alert rules for this shard."""
+        self.alert_rules = alert_rules
+
+    async def get_alerts(
+        self,
+        status: Optional[str] = None,
+        severity: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Return alerts filtered by status and severity."""
+        results: List[Dict[str, Any]] = []
+        for alert in self.alerts:
+            if status is not None and alert.get("status") != status:
+                continue
+            if severity is not None and alert.get("severity") != severity:
+                continue
+            results.append(alert)
+        return results
 
 class SelfHealingCompliance:
     """Enhanced self-healing compliance mechanism with advanced patching."""
