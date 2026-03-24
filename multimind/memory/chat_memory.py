@@ -70,7 +70,11 @@ class ChatMemory(BufferMemory):
             await self.token_buffer.add_message(message, metadata)
             
         # Add to main buffer
-        await super().add_message(message, metadata)
+        message_with_timestamp: Dict[str, Any] = {
+            **message,
+            "timestamp": datetime.now().isoformat(),
+        }
+        await super().add_message(message_with_timestamp, metadata)
 
     async def get_messages(
         self,
@@ -80,7 +84,11 @@ class ChatMemory(BufferMemory):
         include_system: bool = True
     ) -> List[Dict[str, Any]]:
         """Get messages from chat history."""
-        messages = await super().get_messages(limit, offset)
+        messages = await super().get_messages()
+        if offset:
+            messages = messages[offset:]
+        if limit is not None:
+            messages = messages[:limit]
         
         # Filter by role if specified
         if role:
@@ -120,20 +128,24 @@ class ChatMemory(BufferMemory):
 
     async def get_messages_by_topic(self, topic: str) -> List[Dict[str, Any]]:
         """Get messages related to a specific topic."""
-        return [
-            m["message"] for m in self.messages
-            if m["metadata"].get("topic") == topic
-        ]
+        result: List[Dict[str, Any]] = []
+        for idx, msg in enumerate(self.messages):
+            md = self.metadata.get(str(idx), {})
+            if md.get("topic") == topic:
+                result.append(msg)
+        return result
 
     async def get_messages_by_participant(
         self,
         participant: str
     ) -> List[Dict[str, Any]]:
         """Get messages from a specific participant."""
-        return [
-            m["message"] for m in self.messages
-            if m["metadata"].get("participant") == participant
-        ]
+        result: List[Dict[str, Any]] = []
+        for idx, msg in enumerate(self.messages):
+            md = self.metadata.get(str(idx), {})
+            if md.get("participant") == participant:
+                result.append(msg)
+        return result
 
     async def get_recent_messages(
         self,
@@ -151,7 +163,19 @@ class ChatMemory(BufferMemory):
         role: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get messages within a timeframe."""
-        messages = await super().get_messages_in_timeframe(start_time, end_time)
+        messages = await super().get_messages()
+        filtered: List[Dict[str, Any]] = []
+        for msg in messages:
+            ts = msg.get("timestamp")
+            if not ts:
+                continue
+            try:
+                ts_dt = datetime.fromisoformat(str(ts))
+            except Exception:
+                continue
+            if start_time <= ts_dt <= end_time:
+                filtered.append(msg)
+        messages = filtered
         if role:
             messages = [
                 m for m in messages
@@ -172,6 +196,32 @@ class ChatMemory(BufferMemory):
             "topics": set(),
             "sentiment": None
         })
+
+    async def save(self) -> None:
+        """Save chat memory safely (sets are not JSON-serializable)."""
+        # Convert set fields to lists before delegating to BufferMemory.save()
+        if "participants" in self.metadata and isinstance(self.metadata["participants"], set):
+            self.metadata["participants"] = list(self.metadata["participants"])
+        if "topics" in self.metadata and isinstance(self.metadata["topics"], set):
+            self.metadata["topics"] = list(self.metadata["topics"])
+        await super().save()
+        # Restore runtime types
+        if "participants" in self.metadata and isinstance(self.metadata["participants"], list):
+            self.metadata["participants"] = set(self.metadata["participants"])
+        if "topics" in self.metadata and isinstance(self.metadata["topics"], list):
+            self.metadata["topics"] = set(self.metadata["topics"])
+
+    async def load(self) -> None:
+        """Load chat memory and restore runtime types."""
+        await super().load()
+        if "participants" in self.metadata and isinstance(self.metadata["participants"], list):
+            self.metadata["participants"] = set(self.metadata["participants"])
+        if "topics" in self.metadata and isinstance(self.metadata["topics"], list):
+            self.metadata["topics"] = set(self.metadata["topics"])
+
+    async def get_message_count(self) -> int:
+        """Return number of stored messages."""
+        return len(self.messages)
 
     async def set_system_prompt(self, prompt: Optional[str]) -> None:
         """Set or clear the system prompt."""

@@ -5,10 +5,16 @@ Utility functions for memory management.
 from typing import List, Dict, Any, Optional, Union, Type
 from datetime import datetime
 import json
+import re
 from pathlib import Path
 import pickle
+import threading
 from .base import BaseMemory
 import numpy as np
+
+# Lazy singleton to avoid downloading/loading Sentence-BERT on every similarity call.
+_SENTENCE_BERT_MODEL = None
+_SENTENCE_BERT_MODEL_LOCK = threading.Lock()
 
 class AdaptiveThreshold:
     """
@@ -53,6 +59,26 @@ class MemoryUtils:
     """Utility functions for memory management."""
 
     @staticmethod
+    def safe_json_loads(text: str) -> Any:
+        """
+        Robust JSON loader for LLM output.
+        Handles markdown fences and leading/trailing explanations.
+        """
+        text = text.strip()
+        # Strip markdown code fences if present
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*?\}", text, re.DOTALL)
+            if match:
+                return json.loads(match.group())
+            raise
+
+    @staticmethod
     async def save_memory(
         memory: BaseMemory,
         path: Union[str, Path],
@@ -64,7 +90,7 @@ class MemoryUtils:
         Args:
             memory: Memory instance to save
             path: Path to save to
-            format: Save format (json or pickle)
+            format: Save format (json only; pickle disabled for security)
         """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -76,13 +102,14 @@ class MemoryUtils:
             "timestamp": datetime.now().isoformat()
         }
         
-        # Save based on format
+        # Save based on format (pickle intentionally disabled to prevent RCE).
         if format == "json":
-            with open(path, "w") as f:
-                json.dump(state, f, indent=2)
-        else:  # pickle
-            with open(path, "wb") as f:
-                pickle.dump(state, f)
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(state, f, indent=2, default=str)
+        else:
+            raise ValueError(
+                "Pickle serialization is disabled for security. Use format='json'."
+            )
 
     @staticmethod
     async def load_memory(
@@ -97,7 +124,7 @@ class MemoryUtils:
         Args:
             memory_class: Memory class to instantiate
             path: Path to load from
-            format: Load format (json or pickle)
+            format: Load format (json only; pickle disabled for security)
             **kwargs: Additional arguments for memory class
             
         Returns:
@@ -107,13 +134,14 @@ class MemoryUtils:
         if not path.exists():
             raise FileNotFoundError(f"Memory file not found: {path}")
             
-        # Load based on format
+        # Load based on format (pickle intentionally disabled to prevent RCE).
         if format == "json":
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 state = json.load(f)
-        else:  # pickle
-            with open(path, "rb") as f:
-                state = pickle.load(f)
+        else:
+            raise ValueError(
+                "Pickle deserialization is disabled for security. Use format='json'."
+            )
                 
         # Create memory instance
         memory = memory_class(**kwargs)
@@ -375,7 +403,7 @@ class MemoryUtils:
     def bertscore_similarity(a: str, b: str) -> float:
         """Compute BERTScore similarity between two texts (requires bert-score)."""
         try:
-            from bert_score import score
+            from bert_score import score  # type: ignore[import-not-found]
             P, R, F1 = score([a], [b], lang="en", verbose=False)
             return float(F1[0])
         except ImportError:
@@ -386,7 +414,12 @@ class MemoryUtils:
         """Compute Sentence-BERT cosine similarity (requires sentence-transformers)."""
         try:
             from sentence_transformers import SentenceTransformer, util
-            model = SentenceTransformer('all-MiniLM-L6-v2')
+            global _SENTENCE_BERT_MODEL
+            if _SENTENCE_BERT_MODEL is None:
+                with _SENTENCE_BERT_MODEL_LOCK:
+                    if _SENTENCE_BERT_MODEL is None:
+                        _SENTENCE_BERT_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+            model = _SENTENCE_BERT_MODEL
             emb1 = model.encode(a, convert_to_tensor=True)
             emb2 = model.encode(b, convert_to_tensor=True)
             return float(util.pytorch_cos_sim(emb1, emb2).item())

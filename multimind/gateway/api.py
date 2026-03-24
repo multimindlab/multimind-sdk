@@ -3,6 +3,7 @@ FastAPI-based API Gateway for MultiMind
 """
 
 import logging
+import os
 from typing import Dict, List, Optional, Any
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,13 +37,25 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
     title="MultiMind API",
     description="API Gateway for MultiMind Services",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Add CORS middleware
+
+def _get_allowed_origins() -> List[str]:
+    """
+    Get allowed CORS origins from MULTIMIND_ALLOWED_ORIGINS (comma-separated).
+    Defaults to localhost-only when not set.
+    """
+    raw = os.getenv("MULTIMIND_ALLOWED_ORIGINS")
+    if not raw:
+        return ["http://localhost", "http://127.0.0.1", "http://localhost:3000"]
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+# Add CORS middleware with restricted origins when using credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_get_allowed_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -217,8 +230,8 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
             raise
 
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error in chat endpoint")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v1/generate", response_model=ModelResponse)
 async def generate(request: GenerateRequest, status: Dict = Depends(validate_model_config)):
@@ -240,8 +253,8 @@ async def generate(request: GenerateRequest, status: Dict = Depends(validate_mod
         return response
 
     except Exception as e:
-        logger.error(f"Error in generate endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error in generate endpoint")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v1/compare", response_model=CompareResponse)
 async def compare(request: CompareRequest, status: Dict = Depends(validate_model_config)):
@@ -264,8 +277,8 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
         return CompareResponse(responses=responses)
 
     except Exception as e:
-        logger.error(f"Error in compare endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error in compare endpoint")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/v1/metrics", response_model=MetricsResponse)
 async def get_metrics(model: Optional[str] = None):
@@ -277,8 +290,8 @@ async def get_metrics(model: Optional[str] = None):
             health={model: health for model, health in monitor.health.items()}
         )
     except Exception as e:
-        logger.error(f"Error getting metrics: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error getting metrics")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v1/sessions", response_model=SessionResponse)
 async def create_session(request: SessionCreate):
@@ -297,8 +310,8 @@ async def create_session(request: SessionCreate):
             message_count=len(session.messages)
         )
     except Exception as e:
-        logger.error(f"Error creating session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error creating session")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/v1/sessions", response_model=List[SessionResponse])
 async def list_sessions():
@@ -316,8 +329,8 @@ async def list_sessions():
             for session in sessions
         ]
     except Exception as e:
-        logger.error(f"Error listing sessions: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error listing sessions")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/v1/sessions/{session_id}")
 async def get_session(session_id: str):
@@ -345,8 +358,8 @@ async def get_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error getting session")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v1/sessions/{session_id}/messages")
 async def add_message(
@@ -383,12 +396,12 @@ async def add_message(
                     metadata={"usage": response.usage}
                 )
             except Exception as e:
-                logger.error(f"Error getting model response: {str(e)}")
+                logger.exception("Error getting model response")
                 await session.add_message(
                     role="assistant",
                     content="Sorry, I encountered an error while processing your request.",
                     model=session.model,
-                    metadata={"error": str(e)}
+                    metadata={"error": "Internal server error"}
                 )
 
         background_tasks.add_task(get_model_response)
@@ -397,8 +410,8 @@ async def add_message(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding message: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error adding message")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.delete("/v1/sessions/{session_id}")
 async def delete_session(session_id: str):
@@ -411,8 +424,8 @@ async def delete_session(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting session: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error deleting session")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/v1/health/check")
 async def check_health(model: Optional[str] = None):
@@ -431,8 +444,8 @@ async def check_health(model: Optional[str] = None):
                     health_status[model_name] = health
             return health_status
     except Exception as e:
-        logger.error(f"Error checking health: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Error checking health")
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 class MultiMindAPI:
     """Main API class for MultiMind Gateway"""

@@ -122,19 +122,43 @@ class HierarchicalMemory(BaseMemory):
         """Save hierarchy to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump({
-                    "root": self.root,
-                    "node_map": self.node_map
-                }, f)
+            # Convert non-JSON-serializable types (e.g., sets) to serializable forms
+            serializable_node_map: Dict[str, Dict[str, Any]] = {}
+            for node_id, node in self.node_map.items():
+                node_copy = dict(node)
+                # Convert semantic_tags set to list if present
+                if isinstance(node_copy.get("semantic_tags"), set):
+                    node_copy["semantic_tags"] = list(node_copy["semantic_tags"])
+                serializable_node_map[node_id] = node_copy
+
+            # Ensure root is consistent with node_map entry
+            serializable_root = serializable_node_map.get("root", self.root)
+
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "root": serializable_root,
+                        "node_map": serializable_node_map,
+                    },
+                    f,
+                )
 
     async def load(self) -> None:
         """Load hierarchy from persistent storage."""
         if self.storage_path and self.storage_path.exists():
             with open(self.storage_path, 'r') as f:
                 data = json.load(f)
-                self.root = data.get("root", self.root)
                 self.node_map = data.get("node_map", self.node_map)
+                # Restore root from node_map if present
+                if "root" in self.node_map:
+                    self.root = self.node_map["root"]
+                else:
+                    self.root = data.get("root", self.root)
+
+                # Convert semantic_tags lists back to sets
+                for node in self.node_map.values():
+                    if isinstance(node.get("semantic_tags"), list):
+                        node["semantic_tags"] = set(node["semantic_tags"])
 
     async def _categorize_message(
         self,

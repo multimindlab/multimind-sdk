@@ -491,8 +491,10 @@ class ContextualMemory(BaseMemory):
                 # Recreate embeddings
                 self.context_embeddings = []
                 for context in self.contexts:
-                    context_text = ' '.join(msg['content'] for msg in context["messages"])
-                    self.context_embeddings.append(self.llm.embeddings(context_text))
+                    context_text = " ".join(msg["content"] for msg in context["messages"])
+                    self.context_embeddings.append(
+                        await self.llm.embeddings(context_text)
+                    )
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Calculate cosine similarity between two vectors."""

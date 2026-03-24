@@ -464,7 +464,7 @@ class EpisodicMemory(BaseMemory):
                 self.episode_embeddings = []
                 for episode in self.episodes:
                     self.episode_embeddings.append(
-                        self.llm.embeddings(episode['content'])
+                        await self.llm.embeddings(episode["content"])
                     )
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:

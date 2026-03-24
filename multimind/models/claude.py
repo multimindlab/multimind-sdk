@@ -4,7 +4,10 @@ Anthropic Claude model implementation.
 
 import os
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
+import anthropic
 from anthropic import AsyncAnthropic
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
 
 class ClaudeModel(BaseLLM):
@@ -20,7 +23,30 @@ class ClaudeModel(BaseLLM):
         # Load API key from environment if not provided
         if api_key is None:
             api_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
+        if not api_key:
+            raise ConfigurationError(
+                "Claude API key is not configured. "
+                "Set ANTHROPIC_API_KEY or CLAUDE_API_KEY environment variable, "
+                "or pass api_key explicitly."
+            )
         self.client = AsyncAnthropic(api_key=api_key)
+
+    @retry(
+        retry=retry_if_exception_type(
+            (
+                anthropic.RateLimitError,
+                anthropic.APIError,
+                anthropic.APIConnectionError,
+                anthropic.APITimeoutError,
+            )
+        ),
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=10),
+        reraise=True,
+    )
+    async def _messages_create(self, **kwargs: Any):
+        """Internal helper with retry for messages.create."""
+        return await self.client.messages.create(**kwargs)
 
     async def generate(
         self,
@@ -33,14 +59,14 @@ class ClaudeModel(BaseLLM):
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
-        response = await self.client.messages.create(
+        response = await self._messages_create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
-        return response.content[0].text
+        return response.content[0].text if response.content else ""
 
     async def generate_stream(
         self,
@@ -53,13 +79,13 @@ class ClaudeModel(BaseLLM):
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
-        stream = await self.client.messages.create(
+        stream = await self._messages_create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
             temperature=temperature,
             max_tokens=max_tokens,
             stream=True,
-            **kwargs
+            **kwargs,
         )
         async for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.text:
@@ -76,14 +102,14 @@ class ClaudeModel(BaseLLM):
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
-        response = await self.client.messages.create(
+        response = await self._messages_create(
             model=self.model_name,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            **kwargs
+            **kwargs,
         )
-        return response.content[0].text
+        return response.content[0].text if response.content else ""
 
     async def chat_stream(
         self,
@@ -96,13 +122,13 @@ class ClaudeModel(BaseLLM):
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
-        stream = await self.client.messages.create(
+        stream = await self._messages_create(
             model=self.model_name,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             stream=True,
-            **kwargs
+            **kwargs,
         )
         async for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.text:

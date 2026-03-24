@@ -438,7 +438,19 @@ class EmotionalMemory(BaseMemory):
 
     async def get_emotional_memory_stats(self) -> Dict[str, Any]:
         """Get statistics about emotional memory."""
-        stats = await super().get_emotional_memory_stats()
+        stats: Dict[str, Any] = {
+            "memory_stats": {
+                "total_states": len(self.states),
+                "max_states": self.max_states,
+                "relationship_types": self.relationship_types,
+                "emotion_categories": self.emotion_categories,
+            },
+            "timing": {
+                "last_consolidation": self.last_consolidation.isoformat(),
+                "last_relationship_update": self.last_relationship_update.isoformat(),
+                "last_cluster_update": self.last_cluster_update.isoformat(),
+            },
+        }
         
         # Add relationship statistics
         stats["relationship_stats"] = {
@@ -475,7 +487,7 @@ class EmotionalMemory(BaseMemory):
 
     async def get_emotional_memory_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for emotional memory optimization."""
-        suggestions = await super().get_emotional_memory_suggestions()
+        suggestions: List[Dict[str, Any]] = []
         
         # Add relationship-related suggestions
         stats = await self.get_emotional_memory_stats()
