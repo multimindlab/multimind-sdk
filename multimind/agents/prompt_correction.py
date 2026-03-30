@@ -30,15 +30,17 @@ class PromptCorrectionLayer:
                 self.logger.warning(f"Detected issue in output: {output}")
                 for hook in self.error_hooks:
                     hook(prompt, Exception("Detected hallucination"), trace)
-                # Apply correction hooks
+                # Apply correction hooks to the *output* and return corrected output.
+                # (Correction hooks are expected to take a string and trace, and return a string.)
+                corrected_output = output
                 for hook in self.correction_hooks:
-                    prompt = hook(prompt, trace)
-                self.logger.info(f"Corrected prompt: {prompt}")
-                return prompt
-            return prompt
+                    corrected_output = hook(corrected_output, trace)
+                self.logger.info(f"Corrected output: {corrected_output}")
+                return corrected_output
+            return output
         except Exception as e:
             self.logger.error(f"Prompt correction failed: {e}")
-            return prompt
+            return output
 
     def update_adapter(self, adapter_key: str, new_adapter_path: str):
         """
@@ -61,6 +63,6 @@ if __name__ == "__main__":
     pcl.add_correction_hook(simple_correction)
     pcl.add_adapter_update_hook(adapter_updater)
     # Simulate monitoring
-    new_prompt = pcl.monitor("What is the capital of France?", "[error] hallucination detected", {"step": 1})
-    print("New prompt after correction:", new_prompt)
+    corrected_output = pcl.monitor("What is the capital of France?", "[error] hallucination detected", {"step": 1})
+    print("Corrected output after correction:", corrected_output)
     pcl.update_adapter("user123", "lora_adapter_v2") 

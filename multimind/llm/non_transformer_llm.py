@@ -139,10 +139,9 @@ class SSM_LLM(NonTransformerLLM):
         return [await self.generate(p, temperature=temperature, max_tokens=max_tokens, **kwargs) for p in prompts]
 
     async def generate_batch_async(self, prompts: List[str], **kwargs) -> List[str]:
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            results = await asyncio.gather(*[loop.run_in_executor(pool, lambda p=p: asyncio.run(self.generate(p, **kwargs))) for p in prompts])
-        return results
+        # Avoid `asyncio.run()` (nested event loops). We are already inside async code,
+        # so directly gather coroutines on the current event loop.
+        return await asyncio.gather(*[self.generate(p, **kwargs) for p in prompts])
 
     async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         # TODO: Plug in real streaming logic for this model
@@ -355,10 +354,9 @@ class MambaLLM(NonTransformerLLM):
 
     # --- Async/parallel batch generation ---
     async def generate_batch_async(self, prompts: List[str], **kwargs) -> List[str]:
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            results = await asyncio.gather(*[loop.run_in_executor(pool, lambda p=p: asyncio.run(self.generate(p, **kwargs))) for p in prompts])
-        return results
+        # Avoid `asyncio.run()` (nested event loops). We are already inside async code,
+        # so directly gather coroutines on the current event loop.
+        return await asyncio.gather(*[self.generate(p, **kwargs) for p in prompts])
 
     # --- Streaming generation ---
     async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
@@ -507,10 +505,9 @@ class RWKVLLM(NonTransformerLLM):
         return [self.tokenizer.decode(o, skip_special_tokens=True) for o in outputs]
 
     async def generate_batch_async(self, prompts: List[str], **kwargs) -> List[str]:
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            results = await asyncio.gather(*[loop.run_in_executor(pool, lambda p=p: asyncio.run(self.generate(p, **kwargs))) for p in prompts])
-        return results
+        # Avoid `asyncio.run()` (nested event loops). We are already inside async code,
+        # so directly gather coroutines on the current event loop.
+        return await asyncio.gather(*[self.generate(p, **kwargs) for p in prompts])
 
     async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         prompt = self.preprocess_prompt(prompt)
@@ -623,10 +620,9 @@ class CustomRNNLLM(NonTransformerLLM):
         return [await self.generate(p, temperature=temperature, max_tokens=max_tokens, **kwargs) for p in prompts]
 
     async def generate_batch_async(self, prompts: List[str], **kwargs) -> List[str]:
-        loop = asyncio.get_event_loop()
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            results = await asyncio.gather(*[loop.run_in_executor(pool, lambda p=p: asyncio.run(self.generate(p, **kwargs))) for p in prompts])
-        return results
+        # Avoid `asyncio.run()` (nested event loops). We are already inside async code,
+        # so directly gather coroutines on the current event loop.
+        return await asyncio.gather(*[self.generate(p, **kwargs) for p in prompts])
 
     async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
         yield await self.generate(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs)

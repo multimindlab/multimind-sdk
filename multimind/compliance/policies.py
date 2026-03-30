@@ -4,8 +4,12 @@ Compliance policy engine implementation.
 
 from typing import List, Dict, Any, Optional, Callable
 from datetime import datetime
+import logging
+import uuid
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig, Regulation, RiskLevel
+
+logger = logging.getLogger(__name__)
 
 class PolicyRule(BaseModel):
     """Policy rule model."""
@@ -84,7 +88,7 @@ class CompliancePolicyEngine(BaseModel):
             if not self._evaluate_conditions(rule, context):
                 # Create violation
                 violation = PolicyViolation(
-                    violation_id=f"viol_{len(self.violations) + 1}",
+                    violation_id=f"viol_{uuid.uuid4()}",
                     rule_id=rule.rule_id,
                     details={
                         "context": context,
@@ -163,7 +167,8 @@ class CompliancePolicyEngine(BaseModel):
         operator = condition.get("operator")
         value = condition.get("value")
         
-        if not all([field, operator, value]):
+        # `value` may validly be falsy (e.g., 0, False, ""), so only field/operator are required.
+        if not field or not operator or "value" not in condition:
             return False
         
         context_value = context.get(field)
@@ -173,16 +178,28 @@ class CompliancePolicyEngine(BaseModel):
         elif operator == "not_equals":
             return context_value != value
         elif operator == "contains":
+            if context_value is None:
+                return False
             return value in context_value
         elif operator == "not_contains":
+            if context_value is None:
+                return True
             return value not in context_value
         elif operator == "greater_than":
+            if context_value is None:
+                return False
             return context_value > value
         elif operator == "less_than":
+            if context_value is None:
+                return False
             return context_value < value
         elif operator == "in":
+            if value is None:
+                return False
             return context_value in value
         elif operator == "not_in":
+            if value is None:
+                return True
             return context_value not in value
         
         return False
@@ -199,13 +216,17 @@ class CompliancePolicyEngine(BaseModel):
             action_params = action.get("params", {})
             
             if action_type == "log":
-                # Log violation (could be replaced with a real logger)
-                print(f"[COMPLIANCE LOG] Violation: {violation.violation_id} | Rule: {rule.name} | Details: {violation.details}")
+                logger.warning(
+                    "[COMPLIANCE LOG] Violation: %s | Rule: %s | Details: %s",
+                    violation.violation_id,
+                    rule.name,
+                    violation.details,
+                )
             elif action_type == "notify":
                 # Simulate sending a notification (could be email, webhook, etc.)
                 recipient = action_params.get("recipient", "admin")
                 message = action_params.get("message", f"Policy violation: {violation.violation_id}")
-                print(f"[COMPLIANCE NOTIFY] To: {recipient} | Message: {message}")
+                logger.info("[COMPLIANCE NOTIFY] To: %s | Message: %s", recipient, message)
             elif action_type == "block":
                 # Block operation by raising an exception
                 raise Exception(f"Operation blocked due to policy violation: {violation.violation_id} (Rule: {rule.name})")

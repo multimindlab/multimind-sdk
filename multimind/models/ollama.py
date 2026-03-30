@@ -20,9 +20,23 @@ class OllamaModel(BaseLLM):
     ):
         super().__init__(model_name, **kwargs)
         self.base_url = base_url.rstrip("/")
+        self._timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
+        self._session: Optional[aiohttp.ClientSession] = None
         # Set default cost and latency for local models
         self.cost_per_token = 0.0
         self.avg_latency = 0.1  # 100ms default latency
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """Get or create a reusable aiohttp session."""
+        if self._session is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=self._timeout)
+        return self._session
+
+    async def close(self) -> None:
+        """Close the reusable HTTP session."""
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+        self._session = None
 
     async def _make_request_stream(
         self,
@@ -46,13 +60,12 @@ class OllamaModel(BaseLLM):
         data: Dict[str, Any],
     ) -> AsyncGenerator[bytes, None]:
         """Low-level streaming request with retry for connection issues."""
-        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
-        async with aiohttp.ClientSession() as session:
-            url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data, timeout=timeout) as response:
-                response.raise_for_status()
-                async for line in response.content:
-                    yield line
+        session = await self._get_session()
+        url = f"{self.base_url}/{endpoint}"
+        async with session.post(url, json=data) as response:
+            response.raise_for_status()
+            async for line in response.content:
+                yield line
 
     async def _make_request(
         self,
@@ -74,12 +87,11 @@ class OllamaModel(BaseLLM):
         data: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Low-level JSON request with retry for connection issues."""
-        timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
-        async with aiohttp.ClientSession() as session:
-            url = f"{self.base_url}/{endpoint}"
-            async with session.post(url, json=data, timeout=timeout) as response:
-                response.raise_for_status()
-                return await response.json()
+        session = await self._get_session()
+        url = f"{self.base_url}/{endpoint}"
+        async with session.post(url, json=data) as response:
+            response.raise_for_status()
+            return await response.json()
 
     async def generate(
         self,

@@ -271,8 +271,17 @@ class ComplianceVisualizer:
                         'score': score
                     })
         
+        if not violations:
+            return go.Figure()
+
         df = pd.DataFrame(violations)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        df = df[df['timestamp'].notna()]
+        if len(df) == 0:
+            return go.Figure()
+        df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
+        df = df[df['timestamp'].notna()]
+        if len(df) == 0:
+            return go.Figure()
         
         fig = px.scatter(
             df,

@@ -220,7 +220,7 @@ class HuggingFaceHandler(ModelHandler):
         prompt = "\n".join([f"{m['role']}: {m['content']}" for m in messages])
         
         # Run in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         response = await loop.run_in_executor(
             None,
             self._generate_local,

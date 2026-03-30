@@ -52,6 +52,15 @@ from ..models.base import BaseLLM
 from ..embeddings.embedding import EmbeddingModel, EmbeddingConfig
 from ..vector_store import VectorStore, VectorStoreConfig
 
+# Fallback tokenizer used when `tiktoken` isn't available.
+# It approximates "tokens" using whitespace-separated words.
+class _FallbackTokenizer:
+    def encode(self, text: str) -> List[str]:
+        return text.split()
+
+    def decode(self, tokens: List[str]) -> str:
+        return " ".join(tokens)
+
 # Try to import Redis and Redis search modules, but handle gracefully if not available
 try:
     import redis
@@ -142,6 +151,7 @@ class ContextManager:
             **kwargs: Additional parameters
         """
         # Check for required dependencies
+        self.logger = logging.getLogger(__name__)
         missing_deps = []
         if not FAISS_AVAILABLE:
             missing_deps.append("faiss")
@@ -155,7 +165,10 @@ class ContextManager:
             missing_deps.append("transformers")
         
         if missing_deps:
-            logger.warning(f"Some dependencies are missing: {missing_deps}. Some features may not work properly.")
+            self.logger.warning(
+                "Some dependencies are missing: %s. Some features may not work properly.",
+                missing_deps,
+            )
         
         self.embedding_model = embedding_model
         self.llm = llm
@@ -164,10 +177,13 @@ class ContextManager:
         self.kwargs = kwargs
         
         # Initialize tokenizer
-        self.tokenizer = tiktoken.get_encoding("cl100k_base")
-        
-        # Initialize logging
-        self.logger = logging.getLogger(__name__)
+        if TIKTOKEN_AVAILABLE and tiktoken is not None:
+            self.tokenizer = tiktoken.get_encoding("cl100k_base")
+        else:
+            self.logger.warning(
+                "tiktoken is not available; using fallback tokenizer (word-based)."
+            )
+            self.tokenizer = _FallbackTokenizer()
         
         # Initialize context window
         self.window = ContextWindow(

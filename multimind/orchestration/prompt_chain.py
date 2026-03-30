@@ -4,6 +4,9 @@ Prompt chaining functionality for orchestrating complex LLM interactions.
 
 from typing import List, Dict, Any, Optional, Callable
 from multimind.models.base import BaseLLM
+import logging
+
+logger = logging.getLogger(__name__)
 
 class PromptChain:
     """Manages a sequence of prompts and their execution."""
@@ -42,9 +45,18 @@ class PromptChain:
         self.results = []
 
         for prompt_info in self.prompts:
-            # Check condition if presen
-            if prompt_info["condition"] and not prompt_info["condition"](context):
-                continue
+            # Check condition (if present) safely.
+            condition = prompt_info.get("condition")
+            if condition is not None:
+                if not callable(condition):
+                    # Avoid crashing when condition is misconfigured.
+                    logger.warning(
+                        "Prompt condition is not callable (name=%s); skipping prompt.",
+                        prompt_info.get("name"),
+                    )
+                    continue
+                if not condition(context):
+                    continue
 
             # Format prompt with variables
             formatted_prompt = self._format_prompt(prompt_info["prompt"], context)
