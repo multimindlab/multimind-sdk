@@ -5,8 +5,24 @@ This implementation is similar to LangChain's token buffer but with additional f
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import tiktoken
+import logging
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
+
+try:
+    import tiktoken
+    TIKTOKEN_AVAILABLE = True
+except ImportError:
+    tiktoken = None
+    TIKTOKEN_AVAILABLE = False
+
+
+class _FallbackTokenizer:
+    """Simple fallback tokenizer used when tiktoken is unavailable."""
+
+    def encode(self, text: str):
+        return text.split()
 
 class TokenBufferMemory(BaseMemory):
     """Memory that manages content based on token counts."""
@@ -27,7 +43,20 @@ class TokenBufferMemory(BaseMemory):
         self.relevance_threshold = relevance_threshold
         
         # Initialize tokenizer
-        self.tokenizer = tiktoken.encoding_for_model(token_model)
+        if TIKTOKEN_AVAILABLE and tiktoken is not None:
+            try:
+                self.tokenizer = tiktoken.encoding_for_model(token_model)
+            except KeyError:
+                logger.warning(
+                    "Unknown tiktoken model '%s'; falling back to cl100k_base.",
+                    token_model,
+                )
+                self.tokenizer = tiktoken.get_encoding("cl100k_base")
+        else:
+            logger.warning(
+                "tiktoken is not available; using fallback tokenizer (word-based)."
+            )
+            self.tokenizer = _FallbackTokenizer()
         
         # Memory storage
         self.messages: List[Dict[str, Any]] = []

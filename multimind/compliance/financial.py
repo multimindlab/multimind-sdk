@@ -3,6 +3,7 @@ Financial compliance implementation for PCI DSS, SOX, and other financial regula
 """
 
 from typing import List, Dict, Any, Optional
+import uuid
 from datetime import datetime
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig, ComplianceMetadata
@@ -236,7 +237,8 @@ class FinancialCompliance(BaseModel):
     ) -> Dict[str, Any]:
         """Generate financial compliance report."""
         report = {
-            "report_id": f"report_{len(self.audit_log) + 1}",
+            # Use UUID to avoid non-unique IDs if audit_log is pruned/reset.
+            "report_id": f"report_{uuid.uuid4()}",
             "type": report_type,
             "generated_at": datetime.now(),
             "period": {

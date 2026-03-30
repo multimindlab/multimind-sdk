@@ -171,7 +171,7 @@ class MetricsCollector:
         if filepath is None:
             filepath = self.log_dir / f"metrics_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         
-        metrics_data = [m.dict() for m in self.metrics]
+        metrics_data = [m.model_dump() for m in self.metrics]
         with open(filepath, 'w') as f:
             json.dump(metrics_data, f, indent=2, default=str)
         

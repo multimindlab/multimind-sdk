@@ -2,7 +2,7 @@
 Main router interface for model selection and request routing.
 """
 
-from typing import List, Dict, Any, Optional, Type
+from typing import List, Dict, Any, Optional, Type, Tuple, Union
 from ..models.base import BaseLLM
 from .strategy import RoutingStrategy, CostAwareStrategy, LatencyAwareStrategy, HybridStrategy, ParetoFrontStrategy, LearningBasedStrategy
 from .fallback import FallbackHandler
@@ -112,8 +112,12 @@ class ModelRouter:
         model_name: Optional[str] = None,
         explain: bool = False,
         **kwargs
-    ) -> str:
-        """Generate text using the appropriate model. If explain=True, returns (result, explanation)."""
+    ) -> Union[str, Tuple[Optional[str], Optional[str]]]:
+        """Generate text using the appropriate model.
+
+        If `explain=False`: returns `str`.
+        If `explain=True`: returns `(result, explanation)` or `(None, explanation)` on hard failure.
+        """
         model = await self.get_model(model_name, explain=explain, **kwargs)
         try:
             result = await model.generate(prompt, **kwargs)
@@ -136,8 +140,12 @@ class ModelRouter:
         model_name: Optional[str] = None,
         explain: bool = False,
         **kwargs
-    ) -> str:
-        """Generate chat completion using the appropriate model. If explain=True, returns (result, explanation)."""
+    ) -> Union[str, Tuple[Optional[str], Optional[str]]]:
+        """Generate chat completion using the appropriate model.
+
+        If `explain=False`: returns `str`.
+        If `explain=True`: returns `(result, explanation)` or `(None, explanation)` on hard failure.
+        """
         model = await self.get_model(model_name, explain=explain, **kwargs)
         try:
             result = await model.chat(messages, **kwargs)
