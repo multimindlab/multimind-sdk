@@ -1,5 +1,10 @@
 from typing import List, Callable, Any, Dict
 
+
+class ReasoningChainExecutionError(RuntimeError):
+    """Raised when a reasoning chain step fails."""
+
+
 class ReasoningStep:
     """
     Represents a single step in a reasoning/toolchain. Can be a model call, tool call, or custom function.
@@ -21,13 +26,29 @@ class ReasoningChain:
         self.hooks = []  # List of callables: hook(step, input, output)
     def add_hook(self, hook: Callable[[ReasoningStep, Any, Any], None]):
         self.hooks.append(hook)
+
     def run(self, input_data: Any, context: Dict = None):
         context = context or {}
         data = input_data
         for step in self.steps:
-            output = step(data, context=context)
+            try:
+                output = step(data, context=context)
+            except Exception as e:
+                context["last_failed_step"] = step.name
+                context.setdefault("errors", []).append(
+                    {"step": step.name, "error": str(e)}
+                )
+                raise ReasoningChainExecutionError(
+                    f"Reasoning chain failed at step '{step.name}': {e}"
+                ) from e
+
             for hook in self.hooks:
-                hook(step, data, output)
+                try:
+                    hook(step, data, output)
+                except Exception as e:
+                    context.setdefault("hook_errors", []).append(
+                        {"step": step.name, "hook": getattr(hook, "__name__", str(hook)), "error": str(e)}
+                    )
             data = output
         return data
 

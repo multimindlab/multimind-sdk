@@ -4,14 +4,46 @@ Accessibility and anti-discrimination compliance implementation.
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import logging
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig, Regulation
+
+logger = logging.getLogger("AccessibilityCompliance")
 
 class AccessibilityCompliance(BaseModel):
     """Accessibility and anti-discrimination compliance manager."""
     
     config: GovernanceConfig
     assessment_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+
+    @staticmethod
+    def _safe_bool(value: Any) -> bool:
+        """Strict boolean parser for evidence flags."""
+        return value is True
+
+    def _get_system_evidence(self, system_id: str) -> Dict[str, Any]:
+        """Return evidence for a system from custom governance settings."""
+        evidence_registry = self.config.custom_settings.get("accessibility_evidence", {})
+        evidence = evidence_registry.get(system_id, {})
+        if not evidence:
+            logger.warning("No accessibility evidence found for system: %s", system_id)
+        return evidence
+
+    @staticmethod
+    def _bool_control_status(
+        evidence: Dict[str, Any],
+        controls: List[str],
+        category: str
+    ) -> Dict[str, Any]:
+        """Evaluate controls backed by boolean evidence flags."""
+        missing_controls = [control for control in controls if not AccessibilityCompliance._safe_bool(evidence.get(control))]
+        status = "compliant" if not missing_controls else "non_compliant"
+        return {
+            "category": category,
+            "controls": controls,
+            "status": status,
+            "missing_controls": missing_controls
+        }
     
     async def validate_wcag_compliance(
         self,
@@ -20,6 +52,12 @@ class AccessibilityCompliance(BaseModel):
         version: str = "2.1"
     ) -> Dict[str, Any]:
         """Validate compliance with WCAG 2.1 guidelines."""
+        evidence = self._get_system_evidence(system_id)
+        if version != "2.1":
+            logger.warning(
+                "Unsupported WCAG version '%s'. Falling back to 2.1 controls.",
+                version,
+            )
         assessment = {
             "assessment_id": assessment_id,
             "framework": "WCAG",
@@ -33,7 +71,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "text_alternatives",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "alt_text",
                                 "captions",
@@ -44,7 +81,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "time_based_media",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "captions",
                                 "audio_descriptions",
@@ -55,7 +91,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "adaptable",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "content_structure",
                                 "presentation_control",
@@ -65,7 +100,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "distinguishable",
                             "level": "AA",
-                            "status": "compliant",
                             "controls": [
                                 "color_contrast",
                                 "audio_control",
@@ -81,7 +115,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "keyboard_accessible",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "keyboard_navigation",
                                 "no_keyboard_trap",
@@ -92,7 +125,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "enough_time",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "timing_adjustable",
                                 "pause_stop_hide",
@@ -103,7 +135,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "seizures",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "three_flashes",
                                 "three_flashes_below_threshold"
@@ -112,7 +143,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "navigable",
                             "level": "AA",
-                            "status": "compliant",
                             "controls": [
                                 "bypass_blocks",
                                 "page_titled",
@@ -128,7 +158,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "readable",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "language_of_page",
                                 "language_of_parts",
@@ -139,7 +168,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "predictable",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "on_focus",
                                 "on_input",
@@ -150,7 +178,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "input_assistance",
                             "level": "AA",
-                            "status": "compliant",
                             "controls": [
                                 "error_identification",
                                 "labels_instructions",
@@ -166,7 +193,6 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "compatible",
                             "level": "A",
-                            "status": "compliant",
                             "controls": [
                                 "parsing",
                                 "name_role_value",
@@ -178,7 +204,25 @@ class AccessibilityCompliance(BaseModel):
             ],
             "overall_status": "compliant"
         }
-        
+
+        missing_controls = []
+        for principle in assessment["requirements"]:
+            for guideline in principle["guidelines"]:
+                guideline_missing = [
+                    control for control in guideline["controls"]
+                    if not self._safe_bool(evidence.get(control))
+                ]
+                guideline["missing_controls"] = guideline_missing
+                guideline["status"] = "compliant" if not guideline_missing else "non_compliant"
+                missing_controls.extend(guideline_missing)
+
+        assessment["overall_status"] = "compliant" if not missing_controls else "non_compliant"
+        assessment["summary"] = {
+            "checked_controls": len(set(c for p in assessment["requirements"] for g in p["guidelines"] for c in g["controls"])),
+            "missing_controls": sorted(set(missing_controls)),
+            "missing_count": len(set(missing_controls)),
+        }
+
         self.assessment_records[assessment_id] = assessment
         return assessment
     
@@ -189,55 +233,58 @@ class AccessibilityCompliance(BaseModel):
         title: str = "III"
     ) -> Dict[str, Any]:
         """Validate compliance with Americans with Disabilities Act."""
+        evidence = self._get_system_evidence(system_id)
+        requirements = [
+            self._bool_control_status(
+                evidence,
+                [
+                    "auxiliary_aids",
+                    "qualified_interpreters",
+                    "telecommunications",
+                    "video_remote_interpreting",
+                ],
+                "effective_communication",
+            ),
+            self._bool_control_status(
+                evidence,
+                [
+                    "policy_modifications",
+                    "service_animals",
+                    "mobility_devices",
+                    "auxiliary_aids",
+                ],
+                "reasonable_modifications",
+            ),
+            self._bool_control_status(
+                evidence,
+                [
+                    "physical_access",
+                    "alternative_methods",
+                    "service_animals",
+                    "auxiliary_aids",
+                ],
+                "program_accessibility",
+            ),
+            self._bool_control_status(
+                evidence,
+                [
+                    "website_accessibility",
+                    "mobile_app_accessibility",
+                    "electronic_documents",
+                    "multimedia_accessibility",
+                ],
+                "digital_accessibility",
+            ),
+        ]
+        overall_status = "compliant" if all(r["status"] == "compliant" for r in requirements) else "non_compliant"
         assessment = {
             "assessment_id": assessment_id,
             "framework": "ADA",
             "title": title,
             "assessed_at": datetime.now(),
             "system_id": system_id,
-            "requirements": [
-                {
-                    "category": "effective_communication",
-                    "controls": [
-                        "auxiliary_aids",
-                        "qualified_interpreters",
-                        "telecommunications",
-                        "video_remote_interpreting"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "reasonable_modifications",
-                    "controls": [
-                        "policy_modifications",
-                        "service_animals",
-                        "mobility_devices",
-                        "auxiliary_aids"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "program_accessibility",
-                    "controls": [
-                        "physical_access",
-                        "alternative_methods",
-                        "service_animals",
-                        "auxiliary_aids"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "digital_accessibility",
-                    "controls": [
-                        "website_accessibility",
-                        "mobile_app_accessibility",
-                        "electronic_documents",
-                        "multimedia_accessibility"
-                    ],
-                    "status": "compliant"
-                }
-            ],
-            "overall_status": "compliant"
+            "requirements": requirements,
+            "overall_status": overall_status
         }
         
         self.assessment_records[assessment_id] = assessment
@@ -250,60 +297,48 @@ class AccessibilityCompliance(BaseModel):
         jurisdiction: str
     ) -> Dict[str, Any]:
         """Validate compliance with Equality Act requirements."""
+        evidence = self._get_system_evidence(system_id)
+        requirements = [
+            self._bool_control_status(
+                evidence,
+                [
+                    "age",
+                    "disability",
+                    "gender_reassignment",
+                    "marriage_civil_partnership",
+                    "pregnancy_maternity",
+                    "race",
+                    "religion_belief",
+                    "sex",
+                    "sexual_orientation",
+                ],
+                "protected_characteristics",
+            ),
+            self._bool_control_status(
+                evidence,
+                ["direct_discrimination", "indirect_discrimination", "harassment", "victimisation"],
+                "prohibited_conduct",
+            ),
+            self._bool_control_status(
+                evidence,
+                ["physical_changes", "auxiliary_aids", "service_provision", "policy_changes"],
+                "reasonable_adjustments",
+            ),
+            self._bool_control_status(
+                evidence,
+                ["encouragement", "training", "outreach", "monitoring"],
+                "positive_action",
+            ),
+        ]
+        overall_status = "compliant" if all(r["status"] == "compliant" for r in requirements) else "non_compliant"
         assessment = {
             "assessment_id": assessment_id,
             "framework": "EQUALITY_ACT",
             "jurisdiction": jurisdiction,
             "assessed_at": datetime.now(),
             "system_id": system_id,
-            "requirements": [
-                {
-                    "category": "protected_characteristics",
-                    "controls": [
-                        "age",
-                        "disability",
-                        "gender_reassignment",
-                        "marriage_civil_partnership",
-                        "pregnancy_maternity",
-                        "race",
-                        "religion_belief",
-                        "sex",
-                        "sexual_orientation"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "prohibited_conduct",
-                    "controls": [
-                        "direct_discrimination",
-                        "indirect_discrimination",
-                        "harassment",
-                        "victimisation"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "reasonable_adjustments",
-                    "controls": [
-                        "physical_changes",
-                        "auxiliary_aids",
-                        "service_provision",
-                        "policy_changes"
-                    ],
-                    "status": "compliant"
-                },
-                {
-                    "category": "positive_action",
-                    "controls": [
-                        "encouragement",
-                        "training",
-                        "outreach",
-                        "monitoring"
-                    ],
-                    "status": "compliant"
-                }
-            ],
-            "overall_status": "compliant"
+            "requirements": requirements,
+            "overall_status": overall_status
         }
         
         self.assessment_records[assessment_id] = assessment

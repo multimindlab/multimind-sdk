@@ -2,15 +2,21 @@
 Core configuration functionality for MultiMind
 """
 
+import logging
 import os
 from typing import Dict, Optional
+
+logger = logging.getLogger(__name__)
+
 # Optional pydantic-settings import
 try:
     from pydantic_settings import BaseSettings
     PYDANTIC_SETTINGS_AVAILABLE = True
 except ImportError:
     PYDANTIC_SETTINGS_AVAILABLE = False
-    print("Warning: pydantic-settings not available. Configuration features will be disabled.")
+    logger.warning(
+        "pydantic-settings not available. Configuration features will be disabled."
+    )
     # Fallback to pydantic BaseModel
     from pydantic import BaseModel as BaseSettings
 
@@ -97,7 +103,13 @@ class GatewayConfig(BaseSettings):
             "groq": self.groq,
             "huggingface": self.huggingface
         }
-        return model_map.get(model_name.lower(), self.openai)
+        normalized_name = model_name.lower()
+        if normalized_name not in model_map:
+            available_models = ", ".join(sorted(model_map.keys()))
+            raise ValueError(
+                f"Unknown model name '{model_name}'. Available models: {available_models}"
+            )
+        return model_map[normalized_name]
 
     @classmethod
     def validate(cls, value):

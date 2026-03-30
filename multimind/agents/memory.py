@@ -65,7 +65,7 @@ class AgentMemory:
                 "task": task,
                 "response": response,
                 # Prefer response timestamp because it reflects when the completion arrived.
-                "timestamp": resp_ts.isoformat() if isinstance(resp_ts, datetime) else datetime.now().isoformat(),
+                "timestamp": resp_ts.isoformat() if isinstance(resp_ts, datetime) else None,
                 "task_timestamp": task_ts.isoformat() if isinstance(task_ts, datetime) else None,
             })
         return history

@@ -5,6 +5,10 @@ Base classes for Mixture of Experts (MoE) implementation.
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional, Union
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Optional torch import for MoE base features
 try:
     import torch
@@ -12,7 +16,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. MoE base features will be disabled.")
+    logger.warning("PyTorch not available. MoE base features will be disabled.")
 
 import numpy as np
 
