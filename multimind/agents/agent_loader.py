@@ -16,6 +16,19 @@ class AgentLoader:
     def __init__(self, model_registry: Optional[Dict[str, BaseLLM]] = None):
         self.model_registry = model_registry or {}
         self.tool_registry: Dict[str, BaseTool] = {}
+        self._base_dir = Path.cwd().resolve()
+
+    def _resolve_safe_path(self, path: str) -> Path:
+        """Resolve and validate path stays under the loader base directory."""
+        candidate = Path(path).expanduser()
+        resolved = candidate.resolve()
+        try:
+            resolved.relative_to(self._base_dir)
+        except ValueError as e:
+            raise ValueError(
+                f"Path traversal detected. '{path}' escapes base directory '{self._base_dir}'."
+            ) from e
+        return resolved
 
     def register_model(self, name: str, model: BaseLLM) -> None:
         """Register a model for use in agents."""
@@ -32,23 +45,27 @@ class AgentLoader:
         tools: Optional[List[BaseTool]] = None
     ) -> Agent:
         """Load an agent from a configuration file."""
+        safe_config_path = self._resolve_safe_path(config_path)
+        if safe_config_path.suffix.lower() != ".json":
+            raise ValueError(f"Agent config must be a JSON file: {config_path}")
+
         # Load config
         try:
-            with open(config_path, "r", encoding="utf-8") as f:
+            with open(safe_config_path, "r", encoding="utf-8") as f:
                 config = json.load(f)
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"Agent config file not found: {config_path}") from e
+            raise FileNotFoundError(f"Agent config file not found: {safe_config_path}") from e
         except json.JSONDecodeError as e:
             raise ValueError(
-                f"Invalid JSON in agent config file: {config_path}. {e}"
+                f"Invalid JSON in agent config file: {safe_config_path}. {e}"
             ) from e
         except OSError as e:
             raise RuntimeError(
-                f"Failed to read agent config file: {config_path}. {e}"
+                f"Failed to read agent config file: {safe_config_path}. {e}"
             ) from e
 
         if not isinstance(config, dict):
-            raise ValueError(f"Agent config must be a JSON object: {config_path}")
+            raise ValueError(f"Agent config must be a JSON object: {safe_config_path}")
 
         # Validate config
         required_keys = {"model", "system_prompt"}
@@ -93,7 +110,9 @@ class AgentLoader:
     ) -> Dict[str, Agent]:
         """Load multiple agents from a directory of config files."""
         agents = {}
-        config_dir = Path(dir_path)
+        config_dir = self._resolve_safe_path(dir_path)
+        if not config_dir.is_dir():
+            raise FileNotFoundError(f"Agent config directory not found: {config_dir}")
 
         for config_file in config_dir.glob("*.json"):
             agent_name = config_file.stem

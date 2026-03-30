@@ -4,6 +4,7 @@ Routing strategies for model selection based on cost and latency.
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
+import logging
 try:
     from ..models.base import BaseLLM
 except ImportError:
@@ -13,6 +14,8 @@ except ImportError:
 import numpy as np
 import random
 
+logger = logging.getLogger(__name__)
+
 # Optional torch import for advanced strategies
 try:
     import torch
@@ -21,7 +24,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. Advanced routing strategies will be disabled.")
+    logger.warning("PyTorch not available. Advanced routing strategies will be disabled.")
 
 class RoutingStrategy(ABC):
     """Abstract base class for routing strategies."""
@@ -169,7 +172,10 @@ class ParetoFrontStrategy(RoutingStrategy):
         if not pareto_models:
             return None
         if self.secondary in self.objectives:
-            best = min(pareto_models, key=lambda m: getattr(values[models.index(m)], self.secondary, float('inf')))
+            best = min(
+                pareto_models,
+                key=lambda m: values[models.index(m)].get(self.secondary, float("inf")),
+            )
         else:
             best = pareto_models[0]
         return best

@@ -6,8 +6,7 @@ from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import json
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from .base import BaseMemory
 
 Base = declarative_base()

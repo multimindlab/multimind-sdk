@@ -169,11 +169,12 @@ class OpenAIModel(BaseLLM):
         if isinstance(text, str):
             text = [text]
 
-        embedding_model = kwargs.pop("model", "text-embedding-ada-002")
+        request_kwargs = dict(kwargs)
+        embedding_model = request_kwargs.pop("model", "text-embedding-ada-002")
         response = await self._embeddings_create(
             model=embedding_model,
             input=text,
-            **kwargs,
+            **request_kwargs,
         )
         embeddings = [item.embedding for item in response.data]
         return embeddings[0] if len(text) == 1 else embeddings

@@ -1,4 +1,8 @@
 from typing import Dict, List, Any, Optional, Union, Type
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Optional torch import for unified MoE features
 try:
     import torch
@@ -6,16 +10,13 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. Unified MoE features will be disabled.")
+    logger.warning("PyTorch not available. Unified MoE features will be disabled.")
 
 from abc import ABC, abstractmethod
 from .moe_layer import MoELayer
 from .moe_model import MoEModel
 from .moe import Expert, MoEBase, ExpertRouter
 from ..base import BaseLLM
-import logging
-
-logger = logging.getLogger(__name__)
 
 if TORCH_AVAILABLE:
     class UnifiedMoE(nn.Module):

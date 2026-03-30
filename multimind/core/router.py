@@ -6,10 +6,13 @@ from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel
 from enum import Enum
 import asyncio
+import logging
 import time
 from .provider import ProviderAdapter, GenerationResult, EmbeddingResult, ImageAnalysisResult
 from ..observability.metrics import MetricsCollector
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 class RoutingStrategy(str, Enum):
     """Routing strategies for provider selection."""
@@ -275,13 +278,13 @@ class Router:
             if remaining:
                 next_provider = self.performance_tracker.get_best_provider(remaining)
                 if self.fallback_policy.notify_user:
-                    print(self.fallback_policy.get_fallback_message(provider_name, last_error))
+                    logger.warning(self.fallback_policy.get_fallback_message(provider_name, last_error))
                 # Try next provider
                 config_copy = config.copy()
                 config_copy.preferred_providers = remaining
                 return await self._handle_single_provider(task_type, input_data, config_copy, use_adaptive_routing, **kwargs)
         if self.fallback_policy.notify_user:
-            print(self.fallback_policy.get_fallback_message(provider_name, last_error))
+            logger.warning(self.fallback_policy.get_fallback_message(provider_name, last_error))
         raise last_error
     
     async def _handle_ensemble(

@@ -4,6 +4,7 @@ Healthcare compliance implementation for HIPAA and HITECH.
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import uuid
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig, ComplianceMetadata, DataCategory
 
@@ -77,7 +78,8 @@ class HealthcareCompliance(BaseModel):
     ) -> Dict[str, Any]:
         """Report a PHI data breach."""
         breach = {
-            "breach_id": f"breach_{len(self.breach_log) + 1}",
+            # Use UUID to avoid non-unique breach IDs if the log is pruned/reset.
+            "breach_id": f"breach_{uuid.uuid4()}",
             "timestamp": datetime.now(),
             "breach_type": breach_type,
             "affected_data": affected_data,

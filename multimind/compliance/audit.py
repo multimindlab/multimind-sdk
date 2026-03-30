@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
 from .governance import GovernanceConfig
 import json
+import uuid
 
 class AuditEvent(BaseModel):
     """Audit event model."""
@@ -39,7 +40,8 @@ class ComplianceAuditLogger(BaseModel):
     ) -> AuditEvent:
         """Log a compliance audit event."""
         event = AuditEvent(
-            event_id=f"evt_{len(self.events) + 1}",
+            # Use a UUID to guarantee uniqueness even when events are cleaned up.
+            event_id=f"evt_{uuid.uuid4()}",
             event_type=event_type,
             user_id=user_id,
             system_id=system_id,

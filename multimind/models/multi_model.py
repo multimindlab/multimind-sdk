@@ -4,10 +4,13 @@ Enhanced Multi-model wrapper with intelligent model selection and routing.
 
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator, Tuple
 import asyncio
+import logging
 import time
 from datetime import datetime
 from .base import BaseLLM
 from .factory import ModelFactory
+
+logger = logging.getLogger(__name__)
 
 class ModelMetrics:
     """Class to track model performance metrics."""
@@ -79,8 +82,9 @@ class MultiModelWrapper(BaseLLM):
         self.model_weights = model_weights or {}
         self.auto_optimize = auto_optimize
         self.performance_window = performance_window
-        self.kwargs = kwargs
-        
+        # Snapshot for sub-models; do not reassign self.kwargs (set by BaseLLM.__init__).
+        self._model_factory_kwargs = dict(kwargs)
+
         # Initialize models and metrics
         self.models: Dict[str, BaseLLM] = {}
         self.model_metrics: Dict[str, ModelMetrics] = {}
@@ -93,22 +97,22 @@ class MultiModelWrapper(BaseLLM):
         try:
             self.models[self.primary_model] = self.model_factory.get_model(
                 self.primary_model,
-                **self.kwargs
+                **self._model_factory_kwargs
             )
             self.model_metrics[self.primary_model] = ModelMetrics()
         except Exception as e:
-            print(f"Warning: Failed to initialize primary model {self.primary_model}: {e}")
+            logger.warning(f"Failed to initialize primary model {self.primary_model}: {e}")
 
         # Initialize fallback models
         for model in self.fallback_models:
             try:
                 self.models[model] = self.model_factory.get_model(
                     model,
-                    **self.kwargs
+                    **self._model_factory_kwargs
                 )
                 self.model_metrics[model] = ModelMetrics()
             except Exception as e:
-                print(f"Warning: Failed to initialize fallback model {model}: {e}")
+                logger.warning(f"Failed to initialize fallback model {model}: {e}")
 
     def _analyze_task(self, task_type: str, **kwargs) -> Dict[str, float]:
         """

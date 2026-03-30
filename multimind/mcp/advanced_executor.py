@@ -252,11 +252,11 @@ class AdvancedMCPExecutor:
     class MetricsCollector:
         def record_step_execution(self, step_id: str, result: Any) -> None:
             """Record the execution of a step."""
-            print(f"Step {step_id} executed with result: {result}")
+            logger.debug(f"Step {step_id} executed with result: {result}")
 
         def collect(self, step_id: str, response: Any) -> None:
             """Collect metrics for a step."""
-            print(f"Metrics collected for step {step_id}: {response}")
+            logger.debug(f"Metrics collected for step {step_id}: {response}")
 
     def _get_step_inputs(
         self,

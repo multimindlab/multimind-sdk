@@ -1,3 +1,7 @@
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Optional torch import for advanced MoE features
 try:
     import torch
@@ -6,7 +10,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. Advanced MoE features will be disabled.")
+    logger.warning("PyTorch not available. Advanced MoE features will be disabled.")
 
 from typing import Dict, List, Any, Optional, Tuple
 import math

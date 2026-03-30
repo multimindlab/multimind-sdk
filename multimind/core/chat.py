@@ -47,27 +47,42 @@ class ChatSession(BaseModel):
         messages = self.messages[-max_messages:] if max_messages else self.messages
         return [{"role": msg.role, "content": msg.content} for msg in messages]
 
-    def export(self, format: str = "json") -> Union[str, Dict]:
+    def export(self, export_format: str = "json", **kwargs) -> Union[str, Dict]:
         """Export session to different formats"""
+        if "format" in kwargs:
+            # Backward compatibility for callers using the old parameter name.
+            export_format = kwargs["format"]
         session_data = self.model_dump(mode="json")
-        if format == "json":
+        if export_format == "json":
             return json.dumps(session_data)
-        elif format == "dict":
+        elif export_format == "dict":
             return session_data
         else:
-            raise ValueError(f"Unsupported export format: {format}")
+            raise ValueError(f"Unsupported export format: {export_format}")
 
     @classmethod
     def from_file(cls, file_path: Union[str, Path]) -> "ChatSession":
         """Load session from file"""
-        with open(file_path, "r") as f:
-            data = json.load(f)
+        file_path = Path(file_path)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"Chat session file not found: {file_path}") from e
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in chat session file: {file_path}") from e
+
+        try:
             # Convert string timestamps back to datetime
             for key in ["created_at", "updated_at"]:
-                data[key] = datetime.fromisoformat(data[key])
-            for msg in data["messages"]:
-                msg["timestamp"] = datetime.fromisoformat(msg["timestamp"])
+                if key in data and isinstance(data[key], str):
+                    data[key] = datetime.fromisoformat(data[key])
+            for msg in data.get("messages", []):
+                if isinstance(msg, dict) and isinstance(msg.get("timestamp"), str):
+                    msg["timestamp"] = datetime.fromisoformat(msg["timestamp"])
             return cls(**data)
+        except Exception as e:
+            raise ValueError(f"Invalid chat session structure in file: {file_path}") from e
 
     def save(self, directory: Union[str, Path]) -> Path:
         """Save session to file"""
