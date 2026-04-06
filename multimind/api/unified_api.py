@@ -2,7 +2,7 @@
 Unified API endpoint for multi-modal processing with MoE support.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Header
 from pydantic import BaseModel, Field
 from typing import Dict, List, Any, Optional, Union
 import asyncio
@@ -19,8 +19,40 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Unified Multi-Modal API")
 
+API_KEYS = os.getenv("API_KEYS", "").split(",") if os.getenv("API_KEYS") else []
+
+
+def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> bool:
+    """Verify the API key from request header."""
+    if not API_KEYS:
+        return True
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    if api_key not in API_KEYS:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return True
+
 # Reuse a single factory across requests to avoid re-creating model caches.
 _MODEL_FACTORY = ModelFactory()
+
+_ROUTER = None
+_WORKFLOW_REGISTRY = None
+
+
+def _get_router():
+    global _ROUTER
+    if _ROUTER is None:
+        from ..router.multi_modal_router import MultiModalRouter
+        _ROUTER = MultiModalRouter()
+    return _ROUTER
+
+
+def _get_workflow_registry():
+    global _WORKFLOW_REGISTRY
+    if _WORKFLOW_REGISTRY is None:
+        from .mcp.registry import WorkflowRegistry
+        _WORKFLOW_REGISTRY = WorkflowRegistry()
+    return _WORKFLOW_REGISTRY
 
 
 class _TextExpertAdapter(Expert):
@@ -169,16 +201,13 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
     return experts
 
 @app.post("/v1/process", response_model=UnifiedResponse)
-async def process_request(request: UnifiedRequest):
+async def process_request(request: UnifiedRequest, authenticated: bool = Depends(verify_api_key)):
     """Process multi-modal request using either MoE or router."""
     try:
-        # Import here to avoid circular imports
-        from ..router.multi_modal_router import MultiModalRouter, MultiModalRequest
-        from .mcp.registry import WorkflowRegistry
-        
-        # Initialize components
-        router = MultiModalRouter()
-        workflow_registry = WorkflowRegistry()
+        from ..router.multi_modal_router import MultiModalRequest
+
+        router = _get_router()
+        workflow_registry = _get_workflow_registry()
         
         # Convert inputs to router format (support multiple inputs per modality)
         content: Dict[str, Any] = {}
@@ -288,32 +317,26 @@ async def process_request(request: UnifiedRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/v1/models")
-async def list_models():
+async def list_models(authenticated: bool = Depends(verify_api_key)):
     """List available models and their capabilities."""
-    # Import here to avoid circular imports
-    from ..router.multi_modal_router import MultiModalRouter
-    router = MultiModalRouter()
-    
+    router = _get_router()
+
     models = {}
     for modality, model_dict in router.modality_registry.items():
         models[modality] = list(model_dict.keys())
     return {"models": models}
 
 @app.get("/v1/workflows")
-async def list_workflows():
+async def list_workflows(authenticated: bool = Depends(verify_api_key)):
     """List available MCP workflows."""
-    # Import here to avoid circular imports
-    from .mcp.registry import WorkflowRegistry
-    workflow_registry = WorkflowRegistry()
+    workflow_registry = _get_workflow_registry()
     return {"workflows": workflow_registry.list_workflows()}
 
 @app.get("/v1/metrics")
-async def get_metrics():
+async def get_metrics(authenticated: bool = Depends(verify_api_key)):
     """Get performance metrics for models."""
-    # Import here to avoid circular imports
-    from ..router.multi_modal_router import MultiModalRouter
-    router = MultiModalRouter()
-    
+    router = _get_router()
+
     return {
         "costs": router.cost_tracker.costs,
         "performance": router.performance_metrics.metrics

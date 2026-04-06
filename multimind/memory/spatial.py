@@ -5,11 +5,15 @@ Spatial memory implementation that manages spatial relationships and locations.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class SpatialMemory(BaseMemory):
     """Memory that manages spatial relationships and locations."""
@@ -196,7 +200,7 @@ class SpatialMemory(BaseMemory):
             location["metadata"]["analysis_results"] = analysis
             
         except Exception as e:
-            print(f"Error analyzing spatial info: {e}")
+            logger.error(f"Error analyzing spatial info: {e}")
 
     async def _find_relationships(self, location_id: str) -> None:
         """Find spatial relationships between locations."""
@@ -296,7 +300,7 @@ class SpatialMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return None
 
     async def _update_clusters(self) -> None:
@@ -447,7 +451,7 @@ class SpatialMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error validating location: {e}")
+            logger.error(f"Error validating location: {e}")
 
     async def _maintain_location_limit(self) -> None:
         """Maintain location limit by removing least important locations."""

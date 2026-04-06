@@ -5,6 +5,7 @@ Hybrid memory implementation that combines multiple memory types with intelligen
 from typing import List, Dict, Any, Optional, Type, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 import zlib
 import base64
 from pathlib import Path
@@ -18,6 +19,9 @@ from .knowledge_graph import KnowledgeGraphMemory
 from .time_weighted import TimeWeightedMemory
 from .token_buffer import TokenBufferMemory
 from .dnc import DNCMemory
+
+logger = logging.getLogger(__name__)
+
 
 class HybridMemory(BaseMemory):
     """Memory that combines multiple memory types with intelligent routing."""
@@ -265,7 +269,7 @@ class HybridMemory(BaseMemory):
             return routing["selected_memories"]
 
         except Exception as e:
-            print(f"Error routing message: {e}")
+            logger.error(f"Error routing message: {e}")
             return list(self.memories.keys())
 
     async def _update_learning(self, message: Dict[str, str], routed_memories: List[str]) -> None:
@@ -305,7 +309,7 @@ class HybridMemory(BaseMemory):
                     self.memory_configs[memory_name].update(update_data)
 
         except Exception as e:
-            print(f"Error updating learning: {e}")
+            logger.error(f"Error updating learning: {e}")
 
     async def _analyze_memories(self) -> None:
         """Analyze memory performance and patterns."""
@@ -339,7 +343,7 @@ class HybridMemory(BaseMemory):
             self.last_analysis = datetime.now()
 
         except Exception as e:
-            print(f"Error analyzing memories: {e}")
+            logger.error(f"Error analyzing memories: {e}")
 
     async def _optimize_memories(self) -> None:
         """Optimize memory configurations."""
@@ -369,7 +373,7 @@ class HybridMemory(BaseMemory):
             self.last_optimization = datetime.now()
 
         except Exception as e:
-            print(f"Error optimizing memories: {e}")
+            logger.error(f"Error optimizing memories: {e}")
 
     async def _update_metadata(self) -> None:
         """Update memory metadata."""
@@ -404,7 +408,7 @@ class HybridMemory(BaseMemory):
             self.last_metadata = datetime.now()
 
         except Exception as e:
-            print(f"Error updating metadata: {e}")
+            logger.error(f"Error updating metadata: {e}")
 
     async def _analyze_cross_memory(self) -> None:
         """Analyze relationships between different memory types."""
@@ -442,7 +446,7 @@ class HybridMemory(BaseMemory):
             self.last_cross_memory = datetime.now()
 
         except Exception as e:
-            print(f"Error analyzing cross-memory: {e}")
+            logger.error(f"Error analyzing cross-memory: {e}")
 
     async def _consolidate_memories(self) -> None:
         """Consolidate memory contents."""
@@ -474,7 +478,7 @@ class HybridMemory(BaseMemory):
             self.last_consolidation = datetime.now()
 
         except Exception as e:
-            print(f"Error consolidating memories: {e}")
+            logger.error(f"Error consolidating memories: {e}")
 
     async def _validate_memories(self) -> None:
         """Validate memory contents and configurations."""
@@ -506,7 +510,7 @@ class HybridMemory(BaseMemory):
             self.last_validation = datetime.now()
 
         except Exception as e:
-            print(f"Error validating memories: {e}")
+            logger.error(f"Error validating memories: {e}")
 
     async def _evolve_memories(self) -> None:
         """Evolve memory configurations and relationships."""
@@ -538,7 +542,7 @@ class HybridMemory(BaseMemory):
             self.last_evolution = datetime.now()
 
         except Exception as e:
-            print(f"Error evolving memories: {e}")
+            logger.error(f"Error evolving memories: {e}")
 
     async def _create_backup(self) -> None:
         """Create backup of memory state."""
@@ -574,7 +578,7 @@ class HybridMemory(BaseMemory):
             self.last_backup = datetime.now()
 
         except Exception as e:
-            print(f"Error creating backup: {e}")
+            logger.error(f"Error creating backup: {e}")
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all memory types."""

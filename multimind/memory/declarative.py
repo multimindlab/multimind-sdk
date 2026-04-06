@@ -5,11 +5,14 @@ Declarative memory implementation that manages factual knowledge with verificati
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
 
 class DeclarativeMemory(BaseMemory):
     """Memory that manages factual knowledge with verification and confidence scoring."""
@@ -284,7 +287,7 @@ class DeclarativeMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error verifying fact: {e}")
+            logger.error(f"Error verifying fact: {e}")
         
         self.last_verification = datetime.now()
 
@@ -324,7 +327,7 @@ class DeclarativeMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error checking consistency: {e}")
+            logger.error(f"Error checking consistency: {e}")
         
         self.last_consistency = datetime.now()
 
@@ -369,7 +372,7 @@ class DeclarativeMemory(BaseMemory):
             }
             
         except Exception as e:
-            print(f"Error integrating knowledge: {e}")
+            logger.error(f"Error integrating knowledge: {e}")
         
         self.last_integration = datetime.now()
 
@@ -416,7 +419,7 @@ class DeclarativeMemory(BaseMemory):
             }
             
         except Exception as e:
-            print(f"Error performing semantic reasoning: {e}")
+            logger.error(f"Error performing semantic reasoning: {e}")
         
         self.last_reasoning = datetime.now()
 
@@ -458,7 +461,7 @@ class DeclarativeMemory(BaseMemory):
             fact["metadata"]["uncertainty_results"] = uncertainty
             
         except Exception as e:
-            print(f"Error updating uncertainty measures: {e}")
+            logger.error(f"Error updating uncertainty measures: {e}")
         
         self.last_uncertainty = datetime.now()
 
@@ -497,7 +500,7 @@ class DeclarativeMemory(BaseMemory):
             fact["metadata"]["contradiction_results"] = contradiction
             
         except Exception as e:
-            print(f"Error detecting contradictions: {e}")
+            logger.error(f"Error detecting contradictions: {e}")
         
         self.last_contradiction = datetime.now()
 
@@ -598,7 +601,7 @@ class DeclarativeMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error validating fact: {e}")
+            logger.error(f"Error validating fact: {e}")
 
     async def _maintain_fact_limit(self) -> None:
         """Maintain fact limit by removing least important facts."""

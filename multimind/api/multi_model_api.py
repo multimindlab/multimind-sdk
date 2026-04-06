@@ -3,7 +3,8 @@ FastAPI-based API interface for the MultiModelWrapper.
 """
 
 import logging
-from fastapi import FastAPI, HTTPException
+import os
+from fastapi import FastAPI, HTTPException, Depends, Header
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Union
 import asyncio
@@ -15,6 +16,19 @@ from ..models.multi_model import MultiModelWrapper
 
 app = FastAPI(title="Multi-Model API")
 logger = logging.getLogger(__name__)
+
+API_KEYS = os.getenv("API_KEYS", "").split(",") if os.getenv("API_KEYS") else []
+
+
+def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> bool:
+    """Verify the API key from request header."""
+    if not API_KEYS:
+        return True
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API key required")
+    if api_key not in API_KEYS:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return True
 
 # Reuse a single factory across requests to avoid re-loading env / re-allocating caches.
 _MODEL_FACTORY = ModelFactory()
@@ -79,7 +93,7 @@ class EmbeddingsRequest(BaseModel):
     model_weights: Optional[Dict[str, float]] = None
 
 @app.post("/generate")
-async def generate(request: GenerateRequest):
+async def generate(request: GenerateRequest, authenticated: bool = Depends(verify_api_key)):
     """Generate text using the multi-model wrapper."""
     try:
         multi_model = await _get_multi_model(
@@ -99,7 +113,7 @@ async def generate(request: GenerateRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/chat")
-async def chat(request: ChatRequest):
+async def chat(request: ChatRequest, authenticated: bool = Depends(verify_api_key)):
     """Generate chat completion using the multi-model wrapper."""
     try:
         multi_model = await _get_multi_model(
@@ -119,7 +133,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.post("/embeddings")
-async def embeddings(request: EmbeddingsRequest):
+async def embeddings(request: EmbeddingsRequest, authenticated: bool = Depends(verify_api_key)):
     """Generate embeddings using the multi-model wrapper."""
     try:
         multi_model = await _get_multi_model(

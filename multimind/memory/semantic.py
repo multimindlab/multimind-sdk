@@ -5,10 +5,13 @@ Semantic memory implementation that stores and retrieves semantic knowledge with
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class SemanticMemory(BaseMemory):
     """Memory that stores and retrieves semantic knowledge with concept relationships."""
@@ -147,7 +150,7 @@ class SemanticMemory(BaseMemory):
             return concepts
             
         except Exception as e:
-            print(f"Error extracting concepts: {e}")
+            logger.error(f"Error extracting concepts: {e}")
             return []
 
     async def _find_related_concepts(
@@ -201,7 +204,7 @@ class SemanticMemory(BaseMemory):
             return response.strip()
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return "related_to"
 
     async def _add_relationship(
@@ -267,7 +270,7 @@ class SemanticMemory(BaseMemory):
                 self.inference_cache[concept_id].append(current_relationship)
             
         except Exception as e:
-            print(f"Error performing inference: {e}")
+            logger.error(f"Error performing inference: {e}")
 
     async def _validate_concepts(self) -> None:
         """Validate concepts and their relationships."""
@@ -310,7 +313,7 @@ class SemanticMemory(BaseMemory):
                     await self._remove_concept(concept["id"])
             
             except Exception as e:
-                print(f"Error validating concept: {e}")
+                logger.error(f"Error validating concept: {e}")
         
         self.last_validation = datetime.now()
 

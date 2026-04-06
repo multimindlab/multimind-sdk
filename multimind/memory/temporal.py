@@ -5,11 +5,15 @@ Temporal memory implementation that manages time-based information and temporal 
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class TemporalMemory(BaseMemory):
     """Memory that manages time-based information and temporal relationships."""
@@ -200,7 +204,7 @@ class TemporalMemory(BaseMemory):
             event["metadata"]["analysis_results"] = analysis
             
         except Exception as e:
-            print(f"Error analyzing temporal info: {e}")
+            logger.error(f"Error analyzing temporal info: {e}")
 
     async def _find_relationships(self, event_id: str) -> None:
         """Find temporal relationships between events."""
@@ -295,7 +299,7 @@ class TemporalMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return None
 
     async def _update_patterns(self) -> None:
@@ -442,7 +446,7 @@ class TemporalMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error validating event: {e}")
+            logger.error(f"Error validating event: {e}")
 
     async def _maintain_event_limit(self) -> None:
         """Maintain event limit by removing least important events."""

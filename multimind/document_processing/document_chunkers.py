@@ -2,17 +2,21 @@
 All document chunker classes for text, code, tables, multimodal, and hybrid chunking.
 """
 from typing import List, Callable, Optional, Any, Union, Dict
+import logging
 from dataclasses import dataclass
 from enum import Enum
 import re
 import numpy as np
+
+logger = logging.getLogger(__name__)
+
 # Optional spacy import for NLP features
 try:
     import spacy
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    print("Warning: spacy not available. NLP features will be disabled.")
+    logger.warning("spacy not available. NLP features will be disabled.")
 
 # Optional transformers import for advanced document processing
 try:
@@ -32,7 +36,7 @@ except ImportError:
         except ImportError:
             TRANSFORMERS_AVAILABLE = False
             _AUTO_MODEL_CLASS = None
-            print("Warning: transformers not available. Advanced document processing features will be disabled.")
+            logger.warning("transformers not available. Advanced document processing features will be disabled.")
 
 try:
     import nltk

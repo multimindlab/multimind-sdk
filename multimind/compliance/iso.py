@@ -259,7 +259,7 @@ class ISOCompliance(BaseModel):
         self,
         system_id: str,
         standard: str,
-        format: str = "json"
+        export_format: str = "json"
     ) -> str:
         """Export compliance assessment."""
         assessment_key = f"{system_id}_{standard}"
@@ -268,14 +268,14 @@ class ISOCompliance(BaseModel):
         
         assessment = self.assessments[assessment_key]
         
-        if format == "json":
+        if export_format == "json":
             if hasattr(assessment, "model_dump_json"):
                 return assessment.model_dump_json()
             if hasattr(assessment, "json"):
                 return assessment.json()
             return json.dumps(assessment, default=str)
-        elif format == "html":
+        elif export_format == "html":
             # Implementation for HTML export
             pass
         else:
-            raise ValueError(f"Unsupported export format: {format}") 
+            raise ValueError(f"Unsupported export format: {export_format}")

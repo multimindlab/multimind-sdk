@@ -5,10 +5,14 @@ Emotional memory implementation that manages emotional states and responses.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
+
 
 class EmotionalMemory(BaseMemory):
     """Memory that manages emotional states and responses."""
@@ -308,7 +312,7 @@ class EmotionalMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return None
 
     async def _update_clusters(self) -> None:
