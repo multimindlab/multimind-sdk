@@ -5,10 +5,13 @@ Contextual memory implementation that maintains conversation context and relatio
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class ContextualMemory(BaseMemory):
     """Memory that maintains conversation context and relationships."""
@@ -166,7 +169,7 @@ class ContextualMemory(BaseMemory):
             self.context_embeddings.append(embedding)
             
         except Exception as e:
-            print(f"Error analyzing context: {e}")
+            logger.error(f"Error analyzing context: {e}")
 
     async def _summarize_contexts(self) -> None:
         """Summarize contexts to maintain concise representation."""
@@ -190,7 +193,7 @@ class ContextualMemory(BaseMemory):
                     context['messages'] = context['messages'][-self.context_window:]
                     
                 except Exception as e:
-                    print(f"Error summarizing context: {e}")
+                    logger.error(f"Error summarizing context: {e}")
         
         self.last_summarization = datetime.now()
 
@@ -242,7 +245,7 @@ class ContextualMemory(BaseMemory):
                 context['metadata']['evolution_stage'] = evolution_data['stage']
             
         except Exception as e:
-            print(f"Error tracking context evolution: {e}")
+            logger.error(f"Error tracking context evolution: {e}")
 
     async def get_context_summary(self, context_id: str) -> Optional[str]:
         """Get the summary of a specific context."""
@@ -344,7 +347,7 @@ class ContextualMemory(BaseMemory):
                 if relationship_type not in self.relationship_types:
                     relationship_type = "follows"
             except Exception as e:
-                print(f"Error determining relationship type: {e}")
+                logger.error(f"Error determining relationship type: {e}")
                 relationship_type = "follows"
         
         # Add bidirectional relationship

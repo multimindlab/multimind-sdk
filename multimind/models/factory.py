@@ -3,7 +3,7 @@ Factory for creating and managing model instances.
 """
 
 import os
-from typing import Dict, Optional, List, Type
+from typing import Dict, Optional, List, Type, Final
 from dotenv import load_dotenv
 
 from ..core.exceptions import ConfigurationError
@@ -46,11 +46,39 @@ class ModelFactory:
         if self.claude_key:
             available.append("claude")
 
-        # Check Ollama availability
+        # Check Ollama availability (server + client libs)
+        OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434")
         try:
             import aiohttp
-            available.append("ollama")
+
+            async def _check_ollama() -> bool:
+                timeout = aiohttp.ClientTimeout(total=2)
+                async with aiohttp.ClientSession(timeout=timeout) as session:
+                    try:
+                        async with session.get(f"{OLLAMA_HOST}/api/tags") as resp:
+                            return resp.status == 200
+                    except aiohttp.ClientError:
+                        return False
+
+            import asyncio
+
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            is_available = False
+            if loop and loop.is_running():
+                # Best-effort: schedule check in running loop and assume available
+                loop.create_task(_check_ollama())
+                is_available = True
+            else:
+                is_available = asyncio.run(_check_ollama())
+
+            if is_available:
+                available.append("ollama")
         except ImportError:
+            # aiohttp not installed, treat Ollama as unavailable
             pass
 
         return available

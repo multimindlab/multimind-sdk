@@ -4,6 +4,9 @@ Supports: Hyperparameter tuning, Adapter/PEFT, MoE, Prompt Engineering, RAG
 """
 
 from typing import Any, Callable, Dict, List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 # --- 1. Hyperparameter Optimization ---
 class HyperparameterTuner:
@@ -26,7 +29,11 @@ class HyperparameterTuner:
         Run hyperparameter search.
         train_func: function that takes a model and returns a score (higher is better)
         """
-        print(f"[HyperparameterTuner] Running {n_trials} trials with backend {self.backend}.")
+        logger.info(
+            "[HyperparameterTuner] Running %s trials with backend %s.",
+            n_trials,
+            self.backend,
+        )
         return {"best_param": 42}
 
 # --- 2. Parameter-Efficient Adaptation (Adapters/PEFT) ---

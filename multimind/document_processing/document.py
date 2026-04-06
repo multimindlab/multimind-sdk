@@ -3,15 +3,19 @@ Document processing utilities for RAG system.
 """
 
 from typing import List, Dict, Any, Optional, Union
+import logging
 import re
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
+
 # Optional tiktoken import for token counting
 try:
     import tiktoken
     TIKTOKEN_AVAILABLE = True
 except ImportError:
     TIKTOKEN_AVAILABLE = False
-    print("Warning: tiktoken not available. Token counting features will be disabled.")
+    logger.warning("tiktoken not available. Token counting features will be disabled.")
 
 from pathlib import Path
 

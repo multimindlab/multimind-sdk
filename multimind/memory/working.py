@@ -5,10 +5,14 @@ Working memory implementation that manages temporary storage and manipulation of
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
+
 
 class WorkingMemory(BaseMemory):
     """Memory that manages temporary storage and manipulation of information."""
@@ -217,7 +221,7 @@ class WorkingMemory(BaseMemory):
             return min(1.0, complexity)
             
         except Exception as e:
-            print(f"Error calculating complexity: {e}")
+            logger.error(f"Error calculating complexity: {e}")
             return 0.5
 
     async def _compress_items(self) -> None:
@@ -261,7 +265,7 @@ class WorkingMemory(BaseMemory):
                     self.item_embeddings[idx] = await self.llm.embeddings(response)
             
             except Exception as e:
-                print(f"Error compressing item: {e}")
+                logger.error(f"Error compressing item: {e}")
 
     async def _create_backup(self) -> None:
         """Create a backup of the current state."""

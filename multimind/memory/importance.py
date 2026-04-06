@@ -4,8 +4,11 @@ Importance scoring implementation with hybrid approach.
 
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
+import logging
 import numpy as np
 from ..models.base import BaseLLM
+
+logger = logging.getLogger(__name__)
 
 class ImportanceScorer:
     """Hybrid importance scorer combining semantic relevance, recency, and task-specific importance."""
@@ -133,7 +136,7 @@ class ImportanceScorer:
             return float(np.mean(similarities))
             
         except Exception as e:
-            print(f"Error calculating semantic score: {e}")
+            logger.error(f"Error calculating semantic score: {e}")
             return 0.5
 
     def _calculate_recency_score(self, timestamp: Optional[str]) -> float:
@@ -146,7 +149,7 @@ class ImportanceScorer:
             age_hours = (datetime.now() - content_time).total_seconds() / 3600
             return float(np.exp(-age_hours / self.recency_decay_hours))
         except Exception as e:
-            print(f"Error calculating recency score: {e}")
+            logger.error(f"Error calculating recency score: {e}")
             return 0.5
 
     async def _calculate_task_score(
@@ -190,7 +193,7 @@ class ImportanceScorer:
             return task_score
             
         except Exception as e:
-            print(f"Error calculating task score: {e}")
+            logger.error(f"Error calculating task score: {e}")
             return 0.5
 
     async def _calculate_confidence(
@@ -220,7 +223,7 @@ class ImportanceScorer:
             return confidence
             
         except Exception as e:
-            print(f"Error calculating confidence: {e}")
+            logger.error(f"Error calculating confidence: {e}")
             return 0.5
 
     def _adjust_weights_by_confidence(

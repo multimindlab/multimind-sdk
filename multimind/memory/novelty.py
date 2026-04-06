@@ -5,11 +5,15 @@ Novelty and salience filtering memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class NoveltyMemory(BaseMemory):
     """Memory that implements novelty and salience filtering."""
@@ -181,7 +185,7 @@ class NoveltyMemory(BaseMemory):
             self.novelty_scores[item_id] = novelty["novelty_score"]
             
         except Exception as e:
-            print(f"Error calculating novelty: {e}")
+            logger.error(f"Error calculating novelty: {e}")
 
     async def _calculate_salience(self, item_id: str) -> None:
         """Calculate salience score for an item."""
@@ -207,7 +211,7 @@ class NoveltyMemory(BaseMemory):
             self.salience_scores[item_id] = salience["salience_score"]
             
         except Exception as e:
-            print(f"Error calculating salience: {e}")
+            logger.error(f"Error calculating salience: {e}")
 
     async def _calculate_semantic_vector(self, item_id: str) -> None:
         """Calculate semantic vector for an item."""
@@ -232,7 +236,7 @@ class NoveltyMemory(BaseMemory):
             self.semantic_vectors[item_id] = semantic["semantic_vector"]
             
         except Exception as e:
-            print(f"Error calculating semantic vector: {e}")
+            logger.error(f"Error calculating semantic vector: {e}")
 
     async def _analyze_patterns(self, item_id: str) -> None:
         """Analyze patterns in an item."""
@@ -258,7 +262,7 @@ class NoveltyMemory(BaseMemory):
             self.pattern_matches[item_id] = set(patterns["patterns"])
             
         except Exception as e:
-            print(f"Error analyzing patterns: {e}")
+            logger.error(f"Error analyzing patterns: {e}")
 
     async def _update_context(self, item_id: str) -> None:
         """Update context for an item."""
@@ -310,7 +314,7 @@ class NoveltyMemory(BaseMemory):
             ]
             
         except Exception as e:
-            print(f"Error analyzing temporal novelty: {e}")
+            logger.error(f"Error analyzing temporal novelty: {e}")
 
     async def _analyze_concept_novelty(self, item_id: str) -> None:
         """Analyze concept novelty of an item."""
@@ -340,7 +344,7 @@ class NoveltyMemory(BaseMemory):
             item["metadata"]["concept_novelty"] = concept_novelty
             
         except Exception as e:
-            print(f"Error analyzing concept novelty: {e}")
+            logger.error(f"Error analyzing concept novelty: {e}")
 
     async def _analyze_relation_novelty(self, item_id: str) -> None:
         """Analyze relation novelty of an item."""
@@ -370,7 +374,7 @@ class NoveltyMemory(BaseMemory):
             item["metadata"]["relation_novelty"] = relation_novelty
             
         except Exception as e:
-            print(f"Error analyzing relation novelty: {e}")
+            logger.error(f"Error analyzing relation novelty: {e}")
 
     async def _adapt_thresholds(self) -> None:
         """Adapt novelty and salience thresholds based on recent items."""
@@ -387,7 +391,7 @@ class NoveltyMemory(BaseMemory):
             self.last_adaptation = datetime.now()
             
         except Exception as e:
-            print(f"Error adapting thresholds: {e}")
+            logger.error(f"Error adapting thresholds: {e}")
 
     async def _update_scores(self, item_id: str) -> None:
         """Update novelty and salience scores over time."""

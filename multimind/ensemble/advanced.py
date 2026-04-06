@@ -6,16 +6,19 @@ from typing import Dict, List, Optional, Any, Union, Tuple
 from pydantic import BaseModel
 from enum import Enum
 import asyncio
+import logging
 import numpy as np
 from ..core.provider import GenerationResult, EmbeddingResult, ImageAnalysisResult
 from ..core.router import Router, TaskType
+
+logger = logging.getLogger(__name__)
 # Optional optuna import for hyperparameter tuning
 try:
     import optuna
     OPTUNA_AVAILABLE = True
 except ImportError:
     OPTUNA_AVAILABLE = False
-    print("Warning: Optuna not available. Hyperparameter tuning features will be disabled.")
+    logger.warning("Optuna not available. Hyperparameter tuning features will be disabled.")
 
 class EnsembleMethod(str, Enum):
     """Methods for combining ensemble results."""

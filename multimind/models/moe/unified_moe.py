@@ -161,7 +161,7 @@ if TORCH_AVAILABLE:
         @classmethod
         def load_checkpoint(cls, path: str) -> 'UnifiedMoE':
             """Load model from checkpoint."""
-            checkpoint = torch.load(path)
+            checkpoint = torch.load(path, weights_only=True)
             model = cls(
                 mode=checkpoint['mode'],
                 config=checkpoint['config']
