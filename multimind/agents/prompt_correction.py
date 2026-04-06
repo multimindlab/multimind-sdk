@@ -1,6 +1,9 @@
 from typing import Callable, Any, Dict, List
 import logging
 
+logger = logging.getLogger(__name__)
+
+
 class PromptCorrectionLayer:
     """
     Observability and self-healing layer for LLM/agent pipelines.
@@ -19,23 +22,61 @@ class PromptCorrectionLayer:
     def add_adapter_update_hook(self, hook: Callable[[str, str], None]):
         self.adapter_update_hooks.append(hook)
 
+    def _compute_issue_score(self, prompt: str, output: str, trace: Dict) -> float:
+        """
+        Heuristic scoring function for potential issues / hallucinations.
+        Returns a score in [0, 1], where higher means more suspicious.
+        """
+        text = output.lower()
+        score = 0.0
+
+        # Strong indicators
+        strong_markers = [
+            "[error]", "hallucination", "not based on real data",
+            "fabricated answer", "made this up"
+        ]
+        if any(marker in text for marker in strong_markers):
+            score += 0.7
+
+        # Weaker indicators based on uncertainty phrases
+        weak_markers = [
+            "i am not sure", "i'm not sure", "i do not know",
+            "i don't know", "cannot verify", "not certain"
+        ]
+        if any(marker in text for marker in weak_markers):
+            score += 0.2
+
+        # If trace provides an explicit model_score / confidence, incorporate it.
+        # Expecting trace.get("confidence") in [0, 1] where low is suspicious.
+        confidence = trace.get("confidence")
+        if isinstance(confidence, (int, float)):
+            confidence_clamped = max(0.0, min(1.0, float(confidence)))
+            score += (1.0 - confidence_clamped) * 0.3
+
+        return min(score, 1.0)
+
     def monitor(self, prompt: str, output: str, trace: Dict = None) -> str:
         """
         Monitor output for errors/hallucinations and apply corrections if needed.
+        Uses a heuristic score instead of a single string check.
         """
         trace = trace or {}
         try:
-            # Example: simple hallucination check (can be replaced with real logic)
-            if "[error]" in output or "hallucination" in output.lower():
-                self.logger.warning(f"Detected issue in output: {output}")
+            issue_score = self._compute_issue_score(prompt, output, trace)
+            threshold = trace.get("hallucination_threshold", 0.6)
+            if issue_score >= threshold:
+                self.logger.warning(
+                    "Detected potential hallucination (score=%.2f, threshold=%.2f): %s",
+                    issue_score,
+                    threshold,
+                    output,
+                )
                 for hook in self.error_hooks:
                     hook(prompt, Exception("Detected hallucination"), trace)
-                # Apply correction hooks to the *output* and return corrected output.
-                # (Correction hooks are expected to take a string and trace, and return a string.)
                 corrected_output = output
                 for hook in self.correction_hooks:
                     corrected_output = hook(corrected_output, trace)
-                self.logger.info(f"Corrected output: {corrected_output}")
+                self.logger.info("Corrected output: %s", corrected_output)
                 return corrected_output
             return output
         except Exception as e:
@@ -54,15 +95,15 @@ class PromptCorrectionLayer:
 if __name__ == "__main__":
     pcl = PromptCorrectionLayer()
     def error_logger(prompt, exc, trace):
-        print(f"Error detected for prompt '{prompt}': {exc}")
+        logger.error("Error detected for prompt '%s': %s", prompt, exc)
     def simple_correction(prompt, trace):
         return prompt + " [CORRECTED]"
     def adapter_updater(adapter_key, new_path):
-        print(f"Adapter {adapter_key} updated to {new_path}")
+        logger.info("Adapter %s updated to %s", adapter_key, new_path)
     pcl.add_error_hook(error_logger)
     pcl.add_correction_hook(simple_correction)
     pcl.add_adapter_update_hook(adapter_updater)
     # Simulate monitoring
     corrected_output = pcl.monitor("What is the capital of France?", "[error] hallucination detected", {"step": 1})
-    print("Corrected output after correction:", corrected_output)
+    logger.info("Corrected output after correction: %s", corrected_output)
     pcl.update_adapter("user123", "lora_adapter_v2") 

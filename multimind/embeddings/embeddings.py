@@ -4,9 +4,13 @@ Embedding model implementations for RAG system.
 
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator, Coroutine
 from dataclasses import dataclass
+import logging
 import numpy as np
 import asyncio
 from ..models.base import BaseLLM
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class EmbeddingConfig:
@@ -429,7 +433,7 @@ try:
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    print("Warning: transformers not available. Image embedding features will be disabled.")
+    logger.warning("transformers not available. Image embedding features will be disabled.")
 
 class ImageEmbedder(BaseLLM):
     """Image embedding model implementation."""

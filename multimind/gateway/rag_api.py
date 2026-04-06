@@ -233,9 +233,9 @@ async def initialize_rag():
         openai_key = os.getenv("OPENAI_API_KEY")
         anthropic_key = os.getenv("ANTHROPIC_API_KEY")
         
-        print("\n📋 Checking for API keys...")
-        print(f"   OPENAI_API_KEY: {'✅ Found' if openai_key else '❌ Not found'}")
-        print(f"   ANTHROPIC_API_KEY: {'✅ Found' if anthropic_key else '❌ Not found'}")
+        logger.info("Checking for API keys")
+        logger.info("OPENAI_API_KEY: %s", "Found" if openai_key else "Not found")
+        logger.info("ANTHROPIC_API_KEY: %s", "Found" if anthropic_key else "Not found")
         
         # Default to OpenAI if available
         if openai_key:
@@ -295,14 +295,13 @@ async def initialize_rag():
         rag_instance = RAG(config)
         await rag_instance.initialize()
         
-        print("\n" + "="*60)
-        print("✅ RAG SYSTEM INITIALIZED SUCCESSFULLY")
-        print("="*60)
-        print(f"📊 Provider: {'OpenAI' if openai_key else 'Anthropic' if anthropic_key else 'HuggingFace (Local)'}")
-        print(f"📝 Text Model: {current_model.model_name if hasattr(current_model, 'model_name') else 'N/A'}")
-        print(f"🔤 Embedding Model: {embedding_model_name}")
-        print(f"📦 Vector Store: FAISS")
-        print("="*60 + "\n")
+        provider = "OpenAI" if openai_key else "Anthropic" if anthropic_key else "HuggingFace (Local)"
+        text_model = current_model.model_name if hasattr(current_model, "model_name") else "N/A"
+        logger.info("RAG system initialized successfully")
+        logger.info("Provider: %s", provider)
+        logger.info("Text model: %s", text_model)
+        logger.info("Embedding model: %s", embedding_model_name)
+        logger.info("Vector store: FAISS")
         
         logger.info("RAG system initialized successfully")
         
@@ -366,7 +365,7 @@ async def add_documents(request: DocumentsRequest, authenticated: bool = Depends
         # Add documents
         await rag_instance.add_documents(documents, process=True)
         
-        print(f"   ✅ Successfully added {len(request.documents)} document(s)")
+        logger.info("Successfully added %d document(s)", len(request.documents))
         
         return {
             "documents": [

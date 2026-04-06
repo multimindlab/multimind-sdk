@@ -5,11 +5,15 @@ Forgetting curve memory implementation based on Ebbinghaus's forgetting curve mo
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class ForgettingCurveMemory(BaseMemory):
     """Memory that implements the Ebbinghaus forgetting curve model."""
@@ -160,7 +164,7 @@ class ForgettingCurveMemory(BaseMemory):
             item["metadata"]["importance"] = importance["importance_score"]
             
         except Exception as e:
-            print(f"Error calculating importance: {e}")
+            logger.error(f"Error calculating importance: {e}")
 
     async def _schedule_review(self, item_id: str) -> None:
         """Schedule next review using spaced repetition."""
@@ -210,7 +214,7 @@ class ForgettingCurveMemory(BaseMemory):
             item["metadata"]["interference_score"] = interference["interference_score"]
             
         except Exception as e:
-            print(f"Error analyzing interference: {e}")
+            logger.error(f"Error analyzing interference: {e}")
 
     async def _update_learning_curve(self, item_id: str) -> None:
         """Update learning curve for an item."""

@@ -5,10 +5,14 @@ Episodic memory implementation that stores and retrieves memories with temporal 
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
+
 
 class EpisodicMemory(BaseMemory):
     """Memory that stores and retrieves episodic memories with temporal and spatial context."""
@@ -164,7 +168,7 @@ class EpisodicMemory(BaseMemory):
                 await self._analyze_emotional_profile(episode)
             
         except Exception as e:
-            print(f"Error analyzing episode: {e}")
+            logger.error(f"Error analyzing episode: {e}")
 
     async def _analyze_emotional_profile(self, episode: Dict[str, Any]) -> None:
         """Analyze emotional profile of an episode."""
@@ -195,7 +199,7 @@ class EpisodicMemory(BaseMemory):
             self.emotional_profiles[episode['id']] = emotional_profile
             
         except Exception as e:
-            print(f"Error analyzing emotional profile: {e}")
+            logger.error(f"Error analyzing emotional profile: {e}")
 
     async def _update_episode_chains(self, episode: Dict[str, Any]) -> None:
         """Update episode chains with the new episode."""

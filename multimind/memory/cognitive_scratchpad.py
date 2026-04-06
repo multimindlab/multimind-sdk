@@ -5,11 +5,14 @@ Cognitive scratchpad memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
 
 class CognitiveScratchpadMemory(BaseMemory):
     """Memory that implements cognitive scratchpad/chain-of-thought memory."""
@@ -122,7 +125,7 @@ class CognitiveScratchpadMemory(BaseMemory):
             item["metadata"]["chain_count"] = 1
             
         except Exception as e:
-            print(f"Error tracking reasoning steps: {e}")
+            logger.error(f"Error tracking reasoning steps: {e}")
 
     async def _analyze_steps(self) -> None:
         """Analyze reasoning steps."""
@@ -161,7 +164,7 @@ class CognitiveScratchpadMemory(BaseMemory):
                     })
                 
             except Exception as e:
-                print(f"Error analyzing steps: {e}")
+                logger.error(f"Error analyzing steps: {e}")
         
         # Update last analysis time
         self.last_analysis = datetime.now()

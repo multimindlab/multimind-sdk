@@ -5,11 +5,15 @@ Event-sourced memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class EventSourcedMemory(BaseMemory):
     """Memory that implements event-sourced memory."""
@@ -162,7 +166,7 @@ class EventSourcedMemory(BaseMemory):
             item["metadata"]["pattern_count"] = len(patterns["patterns"])
             
         except Exception as e:
-            print(f"Error creating pattern events: {e}")
+            logger.error(f"Error creating pattern events: {e}")
 
     async def _create_causality_events(self, item_id: str, item: Dict[str, Any]) -> None:
         """Create causality analysis events."""
@@ -210,7 +214,7 @@ class EventSourcedMemory(BaseMemory):
             item["metadata"]["causal_count"] = len(causality["causes"])
             
         except Exception as e:
-            print(f"Error creating causality events: {e}")
+            logger.error(f"Error creating causality events: {e}")
 
     async def _analyze_events(self) -> None:
         """Analyze event patterns and causality."""
@@ -263,7 +267,7 @@ class EventSourcedMemory(BaseMemory):
                     ]
                 
             except Exception as e:
-                print(f"Error analyzing patterns: {e}")
+                logger.error(f"Error analyzing patterns: {e}")
 
     async def _analyze_causality(self) -> None:
         """Analyze event causality."""
@@ -303,7 +307,7 @@ class EventSourcedMemory(BaseMemory):
                     ]
                 
             except Exception as e:
-                print(f"Error analyzing causality: {e}")
+                logger.error(f"Error analyzing causality: {e}")
 
     async def _maintain_item_limit(self) -> None:
         """Maintain item and event limits."""

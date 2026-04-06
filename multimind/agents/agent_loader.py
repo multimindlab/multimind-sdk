@@ -93,7 +93,7 @@ class AgentLoader:
             max_history=memory_config.get("max_history", 100)
         )
 
-        # Create agen
+        # Create agent
         agent = Agent(
             model=model,
             memory=memory,

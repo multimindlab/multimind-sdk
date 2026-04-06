@@ -1,5 +1,9 @@
 from typing import Callable, Dict, Any
+import logging
 import time
+
+logger = logging.getLogger(__name__)
+
 
 class FederatedRouter:
     """
@@ -41,5 +45,5 @@ if __name__ == "__main__":
     local = DummyClient()
     cloud = DummyClient()
     router = FederatedRouter(local, cloud)
-    print(router.generate("short prompt"))
-    print(router.generate("This is a very long prompt that should go to the cloud..." * 20)) 
+    logger.info("%s", router.generate("short prompt"))
+    logger.info("%s", router.generate("This is a very long prompt that should go to the cloud..." * 20)) 

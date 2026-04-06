@@ -5,11 +5,14 @@ Differentiable Neural Computer (DNC) memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
 
 class DNCMemory(BaseMemory):
     """Memory that implements Differentiable Neural Computer architecture."""
@@ -182,7 +185,7 @@ class DNCMemory(BaseMemory):
                 await self._update_read_weighting(item, embedding)
 
         except Exception as e:
-            print(f"Error updating memory matrix: {e}")
+            logger.error(f"Error updating memory matrix: {e}")
 
     def _find_available_location(self) -> int:
         """Find available memory location using dynamic allocation."""
@@ -220,7 +223,7 @@ class DNCMemory(BaseMemory):
                     })
 
         except Exception as e:
-            print(f"Error updating read weighting: {e}")
+            logger.error(f"Error updating read weighting: {e}")
 
     async def _update_attention(self, item: Dict[str, Any]) -> None:
         """Update attention scores for items."""
@@ -235,7 +238,7 @@ class DNCMemory(BaseMemory):
             item["metadata"]["attention_score"] = attention_score
 
         except Exception as e:
-            print(f"Error updating attention: {e}")
+            logger.error(f"Error updating attention: {e}")
 
     async def _update_learning(self, item: Dict[str, Any]) -> None:
         """Update learning progress for items."""
@@ -255,7 +258,7 @@ class DNCMemory(BaseMemory):
             }]
 
         except Exception as e:
-            print(f"Error updating learning: {e}")
+            logger.error(f"Error updating learning: {e}")
 
     async def _optimize_memory(self) -> None:
         """Optimize memory matrix and weightings."""
@@ -277,7 +280,7 @@ class DNCMemory(BaseMemory):
             self.last_optimization = datetime.now()
 
         except Exception as e:
-            print(f"Error optimizing memory: {e}")
+            logger.error(f"Error optimizing memory: {e}")
 
     async def _compress_memory(self) -> None:
         """Compress memory matrix to reduce size."""
@@ -300,7 +303,7 @@ class DNCMemory(BaseMemory):
                 self.memory_matrix = compressed_matrix
 
         except Exception as e:
-            print(f"Error compressing memory: {e}")
+            logger.error(f"Error compressing memory: {e}")
 
     async def _analyze_memory(self) -> None:
         """Analyze memory state and patterns."""
@@ -336,7 +339,7 @@ class DNCMemory(BaseMemory):
             self.last_analysis = datetime.now()
 
         except Exception as e:
-            print(f"Error analyzing memory: {e}")
+            logger.error(f"Error analyzing memory: {e}")
 
     async def _create_backup(self) -> None:
         """Create backup of memory state."""
@@ -367,7 +370,7 @@ class DNCMemory(BaseMemory):
             self.last_backup = datetime.now()
 
         except Exception as e:
-            print(f"Error creating backup: {e}")
+            logger.error(f"Error creating backup: {e}")
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from memory."""

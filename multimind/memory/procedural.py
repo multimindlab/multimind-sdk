@@ -5,10 +5,13 @@ Procedural memory implementation that stores and retrieves procedural knowledge 
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class ProceduralMemory(BaseMemory):
     """Memory that stores and retrieves procedural knowledge with step-by-step instructions."""
@@ -210,7 +213,7 @@ class ProceduralMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error extracting procedure: {e}")
+            logger.error(f"Error extracting procedure: {e}")
             return None
 
     async def record_execution(
@@ -292,7 +295,7 @@ class ProceduralMemory(BaseMemory):
                     procedure["steps"][i] = f"{original} (Adapted: {adapted})"
             
         except Exception as e:
-            print(f"Error adapting procedure: {e}")
+            logger.error(f"Error adapting procedure: {e}")
 
     async def _optimize_procedures(self) -> None:
         """Optimize procedures based on execution history."""
@@ -334,7 +337,7 @@ class ProceduralMemory(BaseMemory):
                     procedure["metadata"]["optimized"] = True
                 
             except Exception as e:
-                print(f"Error optimizing procedure: {e}")
+                logger.error(f"Error optimizing procedure: {e}")
         
         self.last_optimization = datetime.now()
 
@@ -381,7 +384,7 @@ class ProceduralMemory(BaseMemory):
                     await self._remove_procedure(procedure["id"])
             
             except Exception as e:
-                print(f"Error validating procedure: {e}")
+                logger.error(f"Error validating procedure: {e}")
         
         self.last_validation = datetime.now()
 

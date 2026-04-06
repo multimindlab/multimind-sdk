@@ -5,11 +5,15 @@ Sensory memory implementation that manages sensory experiences across different 
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class SensoryMemory(BaseMemory):
     """Memory that manages sensory experiences across different modalities."""
@@ -253,7 +257,7 @@ class SensoryMemory(BaseMemory):
             experience["metadata"]["analysis_results"] = analysis
             
         except Exception as e:
-            print(f"Error analyzing sensory info: {e}")
+            logger.error(f"Error analyzing sensory info: {e}")
 
     async def _find_relationships(self, experience_id: str) -> None:
         """Find relationships between sensory experiences."""
@@ -361,7 +365,7 @@ class SensoryMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return None
 
     async def _update_patterns(self) -> None:
@@ -511,7 +515,7 @@ class SensoryMemory(BaseMemory):
             })
             
         except Exception as e:
-            print(f"Error validating experience: {e}")
+            logger.error(f"Error validating experience: {e}")
 
     async def _maintain_experience_limit(self) -> None:
         """Maintain experience limit by removing least important experiences."""
@@ -1054,7 +1058,7 @@ class SensoryMemory(BaseMemory):
             }
             
         except Exception as e:
-            print(f"Error creating fused experience: {e}")
+            logger.error(f"Error creating fused experience: {e}")
             return None
 
     async def _update_advanced_patterns(self) -> None:

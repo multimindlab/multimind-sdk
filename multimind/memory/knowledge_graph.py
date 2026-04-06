@@ -5,10 +5,13 @@ Knowledge graph memory implementation for storing and querying entity relationsh
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
 import networkx as nx
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class KnowledgeGraphMemory(BaseMemory):
     """Memory that uses a knowledge graph to store entity relationships."""
@@ -122,7 +125,7 @@ class KnowledgeGraphMemory(BaseMemory):
             
             return entities, relationships
         except Exception as e:
-            print(f"Error extracting entities: {e}")
+            logger.error(f"Error extracting entities: {e}")
             return set(), []
 
     def _update_graph(

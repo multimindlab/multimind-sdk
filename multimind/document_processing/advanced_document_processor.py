@@ -3,18 +3,22 @@ Advanced document processing with multi-modal support, table extraction, and str
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple, Protocol, runtime_checkable
+import logging
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
 import numpy as np
 from PIL import Image
+
+logger = logging.getLogger(__name__)
+
 # Optional pytesseract import for OCR features
 try:
     import pytesseract
     PYTESSERACT_AVAILABLE = True
 except ImportError:
     PYTESSERACT_AVAILABLE = False
-    print("Warning: pytesseract not available. OCR features will be disabled.")
+    logger.warning("pytesseract not available. OCR features will be disabled.")
 
 # Optional opencv import for image processing
 try:
@@ -22,7 +26,7 @@ try:
     OPENCV_AVAILABLE = True
 except ImportError:
     OPENCV_AVAILABLE = False
-    print("Warning: opencv-python not available. Image processing features will be disabled.")
+    logger.warning("opencv-python not available. Image processing features will be disabled.")
 
 # Optional pandas import for table processing
 try:
@@ -30,7 +34,7 @@ try:
     PANDAS_AVAILABLE = True
 except ImportError:
     PANDAS_AVAILABLE = False
-    print("Warning: pandas not available. Table processing features will be disabled.")
+    logger.warning("pandas not available. Table processing features will be disabled.")
 
 # Optional transformers import for advanced document processing
 try:
@@ -38,7 +42,7 @@ try:
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    print("Warning: transformers not available. Advanced document processing features will be disabled.")
+    logger.warning("transformers not available. Advanced document processing features will be disabled.")
 
 # Optional torch import for deep learning features
 try:
@@ -46,7 +50,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. Deep learning features will be disabled.")
+    logger.warning("PyTorch not available. Deep learning features will be disabled.")
 
 from ..models.base import BaseLLM
 

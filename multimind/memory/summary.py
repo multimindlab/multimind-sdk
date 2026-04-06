@@ -5,9 +5,12 @@ Summary memory implementation for storing summarized conversations.
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
 from .base import BaseMemory
 from ..models.base import BaseLLM
+
+logger = logging.getLogger(__name__)
 
 class SummaryMemory(BaseMemory):
     """
@@ -348,7 +351,7 @@ Summary:"""
             self.last_backup = datetime.fromisoformat(data["last_backup"])
             self.backup_history = data["backup_history"]
         except Exception as e:
-            print(f"Error loading summaries: {e}")
+            logger.error(f"Error loading summaries: {e}")
             await self.clear()
 
     def get_stats(self) -> Dict[str, Any]:

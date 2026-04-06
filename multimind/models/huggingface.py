@@ -4,12 +4,13 @@ HuggingFace model implementation for local model loading.
 
 import asyncio
 import functools
+from threading import Thread
 from typing import List, Dict, Any, Optional, AsyncGenerator, Union
 from .base import BaseLLM
 
 # Try to import transformers
 try:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoTokenizer, AutoModelForCausalLM, TextIteratorStreamer
     import torch
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
@@ -126,15 +127,53 @@ class HuggingFaceModel(BaseLLM):
         **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text from the model."""
-        # For now, generate full text and yield it in chunks
-        # TODO: Implement proper token-by-token streaming
-        full_text = await self.generate(prompt, temperature, max_tokens, **kwargs)
-        
-        # Yield in chunks for streaming effect
-        chunk_size = 10
-        for i in range(0, len(full_text), chunk_size):
-            yield full_text[i:i + chunk_size]
-            await asyncio.sleep(0.01)  # Small delay for streaming effect
+        inputs = self.tokenizer(prompt, return_tensors="pt")
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+
+        do_sample = temperature > 0
+        gen_kwargs = {
+            "max_new_tokens": max_tokens or 100,
+            "do_sample": do_sample,
+            "pad_token_id": self.tokenizer.pad_token_id,
+            "eos_token_id": self.tokenizer.eos_token_id,
+        }
+        if do_sample and temperature > 0:
+            gen_kwargs["temperature"] = temperature
+        gen_kwargs.update({k: v for k, v in kwargs.items() if k not in inputs})
+
+        streamer = TextIteratorStreamer(
+            self.tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True
+        )
+        gen_kwargs["streamer"] = streamer
+
+        generation_error: List[Exception] = []
+
+        def _run_generation() -> None:
+            try:
+                with torch.no_grad():
+                    self.model.generate(**inputs, **gen_kwargs)
+            except Exception as e:  # pragma: no cover - surfaced after streaming loop
+                generation_error.append(e)
+
+        generation_thread = Thread(target=_run_generation, daemon=True)
+        generation_thread.start()
+
+        loop = asyncio.get_running_loop()
+        iterator = iter(streamer)
+
+        while True:
+            try:
+                chunk = await loop.run_in_executor(None, next, iterator)
+            except StopIteration:
+                break
+            if chunk:
+                yield chunk
+
+        await loop.run_in_executor(None, generation_thread.join)
+        if generation_error:
+            raise generation_error[0]
 
     def _messages_to_prompt(self, messages: List[Dict[str, str]]) -> str:
         """Convert messages to a single prompt string."""

@@ -10,7 +10,7 @@ import logging
 import time
 from .provider import ProviderAdapter, GenerationResult, EmbeddingResult, ImageAnalysisResult
 from ..observability.metrics import MetricsCollector
-import numpy as np
+from statistics import mean as _mean
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +61,9 @@ class ProviderPerformanceTracker:
             return 1.0
         total = m["success"] + m["fail"]
         success_rate = m["success"] / total if total > 0 else 1.0
-        avg_latency = np.mean(m["latency"]) if m["latency"] else 1.0
-        avg_quality = np.mean(m["quality"]) if m["quality"] else 1.0
-        avg_feedback = np.mean(m["feedback"]) if m["feedback"] else 1.0
+        avg_latency = _mean(m["latency"]) if m["latency"] else 1.0
+        avg_quality = _mean(m["quality"]) if m["quality"] else 1.0
+        avg_feedback = _mean(m["feedback"]) if m["feedback"] else 1.0
         # Score: success * (1/latency) * quality * feedback
         return success_rate * (1.0 / (avg_latency + 1e-3)) * avg_quality * avg_feedback
 
@@ -304,42 +304,45 @@ class Router:
         """
         if not config.ensemble_config:
             raise ValueError("Ensemble configuration is required for ensemble routing")
-        
-        results = []
-        for provider_name in config.preferred_providers:
+
+        async def _call_provider(provider_name: str):
             provider = self.providers[provider_name]
             call_kwargs = dict(kwargs)
             call_kwargs.pop("provider", None)
             model_arg = call_kwargs.pop("model", None)
-            try:
-                if task_type == TaskType.TEXT_GENERATION:
-                    if model_arg is not None:
-                        result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
-                    else:
-                        result = await provider.generate_text(prompt=input_data, **call_kwargs)
-                elif task_type == TaskType.EMBEDDINGS:
-                    if model_arg is not None:
-                        result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
-                    else:
-                        result = await provider.generate_embeddings(text=input_data, **call_kwargs)
-                elif task_type == TaskType.IMAGE_ANALYSIS:
-                    if model_arg is not None:
-                        result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
-                    else:
-                        result = await provider.analyze_image(image_data=input_data, **call_kwargs)
-                else:
-                    raise ValueError(f"Unsupported task type: {task_type}")
-                
-                results.append((provider_name, result))
-            except Exception as e:
+            if task_type == TaskType.TEXT_GENERATION:
+                if model_arg is not None:
+                    return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                return await provider.generate_text(prompt=input_data, **call_kwargs)
+            elif task_type == TaskType.EMBEDDINGS:
+                if model_arg is not None:
+                    return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                return await provider.generate_embeddings(text=input_data, **call_kwargs)
+            elif task_type == TaskType.IMAGE_ANALYSIS:
+                if model_arg is not None:
+                    return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                return await provider.analyze_image(image_data=input_data, **call_kwargs)
+            else:
+                raise ValueError(f"Unsupported task type: {task_type}")
+
+        outcomes = await asyncio.gather(
+            *[_call_provider(name) for name in config.preferred_providers],
+            return_exceptions=True,
+        )
+
+        results = []
+        for provider_name, outcome in zip(config.preferred_providers, outcomes):
+            if isinstance(outcome, Exception):
                 self.metrics.record_error(
                     provider=provider_name,
                     task_type=task_type,
                     model=kwargs.get("model", "unknown"),
-                    error_type=type(e).__name__,
-                    error_message=str(e),
+                    error_type=type(outcome).__name__,
+                    error_message=str(outcome),
                     metadata={"request_id": kwargs.get("request_id")}
                 )
+            else:
+                results.append((provider_name, outcome))
         
         # System behavior based on successful LLM count
         if len(results) == 0:

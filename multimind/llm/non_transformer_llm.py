@@ -1,12 +1,16 @@
 from multimind.core.base import BaseLLM
 from typing import List, Dict, Any, Optional, Union, AsyncGenerator
+import logging
+
+logger = logging.getLogger(__name__)
+
 # Optional torch import for non-transformer LLM features
 try:
     import torch
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("Warning: PyTorch not available. Non-transformer LLM features will be disabled.")
+    logger.warning("PyTorch not available. Non-transformer LLM features will be disabled.")
 
 # Optional transformers import
 try:
@@ -14,9 +18,8 @@ try:
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    print("Warning: Transformers not available. Non-transformer LLM features will be disabled.")
+    logger.warning("Transformers not available. Non-transformer LLM features will be disabled.")
 
-import logging
 import yaml
 import concurrent.futures
 import asyncio
@@ -29,7 +32,7 @@ try:
     PEFT_AVAILABLE = True
 except ImportError:
     PEFT_AVAILABLE = False
-    print("Warning: PEFT not available. Adapter features will be disabled.")
+    logger.warning("PEFT not available. Adapter features will be disabled.")
 
 class NonTransformerLLM(BaseLLM):
     """

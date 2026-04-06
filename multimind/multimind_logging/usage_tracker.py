@@ -3,10 +3,14 @@ Usage tracking functionality for monitoring model usage and costs.
 """
 
 import json
+import logging
 import sqlite3
 from datetime import datetime
 from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
 
 class UsageTracker:
     """Tracks model usage and associated costs."""
@@ -21,7 +25,7 @@ class UsageTracker:
 
     def _initialize_database(self):
         """Initialize the database with required tables."""
-        print("Initializing database and creating tables if they do not exist...")
+        logger.info("Initializing database and creating tables if they do not exist...")
         cursor = self.conn.cursor()
 
         # Create costs table if it does not exist
@@ -33,7 +37,7 @@ class UsageTracker:
                 last_updated TEXT NOT NULL
             )
         """)
-        print("Costs table creation attempted.")
+        logger.info("Costs table creation attempted.")
 
         # Create usage table if it does not exist
         cursor.execute("""
@@ -48,7 +52,7 @@ class UsageTracker:
                 metadata TEXT
             )
         """)
-        print("Usage table creation attempted.")
+        logger.info("Usage table creation attempted.")
 
         self.conn.commit()
 

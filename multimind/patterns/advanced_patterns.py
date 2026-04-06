@@ -6,12 +6,16 @@ from typing import List, Dict, Any, Optional, Union, Tuple, Set
 from dataclasses import dataclass
 from enum import Enum
 import asyncio
+import logging
 import time
 import networkx as nx
 import numpy as np
 from ..models.base import BaseLLM
 from .retrieval import HybridRetriever, QueryDecomposer
 from ..memory import TokenAwareMemory
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class RetrievalStep:
@@ -640,7 +644,11 @@ class SelfImprovingRAG:
         
         # Trigger retraining if quality is below threshold
         if avg_quality < self.retrain_threshold:
-            print(f"[SelfImprovingRAG] Quality ({avg_quality:.2f}) below threshold ({self.retrain_threshold}), triggering retraining...")
+            logger.info(
+                "[SelfImprovingRAG] Quality (%.2f) below threshold (%s), triggering retraining...",
+                avg_quality,
+                self.retrain_threshold,
+            )
             self._trigger_retraining(recent_feedback)
             self.last_retrain_time = current_time
 
@@ -661,4 +669,4 @@ class SelfImprovingRAG:
         # Train and save model
         self.peft_tuner.train(train_data)
         self.peft_tuner.save_model()
-        print(f"[SelfImprovingRAG] Retraining completed on {len(train_data)} samples.") 
+        logger.info("[SelfImprovingRAG] Retraining completed on %s samples.", len(train_data)) 

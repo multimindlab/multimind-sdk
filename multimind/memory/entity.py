@@ -27,10 +27,26 @@ class EntityMemory(BaseMemory):
         self.max_relationships = max_relationships
         
         # Storage
+        self.messages: List[Dict[str, Any]] = []  # Generic chat/message history
         self.entities: Dict[str, Dict[str, Any]] = {}  # entity_id -> entity_data
         self.relationships: Dict[str, Set[str]] = {}  # entity_id -> set of related entity_ids
         self.entity_metadata: Dict[str, Dict[str, Any]] = {}  # entity_id -> metadata
         self.relationship_metadata: Dict[tuple, Dict[str, Any]] = {}  # (entity1_id, entity2_id) -> metadata
+
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a generic message entry to memory."""
+        self.messages.append(
+            {
+                "role": message.get("role", "user"),
+                "content": message.get("content", ""),
+                "timestamp": datetime.now().isoformat(),
+                "metadata": message.get("metadata", {}),
+            }
+        )
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all generic message entries from memory."""
+        return list(self.messages)
 
     async def add_entity(
         self,
@@ -220,10 +236,19 @@ class EntityMemory(BaseMemory):
 
     async def clear(self) -> None:
         """Clear all entities and relationships."""
+        self.messages.clear()
         self.entities.clear()
         self.relationships.clear()
         self.entity_metadata.clear()
         self.relationship_metadata.clear()
+
+    async def save(self) -> None:
+        """In-memory implementation has nothing to persist by default."""
+        return None
+
+    async def load(self) -> None:
+        """In-memory implementation has nothing to load by default."""
+        return None
 
     async def get_entity_count(self) -> int:
         """Get the number of entities."""
