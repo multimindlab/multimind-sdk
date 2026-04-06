@@ -5,10 +5,13 @@ Associative memory implementation that stores and retrieves information based on
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class AssociativeMemory(BaseMemory):
     """Memory that stores and retrieves information based on associations and patterns."""
@@ -216,7 +219,7 @@ class AssociativeMemory(BaseMemory):
             return None
             
         except Exception as e:
-            print(f"Error determining relationship type: {e}")
+            logger.error(f"Error determining relationship type: {e}")
             return None
 
     async def _update_patterns(self) -> None:
@@ -287,7 +290,7 @@ class AssociativeMemory(BaseMemory):
             return [line.strip() for line in response.split('\n') if line.strip()]
             
         except Exception as e:
-            print(f"Error extracting common elements: {e}")
+            logger.error(f"Error extracting common elements: {e}")
             return []
 
     async def _update_clusters(self) -> None:

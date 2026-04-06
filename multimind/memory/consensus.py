@@ -4,12 +4,15 @@ Multi-Agent Consensus Memory implementation using RAFT protocol.
 
 from typing import Dict, Any, Optional, List, Set, Tuple
 from datetime import datetime, timedelta
+import logging
 import numpy as np
 from collections import defaultdict
 import asyncio
 from enum import Enum
 from .base import BaseMemory
 from .vector_store import VectorStoreMemory
+
+logger = logging.getLogger(__name__)
 
 class NodeState(Enum):
     """RAFT node states."""
@@ -356,4 +359,4 @@ class ConsensusMemory(BaseMemory):
         """Forward request to leader."""
         # This would typically forward to the current leader
         # For now, we'll just log it
-        print(f"Forwarding {command} to leader: {data}") 
+        logger.debug("Forwarding %s to leader: %s", command, data) 

@@ -5,10 +5,14 @@ Hierarchical memory implementation that organizes information in a tree structur
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
+
 
 class HierarchicalMemory(BaseMemory):
     """Memory that organizes information in a hierarchical structure."""
@@ -187,7 +191,7 @@ class HierarchicalMemory(BaseMemory):
             
             return category, parent_id, confidence
         except Exception as e:
-            print(f"Error categorizing message: {e}")
+            logger.error(f"Error categorizing message: {e}")
             return "general", "root", 0.75
 
     async def _create_node(
@@ -308,7 +312,7 @@ class HierarchicalMemory(BaseMemory):
             
             return dot_product / (norm1 * norm2)
         except Exception as e:
-            print(f"Error calculating similarity: {e}")
+            logger.error(f"Error calculating similarity: {e}")
             return 0.0
 
     async def _merge_nodes(self, node1_id: str, node2_id: str) -> None:
@@ -408,7 +412,7 @@ class HierarchicalMemory(BaseMemory):
                         )
                     ]
         except Exception as e:
-            print(f"Error updating category embeddings: {e}")
+            logger.error(f"Error updating category embeddings: {e}")
 
     async def query_hierarchy(
         self,
@@ -453,7 +457,7 @@ class HierarchicalMemory(BaseMemory):
             
             return results[:max_results]
         except Exception as e:
-            print(f"Error querying hierarchy: {e}")
+            logger.error(f"Error querying hierarchy: {e}")
             return []
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
@@ -905,7 +909,7 @@ class HierarchicalMemory(BaseMemory):
                     self.semantic_index[tag] = set()
                 self.semantic_index[tag].add(node_id)
         except Exception as e:
-            print(f"Error updating semantic analysis: {e}")
+            logger.error(f"Error updating semantic analysis: {e}")
 
     async def _track_node_evolution(self, node_id: str) -> None:
         """Track the evolution of a node over time."""

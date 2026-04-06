@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel
 from datetime import datetime
 import logging
+from io import StringIO
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,17 @@ import click
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress
+
+logger = logging.getLogger(__name__)
+
+
+def _log_rich_table(table: Table) -> None:
+    buf = StringIO()
+    Console(file=buf, width=120).print(table)
+    text = buf.getvalue().rstrip()
+    if text:
+        logger.info("%s", text)
+
 
 class Metric(BaseModel):
     """Base class for metrics."""
@@ -207,7 +219,6 @@ def show_metrics(metric_type, provider, task_type, model, start_time, end_time):
         end_time=end
     )
     
-    console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Timestamp")
     table.add_column("Provider")
@@ -226,7 +237,7 @@ def show_metrics(metric_type, provider, task_type, model, start_time, end_time):
             metric.__class__.__name__.replace('Metric', '')
         )
     
-    console.print(table)
+    _log_rich_table(table)
 
 @cli.command()
 def show_summary():
@@ -234,7 +245,6 @@ def show_summary():
     collector = MetricsCollector()
     summary = collector.get_summary()
     
-    console = Console()
     table = Table(show_header=True, header_style="bold magenta")
     table.add_column("Metric")
     table.add_column("Value")
@@ -246,7 +256,7 @@ def show_summary():
             value = ", ".join(value)
         table.add_row(key.replace('_', ' ').title(), str(value))
     
-    console.print(table)
+    _log_rich_table(table)
 
 @cli.command()
 @click.option('--filepath', help='Path to save metrics file')

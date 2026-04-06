@@ -5,11 +5,14 @@ Active learning memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
 
 class ActiveLearningMemory(BaseMemory):
     """Memory that implements active learning/reinforced memory."""
@@ -128,7 +131,7 @@ class ActiveLearningMemory(BaseMemory):
             item["metadata"]["reinforcement_count"] = len(feedback["reinforcement_suggestions"])
             
         except Exception as e:
-            print(f"Error tracking feedback: {e}")
+            logger.error(f"Error tracking feedback: {e}")
 
     async def _analyze_feedback(self) -> None:
         """Analyze feedback patterns and reinforcement."""
@@ -167,7 +170,7 @@ class ActiveLearningMemory(BaseMemory):
                     })
                 
             except Exception as e:
-                print(f"Error analyzing feedback: {e}")
+                logger.error(f"Error analyzing feedback: {e}")
         
         # Update last analysis time
         self.last_analysis = datetime.now()

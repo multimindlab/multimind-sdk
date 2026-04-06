@@ -3,17 +3,21 @@ Enhanced document processing with semantic chunking and metadata extraction.
 """
 
 from typing import List, Dict, Any, Optional, Union, Tuple, Callable
+import logging
 import re
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+
 # Optional spacy import for NLP features
 try:
     import spacy
     SPACY_AVAILABLE = True
 except ImportError:
     SPACY_AVAILABLE = False
-    print("Warning: spacy not available. NLP features will be disabled.")
+    logger.warning("spacy not available. NLP features will be disabled.")
 
 # Optional beautifulsoup import for HTML processing
 try:
@@ -21,7 +25,7 @@ try:
     BEAUTIFULSOUP_AVAILABLE = True
 except ImportError:
     BEAUTIFULSOUP_AVAILABLE = False
-    print("Warning: beautifulsoup4 not available. HTML processing features will be disabled.")
+    logger.warning("beautifulsoup4 not available. HTML processing features will be disabled.")
 
 import requests
 
@@ -43,7 +47,7 @@ except ImportError:
         except ImportError:
             TRANSFORMERS_AVAILABLE = False
             _AUTO_MODEL_CLASS = None
-            print("Warning: transformers not available. Advanced document processing features will be disabled.")
+            logger.warning("transformers not available. Advanced document processing features will be disabled.")
 
 import numpy as np
 from ..models.base import BaseLLM

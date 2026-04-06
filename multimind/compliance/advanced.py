@@ -42,6 +42,7 @@ class HomomorphicEncryption:
 from datetime import datetime
 import json
 import asyncio
+import hashlib
 from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
@@ -291,11 +292,12 @@ class SelfHealingCompliance:
     
     def _get_state_metadata(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Get metadata for a compliance state."""
+        state_bytes = json.dumps(state, sort_keys=True, default=str).encode("utf-8")
         return {
             "status": state.get("status", "unknown"),
             "timestamp": datetime.now().isoformat(),
             "version": state.get("version", "1.0"),
-            "checksum": hash(str(state))
+            "checksum": hashlib.sha256(state_bytes).hexdigest()
         }
     
     def _create_rollback_point(self, state: Dict[str, Any]):
@@ -497,8 +499,13 @@ class ModelWatermarking:
     
     async def _generate_fingerprint(self, model: Any) -> str:
         """Generate fingerprint for the model."""
-        # Placeholder implementation: Replace with actual fingerprint generation logic
-        return f"fingerprint_{hash(str(model))}"
+        # Deterministic cryptographic fingerprint for model identity.
+        model_payload = {
+            "type": type(model).__name__,
+            "repr": repr(model),
+        }
+        model_bytes = json.dumps(model_payload, sort_keys=True, default=str).encode("utf-8")
+        return f"fingerprint_{hashlib.sha256(model_bytes).hexdigest()}"
     
     async def verify_watermark(self, model) -> Dict[str, Any]:
         """Enhanced watermark verification with tamper detection."""
@@ -533,10 +540,17 @@ class ModelWatermarking:
         """Track and return fingerprint information for a model."""
         fingerprint = await self._generate_fingerprint(model)
         await self.fingerprint_tracker.track(fingerprint)
+        model_id = hashlib.sha256(
+            json.dumps(
+                {"type": type(model).__name__, "repr": repr(model)},
+                sort_keys=True,
+                default=str
+            ).encode("utf-8")
+        ).hexdigest()[:16]
         return {
             "fingerprint": fingerprint,
             "timestamp": datetime.now().isoformat(),
-            "model_id": str(hash(str(model)))
+            "model_id": model_id
         }
 
 class AdaptivePrivacy:

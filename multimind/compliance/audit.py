@@ -129,16 +129,16 @@ class ComplianceAuditLogger(BaseModel):
     
     async def export_events(
         self,
-        format: str = "json",
+        export_format: str = "json",
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None
     ) -> str:
         """Export audit events in specified format."""
         events = await self.get_events(start_time=start_time, end_time=end_time)
         
-        if format == "json":
+        if export_format == "json":
             return json.dumps([e.dict() for e in events], default=str)
-        elif format == "csv":
+        elif export_format == "csv":
             import csv
             import io
             if not events:
@@ -156,7 +156,7 @@ class ComplianceAuditLogger(BaseModel):
                 writer.writerow(row)
             return output.getvalue()
         else:
-            raise ValueError(f"Unsupported export format: {format}")
+            raise ValueError(f"Unsupported export format: {export_format}")
     
     async def get_compliance_report(
         self,

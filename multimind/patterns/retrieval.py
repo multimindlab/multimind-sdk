@@ -1,11 +1,10 @@
 """
-Stub retrieval module for advanced RAG patterns.
+Retrieval pattern aliases for advanced RAG patterns.
+
+This module re-exports concrete implementations from `multimind.retrieval.retrieval`
+so advanced pattern modules can depend on production-ready classes.
 """
 
-class HybridRetriever:
-    def __init__(self, *args, **kwargs):
-        pass
+from ..retrieval.retrieval import HybridRetriever, QueryDecomposer
 
-class QueryDecomposer:
-    def __init__(self, *args, **kwargs):
-        pass
+__all__ = ["HybridRetriever", "QueryDecomposer"]

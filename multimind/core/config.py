@@ -112,8 +112,19 @@ class GatewayConfig(BaseSettings):
         return model_map[normalized_name]
 
     @classmethod
-    def validate(cls, value):
-        # Add appropriate validation logic here
+    def validate(cls, value: "GatewayConfig") -> "GatewayConfig":
+        """
+        Pydantic hook to validate the full GatewayConfig instance.
+        Ensures that the configured default_model refers to a known model section.
+        """
+        allowed_models = {"openai", "anthropic", "ollama", "groq", "huggingface"}
+        normalized_default = (value.default_model or "").lower()
+        if normalized_default not in allowed_models:
+            available = ", ".join(sorted(allowed_models))
+            raise ValueError(
+                f"Invalid default_model '{value.default_model}'. "
+                f"Must be one of: {available}"
+            )
         return value
 
 # Create a global config instance

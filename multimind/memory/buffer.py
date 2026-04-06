@@ -5,8 +5,11 @@ Buffer memory implementation for managing recent context.
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import json
+import logging
 from pathlib import Path
 from .base import BaseMemory
+
+logger = logging.getLogger(__name__)
 
 class BufferMemory(BaseMemory):
     """Memory that maintains a buffer of recent messages with token management."""
@@ -149,7 +152,7 @@ class BufferMemory(BaseMemory):
             self.last_backup = datetime.fromisoformat(data["last_backup"])
             self.backup_history = data["backup_history"]
         except Exception as e:
-            print(f"Error loading buffer: {e}")
+            logger.error(f"Error loading buffer: {e}")
             await self.clear()
 
     def _remove_oldest(self) -> None:

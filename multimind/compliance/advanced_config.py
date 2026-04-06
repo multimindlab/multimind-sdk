@@ -40,7 +40,7 @@ class ComplianceShardConfig(BaseModel):
     jurisdiction: str
     epsilon: float = 1.0
     rules: List[Dict[str, Any]]
-    metadata: Dict[str, Any] = {}
+    metadata: Dict[str, Any] = Field(default_factory=dict)
     compliance_level: ComplianceLevel = ComplianceLevel.STANDARD
     encryption_enabled: bool = True
     metrics_tracking: bool = True

@@ -5,11 +5,15 @@ Versioned and snapshot memory implementation.
 from typing import List, Dict, Any, Optional, Set, Tuple
 from datetime import datetime, timedelta
 import json
+import logging
 from pathlib import Path
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
+
+logger = logging.getLogger(__name__)
+
 
 class VersionedMemory(BaseMemory):
     """Memory that implements versioned/snapshot memory."""
@@ -180,7 +184,7 @@ class VersionedMemory(BaseMemory):
             item["metadata"]["metadata_version"] = metadata["metadata_version"]
             
         except Exception as e:
-            print(f"Error initializing metadata: {e}")
+            logger.error(f"Error initializing metadata: {e}")
 
     async def _create_snapshot(self) -> None:
         """Create a snapshot of current state."""
@@ -210,7 +214,7 @@ class VersionedMemory(BaseMemory):
             self.last_snapshot = datetime.now()
             
         except Exception as e:
-            print(f"Error creating snapshot: {e}")
+            logger.error(f"Error creating snapshot: {e}")
 
     async def _create_differential(self, item_id: str) -> None:
         """Create differential for an item."""
@@ -245,7 +249,7 @@ class VersionedMemory(BaseMemory):
                 item["metadata"]["differential_id"] = differential["id"]
                 
             except Exception as e:
-                print(f"Error creating differential: {e}")
+                logger.error(f"Error creating differential: {e}")
 
     def _calculate_content_changes(self, old_content: str, new_content: str) -> Dict[str, Any]:
         """Calculate changes between content versions."""
@@ -304,7 +308,7 @@ class VersionedMemory(BaseMemory):
                     version_history.append(latest_version)
                     
             except Exception as e:
-                print(f"Error compressing version: {e}")
+                logger.error(f"Error compressing version: {e}")
 
     async def _analyze_version(self, item_id: str) -> None:
         """Analyze version history for an item."""
@@ -333,7 +337,7 @@ class VersionedMemory(BaseMemory):
             item["metadata"]["analysis_version"] = analysis["analysis_version"]
             
         except Exception as e:
-            print(f"Error analyzing version: {e}")
+            logger.error(f"Error analyzing version: {e}")
 
     async def _update_version_graph(self, item_id: str) -> None:
         """Update version graph for an item."""
@@ -359,7 +363,7 @@ class VersionedMemory(BaseMemory):
             self.last_graph_update = datetime.now()
             
         except Exception as e:
-            print(f"Error updating version graph: {e}")
+            logger.error(f"Error updating version graph: {e}")
 
     async def _detect_merges(self, item_id: str) -> None:
         """Detect potential merges for an item."""
@@ -396,7 +400,7 @@ class VersionedMemory(BaseMemory):
                         self.merge_points[merge_id] = [sim["v1"], sim["v2"]]
             
         except Exception as e:
-            print(f"Error detecting merges: {e}")
+            logger.error(f"Error detecting merges: {e}")
 
     def _calculate_similarity(self, content1: str, content2: str) -> float:
         """Calculate similarity between two content versions."""
@@ -434,7 +438,7 @@ class VersionedMemory(BaseMemory):
                     }]
             
         except Exception as e:
-            print(f"Error detecting conflicts: {e}")
+            logger.error(f"Error detecting conflicts: {e}")
 
     def _calculate_conflict_score(self, content1: str, content2: str) -> float:
         """Calculate conflict score between two content versions."""

@@ -4,12 +4,15 @@ Vector store memory implementation that uses the vector store interface.
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import logging
 import numpy as np
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from ..vector_store.vector_store import VectorStore
 from ..vector_store.base import VectorStoreConfig, VectorStoreType
 import os
+
+logger = logging.getLogger(__name__)
 
 class VectorStoreMemory(BaseMemory):
     """Memory that uses vector store for storing and retrieving embeddings."""
@@ -216,7 +219,11 @@ class VectorStoreMemory(BaseMemory):
                 if os.path.exists(old_backup["path"]):
                     os.remove(old_backup["path"])
             except Exception as e:
-                print(f"Warning: Failed to delete old backup file {old_backup['path']}: {e}")
+                logger.warning(
+                    "Failed to delete old backup file %s: %s",
+                    old_backup["path"],
+                    e,
+                )
         
         self.last_backup = datetime.now()
 
