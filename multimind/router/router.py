@@ -2,7 +2,7 @@
 Main router interface for model selection and request routing.
 """
 
-from typing import List, Dict, Any, Optional, Type, Tuple, Union
+from typing import List, Dict, Any, Optional, Tuple, Union
 from ..models.base import BaseLLM
 from .strategy import RoutingStrategy, CostAwareStrategy, LatencyAwareStrategy, HybridStrategy, ParetoFrontStrategy, LearningBasedStrategy
 from .fallback import FallbackHandler

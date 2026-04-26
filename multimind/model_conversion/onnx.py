@@ -108,8 +108,6 @@ class ONNXConverter(BaseModelConverter):
         """
         try:
             # Check if required dependencies are installed
-            import onnx
-            import onnxruntime
             
             # Try to load the model and tokenizer
             AutoModelForCausalLM.from_pretrained(model_path)

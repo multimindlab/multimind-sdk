@@ -94,7 +94,7 @@ class FallbackPolicy:
 
 class Router:
     """Router for managing provider selection and request routing."""
-    
+
     def __init__(self):
         """Initialize the router."""
         self.providers: Dict[str, ProviderAdapter] = {}

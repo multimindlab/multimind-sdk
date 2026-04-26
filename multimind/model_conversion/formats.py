@@ -1,7 +1,9 @@
-from typing import Dict, Any, Optional
-from pathlib import Path
+from typing import Dict, Any, Optional, TYPE_CHECKING
 import torch
 from .base import BaseModelConverter
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Try to import tensorflow, but handle gracefully if not available
 try:
@@ -14,12 +16,16 @@ except ImportError:
 # Try to import onnx and onnxruntime, but handle gracefully if not available
 try:
     import onnx
-    import onnxruntime
     ONNX_AVAILABLE = True
 except ImportError:
     ONNX_AVAILABLE = False
     onnx = None
     onnxruntime = None
+
+# For type hints only - doesn't actually import at runtime
+if TYPE_CHECKING:
+    import onnx as onnx_types
+
 
 class TensorFlowConverter(BaseModelConverter):
     """Converter for TensorFlow models."""
@@ -85,8 +91,15 @@ class TensorFlowConverter(BaseModelConverter):
             "signatures": list(model.signatures.keys())
         }
 
+
 class ONNXRuntimeConverter(BaseModelConverter):
     """Converter for ONNX Runtime models."""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
+        """Initialize ONNX converter."""
+        if not ONNX_AVAILABLE:
+            logger.warning("ONNX not available - converter will raise error on use")
+        super().__init__(config)
     
     def convert(self, 
                 model_path: str,
@@ -108,8 +121,19 @@ class ONNXRuntimeConverter(BaseModelConverter):
         onnx.save(optimized_model, output_path)
         return output_path
     
-    def _optimize_model(self, model: onnx.ModelProto, config: Dict[str, Any]) -> onnx.ModelProto:
-        """Optimize ONNX model for runtime."""
+    def _optimize_model(self, model: Any, config: Dict[str, Any]) -> Any:
+        """Optimize ONNX model for runtime.
+        
+        Args:
+            model: ONNX model (onnx.ModelProto)
+            config: Optimization configuration
+            
+        Returns:
+            Optimized ONNX model
+        """
+        if not ONNX_AVAILABLE:
+            raise ImportError("ONNX not available")
+        
         # Implementation for ONNX optimization
         pass
     
@@ -136,6 +160,7 @@ class ONNXRuntimeConverter(BaseModelConverter):
             "producer_name": model.producer_name,
             "producer_version": model.producer_version
         }
+
 
 class SafetensorsConverter(BaseModelConverter):
     """Converter for Safetensors format."""
@@ -176,6 +201,7 @@ class SafetensorsConverter(BaseModelConverter):
             "metadata": metadata
         }
 
+
 class GGMLConverter(BaseModelConverter):
     """Converter for GGML format."""
     
@@ -198,4 +224,4 @@ class GGMLConverter(BaseModelConverter):
     def get_metadata(self, model_path: str) -> Dict[str, Any]:
         """Get GGML model metadata."""
         # Implementation for GGML metadata extraction
-        pass 
+        pass
