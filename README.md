@@ -19,9 +19,9 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK License"></a>
-  <a href="https://github.com/multimind-dev/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimind-dev/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
-  <a href="https://github.com/multimind-dev/multimind-sdk/actions"><img src="https://img.shields.io/github/actions/workflow/status/multimind-dev/multimind-sdk/ci.yml" alt="CI Status"></a>
+  <a href="https://github.com/multimindlab/multimind-sdk/blob/main/LICENSE"><img src="https://img.shields.io/github/license/multimindlab/multimind-sdk.svg" alt="MultiMind SDK License"></a>
+  <a href="https://github.com/multimindlab/multimind-sdk/stargazers"><img src="https://img.shields.io/github/stars/multimindlab/multimind-sdk.svg" alt="MultiMind SDK GitHub Stars"></a>
+  <a href="https://github.com/multimindlab/multimind-sdk/actions"><img src="https://img.shields.io/github/actions/workflow/status/multimindlab/multimind-sdk/ci.yml" alt="CI Status"></a>
 </p>
 
 <div align="center">
@@ -336,7 +336,7 @@ pip install multimind-sdk
 pip install multimind-sdk[all]
 
 # Development installation
-git clone https://github.com/multimind-dev/multimind-sdk.git
+git clone https://github.com/multimindlab/multimind-sdk.git
 cd multimind-sdk
 pip install -e ".[dev]"
 ```
@@ -497,13 +497,13 @@ We love your input! We want to make contributing to MultiMind SDK as easy and tr
 
 - [Contributing Guide](CONTRIBUTING.md) - How to contribute
 - [Code of Conduct](CODE_OF_CONDUCT.md) - Community guidelines
-- [Issue Tracker](https://github.com/multimind-dev/multimind-sdk/issues) - Report bugs or request features
+- [Issue Tracker](https://github.com/multimindlab/multimind-sdk/issues) - Report bugs or request features
 
 ### Development Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/multimind-dev/multimind-sdk.git
+git clone https://github.com/multimindlab/multimind-sdk.git
 cd multimind-sdk
 
 # Install development dependencies
@@ -626,7 +626,7 @@ For more information about the Apache License 2.0, visit [apache.org/licenses/LI
 ## 🌟 Support
 
 - [Discord Community](https://discord.gg/K64U65je7h) - Join our active developer community
-- [GitHub Issues](https://github.com/multimind-dev/multimind-sdk/issues) - Get help and report issues
+- [GitHub Issues](https://github.com/multimindlab/multimind-sdk/issues) - Get help and report issues
 - [Documentation](docs/README.md) - Comprehensive guides
 
 ## 📣 About
@@ -636,14 +636,14 @@ MultiMind SDK is developed and maintained by the MultimindLAB team, dedicated to
 ---
 
 <p align="center">
-  Made with ❤️ by the AI2Innovate & MultimindLAB Team | <a href="https://github.com/multimind-dev/multimind-sdk/blob/main/LICENSE">License</a>
+  Made with ❤️ by the AI2Innovate & MultimindLAB Team | <a href="https://github.com/multimindlab/multimind-sdk/blob/main/LICENSE">License</a>
 </p>
 
 <!-- SEO CTAs -->
 <div align="center">
   <h3>Ready to Build the Future of AI?</h3>
   <p>
-    <a href="https://github.com/multimind-dev/multimind-sdk" class="button">⭐ Star on GitHub</a>
+    <a href="https://github.com/multimindlab/multimind-sdk" class="button">⭐ Star on GitHub</a>
     <a href="https://discord.gg/K64U65je7h" class="button">💬 Join Discord</a>
     <a href="docs/getting_started.md" class="button">🚀 Get Started</a>
   </p>
