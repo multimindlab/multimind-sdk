@@ -82,6 +82,12 @@ db.sqlite3
 db.sqlite3-journal
 chat_sessions/
 
+# Database files (SQLite, etc)
+*.db
+*.sqlite
+*.sqlite3
+usage.db
+
 # Temporary files
 *.tmp
 *.bak
