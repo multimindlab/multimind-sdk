@@ -7,8 +7,8 @@ This module provides a small, stable API used by examples.
 from __future__ import annotations
 
 import time
-from typing import Any, Dict, DefaultDict
 from collections import defaultdict
+from typing import Any, DefaultDict, Dict
 
 
 class PerformanceTracker:
@@ -39,7 +39,9 @@ class PerformanceTracker:
     def get_current_time(self) -> float:
         return time.time()
 
-    def track_latency(self, modality: str, latency: float, model_id: str = "unknown", success: bool = True) -> None:
+    def track_latency(
+        self, modality: str, latency: float, model_id: str = "unknown", success: bool = True
+    ) -> None:
         stat = self._ensure(modality, model_id)
         if success:
             stat["success"] += 1
@@ -76,4 +78,3 @@ class PerformanceTracker:
                 "fail": fail,
             }
         return metrics
-

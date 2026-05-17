@@ -2,48 +2,63 @@
 Additional PEFT (Parameter-Efficient Fine-Tuning) methods implementation.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
-from transformers.modeling_utils import PreTrainedModel
-from transformers.tokenization_utils import PreTrainedTokenizer
 
 # Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
 try:
-    from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqLM
+    from transformers.models.auto.modeling_auto import (
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoModelForSequenceClassification,
+    )
+
     _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqLM
 except ImportError:
     try:
-        from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification, AutoModelForSeq2SeqGeneration
+        from transformers.models.auto.modeling_auto import (
+            AutoModelForCausalLM,
+            AutoModelForSeq2SeqGeneration,
+            AutoModelForSequenceClassification,
+        )
+
         _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqGeneration
     except ImportError:
         # Fallback for very old versions
-        from transformers.models.auto.modeling_auto import AutoModelForCausalLM, AutoModelForSequenceClassification
+        from transformers.models.auto.modeling_auto import (
+            AutoModelForCausalLM,
+            AutoModelForSequenceClassification,
+        )
+
         _AUTO_MODEL_FOR_SEQ2SEQ = None
 
-from transformers.models.auto.tokenization_auto import AutoTokenizer
-from transformers.training_args import TrainingArguments
-from transformers.trainer import Trainer
-from transformers.data.data_collator import DataCollatorForLanguageModeling, DataCollatorForSeq2Seq
-from peft import (
-    LoraConfig,
-    # AdapterConfig,  # Commented out due to ImportError
-    PromptTuningConfig,
-    PrefixTuningConfig,
-    IA3Config,
-    get_peft_model,
-    TaskType,
-    PeftModel
-)
-from datasets import Dataset as HFDataset
 import logging
 import math
 from enum import Enum
 
+from datasets import Dataset as HFDataset
+from peft import (
+    IA3Config,
+    LoraConfig,
+    PrefixTuningConfig,
+    # AdapterConfig,  # Commented out due to ImportError
+    PromptTuningConfig,
+    TaskType,
+    get_peft_model,
+)
+from transformers.data.data_collator import DataCollatorForLanguageModeling, DataCollatorForSeq2Seq
+from transformers.models.auto.tokenization_auto import AutoTokenizer
+from transformers.trainer import Trainer
+from transformers.training_args import TrainingArguments
+
 logger = logging.getLogger(__name__)
+
 
 class PEFTMethod(Enum):
     """Available PEFT methods."""
+
     LORA = "lora"
     ADAPTER = "adapter"
     PROMPT = "prompt"
@@ -55,6 +70,7 @@ class PEFTMethod(Enum):
     COMPACTER = "compacter"
     HYPERLORA = "hyperlora"
 
+
 class DiffPruningLayer(nn.Module):
     """DiffPruning layer implementation for sparse fine-tuning."""
 
@@ -64,7 +80,7 @@ class DiffPruningLayer(nn.Module):
         out_features: int,
         sparsity: float = 0.1,
         mask_init: str = "uniform",
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.in_features = in_features
@@ -104,6 +120,7 @@ class DiffPruningLayer(nn.Module):
 
         return nn.functional.linear(x, masked_weight, self.bias)
 
+
 class SparseAdapterLayer(nn.Module):
     """SparseAdapter layer implementation with dynamic sparsity."""
 
@@ -114,7 +131,7 @@ class SparseAdapterLayer(nn.Module):
         adapter_size: int = 64,
         sparsity: float = 0.1,
         non_linearity: str = "relu",
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.in_features = in_features
@@ -152,6 +169,7 @@ class SparseAdapterLayer(nn.Module):
         h = self.non_linearity(h)
         return nn.functional.linear(h, up_weight, self.up.bias)
 
+
 class PEFTTuner:
     """Unified PEFT implementation supporting multiple methods."""
 
@@ -163,7 +181,7 @@ class PEFTTuner:
         model_type: str = "causal_lm",
         method_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -177,41 +195,41 @@ class PEFTTuner:
                 "lora_alpha": 32,
                 "target_modules": ["q_proj", "v_proj"],
                 "lora_dropout": 0.05,
-                "bias": "none"
+                "bias": "none",
             },
             PEFTMethod.ADAPTER: {
                 # "adapter_type": "houlsby",
                 "adapter_size": 64,
                 "adapter_non_linearity": "relu",
                 "adapter_dropout": 0.1,
-                "target_modules": ["q_proj", "v_proj"]
+                "target_modules": ["q_proj", "v_proj"],
             },
             PEFTMethod.PROMPT: {
                 "prompt_tuning_init": "RANDOM",
                 "num_virtual_tokens": 20,
-                "token_dim": 768  # Will be set automatically
+                "token_dim": 768,  # Will be set automatically
             },
             PEFTMethod.PREFIX: {
                 "num_virtual_tokens": 20,
                 "encoder_hidden_size": 128,
                 "encoder_num_layers": 2,
-                "encoder_dropout": 0.1
+                "encoder_dropout": 0.1,
             },
             PEFTMethod.IA3: {
                 "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj", "fc1", "fc2"],
-                "feedforward_modules": ["fc1", "fc2"]
+                "feedforward_modules": ["fc1", "fc2"],
             },
             PEFTMethod.DIFFPRUNING: {
                 "sparsity": 0.1,
                 "mask_init": "uniform",
-                "target_modules": ["q_proj", "v_proj"]
+                "target_modules": ["q_proj", "v_proj"],
             },
             PEFTMethod.SPARSE_ADAPTER: {
                 "adapter_size": 64,
                 "sparsity": 0.1,
                 "non_linearity": "relu",
-                "target_modules": ["q_proj", "v_proj"]
-            }
+                "target_modules": ["q_proj", "v_proj"],
+            },
         }
 
         # Update method config with user provided values
@@ -229,7 +247,7 @@ class PEFTTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -249,9 +267,12 @@ class PEFTTuner:
                 # Fallback for very old versions
                 try:
                     from transformers import BartForConditionalGeneration
+
                     return BartForConditionalGeneration
                 except ImportError:
-                    raise ImportError("Unable to load seq2seq model. Please ensure transformers is properly installed.")
+                    raise ImportError(
+                        "Unable to load seq2seq model. Please ensure transformers is properly installed."
+                    )
         else:
             raise ValueError(f"Unsupported model type: {self.model_type}")
 
@@ -260,14 +281,9 @@ class PEFTTuner:
         # Load base model and tokenizer
         model_class = self._get_model_class()
         self.model = model_class.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -278,33 +294,43 @@ class PEFTTuner:
             self.method_configs[self.method]["token_dim"] = self.model.config.hidden_size
 
         # Configure PEFT method
-        if self.method in [PEFTMethod.LORA, PEFTMethod.ADAPTER, PEFTMethod.PROMPT,
-                          PEFTMethod.PREFIX, PEFTMethod.IA3]:
+        if self.method in [
+            PEFTMethod.LORA,
+            PEFTMethod.ADAPTER,
+            PEFTMethod.PROMPT,
+            PEFTMethod.PREFIX,
+            PEFTMethod.IA3,
+        ]:
             # Use PEFT library for standard methods
             if self.method == PEFTMethod.LORA:
-                config = LoraConfig(**self.method_configs[self.method],
-                                  task_type=TaskType.CAUSAL_LM)
+                config = LoraConfig(
+                    **self.method_configs[self.method], task_type=TaskType.CAUSAL_LM
+                )
             elif self.method == PEFTMethod.ADAPTER:
                 # config = AdapterConfig(**self.method_configs[self.method],
                 #                      task_type=TaskType.CAUSAL_LM)
-                config = LoraConfig(**self.method_configs[self.method],
-                                  task_type=TaskType.CAUSAL_LM)  # Fallback to LoraConfig
+                config = LoraConfig(
+                    **self.method_configs[self.method], task_type=TaskType.CAUSAL_LM
+                )  # Fallback to LoraConfig
             elif self.method == PEFTMethod.PROMPT:
-                config = PromptTuningConfig(**self.method_configs[self.method],
-                                          task_type=TaskType.CAUSAL_LM)
+                config = PromptTuningConfig(
+                    **self.method_configs[self.method], task_type=TaskType.CAUSAL_LM
+                )
             elif self.method == PEFTMethod.PREFIX:
-                config = PrefixTuningConfig(**self.method_configs[self.method],
-                                          task_type=TaskType.CAUSAL_LM)
+                config = PrefixTuningConfig(
+                    **self.method_configs[self.method], task_type=TaskType.CAUSAL_LM
+                )
             elif self.method == PEFTMethod.IA3:
-                config = IA3Config(**self.method_configs[self.method],
-                                 task_type=TaskType.CAUSAL_LM)
+                config = IA3Config(**self.method_configs[self.method], task_type=TaskType.CAUSAL_LM)
 
             self.model = get_peft_model(self.model, config)
 
         elif self.method in [PEFTMethod.DIFFPRUNING, PEFTMethod.SPARSE_ADAPTER]:
             # Custom implementation for advanced methods
             for name, module in self.model.named_modules():
-                if any(target in name for target in self.method_configs[self.method]["target_modules"]):
+                if any(
+                    target in name for target in self.method_configs[self.method]["target_modules"]
+                ):
                     if isinstance(module, nn.Linear):
                         parent_name = ".".join(name.split(".")[:-1])
                         parent = self.model.get_submodule(parent_name)
@@ -314,13 +340,13 @@ class PEFTTuner:
                             new_module = DiffPruningLayer(
                                 in_features=module.in_features,
                                 out_features=module.out_features,
-                                **self.method_configs[self.method]
+                                **self.method_configs[self.method],
                             )
                         else:  # SPARSE_ADAPTER
                             new_module = SparseAdapterLayer(
                                 in_features=module.in_features,
                                 out_features=module.out_features,
-                                **self.method_configs[self.method]
+                                **self.method_configs[self.method],
                             )
 
                         setattr(parent, child_name, new_module)
@@ -336,29 +362,22 @@ class PEFTTuner:
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create datase
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_datase
@@ -367,7 +386,7 @@ class PEFTTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using the selected PEFT method."""
         if self.model is None:
@@ -384,22 +403,16 @@ class PEFTTuner:
 
         # Select appropriate data collator
         if self.model_type == "seq2seq":
-            data_collator = DataCollatorForSeq2Seq(
-                tokenizer=self.tokenizer,
-                padding=True
-            )
+            data_collator = DataCollatorForSeq2Seq(tokenizer=self.tokenizer, padding=True)
         else:
-            data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator = DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False)
 
         self.trainer = Trainer(
             model=self.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=data_collator
+            data_collator=data_collator,
         )
 
         # Train
@@ -424,11 +437,7 @@ class PEFTTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         model_class = self._get_model_class()
-        self.model = model_class.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
-        )
+        self.model = model_class.from_pretrained(path, torch_dtype=torch.float16, device_map="auto")
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
 

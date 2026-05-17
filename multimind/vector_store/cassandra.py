@@ -1,14 +1,17 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend
+
 try:
-    from cassandra.cluster import Cluster
     from cassandra.auth import PlainTextAuthProvider
+    from cassandra.cluster import Cluster
 except ImportError:
     Cluster = None
     PlainTextAuthProvider = None
+
 
 class CassandraBackend(VectorStoreBackend):
     def __init__(
@@ -28,9 +31,11 @@ class CassandraBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
-        self.contact_points = contact_points or os.environ.get("CASSANDRA_CONTACT_POINTS", "127.0.0.1").split(",")
+        self.contact_points = contact_points or os.environ.get(
+            "CASSANDRA_CONTACT_POINTS", "127.0.0.1"
+        ).split(",")
         self.port = port
         self.username = username or os.environ.get("CASSANDRA_USERNAME")
         self.password = password or os.environ.get("CASSANDRA_PASSWORD")
@@ -47,11 +52,15 @@ class CassandraBackend(VectorStoreBackend):
         self.explain = explain
         self.logger = logging.getLogger(__name__)
         if Cluster is None or PlainTextAuthProvider is None:
-            raise ImportError("cassandra-driver is not installed. Please install it to use this backend.")
+            raise ImportError(
+                "cassandra-driver is not installed. Please install it to use this backend."
+            )
         auth_provider = None
         if self.username and self.password:
             auth_provider = PlainTextAuthProvider(username=self.username, password=self.password)
-        self.cluster = Cluster(contact_points=self.contact_points, port=self.port, auth_provider=auth_provider)
+        self.cluster = Cluster(
+            contact_points=self.contact_points, port=self.port, auth_provider=auth_provider
+        )
         self.session = self.cluster.connect(self.keyspace)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
@@ -60,22 +69,33 @@ class CassandraBackend(VectorStoreBackend):
             # Placeholder: actual vector storage logic depends on schema
             self.session.execute(
                 f"INSERT INTO {self.table} (id, vector, metadata, document) VALUES (%s, %s, %s, %s)",
-                (doc_id, vector, metadatas[i], documents[i])
+                (doc_id, vector, metadatas[i], documents[i]),
             )
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         # Placeholder: Cassandra does not natively support vector search; implement custom logic or use an extension
         results = []
         # Implement vector search logic here
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -86,14 +106,14 @@ class CassandraBackend(VectorStoreBackend):
     async def delete_vectors(self, ids):
         for doc_id in ids:
             self.session.execute(f"DELETE FROM {self.table} WHERE id = %s", (doc_id,))
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         self.session.execute(f"TRUNCATE {self.table}")
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -115,11 +135,11 @@ class CassandraBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

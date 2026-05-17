@@ -3,10 +3,12 @@ Configuration management for Multimind SDK.
 """
 
 import os
-from typing import Dict, Any, Optional
 from pathlib import Path
+from typing import Any, Dict, Optional
+
 import yaml
 from dotenv import load_dotenv
+
 
 class Config:
     """Manages SDK configuration."""
@@ -23,7 +25,7 @@ class Config:
 
         # Load config file if specified
         if self.config_path and Path(self.config_path).exists():
-            with open(self.config_path, 'r') as f:
+            with open(self.config_path) as f:
                 self.config = yaml.safe_load(f)
 
         # Override with environment variables
@@ -83,7 +85,7 @@ class Config:
         if not save_path:
             raise ValueError("No config path specified")
 
-        with open(save_path, 'w') as f:
+        with open(save_path, "w") as f:
             yaml.safe_dump(self.config, f)
 
     def get_model_config(self, model_type: str) -> Dict[str, Any]:

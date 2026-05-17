@@ -5,8 +5,8 @@ Requires the ``rag`` extras (``sentence-transformers``, ``numpy``, …):
 """
 
 try:
-    from .embeddings import EmbeddingGenerator, EmbeddingConfig
     from .embedding import Embedding, EmbeddingType
+    from .embeddings import EmbeddingConfig, EmbeddingGenerator
     from .standardizer import EmbeddingStandardizer
 except ImportError as exc:  # pragma: no cover - exercised on minimal installs
     raise ImportError(
@@ -15,9 +15,9 @@ except ImportError as exc:  # pragma: no cover - exercised on minimal installs
     ) from exc
 
 __all__ = [
-    'EmbeddingGenerator',
-    'EmbeddingConfig',
-    'Embedding',
-    'EmbeddingType',
-    'EmbeddingStandardizer'
-] 
+    "EmbeddingGenerator",
+    "EmbeddingConfig",
+    "Embedding",
+    "EmbeddingType",
+    "EmbeddingStandardizer",
+]

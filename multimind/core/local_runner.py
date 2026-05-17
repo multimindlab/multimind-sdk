@@ -2,25 +2,23 @@
 Local model runner for Ollama and other local model implementations.
 """
 
-import aiohttp
 import asyncio
 import json
 import logging
-from typing import List, Dict, Any, Optional, AsyncGenerator, Union
+from collections.abc import AsyncGenerator
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
 
 from .base import BaseLLM
 
 logger = logging.getLogger(__name__)
 
+
 class LocalRunner(BaseLLM):
     """Runner for local models using Ollama."""
 
-    def __init__(
-        self,
-        model_name: str,
-        base_url: str = "http://localhost:11434",
-        **kwargs
-    ):
+    def __init__(self, model_name: str, base_url: str = "http://localhost:11434", **kwargs):
         super().__init__(model_name, **kwargs)
         self.base_url = base_url.rstrip("/")
         self._timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
@@ -40,7 +38,9 @@ class LocalRunner(BaseLLM):
             )
         return self._session
 
-    def _resolve_timeout(self, timeout: Optional[Union[float, aiohttp.ClientTimeout]]) -> aiohttp.ClientTimeout:
+    def _resolve_timeout(
+        self, timeout: Optional[Union[float, aiohttp.ClientTimeout]]
+    ) -> aiohttp.ClientTimeout:
         """Normalize timeout input into aiohttp.ClientTimeout."""
         if isinstance(timeout, aiohttp.ClientTimeout):
             return timeout
@@ -64,7 +64,9 @@ class LocalRunner(BaseLLM):
         session = await self._get_session()
         url = f"{self.base_url}/{endpoint}"
         request_timeout = self._resolve_timeout(timeout)
-        async with session.post(url, json=data, headers=self._headers, timeout=request_timeout) as response:
+        async with session.post(
+            url, json=data, headers=self._headers, timeout=request_timeout
+        ) as response:
             response.raise_for_status()
             buffer = ""
             async for line in response.content:
@@ -100,33 +102,26 @@ class LocalRunner(BaseLLM):
         last_error: Optional[Exception] = None
         for attempt in range(3):
             try:
-                async with session.post(url, json=data, headers=self._headers, timeout=request_timeout) as response:
+                async with session.post(
+                    url, json=data, headers=self._headers, timeout=request_timeout
+                ) as response:
                     response.raise_for_status()
                     return await response.json()
             except (aiohttp.ClientError, asyncio.TimeoutError) as e:
                 last_error = e
                 if attempt == 2:
                     raise
-                await asyncio.sleep(2 ** attempt)
+                await asyncio.sleep(2**attempt)
         if last_error:
             raise last_error
         raise RuntimeError("Failed to complete request for unknown reason.")
 
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the local model."""
         timeout = kwargs.pop("timeout", None)
-        data = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "temperature": temperature,
-            **kwargs
-        }
+        data = {"model": self.model_name, "prompt": prompt, "temperature": temperature, **kwargs}
         if max_tokens:
             data["max_tokens"] = max_tokens
 
@@ -134,11 +129,7 @@ class LocalRunner(BaseLLM):
         return response.get("response", "")
 
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text from the local model."""
         timeout = kwargs.pop("timeout", None)
@@ -147,7 +138,7 @@ class LocalRunner(BaseLLM):
             "prompt": prompt,
             "temperature": temperature,
             "stream": True,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -161,7 +152,7 @@ class LocalRunner(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion from the local model."""
         timeout = kwargs.pop("timeout", None)
@@ -169,7 +160,7 @@ class LocalRunner(BaseLLM):
             "model": self.model_name,
             "messages": messages,
             "temperature": temperature,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -182,7 +173,7 @@ class LocalRunner(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion from the local model."""
         timeout = kwargs.pop("timeout", None)
@@ -191,7 +182,7 @@ class LocalRunner(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "stream": True,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -201,20 +192,14 @@ class LocalRunner(BaseLLM):
                 yield chunk["message"]["content"]
 
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings from the local model."""
         timeout = kwargs.pop("timeout", None)
         if isinstance(text, str):
             text = [text]
 
-        data = {
-            "model": self.model_name,
-            "input": text[0] if len(text) == 1 else text,
-            **kwargs
-        }
+        data = {"model": self.model_name, "input": text[0] if len(text) == 1 else text, **kwargs}
 
         response = await self._make_request("api/embeddings", data, timeout=timeout)
         embeddings = response.get("embeddings", [])

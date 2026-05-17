@@ -1,12 +1,15 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+import numpy as np
 import psycopg2
 import psycopg2.extras
-import numpy as np
 from pgvector.psycopg2 import register_vector
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class PGEmbeddingBackend(VectorStoreBackend):
     def __init__(
@@ -21,7 +24,7 @@ class PGEmbeddingBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.host = host or os.environ.get("PG_HOST", "localhost")
         self.port = port or int(os.environ.get("PG_PORT", 5432))
@@ -39,7 +42,7 @@ class PGEmbeddingBackend(VectorStoreBackend):
             port=self.port,
             user=self.user,
             password=self.password,
-            dbname=self.database
+            dbname=self.database,
         )
         register_vector(self._conn)
         self._conn.autocommit = True
@@ -47,14 +50,16 @@ class PGEmbeddingBackend(VectorStoreBackend):
 
     def _ensure_table(self):
         with self._conn.cursor() as cur:
-            cur.execute(f"""
+            cur.execute(
+                f"""
                 CREATE TABLE IF NOT EXISTS {self.table} (
                     id TEXT PRIMARY KEY,
                     vector vector({self.dim}),
                     metadata JSONB,
                     document TEXT
                 )
-            """)
+            """
+            )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         n = len(vectors)
@@ -62,26 +67,46 @@ class PGEmbeddingBackend(VectorStoreBackend):
         metadatas = metadatas or [{} for _ in range(n)]
         docs = documents or ["" for _ in range(n)]
         loop = asyncio.get_event_loop()
+
         def _add():
             with self._conn.cursor() as cur:
                 for i in range(n):
-                    cur.execute(f"""
+                    cur.execute(
+                        f"""
                         INSERT INTO {self.table} (id, vector, metadata, document)
                         VALUES (%s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, metadata = EXCLUDED.metadata, document = EXCLUDED.document
-                    """, (ids[i], np.array(vectors[i], dtype=np.float32), psycopg2.extras.Json(metadatas[i]), docs[i]))
-        await loop.run_in_executor(None, _add)
-        self.log_metrics('add_vectors', n)
+                    """,
+                        (
+                            ids[i],
+                            np.array(vectors[i], dtype=np.float32),
+                            psycopg2.extras.Json(metadatas[i]),
+                            docs[i],
+                        ),
+                    )
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+        await loop.run_in_executor(None, _add)
+        self.log_metrics("add_vectors", n)
+
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         loop = asyncio.get_event_loop()
+
         def _search():
             with self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
                 where = []
                 params = []
                 if filter_criteria:
                     for kf, vf in filter_criteria.items():
-                        where.append(f"metadata->>%s = %s")
+                        where.append("metadata->>%s = %s")
                         params.extend([kf, vf])
                 where_clause = f"WHERE {' AND '.join(where)}" if where else ""
                 sql = f"""
@@ -98,32 +123,38 @@ class PGEmbeddingBackend(VectorStoreBackend):
                         id=row["id"],
                         score=-row["distance"],  # negative distance for similarity
                         metadata=row["metadata"],
-                        document=row["document"]
-                    ) for row in cur.fetchall()
+                        document=row["document"],
+                    )
+                    for row in cur.fetchall()
                 ]
+
         search_results = await loop.run_in_executor(None, _search)
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
         loop = asyncio.get_event_loop()
+
         def _delete():
             with self._conn.cursor() as cur:
                 cur.execute(f"DELETE FROM {self.table} WHERE id = ANY(%s)", (ids,))
+
         await loop.run_in_executor(None, _delete)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         loop = asyncio.get_event_loop()
+
         def _clear():
             with self._conn.cursor() as cur:
                 cur.execute(f"TRUNCATE TABLE {self.table}")
+
         await loop.run_in_executor(None, _clear)
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
         # PostgreSQL is persistent by default
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -145,11 +176,11 @@ class PGEmbeddingBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

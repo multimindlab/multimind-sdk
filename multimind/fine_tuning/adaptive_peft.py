@@ -2,28 +2,29 @@
 Advanced adaptive features for PEFT methods including method selection and dynamic weighting.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+import logging
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LambdaLR
-import numpy as np
-from sklearn.metrics import accuracy_score, f1_score
-from transformers import TrainerCallback, TrainerState, TrainerControl
-import logging
-from enum import Enum
-from .advanced_unified_peft import UniPELTPlusTuner, EnhancedMAMAdapterTuner, UniPELTPlusMethod
 from datasets import Dataset as HFDataset
+from transformers import TrainerCallback, TrainerControl, TrainerState
+
+from .advanced_unified_peft import EnhancedMAMAdapterTuner, UniPELTPlusMethod, UniPELTPlusTuner
 
 logger = logging.getLogger(__name__)
 
+
 class MethodImportance(Enum):
     """Importance levels for PEFT methods."""
+
     CRITICAL = 3
     HIGH = 2
     MEDIUM = 1
     LOW = 0
+
 
 class AdaptiveMethodSelector:
     """Adaptive method selection based on task performance and resource constraints."""
@@ -33,13 +34,13 @@ class AdaptiveMethodSelector:
         available_methods: List[UniPELTPlusMethod],
         resource_constraints: Optional[Dict[str, Any]] = None,
         performance_metrics: Optional[List[str]] = None,
-        method_importance: Optional[Dict[UniPELTPlusMethod, MethodImportance]] = None
+        method_importance: Optional[Dict[UniPELTPlusMethod, MethodImportance]] = None,
     ):
         self.available_methods = available_methods
         self.resource_constraints = resource_constraints or {
             "max_trainable_params": 1e6,
             "max_memory_gb": 8,
-            "max_training_time_hours": 1
+            "max_training_time_hours": 1,
         }
         self.performance_metrics = performance_metrics or ["accuracy", "f1"]
         self.method_importance = method_importance or {
@@ -48,71 +49,69 @@ class AdaptiveMethodSelector:
         self.method_performance = {}
         self.method_resource_usage = {}
 
-    def estimate_resource_usage(self, method: UniPELTPlusMethod, model_size: int) -> Dict[str, float]:
+    def estimate_resource_usage(
+        self, method: UniPELTPlusMethod, model_size: int
+    ) -> Dict[str, float]:
         """Estimate resource usage for a method."""
         # Base estimates (can be refined based on empirical data)
         estimates = {
             UniPELTPlusMethod.LORA: {
                 "params": model_size * 0.01,
                 "memory": model_size * 0.02,
-                "time": 0.1
+                "time": 0.1,
             },
             UniPELTPlusMethod.ADAPTER: {
                 "params": model_size * 0.02,
                 "memory": model_size * 0.03,
-                "time": 0.15
+                "time": 0.15,
             },
             UniPELTPlusMethod.PROMPT: {
                 "params": model_size * 0.001,
                 "memory": model_size * 0.005,
-                "time": 0.05
+                "time": 0.05,
             },
             UniPELTPlusMethod.PREFIX: {
                 "params": model_size * 0.005,
                 "memory": model_size * 0.01,
-                "time": 0.08
+                "time": 0.08,
             },
             UniPELTPlusMethod.IA3: {
                 "params": model_size * 0.001,
                 "memory": model_size * 0.002,
-                "time": 0.05
+                "time": 0.05,
             },
             UniPELTPlusMethod.BITFIT: {
                 "params": model_size * 0.0001,
                 "memory": model_size * 0.0002,
-                "time": 0.02
+                "time": 0.02,
             },
             UniPELTPlusMethod.DIFFPRUNING: {
                 "params": model_size * 0.005,
                 "memory": model_size * 0.01,
-                "time": 0.1
+                "time": 0.1,
             },
             UniPELTPlusMethod.SPARSE_ADAPTER: {
                 "params": model_size * 0.01,
                 "memory": model_size * 0.02,
-                "time": 0.12
+                "time": 0.12,
             },
             UniPELTPlusMethod.COMPACTER: {
                 "params": model_size * 0.005,
                 "memory": model_size * 0.01,
-                "time": 0.08
+                "time": 0.08,
             },
             UniPELTPlusMethod.HYPERLORA: {
                 "params": model_size * 0.015,
                 "memory": model_size * 0.025,
-                "time": 0.15
-            }
+                "time": 0.15,
+            },
         }
-        return estimates.get(method, {
-            "params": model_size * 0.01,
-            "memory": model_size * 0.02,
-            "time": 0.1
-        })
+        return estimates.get(
+            method, {"params": model_size * 0.01, "memory": model_size * 0.02, "time": 0.1}
+        )
 
     def update_method_performance(
-        self,
-        method: UniPELTPlusMethod,
-        metrics: Dict[str, float]
+        self, method: UniPELTPlusMethod, metrics: Dict[str, float]
     ) -> None:
         """Update performance metrics for a method."""
         if method not in self.method_performance:
@@ -123,7 +122,7 @@ class AdaptiveMethodSelector:
         self,
         model_size: int,
         task_type: str,
-        current_performance: Optional[Dict[str, float]] = None
+        current_performance: Optional[Dict[str, float]] = None,
     ) -> List[UniPELTPlusMethod]:
         """Select optimal methods based on constraints and performance."""
         selected_methods = []
@@ -133,9 +132,7 @@ class AdaptiveMethodSelector:
 
         # Sort methods by importance
         sorted_methods = sorted(
-            self.available_methods,
-            key=lambda m: self.method_importance[m].value,
-            reverse=True
+            self.available_methods, key=lambda m: self.method_importance[m].value, reverse=True
         )
 
         for method in sorted_methods:
@@ -143,16 +140,20 @@ class AdaptiveMethodSelector:
             usage = self.estimate_resource_usage(method, model_size)
 
             # Check if adding this method would exceed constraints
-            if (total_params + usage["params"] > self.resource_constraints["max_trainable_params"] or
-                total_memory + usage["memory"] > self.resource_constraints["max_memory_gb"] or
-                total_time + usage["time"] > self.resource_constraints["max_training_time_hours"]):
+            if (
+                total_params + usage["params"] > self.resource_constraints["max_trainable_params"]
+                or total_memory + usage["memory"] > self.resource_constraints["max_memory_gb"]
+                or total_time + usage["time"] > self.resource_constraints["max_training_time_hours"]
+            ):
                 continue
 
             # Check performance history if available
             if method in self.method_performance and current_performance:
                 method_metrics = self.method_performance[method][-1]
-                if all(method_metrics[metric] < current_performance[metric]
-                      for metric in self.performance_metrics):
+                if all(
+                    method_metrics[metric] < current_performance[metric]
+                    for metric in self.performance_metrics
+                ):
                     continue
 
             selected_methods.append(method)
@@ -162,6 +163,7 @@ class AdaptiveMethodSelector:
 
         return selected_methods
 
+
 class DynamicComponentWeighting(nn.Module):
     """Dynamic weighting of PEFT components based on performance."""
 
@@ -170,7 +172,7 @@ class DynamicComponentWeighting(nn.Module):
         num_components: int,
         initial_weights: Optional[List[float]] = None,
         temperature: float = 1.0,
-        update_frequency: int = 100
+        update_frequency: int = 100,
     ):
         super().__init__()
         self.num_components = num_components
@@ -196,9 +198,7 @@ class DynamicComponentWeighting(nn.Module):
         return weighted_sum
 
     def update_weights(
-        self,
-        component_metrics: List[Dict[str, float]],
-        learning_rate: float = 0.01
+        self, component_metrics: List[Dict[str, float]], learning_rate: float = 0.01
     ) -> None:
         """Update component weights based on performance metrics."""
         self.step_count += 1
@@ -225,6 +225,7 @@ class DynamicComponentWeighting(nn.Module):
         with torch.no_grad():
             self.weights += learning_rate * (performance_tensor - self.weights)
 
+
 class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
     """UniPELT++ with adaptive method selection and dynamic weighting."""
 
@@ -238,18 +239,16 @@ class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
         resource_constraints: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         # Initialize method selector
         self.method_selector = AdaptiveMethodSelector(
-            available_methods=available_methods,
-            resource_constraints=resource_constraints
+            available_methods=available_methods, resource_constraints=resource_constraints
         )
 
         # Get initial method selection
         initial_methods = self.method_selector.select_methods(
-            model_size=1e9,  # Estimate based on model name
-            task_type=model_type
+            model_size=1e9, task_type=model_type  # Estimate based on model name
         )
 
         super().__init__(
@@ -259,19 +258,17 @@ class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
             model_type=model_type,
             method_configs=method_configs,
             training_args=training_args,
-            model_config=model_config
+            model_config=model_config,
         )
 
         # Initialize dynamic weighting
-        self.component_weighting = DynamicComponentWeighting(
-            num_components=len(initial_methods)
-        )
+        self.component_weighting = DynamicComponentWeighting(num_components=len(initial_methods))
 
     def train(
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with adaptive method selection and dynamic weighting."""
         if self.model is None:
@@ -288,20 +285,19 @@ class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
                 state: TrainerState,
                 control: TrainerControl,
                 metrics: Dict[str, float],
-                **kwargs
+                **kwargs,
             ):
                 # Update method performance
                 for method in self.tuner.methods:
                     self.tuner.method_selector.update_method_performance(
-                        method=method,
-                        metrics=metrics
+                        method=method, metrics=metrics
                     )
 
                 # Select new methods if needed
                 new_methods = self.tuner.method_selector.select_methods(
                     model_size=sum(p.numel() for p in self.tuner.model.parameters()),
                     task_type=self.tuner.model_type,
-                    current_performance=metrics
+                    current_performance=metrics,
                 )
 
                 if set(new_methods) != set(self.tuner.methods):
@@ -328,14 +324,13 @@ class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
         self._prepare_model()
 
         # Initialize new component weighting
-        self.component_weighting = DynamicComponentWeighting(
-            num_components=len(new_methods)
-        )
+        self.component_weighting = DynamicComponentWeighting(num_components=len(new_methods))
 
         # Transfer relevant weights
         for method in new_methods:
             if method in current_weights:
                 self._transfer_weights(method, current_weights[method])
+
 
 class AdaptiveEnhancedMAMTuner(EnhancedMAMAdapterTuner):
     """Enhanced MAM with dynamic component weighting."""
@@ -352,7 +347,7 @@ class AdaptiveEnhancedMAMTuner(EnhancedMAMAdapterTuner):
         ia3_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -364,20 +359,20 @@ class AdaptiveEnhancedMAMTuner(EnhancedMAMAdapterTuner):
             prefix_config=prefix_config,
             ia3_config=ia3_config,
             training_args=training_args,
-            model_config=model_config
+            model_config=model_config,
         )
 
         # Initialize dynamic weighting for all components
         self.component_weighting = DynamicComponentWeighting(
             num_components=5,  # adapter, lora, prompt, prefix, ia3
-            initial_weights=[0.3, 0.3, 0.1, 0.1, 0.2]  # Initial importance
+            initial_weights=[0.3, 0.3, 0.1, 0.1, 0.2],  # Initial importance
         )
 
     def train(
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with dynamic component weighting."""
         if self.model is None:
@@ -393,16 +388,14 @@ class AdaptiveEnhancedMAMTuner(EnhancedMAMAdapterTuner):
                 args: TrainingArguments,
                 state: TrainerState,
                 control: TrainerControl,
-                **kwargs
+                **kwargs,
             ):
                 # Get component outputs and metrics
                 component_outputs = self.tuner._get_component_outputs()
                 component_metrics = self.tuner._evaluate_components()
 
                 # Update weights
-                self.tuner.component_weighting.update_weights(
-                    component_metrics=component_metrics
-                )
+                self.tuner.component_weighting.update_weights(component_metrics=component_metrics)
 
         # Add callback to trainer
         if "callbacks" not in self.training_args:
@@ -428,7 +421,7 @@ class AdaptiveEnhancedMAMTuner(EnhancedMAMAdapterTuner):
             # Get component-specific metrics
             component_metrics = {
                 "accuracy": self._get_component_accuracy(component),
-                "f1": self._get_component_f1(component)
+                "f1": self._get_component_f1(component),
             }
             metrics.append(component_metrics)
         return metrics

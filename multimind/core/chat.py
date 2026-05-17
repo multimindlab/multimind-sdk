@@ -8,20 +8,25 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
+
 class ChatMessage(BaseModel):
     """A single chat message"""
+
     role: str
     content: str
     model: str
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: Dict = Field(default_factory=dict)
 
+
 class ChatSession(BaseModel):
     """A chat session with history and metadata"""
+
     session_id: str
     model: str
     created_at: datetime = Field(default_factory=datetime.now)
@@ -30,16 +35,19 @@ class ChatSession(BaseModel):
     metadata: Dict = Field(default_factory=dict)
     system_prompt: Optional[str] = None
 
-    def add_message(self, role: str, content: str, model: str, metadata: Optional[Dict[str, Union[str, int, float]]] = None) -> None:
+    def add_message(
+        self,
+        role: str,
+        content: str,
+        model: str,
+        metadata: Optional[Dict[str, Union[str, int, float]]] = None,
+    ) -> None:
         """Add a message to the session"""
         if metadata is None:
             metadata = {}
-        self.messages.append(ChatMessage(
-            role=role,
-            content=content,
-            model=model,
-            metadata=metadata
-        ))
+        self.messages.append(
+            ChatMessage(role=role, content=content, model=model, metadata=metadata)
+        )
         self.updated_at = datetime.now()
 
     def get_context(self, max_messages: int = 10) -> List[Dict[str, str]]:
@@ -65,7 +73,7 @@ class ChatSession(BaseModel):
         """Load session from file"""
         file_path = Path(file_path)
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Chat session file not found: {file_path}") from e
@@ -93,6 +101,7 @@ class ChatSession(BaseModel):
             json.dump(self.model_dump(mode="json"), f, indent=2)
         return file_path
 
+
 class ChatManager:
     """Manage chat sessions and persistence"""
 
@@ -102,17 +111,14 @@ class ChatManager:
         self.active_sessions: Dict[str, ChatSession] = {}
 
     def create_session(
-        self,
-        model: str,
-        system_prompt: Optional[str] = None,
-        metadata: Dict = None
+        self, model: str, system_prompt: Optional[str] = None, metadata: Dict = None
     ) -> ChatSession:
         """Create a new chat session"""
         session = ChatSession(
             session_id=str(uuid.uuid4()),
             model=model,
             system_prompt=system_prompt,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
         self.active_sessions[session.session_id] = session
         return session
@@ -129,7 +135,7 @@ class ChatManager:
                 "model": session.model,
                 "created_at": session.created_at,
                 "updated_at": session.updated_at,
-                "message_count": len(session.messages)
+                "message_count": len(session.messages),
             }
             for session in self.active_sessions.values()
         ]
@@ -166,5 +172,6 @@ class ChatManager:
             return True
         return False
 
+
 # Global chat manager instance
-chat_manager = ChatManager() 
+chat_manager = ChatManager()

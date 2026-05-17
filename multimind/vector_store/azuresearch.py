@@ -1,14 +1,17 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend
+
 try:
-    from azure.search.documents import SearchClient
     from azure.core.credentials import AzureKeyCredential
+    from azure.search.documents import SearchClient
 except ImportError:
     SearchClient = None
     AzureKeyCredential = None
+
 
 class AzureSearchBackend(VectorStoreBackend):
     def __init__(
@@ -25,7 +28,7 @@ class AzureSearchBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.endpoint = endpoint or os.environ.get("AZURE_SEARCH_ENDPOINT")
         self.api_key = api_key or os.environ.get("AZURE_SEARCH_API_KEY")
@@ -43,11 +46,13 @@ class AzureSearchBackend(VectorStoreBackend):
         if not self.endpoint or not self.api_key:
             raise ValueError("Azure Search endpoint and API key must be provided.")
         if SearchClient is None or AzureKeyCredential is None:
-            raise ImportError("azure-search-documents is not installed. Please install it to use this backend.")
+            raise ImportError(
+                "azure-search-documents is not installed. Please install it to use this backend."
+            )
         self.client = SearchClient(
             endpoint=self.endpoint,
             index_name=self.index_name,
-            credential=AzureKeyCredential(self.api_key)
+            credential=AzureKeyCredential(self.api_key),
         )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
@@ -63,10 +68,19 @@ class AzureSearchBackend(VectorStoreBackend):
             actions.append({"@search.action": "upload", **doc})
         self.client.upload_documents(documents=actions)
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         results = []
         # Azure Search does not natively support vector search in all regions; this is a placeholder for hybrid search
@@ -87,22 +101,24 @@ class AzureSearchBackend(VectorStoreBackend):
                 vector=doc.get("vector"),
                 metadata=meta,
                 document=doc_content,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "vector_score": doc.get("@search.score", 1.0),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -113,15 +129,15 @@ class AzureSearchBackend(VectorStoreBackend):
     async def delete_vectors(self, ids):
         actions = [{"@search.action": "delete", "id": doc_id} for doc_id in ids]
         self.client.upload_documents(documents=actions)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # Azure Search does not have a direct clear; delete all docs by query
         # Placeholder: implement as needed
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -143,11 +159,11 @@ class AzureSearchBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

@@ -3,7 +3,9 @@ Base class for all LLM implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any, Dict, List, Optional, Union
+
 
 class BaseLLM(ABC):
     """Abstract base class for all LLM implementations."""
@@ -16,22 +18,14 @@ class BaseLLM(ABC):
 
     @abstractmethod
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the model."""
         pass
 
     @abstractmethod
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
         pass
@@ -42,7 +36,7 @@ class BaseLLM(ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion from the model."""
         pass
@@ -53,16 +47,14 @@ class BaseLLM(ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream from the model."""
         pass
 
     @abstractmethod
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         pass
@@ -87,5 +79,5 @@ class BaseLLM(ABC):
             "max_context_length": 4096,
             "model_type": "transformer",
             "supports_streaming": True,
-            "supports_fine_tuning": False
+            "supports_fine_tuning": False,
         }

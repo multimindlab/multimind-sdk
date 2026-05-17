@@ -2,15 +2,18 @@
 Financial compliance implementation for PCI DSS, SOX, and other financial regulations.
 """
 
-from typing import List, Dict, Any, Optional
 import uuid
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, ComplianceMetadata
+
+from .governance import GovernanceConfig
+
 
 class FinancialData(BaseModel):
     """Financial data model."""
-    
+
     data_id: str
     data_type: str
     content: Any
@@ -20,20 +23,21 @@ class FinancialData(BaseModel):
     last_accessed: Optional[datetime] = None
     access_count: int = 0
 
+
 class FinancialCompliance(BaseModel):
     """Financial compliance manager."""
-    
+
     config: GovernanceConfig
     financial_data: Dict[str, FinancialData] = Field(default_factory=dict)
     audit_log: List[Dict[str, Any]] = Field(default_factory=list)
-    
+
     async def process_financial_data(
         self,
         data_id: str,
         data_type: str,
         content: Any,
         sensitivity_level: str,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> FinancialData:
         """Process financial data."""
         data = FinancialData(
@@ -41,16 +45,13 @@ class FinancialCompliance(BaseModel):
             data_type=data_type,
             content=content,
             sensitivity_level=sensitivity_level,
-            metadata=metadata or {}
+            metadata=metadata or {},
         )
-        
+
         self.financial_data[data_id] = data
         return data
-    
-    async def validate_pci_dss_compliance(
-        self,
-        system_id: str
-    ) -> Dict[str, Any]:
+
+    async def validate_pci_dss_compliance(self, system_id: str) -> Dict[str, Any]:
         """Validate PCI DSS compliance."""
         assessment = {
             "system_id": system_id,
@@ -59,62 +60,41 @@ class FinancialCompliance(BaseModel):
             "requirements": [
                 {
                     "requirement": "build_and_maintain_secure_network",
-                    "controls": [
-                        "firewall_configuration",
-                        "vendor_defaults"
-                    ],
-                    "status": "compliant"
+                    "controls": ["firewall_configuration", "vendor_defaults"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "protect_cardholder_data",
-                    "controls": [
-                        "data_encryption",
-                        "key_management"
-                    ],
-                    "status": "compliant"
+                    "controls": ["data_encryption", "key_management"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "maintain_vulnerability_management",
-                    "controls": [
-                        "antivirus",
-                        "secure_systems"
-                    ],
-                    "status": "compliant"
+                    "controls": ["antivirus", "secure_systems"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "implement_access_controls",
-                    "controls": [
-                        "access_restriction",
-                        "unique_ids"
-                    ],
-                    "status": "compliant"
+                    "controls": ["access_restriction", "unique_ids"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "monitor_and_test_networks",
-                    "controls": [
-                        "track_access",
-                        "test_security"
-                    ],
-                    "status": "compliant"
+                    "controls": ["track_access", "test_security"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "maintain_security_policy",
-                    "controls": [
-                        "security_policy",
-                        "incident_response"
-                    ],
-                    "status": "compliant"
-                }
+                    "controls": ["security_policy", "incident_response"],
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         return assessment
-    
-    async def validate_sox_compliance(
-        self,
-        system_id: str
-    ) -> Dict[str, Any]:
+
+    async def validate_sox_compliance(self, system_id: str) -> Dict[str, Any]:
         """Validate SOX compliance."""
         assessment = {
             "system_id": system_id,
@@ -128,38 +108,27 @@ class FinancialCompliance(BaseModel):
                         "risk_assessment",
                         "control_activities",
                         "information_communication",
-                        "monitoring"
+                        "monitoring",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "requirement": "financial_reporting",
-                    "controls": [
-                        "accurate_records",
-                        "disclosure_controls",
-                        "material_changes"
-                    ],
-                    "status": "compliant"
+                    "controls": ["accurate_records", "disclosure_controls", "material_changes"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "audit_requirements",
-                    "controls": [
-                        "audit_committee",
-                        "external_audit",
-                        "internal_audit"
-                    ],
-                    "status": "compliant"
-                }
+                    "controls": ["audit_committee", "external_audit", "internal_audit"],
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         return assessment
-    
-    async def validate_glba_compliance(
-        self,
-        system_id: str
-    ) -> Dict[str, Any]:
+
+    async def validate_glba_compliance(self, system_id: str) -> Dict[str, Any]:
         """Validate GLBA compliance."""
         assessment = {
             "system_id": system_id,
@@ -168,35 +137,27 @@ class FinancialCompliance(BaseModel):
             "requirements": [
                 {
                     "requirement": "privacy_rule",
-                    "controls": [
-                        "privacy_notice",
-                        "opt_out_rights",
-                        "data_sharing"
-                    ],
-                    "status": "compliant"
+                    "controls": ["privacy_notice", "opt_out_rights", "data_sharing"],
+                    "status": "compliant",
                 },
                 {
                     "requirement": "safeguards_rule",
-                    "controls": [
-                        "security_plan",
-                        "risk_assessment",
-                        "service_providers"
-                    ],
-                    "status": "compliant"
-                }
+                    "controls": ["security_plan", "risk_assessment", "service_providers"],
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         return assessment
-    
+
     async def log_financial_transaction(
         self,
         transaction_id: str,
         transaction_type: str,
         amount: float,
         currency: str,
-        metadata: Dict[str, Any]
+        metadata: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Log financial transaction."""
         transaction = {
@@ -205,35 +166,32 @@ class FinancialCompliance(BaseModel):
             "type": transaction_type,
             "amount": amount,
             "currency": currency,
-            "metadata": metadata
+            "metadata": metadata,
         }
-        
+
         self.audit_log.append(transaction)
         return transaction
-    
+
     async def get_transaction_history(
         self,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        transaction_type: Optional[str] = None
+        transaction_type: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """Get transaction history."""
         transactions = self.audit_log
-        
+
         if start_time:
             transactions = [t for t in transactions if t["timestamp"] >= start_time]
         if end_time:
             transactions = [t for t in transactions if t["timestamp"] <= end_time]
         if transaction_type:
             transactions = [t for t in transactions if t["type"] == transaction_type]
-        
+
         return transactions
-    
+
     async def generate_financial_report(
-        self,
-        report_type: str,
-        start_time: datetime,
-        end_time: datetime
+        self, report_type: str, start_time: datetime, end_time: datetime
     ) -> Dict[str, Any]:
         """Generate financial compliance report."""
         report = {
@@ -241,26 +199,24 @@ class FinancialCompliance(BaseModel):
             "report_id": f"report_{uuid.uuid4()}",
             "type": report_type,
             "generated_at": datetime.now(),
-            "period": {
-                "start": start_time,
-                "end": end_time
-            },
+            "period": {"start": start_time, "end": end_time},
             "summary": {
                 "total_transactions": 0,
                 "total_amount": 0.0,
                 "transaction_types": {},
-                "compliance_status": "compliant"
-            }
+                "compliance_status": "compliant",
+            },
         }
-        
+
         # Calculate report statistics
         transactions = await self.get_transaction_history(start_time, end_time)
         for transaction in transactions:
             report["summary"]["total_transactions"] += 1
             report["summary"]["total_amount"] += transaction["amount"]
-            
+
             t_type = transaction["type"]
-            report["summary"]["transaction_types"][t_type] = \
+            report["summary"]["transaction_types"][t_type] = (
                 report["summary"]["transaction_types"].get(t_type, 0) + 1
-        
-        return report 
+            )
+
+        return report

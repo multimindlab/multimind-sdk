@@ -39,9 +39,7 @@ OPTIONAL_DEPENDENCY_LOG_LEVEL = os.getenv("MULTIMIND_LOG_LEVEL", "WARNING")
 logging.basicConfig(level=getattr(logging, OPTIONAL_DEPENDENCY_LOG_LEVEL, logging.WARNING))
 
 
-def configure_warnings(
-    show_backend_warnings: bool = False, log_level: str = "WARNING"
-) -> None:
+def configure_warnings(show_backend_warnings: bool = False, log_level: str = "WARNING") -> None:
     """Tune MultiMind SDK runtime warning behaviour.
 
     Args:
@@ -336,9 +334,9 @@ if TYPE_CHECKING:  # pragma: no cover
         GovernanceConfig,
         ModelWatermarking,
         ModelWatermarkingConfig,
+        Regulation,
         RegulatoryChangeConfig,
         RegulatoryChangeDetector,
-        Regulation,
         SelfHealingCompliance,
         SelfHealingConfig,
         load_advanced_config,

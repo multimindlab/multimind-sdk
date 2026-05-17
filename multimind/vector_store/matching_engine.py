@@ -1,9 +1,12 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 from google.cloud import aiplatform
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class MatchingEngineBackend(VectorStoreBackend):
     def __init__(
@@ -15,7 +18,7 @@ class MatchingEngineBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.project = project or os.environ.get("GOOGLE_CLOUD_PROJECT")
         self.location = location or os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
@@ -26,7 +29,9 @@ class MatchingEngineBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
         if not self.project or not self.index_id or not self.endpoint_id:
-            raise ValueError("project, index_id, and endpoint_id must be provided for Matching Engine.")
+            raise ValueError(
+                "project, index_id, and endpoint_id must be provided for Matching Engine."
+            )
         aiplatform.init(project=self.project, location=self.location)
         self.index = aiplatform.MatchingEngineIndex(index_name=self.index_id)
         self.endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name=self.endpoint_id)
@@ -48,9 +53,18 @@ class MatchingEngineBackend(VectorStoreBackend):
                 dp["restricts"] = metadatas[i]
             datapoints.append(dp)
         await loop.run_in_executor(None, self.index.upsert_datapoints, datapoints)
-        self.log_metrics('add_vectors', len(datapoints))
+        self.log_metrics("add_vectors", len(datapoints))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         # Only vector search is supported
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(
@@ -66,19 +80,16 @@ class MatchingEngineBackend(VectorStoreBackend):
         for match in results[0].neighbors:
             search_results.append(
                 SearchResult(
-                    id=match.datapoint.datapoint_id,
-                    score=match.distance,
-                    metadata={},
-                    document=""
+                    id=match.datapoint.datapoint_id, score=match.distance, metadata={}, document=""
                 )
             )
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.index.remove_datapoints, ids)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # No direct clear; must remove all datapoints by listing and deleting
@@ -87,11 +98,11 @@ class MatchingEngineBackend(VectorStoreBackend):
         all_ids = [dp.datapoint_id for dp in datapoints]
         if all_ids:
             await loop.run_in_executor(None, self.index.remove_datapoints, all_ids)
-        self.log_metrics('clear', len(all_ids))
+        self.log_metrics("clear", len(all_ids))
 
     async def persist(self, path):
         # Matching Engine is managed; this is a no-op
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -113,11 +124,11 @@ class MatchingEngineBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

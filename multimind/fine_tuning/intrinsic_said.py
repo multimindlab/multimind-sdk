@@ -2,23 +2,24 @@
 Intrinsic SAID (Structured Adaptation in the Intrinsic Dimension) implementation.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from datasets import Dataset as HFDataset
+from scipy.linalg import svd
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-import logging
-from datasets import Dataset as HFDataset
-import numpy as np
-from scipy.linalg import svd
 
 logger = logging.getLogger(__name__)
+
 
 class IntrinsicSAIDLayer(nn.Module):
     """Intrinsic SAID layer that adapts in the intrinsic dimension."""
@@ -30,7 +31,7 @@ class IntrinsicSAIDLayer(nn.Module):
         intrinsic_dim: int,
         rank: int = 8,
         dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.in_features = in_features
@@ -60,7 +61,7 @@ class IntrinsicSAIDLayer(nn.Module):
         # Apply low-rank adaptation
         adaptation = torch.matmul(
             torch.matmul(x_intrinsic, self.A),  # [batch_size, seq_len, rank]
-            self.B  # [rank, intrinsic_dim]
+            self.B,  # [rank, intrinsic_dim]
         )  # [batch_size, seq_len, intrinsic_dim]
 
         # Add adaptation
@@ -71,6 +72,7 @@ class IntrinsicSAIDLayer(nn.Module):
 
         return output
 
+
 class IntrinsicSAIDTuner:
     """Intrinsic SAID implementation for fine-tuning."""
 
@@ -80,17 +82,13 @@ class IntrinsicSAIDTuner:
         output_dir: str,
         intrinsic_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
 
         # Default intrinsic configuration
-        self.intrinsic_config = intrinsic_config or {
-            "intrinsic_dim": 64,
-            "rank": 8,
-            "dropout": 0.1
-        }
+        self.intrinsic_config = intrinsic_config or {"intrinsic_dim": 64, "rank": 8, "dropout": 0.1}
 
         # Default training arguments
         self.training_args = training_args or {
@@ -103,7 +101,7 @@ class IntrinsicSAIDTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -114,31 +112,26 @@ class IntrinsicSAIDTuner:
         """Compute the intrinsic dimension of a weight matrix using SVD."""
         # Convert to numpy for SVD
         weight_np = weight_matrix.detach().cpu().numpy()
-        
+
         # Compute SVD
         U, S, V = svd(weight_np)
-        
+
         # Compute cumulative variance explained
-        total_var = np.sum(S ** 2)
-        cum_var = np.cumsum(S ** 2) / total_var
-        
+        total_var = np.sum(S**2)
+        cum_var = np.cumsum(S**2) / total_var
+
         # Find dimension that explains 95% of variance
         intrinsic_dim = np.argmax(cum_var >= 0.95) + 1
-        
+
         return min(intrinsic_dim, self.intrinsic_config["intrinsic_dim"])
 
     def _prepare_model(self) -> None:
         """Prepare the model for Intrinsic SAID fine-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -158,36 +151,29 @@ class IntrinsicSAIDTuner:
                     in_features=module.in_features,
                     out_features=module.out_features,
                     intrinsic_dim=intrinsic_dim,
-                    **self.intrinsic_config
+                    **self.intrinsic_config,
                 )
                 setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -196,7 +182,7 @@ class IntrinsicSAIDTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using Intrinsic SAID."""
         if self.model is None:
@@ -215,10 +201,7 @@ class IntrinsicSAIDTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -243,9 +226,7 @@ class IntrinsicSAIDTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -259,4 +240,4 @@ class IntrinsicSAIDTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params 
+        return params

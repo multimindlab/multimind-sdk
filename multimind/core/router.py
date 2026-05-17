@@ -2,48 +2,71 @@
 Router for managing provider selection and request routing.
 """
 
-from typing import Dict, List, Optional, Any, Union
-from pydantic import BaseModel
-from enum import Enum
 import asyncio
 import logging
 import time
-from .provider import ProviderAdapter, GenerationResult, EmbeddingResult, ImageAnalysisResult
-from ..observability.metrics import MetricsCollector
+from enum import Enum
 from statistics import mean as _mean
+from typing import Any, Dict, List, Optional, Union
+
+from pydantic import BaseModel
+
+from ..observability.metrics import MetricsCollector
+from .provider import EmbeddingResult, GenerationResult, ImageAnalysisResult, ProviderAdapter
 
 logger = logging.getLogger(__name__)
 
+
 class RoutingStrategy(str, Enum):
     """Routing strategies for provider selection."""
+
     COST_BASED = "cost_based"
     LATENCY_BASED = "latency_based"
     QUALITY_BASED = "quality_based"
     ENSEMBLE = "ensemble"
     CASCADE = "cascade"
 
+
 class TaskType(str, Enum):
     """Types of tasks that can be performed."""
+
     TEXT_GENERATION = "text_generation"
     EMBEDDINGS = "embeddings"
     IMAGE_ANALYSIS = "image_analysis"
 
+
 class TaskConfig(BaseModel):
     """Configuration for a task."""
+
     preferred_providers: List[str]
     fallback_providers: List[str]
     routing_strategy: RoutingStrategy
     ensemble_config: Optional[Dict[str, Any]] = None
 
+
 class ProviderPerformanceTracker:
     """Tracks provider performance for adaptive routing and weighting."""
+
     def __init__(self):
         self.metrics = {}
         # metrics: {provider: {"success": int, "fail": int, "latency": [float], "quality": [float], "feedback": [float]}}
 
-    def record(self, provider: str, success: bool, latency: float = None, quality: float = None, feedback: float = None):
+    def record(
+        self,
+        provider: str,
+        success: bool,
+        latency: float = None,
+        quality: float = None,
+        feedback: float = None,
+    ):
         if provider not in self.metrics:
-            self.metrics[provider] = {"success": 0, "fail": 0, "latency": [], "quality": [], "feedback": []}
+            self.metrics[provider] = {
+                "success": 0,
+                "fail": 0,
+                "latency": [],
+                "quality": [],
+                "feedback": [],
+            }
         if success:
             self.metrics[provider]["success"] += 1
         else:
@@ -74,9 +97,13 @@ class ProviderPerformanceTracker:
     def submit_feedback(self, provider: str, feedback: float):
         self.record(provider, success=True, feedback=feedback)
 
+
 class FallbackPolicy:
     """Centralized fallback policy for routing and provider selection."""
-    def __init__(self, strategy: str = "switch_provider", max_retries: int = 1, notify_user: bool = True):
+
+    def __init__(
+        self, strategy: str = "switch_provider", max_retries: int = 1, notify_user: bool = True
+    ):
         self.strategy = strategy  # retry, switch_provider, notify_user, raise
         self.max_retries = max_retries
         self.notify_user = notify_user
@@ -92,6 +119,7 @@ class FallbackPolicy:
     def get_fallback_message(self, provider: str, error: Exception) -> str:
         return f"[Fallback] Switched from provider {provider} due to error: {str(error)}"
 
+
 class Router:
     """Router for managing provider selection and request routing."""
 
@@ -102,35 +130,29 @@ class Router:
         self.metrics = MetricsCollector()
         self.performance_tracker = ProviderPerformanceTracker()
         self.fallback_policy = FallbackPolicy()
-    
+
     def register_provider(self, name: str, provider: ProviderAdapter):
         """Register a provider with the router."""
         self.providers[name] = provider
-    
+
     def configure_task(self, task_type: TaskType, config: TaskConfig):
         """Configure a task with the given configuration."""
         self.task_configs[task_type] = config
-    
+
     async def route(
-        self,
-        task_type: TaskType,
-        input_data: Any,
-        **kwargs
+        self, task_type: TaskType, input_data: Any, **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """Route a request to the appropriate provider(s)."""
         provider_override = kwargs.get("provider")
         if not provider_override and task_type not in self.task_configs:
             raise ValueError(f"No configuration found for task type: {task_type}")
-        
+
         start_time = time.time()
-        
+
         try:
             if provider_override:
                 result = await self._route_specific_provider(
-                    provider_override,
-                    task_type,
-                    input_data,
-                    **kwargs
+                    provider_override, task_type, input_data, **kwargs
                 )
             else:
                 config = self.task_configs[task_type]
@@ -139,20 +161,26 @@ class Router:
                 elif config.routing_strategy == RoutingStrategy.CASCADE:
                     result = await self._handle_cascade(task_type, input_data, config, **kwargs)
                 else:
-                    result = await self._handle_single_provider(task_type, input_data, config, **kwargs)
-            
+                    result = await self._handle_single_provider(
+                        task_type, input_data, config, **kwargs
+                    )
+
             # Record successful request metrics
             latency_ms = (time.time() - start_time) * 1000
-            provider_name = getattr(result, "provider", None) or getattr(result, "provider_name", "unknown")
-            model_name = getattr(result, "model", None) or getattr(result, "model_name", kwargs.get("model", "unknown"))
+            provider_name = getattr(result, "provider", None) or getattr(
+                result, "provider_name", "unknown"
+            )
+            model_name = getattr(result, "model", None) or getattr(
+                result, "model_name", kwargs.get("model", "unknown")
+            )
             self.metrics.record_latency(
                 provider=provider_name,
                 task_type=task_type,
                 model=model_name,
                 latency_ms=latency_ms,
-                metadata={"request_id": kwargs.get("request_id")}
+                metadata={"request_id": kwargs.get("request_id")},
             )
-            
+
             cost_value = getattr(result, "cost", None)
             if cost_value is None:
                 cost_value = getattr(result, "cost_estimate_usd", None)
@@ -162,9 +190,9 @@ class Router:
                     task_type=task_type,
                     model=model_name,
                     cost=cost_value,
-                    metadata={"request_id": kwargs.get("request_id")}
+                    metadata={"request_id": kwargs.get("request_id")},
                 )
-            
+
             tokens_value = getattr(result, "tokens", None)
             if tokens_value is None:
                 tokens_value = getattr(result, "tokens_used", None)
@@ -174,11 +202,11 @@ class Router:
                     task_type=task_type,
                     model=model_name,
                     tokens=tokens_value,
-                    metadata={"request_id": kwargs.get("request_id")}
+                    metadata={"request_id": kwargs.get("request_id")},
                 )
-            
+
             return result
-            
+
         except Exception as e:
             # Record error metrics
             self.metrics.record_error(
@@ -187,16 +215,12 @@ class Router:
                 model=kwargs.get("model", "unknown"),
                 error_type=type(e).__name__,
                 error_message=str(e),
-                metadata={"request_id": kwargs.get("request_id")}
+                metadata={"request_id": kwargs.get("request_id")},
             )
             raise
-    
+
     async def _route_specific_provider(
-        self,
-        provider_name: str,
-        task_type: TaskType,
-        input_data: Any,
-        **kwargs
+        self, provider_name: str, task_type: TaskType, input_data: Any, **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """
         Route directly to a specific provider when explicitly requested.
@@ -204,29 +228,25 @@ class Router:
         """
         if provider_name not in self.providers:
             raise ValueError(f"Provider '{provider_name}' is not registered with the router")
-        
+
         single_provider_config = TaskConfig(
             preferred_providers=[provider_name],
             fallback_providers=[],
-            routing_strategy=RoutingStrategy.COST_BASED
+            routing_strategy=RoutingStrategy.COST_BASED,
         )
         call_kwargs = dict(kwargs)
         call_kwargs.pop("provider", None)
         return await self._handle_single_provider(
-            task_type,
-            input_data,
-            single_provider_config,
-            use_adaptive_routing=False,
-            **call_kwargs
+            task_type, input_data, single_provider_config, use_adaptive_routing=False, **call_kwargs
         )
-    
+
     async def _handle_single_provider(
         self,
         task_type: TaskType,
         input_data: Any,
         config: TaskConfig,
         use_adaptive_routing: bool = True,
-        **kwargs
+        **kwargs,
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """Handle routing to a single provider (adaptive if enabled, with fallback policy)."""
         if use_adaptive_routing and len(config.preferred_providers) > 1:
@@ -237,7 +257,9 @@ class Router:
         call_kwargs = dict(kwargs)
         call_kwargs.pop("provider", None)
         model_arg = call_kwargs.pop("model", None)
-        max_attempts = self.fallback_policy.max_retries + 1 if self.fallback_policy.strategy == "retry" else 1
+        max_attempts = (
+            self.fallback_policy.max_retries + 1 if self.fallback_policy.strategy == "retry" else 1
+        )
         last_error = None
 
         for _ in range(max_attempts):
@@ -245,25 +267,37 @@ class Router:
             try:
                 if task_type == TaskType.TEXT_GENERATION:
                     if model_arg is not None:
-                        result = await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                        result = await provider.generate_text(
+                            model=model_arg, prompt=input_data, **call_kwargs
+                        )
                     else:
                         result = await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
                     if model_arg is not None:
-                        result = await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                        result = await provider.generate_embeddings(
+                            text=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         result = await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
                     if model_arg is not None:
-                        result = await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                        result = await provider.analyze_image(
+                            image_data=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         result = await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
                 latency = time.time() - start
-                quality = getattr(result, 'quality', None) or (result.metadata.get('quality') if hasattr(result, 'metadata') else None)
-                feedback = getattr(result, 'feedback', None) or (result.metadata.get('feedback') if hasattr(result, 'metadata') else None)
-                self.performance_tracker.record(provider_name, success=True, latency=latency, quality=quality, feedback=feedback)
+                quality = getattr(result, "quality", None) or (
+                    result.metadata.get("quality") if hasattr(result, "metadata") else None
+                )
+                feedback = getattr(result, "feedback", None) or (
+                    result.metadata.get("feedback") if hasattr(result, "metadata") else None
+                )
+                self.performance_tracker.record(
+                    provider_name, success=True, latency=latency, quality=quality, feedback=feedback
+                )
                 return result
             except Exception as e:
                 latency = time.time() - start
@@ -272,31 +306,34 @@ class Router:
                 last_error = e
 
         # Centralized fallback logic after retry attempts are exhausted.
-        if self.fallback_policy.strategy == "switch_provider" and len(config.preferred_providers) > 1:
+        if (
+            self.fallback_policy.strategy == "switch_provider"
+            and len(config.preferred_providers) > 1
+        ):
             # Switch to next best provider
             remaining = [p for p in config.preferred_providers if p != provider_name]
             if remaining:
                 next_provider = self.performance_tracker.get_best_provider(remaining)
                 if self.fallback_policy.notify_user:
-                    logger.warning(self.fallback_policy.get_fallback_message(provider_name, last_error))
+                    logger.warning(
+                        self.fallback_policy.get_fallback_message(provider_name, last_error)
+                    )
                 # Try next provider
                 config_copy = config.copy()
                 config_copy.preferred_providers = remaining
-                return await self._handle_single_provider(task_type, input_data, config_copy, use_adaptive_routing, **kwargs)
+                return await self._handle_single_provider(
+                    task_type, input_data, config_copy, use_adaptive_routing, **kwargs
+                )
         if self.fallback_policy.notify_user:
             logger.warning(self.fallback_policy.get_fallback_message(provider_name, last_error))
         raise last_error
-    
+
     async def _handle_ensemble(
-        self,
-        task_type: TaskType,
-        input_data: Any,
-        config: TaskConfig,
-        **kwargs
+        self, task_type: TaskType, input_data: Any, config: TaskConfig, **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """
         Handle ensemble routing strategy.
-        
+
         System behavior:
         - 2+ LLMs: Full ensemble logic
         - 1 LLM: Acts like fallback router (returns the single result)
@@ -312,15 +349,21 @@ class Router:
             model_arg = call_kwargs.pop("model", None)
             if task_type == TaskType.TEXT_GENERATION:
                 if model_arg is not None:
-                    return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                    return await provider.generate_text(
+                        model=model_arg, prompt=input_data, **call_kwargs
+                    )
                 return await provider.generate_text(prompt=input_data, **call_kwargs)
             elif task_type == TaskType.EMBEDDINGS:
                 if model_arg is not None:
-                    return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                    return await provider.generate_embeddings(
+                        text=input_data, model=model_arg, **call_kwargs
+                    )
                 return await provider.generate_embeddings(text=input_data, **call_kwargs)
             elif task_type == TaskType.IMAGE_ANALYSIS:
                 if model_arg is not None:
-                    return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                    return await provider.analyze_image(
+                        image_data=input_data, model=model_arg, **call_kwargs
+                    )
                 return await provider.analyze_image(image_data=input_data, **call_kwargs)
             else:
                 raise ValueError(f"Unsupported task type: {task_type}")
@@ -339,11 +382,11 @@ class Router:
                     model=kwargs.get("model", "unknown"),
                     error_type=type(outcome).__name__,
                     error_message=str(outcome),
-                    metadata={"request_id": kwargs.get("request_id")}
+                    metadata={"request_id": kwargs.get("request_id")},
                 )
             else:
                 results.append((provider_name, outcome))
-        
+
         # System behavior based on successful LLM count
         if len(results) == 0:
             # 0 LLMs: Hard failure
@@ -358,26 +401,26 @@ class Router:
                 weights = config.ensemble_config["weights"]
                 weighted_results = []
                 for provider_name, result in results:
-                    provider_key = provider_name or getattr(result, "provider", None) or getattr(result, "provider_name", None)
+                    provider_key = (
+                        provider_name
+                        or getattr(result, "provider", None)
+                        or getattr(result, "provider_name", None)
+                    )
                     weight = weights.get(provider_key, 1.0)
                     weighted_results.append((result, weight))
-                
+
                 # For now, just return the result with highest weight
                 return max(weighted_results, key=lambda x: x[1])[0]
             else:
                 # Default to first successful result
                 return results[0][1]
-    
+
     async def _handle_cascade(
-        self,
-        task_type: TaskType,
-        input_data: Any,
-        config: TaskConfig,
-        **kwargs
+        self, task_type: TaskType, input_data: Any, config: TaskConfig, **kwargs
     ) -> Union[GenerationResult, EmbeddingResult, ImageAnalysisResult]:
         """Handle cascade routing strategy."""
         errors = []
-        
+
         # Try preferred providers first
         for provider_name in config.preferred_providers:
             provider = self.providers[provider_name]
@@ -387,24 +430,30 @@ class Router:
             try:
                 if task_type == TaskType.TEXT_GENERATION:
                     if model_arg is not None:
-                        return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                        return await provider.generate_text(
+                            model=model_arg, prompt=input_data, **call_kwargs
+                        )
                     else:
                         return await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
                     if model_arg is not None:
-                        return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                        return await provider.generate_embeddings(
+                            text=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         return await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
                     if model_arg is not None:
-                        return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                        return await provider.analyze_image(
+                            image_data=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         return await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
             except Exception as e:
                 errors.append((provider_name, e))
-        
+
         # Try fallback providers if all preferred providers fail
         for provider_name in config.fallback_providers:
             provider = self.providers[provider_name]
@@ -414,32 +463,38 @@ class Router:
             try:
                 if task_type == TaskType.TEXT_GENERATION:
                     if model_arg is not None:
-                        return await provider.generate_text(model=model_arg, prompt=input_data, **call_kwargs)
+                        return await provider.generate_text(
+                            model=model_arg, prompt=input_data, **call_kwargs
+                        )
                     else:
                         return await provider.generate_text(prompt=input_data, **call_kwargs)
                 elif task_type == TaskType.EMBEDDINGS:
                     if model_arg is not None:
-                        return await provider.generate_embeddings(text=input_data, model=model_arg, **call_kwargs)
+                        return await provider.generate_embeddings(
+                            text=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         return await provider.generate_embeddings(text=input_data, **call_kwargs)
                 elif task_type == TaskType.IMAGE_ANALYSIS:
                     if model_arg is not None:
-                        return await provider.analyze_image(image_data=input_data, model=model_arg, **call_kwargs)
+                        return await provider.analyze_image(
+                            image_data=input_data, model=model_arg, **call_kwargs
+                        )
                     else:
                         return await provider.analyze_image(image_data=input_data, **call_kwargs)
                 else:
                     raise ValueError(f"Unsupported task type: {task_type}")
             except Exception as e:
                 errors.append((provider_name, e))
-        
+
         # If all providers fail, raise an exception with error details
         error_messages = [f"{p}: {str(e)}" for p, e in errors]
         raise Exception(f"All providers failed in cascade routing: {', '.join(error_messages)}")
-    
+
     def get_metrics_summary(self) -> Dict[str, Any]:
         """Get a summary of all metrics."""
         return self.metrics.get_summary()
-    
+
     def save_metrics(self, filepath: Optional[str] = None):
         """Save metrics to a file."""
         self.metrics.save_metrics(filepath)

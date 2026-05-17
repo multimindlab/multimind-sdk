@@ -2,9 +2,11 @@
 Sliding window buffer memory implementation that maintains a fixed-size window of recent messages.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from typing import Any, Dict, Optional
+
 from .buffer import BufferMemory
+
 
 class BufferWindowMemory(BufferMemory):
     """Memory that maintains a sliding window of recent messages."""
@@ -14,7 +16,7 @@ class BufferWindowMemory(BufferMemory):
         window_size: int = 10,
         window_type: str = "count",  # count, time, or tokens
         window_value: Optional[Any] = None,  # count, timedelta, or token count
-        **kwargs
+        **kwargs,
     ):
         """Initialize buffer window memory."""
         super().__init__(**kwargs)
@@ -34,9 +36,7 @@ class BufferWindowMemory(BufferMemory):
             self.window_value = int(window_value or 1000)
 
     async def add_message(
-        self,
-        message: Dict[str, str],
-        metadata: Optional[Dict[str, Any]] = None
+        self, message: Dict[str, str], metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a message and maintain window."""
         # Attach a timestamp field so windowing can operate on time.
@@ -69,9 +69,9 @@ class BufferWindowMemory(BufferMemory):
         """Maintain window based on time."""
         cutoff_time = datetime.now() - self.window_value
         self.messages = [
-            m for m in self.messages
-            if "timestamp" in m
-            and datetime.fromisoformat(str(m["timestamp"])) >= cutoff_time
+            m
+            for m in self.messages
+            if "timestamp" in m and datetime.fromisoformat(str(m["timestamp"])) >= cutoff_time
         ]
 
     async def _maintain_token_window(self) -> None:
@@ -105,9 +105,9 @@ class BufferWindowMemory(BufferMemory):
                 "window_type": self.window_type,
                 "window_value": self.window_value,
                 "message_count": 0,
-                "window_usage": 0.0
+                "window_usage": 0.0,
             }
-            
+
         if self.window_type == "count":
             usage = len(self.messages) / max(1, self.window_value)
         elif self.window_type == "time":
@@ -121,7 +121,7 @@ class BufferWindowMemory(BufferMemory):
         else:  # tokens
             # Use the existing token accounting from BufferMemory
             usage = (self.total_tokens / float(self.window_value)) if self.window_value else 0.0
-            
+
         return {
             "window_type": self.window_type,
             "window_value": self.window_value,
@@ -129,4 +129,4 @@ class BufferWindowMemory(BufferMemory):
             "window_usage": min(1.0, usage),
             "oldest_message": self.messages[0].get("timestamp"),
             "newest_message": self.messages[-1].get("timestamp"),
-        } 
+        }

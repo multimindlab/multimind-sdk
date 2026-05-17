@@ -1,10 +1,12 @@
-from typing import Dict, Callable, Any, Optional
 import logging
+from typing import Any, Callable, Dict, Optional
+
 
 class AgentRegistry:
     """
     Central registry for agents, with retry/fallback and conversational state memory.
     """
+
     def __init__(self):
         self.agents: Dict[str, Callable] = {}
         self.fallbacks: Dict[str, str] = {}  # agent_name -> fallback_agent_name
@@ -48,9 +50,7 @@ class AgentRegistry:
             return None
 
         if _depth >= _max_depth:
-            self.logger.error(
-                f"Max fallback depth reached while running agent '{name}'. Aborting."
-            )
+            self.logger.error(f"Max fallback depth reached while running agent '{name}'. Aborting.")
             return None
 
         _visited.add(name)
@@ -94,4 +94,4 @@ class AgentRegistry:
         return self.state_memory.get(session_id)
 
     def set_state(self, session_id: str, state: Any):
-        self.state_memory[session_id] = state 
+        self.state_memory[session_id] = state

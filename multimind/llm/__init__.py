@@ -2,10 +2,7 @@
 LLM module for language model interfaces.
 """
 
-from .llm_interface import LLMInterface, GenerationConfig as LLMConfig, ModelType
+from .llm_interface import GenerationConfig as LLMConfig
+from .llm_interface import LLMInterface, ModelType
 
-__all__ = [
-    'LLMInterface',
-    'LLMConfig',
-    'ModelType'
-] 
+__all__ = ["LLMInterface", "LLMConfig", "ModelType"]

@@ -2,21 +2,22 @@
 AI-specific compliance frameworks implementation.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, Regulation
+
+from .governance import GovernanceConfig
+
 
 class AIFrameworkCompliance(BaseModel):
     """AI framework compliance manager."""
-    
+
     config: GovernanceConfig
     assessments: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    
+
     async def assess_oecd_compliance(
-        self,
-        system_id: str,
-        system_metadata: Dict[str, Any]
+        self, system_id: str, system_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Assess compliance with OECD AI Principles."""
         assessment = {
@@ -31,9 +32,9 @@ class AIFrameworkCompliance(BaseModel):
                         "fairness",
                         "transparency",
                         "robustness",
-                        "accountability"
+                        "accountability",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "human_centered_values",
@@ -41,9 +42,9 @@ class AIFrameworkCompliance(BaseModel):
                         "respect_for_human_rights",
                         "democratic_values",
                         "diversity",
-                        "fairness"
+                        "fairness",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "transparency",
@@ -51,41 +52,29 @@ class AIFrameworkCompliance(BaseModel):
                         "explainability",
                         "disclosure",
                         "documentation",
-                        "traceability"
+                        "traceability",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "robustness",
-                    "requirements": [
-                        "security",
-                        "safety",
-                        "reliability",
-                        "resilience"
-                    ],
-                    "status": "compliant"
+                    "requirements": ["security", "safety", "reliability", "resilience"],
+                    "status": "compliant",
                 },
                 {
                     "principle": "accountability",
-                    "requirements": [
-                        "responsibility",
-                        "oversight",
-                        "remediation",
-                        "redress"
-                    ],
-                    "status": "compliant"
-                }
+                    "requirements": ["responsibility", "oversight", "remediation", "redress"],
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.assessments[f"{system_id}_oecd"] = assessment
         return assessment
-    
+
     async def assess_un_guiding_principles(
-        self,
-        system_id: str,
-        system_metadata: Dict[str, Any]
+        self, system_id: str, system_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Assess compliance with UN Guiding Principles on Business & Human Rights."""
         assessment = {
@@ -95,42 +84,32 @@ class AIFrameworkCompliance(BaseModel):
             "principles": [
                 {
                     "principle": "state_duty",
-                    "requirements": [
-                        "protect_human_rights",
-                        "prevent_abuse",
-                        "remedy_violations"
-                    ],
-                    "status": "compliant"
+                    "requirements": ["protect_human_rights", "prevent_abuse", "remedy_violations"],
+                    "status": "compliant",
                 },
                 {
                     "principle": "corporate_responsibility",
-                    "requirements": [
-                        "respect_human_rights",
-                        "avoid_complicity",
-                        "address_impacts"
-                    ],
-                    "status": "compliant"
+                    "requirements": ["respect_human_rights", "avoid_complicity", "address_impacts"],
+                    "status": "compliant",
                 },
                 {
                     "principle": "access_to_remedy",
                     "requirements": [
                         "state_based_remedies",
                         "non_state_based_remedies",
-                        "operational_grievance_mechanisms"
+                        "operational_grievance_mechanisms",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.assessments[f"{system_id}_un"] = assessment
         return assessment
-    
+
     async def assess_uk_ai_regulation(
-        self,
-        system_id: str,
-        system_metadata: Dict[str, Any]
+        self, system_id: str, system_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Assess compliance with UK AI Regulation."""
         assessment = {
@@ -144,9 +123,9 @@ class AIFrameworkCompliance(BaseModel):
                         "risk_assessment",
                         "safety_measures",
                         "monitoring",
-                        "incident_response"
+                        "incident_response",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "requirement": "transparency",
@@ -154,9 +133,9 @@ class AIFrameworkCompliance(BaseModel):
                         "explainability",
                         "documentation",
                         "user_notification",
-                        "disclosure"
+                        "disclosure",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "requirement": "fairness",
@@ -164,31 +143,24 @@ class AIFrameworkCompliance(BaseModel):
                         "bias_assessment",
                         "discrimination_prevention",
                         "equality_impact",
-                        "monitoring"
+                        "monitoring",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "requirement": "accountability",
-                    "controls": [
-                        "oversight",
-                        "responsibility",
-                        "remediation",
-                        "redress"
-                    ],
-                    "status": "compliant"
-                }
+                    "controls": ["oversight", "responsibility", "remediation", "redress"],
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.assessments[f"{system_id}_uk"] = assessment
         return assessment
-    
+
     async def assess_us_ai_rights(
-        self,
-        system_id: str,
-        system_metadata: Dict[str, Any]
+        self, system_id: str, system_metadata: Dict[str, Any]
     ) -> Dict[str, Any]:
         """Assess compliance with U.S. AI Bill of Rights."""
         assessment = {
@@ -202,9 +174,9 @@ class AIFrameworkCompliance(BaseModel):
                         "safety_testing",
                         "risk_assessment",
                         "monitoring",
-                        "incident_response"
+                        "incident_response",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "algorithmic_discrimination_protections",
@@ -212,9 +184,9 @@ class AIFrameworkCompliance(BaseModel):
                         "bias_assessment",
                         "fairness_testing",
                         "equity_impact",
-                        "monitoring"
+                        "monitoring",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "data_privacy",
@@ -222,9 +194,9 @@ class AIFrameworkCompliance(BaseModel):
                         "privacy_by_design",
                         "data_minimization",
                         "consent_management",
-                        "data_protection"
+                        "data_protection",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "notice_and_explanation",
@@ -232,9 +204,9 @@ class AIFrameworkCompliance(BaseModel):
                         "transparency",
                         "explainability",
                         "documentation",
-                        "user_notification"
+                        "user_notification",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "principle": "human_alternatives",
@@ -242,29 +214,27 @@ class AIFrameworkCompliance(BaseModel):
                         "human_oversight",
                         "human_review",
                         "human_intervention",
-                        "appeal_process"
+                        "appeal_process",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.assessments[f"{system_id}_us"] = assessment
         return assessment
-    
+
     async def get_assessment_history(
-        self,
-        system_id: str,
-        framework: Optional[str] = None
+        self, system_id: str, framework: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get assessment history for a system."""
         if framework:
             key = f"{system_id}_{framework.lower()}"
             return [self.assessments.get(key, {})]
-        
+
         return [
             assessment
             for key, assessment in self.assessments.items()
             if key.startswith(f"{system_id}_")
-        ] 
+        ]

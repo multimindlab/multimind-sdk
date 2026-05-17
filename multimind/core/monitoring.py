@@ -2,20 +2,23 @@
 Core monitoring functionality for MultiMind
 """
 
-import time
-import logging
-from datetime import datetime
-from typing import Dict, List, Optional
-from dataclasses import dataclass, field
-from collections import defaultdict
 import asyncio
+import logging
+import time
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Dict, Optional
+
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class ModelMetrics:
     """Metrics for model performance and usage"""
+
     total_requests: int = 0
     successful_requests: int = 0
     failed_requests: int = 0
@@ -25,13 +28,16 @@ class ModelMetrics:
     last_used: Optional[datetime] = None
     error_count: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
+
 class ModelHealth(BaseModel):
     """Health status of a model"""
+
     is_healthy: bool
     last_check: datetime
     error_message: Optional[str] = None
     latency_ms: Optional[float] = None
     uptime_percentage: float = 100.0
+
 
 class ModelMonitor:
     """Monitor model health, usage, and performance"""
@@ -40,10 +46,7 @@ class ModelMonitor:
         self.metrics: Dict[str, ModelMetrics] = defaultdict(ModelMetrics)
         self.health: Dict[str, ModelHealth] = {}
         self.rate_limits: Dict[str, Dict[str, int]] = defaultdict(
-            lambda: {
-                "requests_per_minute": 60,
-                "tokens_per_minute": 100000
-            }
+            lambda: {"requests_per_minute": 60, "tokens_per_minute": 100000}
         )
         self._rate_windows: Dict[str, Dict[str, float]] = defaultdict(
             lambda: {
@@ -61,7 +64,7 @@ class ModelMonitor:
         cost: float,
         response_time: float,
         success: bool,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> None:
         """Track a model request and its metrics"""
         async with self._lock:
@@ -75,8 +78,7 @@ class ModelMonitor:
             if metrics.avg_response_time == 0:
                 metrics.avg_response_time = response_time
             else:
-                metrics.avg_response_time = (metrics.avg_response_time * 0.9 +
-                                          response_time * 0.1)
+                metrics.avg_response_time = metrics.avg_response_time * 0.9 + response_time * 0.1
 
             if success:
                 metrics.successful_requests += 1
@@ -93,17 +95,9 @@ class ModelMonitor:
             response = await handler.generate("test")
             latency = (time.time() - start_time) * 1000  # Convert to ms
 
-            health = ModelHealth(
-                is_healthy=True,
-                last_check=datetime.now(),
-                latency_ms=latency
-            )
+            health = ModelHealth(is_healthy=True, last_check=datetime.now(), latency_ms=latency)
         except Exception as e:
-            health = ModelHealth(
-                is_healthy=False,
-                last_check=datetime.now(),
-                error_message=str(e)
-            )
+            health = ModelHealth(is_healthy=False, last_check=datetime.now(), error_message=str(e))
 
         self.health[model] = health
         return health
@@ -111,23 +105,19 @@ class ModelMonitor:
     async def get_metrics(self, model: Optional[str] = None) -> Dict:
         """Get metrics for a specific model or all models"""
         if model:
-            return {
-                "metrics": self.metrics[model],
-                "health": self.health.get(model)
-            }
+            return {"metrics": self.metrics[model], "health": self.health.get(model)}
         return {
-            model: {
-                "metrics": metrics,
-                "health": self.health.get(model)
-            }
+            model: {"metrics": metrics, "health": self.health.get(model)}
             for model, metrics in self.metrics.items()
         }
 
-    def set_rate_limits(self, model: str, *, requests_per_minute: int, tokens_per_minute: int) -> None:
+    def set_rate_limits(
+        self, model: str, *, requests_per_minute: int, tokens_per_minute: int
+    ) -> None:
         """Set rate limits for a specific model"""
         self.rate_limits[model] = {
             "requests_per_minute": requests_per_minute,
-            "tokens_per_minute": tokens_per_minute
+            "tokens_per_minute": tokens_per_minute,
         }
 
     async def check_rate_limit(self, model: str, tokens: int) -> bool:
@@ -154,5 +144,6 @@ class ModelMonitor:
             window["tokens"] += requested_tokens
             return True
 
+
 # Global monitor instance
-monitor = ModelMonitor() 
+monitor = ModelMonitor()
