@@ -2,22 +2,23 @@
 MAM (Mix-And-Match) Adapters implementation for combining multiple adapter types.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from datasets import Dataset as HFDataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
-import logging
-from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
+
 
 class MAMAdapterLayer(nn.Module):
     """MAM Adapter layer that combines multiple adapter types."""
@@ -28,7 +29,7 @@ class MAMAdapterLayer(nn.Module):
         out_features: int,
         adapter_types: List[str],
         adapter_configs: Dict[str, Dict[str, Any]],
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.adapter_types = adapter_types
@@ -40,23 +41,17 @@ class MAMAdapterLayer(nn.Module):
             config = adapter_configs[adapter_type]
             if adapter_type == "houlsby":
                 self.adapters[adapter_type] = HoulsbyAdapter(
-                    in_features=in_features,
-                    out_features=out_features,
-                    **config
+                    in_features=in_features, out_features=out_features, **config
                 )
             elif adapter_type == "pfeiffer":
                 self.adapters[adapter_type] = PfeifferAdapter(
-                    in_features=in_features,
-                    out_features=out_features,
-                    **config
+                    in_features=in_features, out_features=out_features, **config
                 )
             elif adapter_type == "parallel":
                 self.adapters[adapter_type] = ParallelAdapter(
-                    in_features=in_features,
-                    out_features=out_features,
-                    **config
+                    in_features=in_features, out_features=out_features, **config
                 )
-            
+
             # Initialize gate for each adapter
             self.gates[adapter_type] = nn.Parameter(torch.ones(1))
 
@@ -69,6 +64,7 @@ class MAMAdapterLayer(nn.Module):
             output += gate * adapter_output
         return output
 
+
 class HoulsbyAdapter(nn.Module):
     """Houlsby-style adapter layer."""
 
@@ -79,7 +75,7 @@ class HoulsbyAdapter(nn.Module):
         adapter_size: int = 64,
         non_linearity: str = "relu",
         dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.down = nn.Linear(in_features, adapter_size)
@@ -89,6 +85,7 @@ class HoulsbyAdapter(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.up(self.dropout(self.non_linearity(self.down(x))))
+
 
 class PfeifferAdapter(nn.Module):
     """Pfeiffer-style adapter layer."""
@@ -100,7 +97,7 @@ class PfeifferAdapter(nn.Module):
         adapter_size: int = 64,
         non_linearity: str = "relu",
         dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.down = nn.Linear(in_features, adapter_size)
@@ -110,6 +107,7 @@ class PfeifferAdapter(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.dropout(self.non_linearity(self.up(self.down(x))))
+
 
 class ParallelAdapter(nn.Module):
     """Parallel adapter layer."""
@@ -121,7 +119,7 @@ class ParallelAdapter(nn.Module):
         adapter_size: int = 64,
         non_linearity: str = "relu",
         dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.down = nn.Linear(in_features, adapter_size)
@@ -131,6 +129,7 @@ class ParallelAdapter(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.up(self.dropout(self.non_linearity(self.down(x))))
+
 
 class MAMAdapterTuner:
     """MAM Adapter implementation for fine-tuning."""
@@ -142,7 +141,7 @@ class MAMAdapterTuner:
         adapter_types: List[str],
         adapter_configs: Optional[Dict[str, Dict[str, Any]]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -150,21 +149,9 @@ class MAMAdapterTuner:
 
         # Default adapter configurations
         self.adapter_configs = adapter_configs or {
-            "houlsby": {
-                "adapter_size": 64,
-                "non_linearity": "relu",
-                "dropout": 0.1
-            },
-            "pfeiffer": {
-                "adapter_size": 64,
-                "non_linearity": "relu",
-                "dropout": 0.1
-            },
-            "parallel": {
-                "adapter_size": 64,
-                "non_linearity": "relu",
-                "dropout": 0.1
-            }
+            "houlsby": {"adapter_size": 64, "non_linearity": "relu", "dropout": 0.1},
+            "pfeiffer": {"adapter_size": 64, "non_linearity": "relu", "dropout": 0.1},
+            "parallel": {"adapter_size": 64, "non_linearity": "relu", "dropout": 0.1},
         }
 
         # Default training arguments
@@ -178,7 +165,7 @@ class MAMAdapterTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -189,14 +176,9 @@ class MAMAdapterTuner:
         """Prepare the model for MAM Adapter fine-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -213,36 +195,29 @@ class MAMAdapterTuner:
                     in_features=module.in_features,
                     out_features=module.out_features,
                     adapter_types=self.adapter_types,
-                    adapter_configs=self.adapter_configs
+                    adapter_configs=self.adapter_configs,
                 )
                 setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -251,7 +226,7 @@ class MAMAdapterTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using MAM Adapters."""
         if self.model is None:
@@ -270,10 +245,7 @@ class MAMAdapterTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -298,9 +270,7 @@ class MAMAdapterTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -314,4 +284,4 @@ class MAMAdapterTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params 
+        return params

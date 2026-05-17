@@ -3,22 +3,25 @@ Chat management commands for MultiMind CLI
 """
 
 import asyncio
+from typing import Optional
+
 import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import Progress
-from typing import Optional
+from rich.table import Table
 
-from ..gateway.chat import chat_manager, ChatSession
+from ..gateway.chat import chat_manager
 from ..gateway.models import get_model_handler
 
 console = Console()
+
 
 @click.group()
 def chat():
     """Chat management commands"""
     pass
+
 
 @chat.command()
 @click.option("--model", "-m", required=True, help="Model to use")
@@ -43,36 +46,26 @@ def start(model: str, prompt: Optional[str]):
             try:
                 user_input = click.prompt("\nYou", type=str)
 
-                if user_input.lower() == 'exit':
+                if user_input.lower() == "exit":
                     break
-                elif user_input.lower() == 'clear':
+                elif user_input.lower() == "clear":
                     chat_history = []
                     console.print("[yellow]Chat history cleared[/yellow]")
                     continue
 
                 with Progress() as progress:
                     task = progress.add_task("[cyan]Thinking...", total=None)
-                    response = asyncio.run(handler.chat(
-                        [{"role": "user", "content": user_input}]
-                    ))
+                    response = asyncio.run(handler.chat([{"role": "user", "content": user_input}]))
                     progress.update(task, completed=True)
 
-                chat_history.append({
-                    "role": "user",
-                    "content": user_input,
-                    "model": model
-                })
-                chat_history.append({
-                    "role": "assistant",
-                    "content": response.content,
-                    "model": model
-                })
+                chat_history.append({"role": "user", "content": user_input, "model": model})
+                chat_history.append(
+                    {"role": "assistant", "content": response.content, "model": model}
+                )
 
-                console.print(Panel(
-                    response.content,
-                    title=f"{model} Response",
-                    border_style="green"
-                ))
+                console.print(
+                    Panel(response.content, title=f"{model} Response", border_style="green")
+                )
 
             except KeyboardInterrupt:
                 break
@@ -81,6 +74,7 @@ def start(model: str, prompt: Optional[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @chat.command()
 def list_sessions():
@@ -105,13 +99,14 @@ def list_sessions():
                 session["model"],
                 session["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
                 session["updated_at"].strftime("%Y-%m-%d %H:%M:%S"),
-                str(session["message_count"])
+                str(session["message_count"]),
             )
 
         console.print(table)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @chat.command()
 @click.argument("session_id")
@@ -133,14 +128,13 @@ def load(session_id: str):
         if session.messages:
             console.print("\n[bold]Recent Messages:[/bold]")
             for msg in session.messages[-5:]:
-                console.print(Panel(
-                    msg.content,
-                    title=f"{msg.role} ({msg.model})",
-                    border_style="blue"
-                ))
+                console.print(
+                    Panel(msg.content, title=f"{msg.role} ({msg.model})", border_style="blue")
+                )
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @chat.command()
 @click.argument("session_id")
@@ -154,6 +148,7 @@ def save(session_id: str):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @chat.command()
 @click.argument("session_id")

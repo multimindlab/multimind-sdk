@@ -346,17 +346,18 @@ class TestIntegration:
     
     @pytest.mark.requires_api_key
     @pytest.mark.slow
+    @pytest.mark.skip(reason="Not yet implemented — placeholder for live CLI integration")
     def test_cli_examples_integration(self):
-        """Integration test for CLI examples (requires API keys)."""
-        # This would run actual CLI commands
-        # Skip by default, run only with --integration flag
-        pytest.skip("Integration test - requires API keys")
-    
+        """Integration test for CLI examples (requires API keys + implementation)."""
+        # Auto-skipped by the ``requires_api_key`` marker when keys aren't
+        # set; additionally hard-skipped until the test body actually runs
+        # the CLI end-to-end. Remove the hard ``skip`` once implemented.
+
     @pytest.mark.requires_api_key
     @pytest.mark.slow
     @pytest.mark.asyncio
+    @pytest.mark.skip(reason="Not yet implemented — placeholder for live API integration")
     async def test_api_examples_integration(self):
-        """Integration test for API examples (requires API keys)."""
-        # This would start actual API server and make real requests
-        # Skip by default, run only with --integration flag
-        pytest.skip("Integration test - requires API keys")
+        """Integration test for API examples (requires API keys + implementation)."""
+        # See test_cli_examples_integration. Hard-skipped until the test body
+        # actually starts a server and makes real requests.

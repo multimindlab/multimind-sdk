@@ -1,9 +1,12 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 import llmrails
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class LLMRailsBackend(VectorStoreBackend):
     def __init__(
@@ -13,7 +16,7 @@ class LLMRailsBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.api_key = api_key or os.environ.get("LLM_RAILS_API_KEY")
         self.datastore_id = datastore_id or os.environ.get("LLM_RAILS_DATASTORE_ID")
@@ -37,37 +40,51 @@ class LLMRailsBackend(VectorStoreBackend):
             data.append(entry)
         # LLMRails API is sync, so run in thread
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, self._client.add_texts, [d["text"] for d in data], self.datastore_id)
-        self.log_metrics('add_vectors', len(data))
+        await loop.run_in_executor(
+            None, self._client.add_texts, [d["text"] for d in data], self.datastore_id
+        )
+        self.log_metrics("add_vectors", len(data))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         # LLMRails expects a query string, not a vector
         if not query_text:
             raise ValueError("query_text must be provided for LLMRails search.")
         loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(None, self._client.similarity_search, query_text, self.datastore_id, k)
+        results = await loop.run_in_executor(
+            None, self._client.similarity_search, query_text, self.datastore_id, k
+        )
         search_results = [
             SearchResult(
                 id=str(i),
-                score=getattr(r, 'score', 0.0),
-                metadata=getattr(r, 'metadata', {}),
-                document=getattr(r, 'page_content', str(r))
-            ) for i, r in enumerate(results)
+                score=getattr(r, "score", 0.0),
+                metadata=getattr(r, "metadata", {}),
+                document=getattr(r, "page_content", str(r)),
+            )
+            for i, r in enumerate(results)
         ]
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
         # LLMRails API does not support direct vector deletion; placeholder for future
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # LLMRails API does not support clearing all vectors; placeholder for future
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
         # LLMRails is managed; no-op
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -89,11 +106,11 @@ class LLMRailsBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

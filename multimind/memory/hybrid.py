@@ -2,23 +2,23 @@
 Hybrid memory implementation that combines multiple memory types with intelligent routing.
 """
 
-from typing import List, Dict, Any, Optional, Type, Set, Tuple
-from datetime import datetime, timedelta
+import base64
+import inspect
 import json
 import logging
 import zlib
-import base64
+from datetime import datetime
 from pathlib import Path
-import inspect
-import numpy as np
+from typing import Any, Dict, List, Optional, Type
+
 from ..models.base import BaseLLM
 from .base import BaseMemory
-from .utils import MemoryUtils
-from .vector_store import VectorStoreMemory
+from .dnc import DNCMemory
 from .knowledge_graph import KnowledgeGraphMemory
 from .time_weighted import TimeWeightedMemory
 from .token_buffer import TokenBufferMemory
-from .dnc import DNCMemory
+from .utils import MemoryUtils
+from .vector_store import VectorStoreMemory
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class HybridMemory(BaseMemory):
         enable_validation: bool = True,
         validation_interval: int = 3600,  # 1 hour
         enable_evolution: bool = True,
-        evolution_interval: int = 3600  # 1 hour
+        evolution_interval: int = 3600,  # 1 hour
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -94,16 +94,16 @@ class HybridMemory(BaseMemory):
         self.validation_interval = validation_interval
         self.enable_evolution = enable_evolution
         self.evolution_interval = evolution_interval
-        
+
         # Initialize default memory types if none provided
         self.memory_types = memory_types or [
             VectorStoreMemory,
             KnowledgeGraphMemory,
             TimeWeightedMemory,
             TokenBufferMemory,
-            DNCMemory
+            DNCMemory,
         ]
-        
+
         # Initialize memory instances and configurations
         self.memories: Dict[str, BaseMemory] = {}
         self.memory_configs: Dict[str, Dict[str, Any]] = {}
@@ -112,9 +112,9 @@ class HybridMemory(BaseMemory):
             "KnowledgeGraphMemory": 1.0,
             "TimeWeightedMemory": 1.0,
             "TokenBufferMemory": 1.0,
-            "DNCMemory": 1.0
+            "DNCMemory": 1.0,
         }
-        
+
         # Performance tracking
         self.performance_metrics: Dict[str, Dict[str, Any]] = {}
         self.routing_history: List[Dict[str, Any]] = []
@@ -124,7 +124,7 @@ class HybridMemory(BaseMemory):
         self.consolidation_history: List[Dict[str, Any]] = []
         self.validation_history: List[Dict[str, Any]] = []
         self.evolution_history: List[Dict[str, Any]] = []
-        
+
         # Timestamps
         self.last_sync = datetime.now()
         self.last_backup = datetime.now()
@@ -135,18 +135,18 @@ class HybridMemory(BaseMemory):
         self.last_consolidation = datetime.now()
         self.last_validation = datetime.now()
         self.last_evolution = datetime.now()
-        
+
         # Initialize memories
         self._initialize_memories()
 
-    def _instantiate_memory(
-        self, memory_type: Type[BaseMemory], *, memory_name: str
-    ) -> BaseMemory:
+    def _instantiate_memory(self, memory_type: Type[BaseMemory], *, memory_name: str) -> BaseMemory:
         """Instantiate a memory type with only supported constructor kwargs."""
         kwargs: Dict[str, Any] = {
             "llm": self.llm,
             "memory_key": f"{self.memory_key}_{memory_name}",
-            "storage_path": str(self.storage_dir / f"{memory_name}.json") if self.storage_dir else None,
+            "storage_path": (
+                str(self.storage_dir / f"{memory_name}.json") if self.storage_dir else None
+            ),
         }
 
         try:
@@ -155,9 +155,7 @@ class HybridMemory(BaseMemory):
             has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
 
             filtered = {
-                k: v
-                for k, v in kwargs.items()
-                if has_varkw or (k in params and k != "self")
+                k: v for k, v in kwargs.items() if has_varkw or (k in params and k != "self")
             }
             return memory_type(**filtered)
         except (TypeError, ValueError):
@@ -166,18 +164,14 @@ class HybridMemory(BaseMemory):
 
     def _initialize_memories(self) -> None:
         """Initialize memory instances."""
-        for memory_type in self.memory_types[:self.max_memories]:
+        for memory_type in self.memory_types[: self.max_memories]:
             memory_name = memory_type.__name__
             memory_instance = self._instantiate_memory(memory_type, memory_name=memory_name)
             self.memories[memory_name] = memory_instance
             self.memory_configs[memory_name] = {
                 "type": memory_name,
                 "priority": self.priority_weights.get(memory_name, 1.0),
-                "performance": {
-                    "hits": 0,
-                    "misses": 0,
-                    "latency": 0.0
-                }
+                "performance": {"hits": 0, "misses": 0, "latency": 0.0},
             }
 
     async def add_message(self, message: Dict[str, str]) -> None:
@@ -218,7 +212,9 @@ class HybridMemory(BaseMemory):
 
         # Check for consolidation
         if self.enable_consolidation:
-            if (current_time - self.last_consolidation).total_seconds() > self.consolidation_interval:
+            if (
+                current_time - self.last_consolidation
+            ).total_seconds() > self.consolidation_interval:
                 await self._consolidate_memories()
 
         # Check for validation
@@ -243,12 +239,12 @@ class HybridMemory(BaseMemory):
             # Generate routing prompt
             prompt = f"""
             Route message to appropriate memory types:
-            
+
             Message: {message['content']}
-            
+
             Available memory types:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Return a JSON object with:
             1. selected_memories: list of memory type names
             2. routing_reason: string
@@ -258,13 +254,15 @@ class HybridMemory(BaseMemory):
             routing = MemoryUtils.safe_json_loads(response)
 
             # Record routing decision
-            self.routing_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "message": message,
-                "selected_memories": routing["selected_memories"],
-                "routing_reason": routing["routing_reason"],
-                "confidence": routing["confidence"]
-            })
+            self.routing_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "message": message,
+                    "selected_memories": routing["selected_memories"],
+                    "routing_reason": routing["routing_reason"],
+                    "confidence": routing["confidence"],
+                }
+            )
 
             return routing["selected_memories"]
 
@@ -278,13 +276,13 @@ class HybridMemory(BaseMemory):
             # Generate learning prompt
             prompt = f"""
             Analyze routing performance:
-            
+
             Message: {message['content']}
             Routed to: {routed_memories}
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Return a JSON object with:
             1. learning_updates: dict of memory_name -> update_data
             2. learning_reason: string
@@ -296,12 +294,14 @@ class HybridMemory(BaseMemory):
             for memory_name, update_data in learning["learning_updates"].items():
                 if memory_name not in self.learning_history:
                     self.learning_history[memory_name] = []
-                self.learning_history[memory_name].append({
-                    "timestamp": datetime.now().isoformat(),
-                    "message": message,
-                    "update_data": update_data,
-                    "learning_reason": learning["learning_reason"]
-                })
+                self.learning_history[memory_name].append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "message": message,
+                        "update_data": update_data,
+                        "learning_reason": learning["learning_reason"],
+                    }
+                )
 
             # Update memory configurations
             for memory_name, update_data in learning["learning_updates"].items():
@@ -317,13 +317,13 @@ class HybridMemory(BaseMemory):
             # Generate analysis prompt
             prompt = f"""
             Analyze memory performance:
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Routing history:
             {json.dumps(self.routing_history[-10:], indent=2)}
-            
+
             Return a JSON object with:
             1. analysis: dict of string -> any
             2. suggestions: list of string
@@ -337,7 +337,7 @@ class HybridMemory(BaseMemory):
                 "timestamp": datetime.now().isoformat(),
                 "analysis": analysis["analysis"],
                 "suggestions": analysis["suggestions"],
-                "metrics": analysis["metrics"]
+                "metrics": analysis["metrics"],
             }
 
             self.last_analysis = datetime.now()
@@ -351,13 +351,13 @@ class HybridMemory(BaseMemory):
             # Generate optimization prompt
             prompt = f"""
             Optimize memory configurations:
-            
+
             Current configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Performance metrics:
             {json.dumps(self.performance_metrics, indent=2)}
-            
+
             Return a JSON object with:
             1. optimizations: dict of memory_name -> optimization_data
             2. optimization_reason: string
@@ -381,13 +381,13 @@ class HybridMemory(BaseMemory):
             # Generate metadata prompt
             prompt = f"""
             Update memory metadata:
-            
+
             Current metadata:
             {json.dumps(self.metadata_history, indent=2)}
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Return a JSON object with:
             1. metadata_updates: dict of memory_name -> metadata
             2. update_reason: string
@@ -399,11 +399,13 @@ class HybridMemory(BaseMemory):
             for memory_name, metadata_update in metadata["metadata_updates"].items():
                 if memory_name not in self.metadata_history:
                     self.metadata_history[memory_name] = []
-                self.metadata_history[memory_name].append({
-                    "timestamp": datetime.now().isoformat(),
-                    "metadata": metadata_update,
-                    "update_reason": metadata["update_reason"]
-                })
+                self.metadata_history[memory_name].append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "metadata": metadata_update,
+                        "update_reason": metadata["update_reason"],
+                    }
+                )
 
             self.last_metadata = datetime.now()
 
@@ -416,13 +418,13 @@ class HybridMemory(BaseMemory):
             # Generate cross-memory analysis prompt
             prompt = f"""
             Analyze cross-memory relationships:
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Cross-memory links:
             {json.dumps(self.cross_memory_links, indent=2)}
-            
+
             Return a JSON object with:
             1. relationships: dict of memory_pair -> relationship_data
             2. analysis_reason: string
@@ -437,11 +439,13 @@ class HybridMemory(BaseMemory):
                     self.cross_memory_links[memory1] = {}
                 if memory2 not in self.cross_memory_links[memory1]:
                     self.cross_memory_links[memory1][memory2] = []
-                self.cross_memory_links[memory1][memory2].append({
-                    "timestamp": datetime.now().isoformat(),
-                    "relationship_data": relationship_data,
-                    "analysis_reason": analysis["analysis_reason"]
-                })
+                self.cross_memory_links[memory1][memory2].append(
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "relationship_data": relationship_data,
+                        "analysis_reason": analysis["analysis_reason"],
+                    }
+                )
 
             self.last_cross_memory = datetime.now()
 
@@ -454,13 +458,13 @@ class HybridMemory(BaseMemory):
             # Generate consolidation prompt
             prompt = f"""
             Consolidate memory contents:
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Consolidation history:
             {json.dumps(self.consolidation_history[-5:], indent=2)}
-            
+
             Return a JSON object with:
             1. consolidation_plan: dict of memory_name -> consolidation_data
             2. consolidation_reason: string
@@ -469,11 +473,13 @@ class HybridMemory(BaseMemory):
             consolidation = MemoryUtils.safe_json_loads(response)
 
             # Record consolidation
-            self.consolidation_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "consolidation_plan": consolidation["consolidation_plan"],
-                "consolidation_reason": consolidation["consolidation_reason"]
-            })
+            self.consolidation_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "consolidation_plan": consolidation["consolidation_plan"],
+                    "consolidation_reason": consolidation["consolidation_reason"],
+                }
+            )
 
             self.last_consolidation = datetime.now()
 
@@ -486,13 +492,13 @@ class HybridMemory(BaseMemory):
             # Generate validation prompt
             prompt = f"""
             Validate memory contents:
-            
+
             Memory configurations:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Validation history:
             {json.dumps(self.validation_history[-5:], indent=2)}
-            
+
             Return a JSON object with:
             1. validation_results: dict of memory_name -> validation_data
             2. validation_reason: string
@@ -501,11 +507,13 @@ class HybridMemory(BaseMemory):
             validation = MemoryUtils.safe_json_loads(response)
 
             # Record validation
-            self.validation_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "validation_results": validation["validation_results"],
-                "validation_reason": validation["validation_reason"]
-            })
+            self.validation_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "validation_results": validation["validation_results"],
+                    "validation_reason": validation["validation_reason"],
+                }
+            )
 
             self.last_validation = datetime.now()
 
@@ -518,13 +526,13 @@ class HybridMemory(BaseMemory):
             # Generate evolution prompt
             prompt = f"""
             Evolve memory system:
-            
+
             Current state:
             {json.dumps(self.memory_configs, indent=2)}
-            
+
             Evolution history:
             {json.dumps(self.evolution_history[-5:], indent=2)}
-            
+
             Return a JSON object with:
             1. evolution_plan: dict of memory_name -> evolution_data
             2. evolution_reason: string
@@ -533,11 +541,13 @@ class HybridMemory(BaseMemory):
             evolution = MemoryUtils.safe_json_loads(response)
 
             # Record evolution
-            self.evolution_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "evolution_plan": evolution["evolution_plan"],
-                "evolution_reason": evolution["evolution_reason"]
-            })
+            self.evolution_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "evolution_plan": evolution["evolution_plan"],
+                    "evolution_reason": evolution["evolution_reason"],
+                }
+            )
 
             self.last_evolution = datetime.now()
 
@@ -557,22 +567,19 @@ class HybridMemory(BaseMemory):
                 "cross_memory_links": self.cross_memory_links,
                 "consolidation_history": self.consolidation_history,
                 "validation_history": self.validation_history,
-                "evolution_history": self.evolution_history
+                "evolution_history": self.evolution_history,
             }
 
             # Compress backup if enabled
             if self.compression_enabled:
                 backup_str = json.dumps(backup)
                 compressed = zlib.compress(backup_str.encode(), level=self.compression_level)
-                backup = {
-                    "compressed": True,
-                    "data": base64.b64encode(compressed).decode()
-                }
+                backup = {"compressed": True, "data": base64.b64encode(compressed).decode()}
 
             # Save backup
             if self.storage_dir:
                 backup_path = self.storage_dir / f"backup_{datetime.now().isoformat()}.json"
-                with open(backup_path, 'w') as f:
+                with open(backup_path, "w") as f:
                     json.dump(backup, f)
 
             self.last_backup = datetime.now()
@@ -606,32 +613,35 @@ class HybridMemory(BaseMemory):
         """Save memory state to persistent storage."""
         if self.storage_dir:
             self.storage_dir.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_dir / "hybrid_memory.json", 'w') as f:
-                json.dump({
-                    "memory_configs": self.memory_configs,
-                    "performance_metrics": self.performance_metrics,
-                    "routing_history": self.routing_history,
-                    "learning_history": self.learning_history,
-                    "metadata_history": self.metadata_history,
-                    "cross_memory_links": self.cross_memory_links,
-                    "consolidation_history": self.consolidation_history,
-                    "validation_history": self.validation_history,
-                    "evolution_history": self.evolution_history,
-                    "last_sync": self.last_sync.isoformat(),
-                    "last_backup": self.last_backup.isoformat(),
-                    "last_analysis": self.last_analysis.isoformat(),
-                    "last_optimization": self.last_optimization.isoformat(),
-                    "last_metadata": self.last_metadata.isoformat(),
-                    "last_cross_memory": self.last_cross_memory.isoformat(),
-                    "last_consolidation": self.last_consolidation.isoformat(),
-                    "last_validation": self.last_validation.isoformat(),
-                    "last_evolution": self.last_evolution.isoformat()
-                }, f)
+            with open(self.storage_dir / "hybrid_memory.json", "w") as f:
+                json.dump(
+                    {
+                        "memory_configs": self.memory_configs,
+                        "performance_metrics": self.performance_metrics,
+                        "routing_history": self.routing_history,
+                        "learning_history": self.learning_history,
+                        "metadata_history": self.metadata_history,
+                        "cross_memory_links": self.cross_memory_links,
+                        "consolidation_history": self.consolidation_history,
+                        "validation_history": self.validation_history,
+                        "evolution_history": self.evolution_history,
+                        "last_sync": self.last_sync.isoformat(),
+                        "last_backup": self.last_backup.isoformat(),
+                        "last_analysis": self.last_analysis.isoformat(),
+                        "last_optimization": self.last_optimization.isoformat(),
+                        "last_metadata": self.last_metadata.isoformat(),
+                        "last_cross_memory": self.last_cross_memory.isoformat(),
+                        "last_consolidation": self.last_consolidation.isoformat(),
+                        "last_validation": self.last_validation.isoformat(),
+                        "last_evolution": self.last_evolution.isoformat(),
+                    },
+                    f,
+                )
 
     async def load(self) -> None:
         """Load memory state from persistent storage."""
         if self.storage_dir and (self.storage_dir / "hybrid_memory.json").exists():
-            with open(self.storage_dir / "hybrid_memory.json", 'r') as f:
+            with open(self.storage_dir / "hybrid_memory.json") as f:
                 data = json.load(f)
                 self.memory_configs = data.get("memory_configs", {})
                 self.performance_metrics = data.get("performance_metrics", {})
@@ -681,39 +691,38 @@ class HybridMemory(BaseMemory):
             "memory_stats": {
                 "total_memories": len(self.memories),
                 "memory_types": list(self.memories.keys()),
-                "total_messages": total_messages
+                "total_messages": total_messages,
             },
             "routing_stats": {
                 "total_routes": len(self.routing_history),
                 "routing_strategy": self.routing_strategy,
-                "adaptive_routing": self.adaptive_routing
+                "adaptive_routing": self.adaptive_routing,
             },
             "performance_stats": {
                 "total_hits": sum(
-                    config["performance"]["hits"]
-                    for config in self.memory_configs.values()
+                    config["performance"]["hits"] for config in self.memory_configs.values()
                 ),
                 "total_misses": sum(
-                    config["performance"]["misses"]
-                    for config in self.memory_configs.values()
+                    config["performance"]["misses"] for config in self.memory_configs.values()
                 ),
-                "average_latency": sum(
-                    config["performance"]["latency"]
-                    for config in self.memory_configs.values()
-                ) / len(self.memory_configs) if self.memory_configs else 0
+                "average_latency": (
+                    sum(config["performance"]["latency"] for config in self.memory_configs.values())
+                    / len(self.memory_configs)
+                    if self.memory_configs
+                    else 0
+                ),
             },
             "learning_stats": {
                 "total_learning_records": sum(
-                    len(records)
-                    for records in self.learning_history.values()
+                    len(records) for records in self.learning_history.values()
                 ),
                 "learning_enabled": self.enable_learning,
-                "learning_rate": self.learning_rate
+                "learning_rate": self.learning_rate,
             },
             "optimization_stats": {
                 "total_optimizations": len(self.performance_metrics.get("analysis", [])),
                 "optimization_enabled": self.enable_optimization,
-                "optimization_interval": self.optimization_interval
+                "optimization_interval": self.optimization_interval,
             },
             "cross_memory_stats": {
                 "total_links": sum(
@@ -722,96 +731,112 @@ class HybridMemory(BaseMemory):
                     for links in memory_links.values()
                 ),
                 "cross_memory_enabled": self.enable_cross_memory,
-                "cross_memory_interval": self.cross_memory_interval
+                "cross_memory_interval": self.cross_memory_interval,
             },
             "consolidation_stats": {
                 "total_consolidations": len(self.consolidation_history),
                 "consolidation_enabled": self.enable_consolidation,
-                "consolidation_interval": self.consolidation_interval
+                "consolidation_interval": self.consolidation_interval,
             },
             "validation_stats": {
                 "total_validations": len(self.validation_history),
                 "validation_enabled": self.enable_validation,
-                "validation_interval": self.validation_interval
+                "validation_interval": self.validation_interval,
             },
             "evolution_stats": {
                 "total_evolutions": len(self.evolution_history),
                 "evolution_enabled": self.enable_evolution,
-                "evolution_interval": self.evolution_interval
-            }
+                "evolution_interval": self.evolution_interval,
+            },
         }
         return stats
 
     async def get_hybrid_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for hybrid memory optimization."""
         suggestions = []
-        
+
         # Check memory count
         if len(self.memories) > self.max_memories:
-            suggestions.append({
-                "type": "memory_count",
-                "suggestion": "Consider reducing number of memory types or increasing max_memories"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "memory_count",
+                    "suggestion": "Consider reducing number of memory types or increasing max_memories",
+                }
+            )
+
         # Check routing performance
         if self.routing_history:
             hit_rate = sum(
-                1 for route in self.routing_history
-                if len(route["selected_memories"]) > 0
+                1 for route in self.routing_history if len(route["selected_memories"]) > 0
             ) / len(self.routing_history)
             if hit_rate < 0.7:
-                suggestions.append({
-                    "type": "routing_performance",
-                    "suggestion": "Consider adjusting routing strategy or threshold"
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "routing_performance",
+                        "suggestion": "Consider adjusting routing strategy or threshold",
+                    }
+                )
+
         # Check learning progress
         if self.learning_history:
-            avg_learning = sum(
-                len(records)
-                for records in self.learning_history.values()
-            ) / len(self.learning_history)
+            avg_learning = sum(len(records) for records in self.learning_history.values()) / len(
+                self.learning_history
+            )
             if avg_learning < 10:
-                suggestions.append({
-                    "type": "learning_rate",
-                    "suggestion": "Consider increasing learning rate or improving learning mechanisms"
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "learning_rate",
+                        "suggestion": "Consider increasing learning rate or improving learning mechanisms",
+                    }
+                )
+
         # Check optimization frequency
         if len(self.performance_metrics.get("analysis", [])) < 2:
-            suggestions.append({
-                "type": "optimization_frequency",
-                "suggestion": "Consider adjusting optimization interval"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "optimization_frequency",
+                    "suggestion": "Consider adjusting optimization interval",
+                }
+            )
+
         # Check cross-memory coverage
         if self.cross_memory_links:
-            coverage = len(self.cross_memory_links) / (len(self.memories) * (len(self.memories) - 1) / 2)
+            coverage = len(self.cross_memory_links) / (
+                len(self.memories) * (len(self.memories) - 1) / 2
+            )
             if coverage < 0.5:
-                suggestions.append({
-                    "type": "cross_memory_coverage",
-                    "suggestion": "Consider improving cross-memory analysis"
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "cross_memory_coverage",
+                        "suggestion": "Consider improving cross-memory analysis",
+                    }
+                )
+
         # Check consolidation frequency
         if len(self.consolidation_history) < 2:
-            suggestions.append({
-                "type": "consolidation_frequency",
-                "suggestion": "Consider adjusting consolidation interval"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "consolidation_frequency",
+                    "suggestion": "Consider adjusting consolidation interval",
+                }
+            )
+
         # Check validation coverage
         if len(self.validation_history) < 2:
-            suggestions.append({
-                "type": "validation_frequency",
-                "suggestion": "Consider adjusting validation interval"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "validation_frequency",
+                    "suggestion": "Consider adjusting validation interval",
+                }
+            )
+
         # Check evolution progress
         if len(self.evolution_history) < 2:
-            suggestions.append({
-                "type": "evolution_frequency",
-                "suggestion": "Consider adjusting evolution interval"
-            })
-        
-        return suggestions 
+            suggestions.append(
+                {
+                    "type": "evolution_frequency",
+                    "suggestion": "Consider adjusting evolution interval",
+                }
+            )
+
+        return suggestions

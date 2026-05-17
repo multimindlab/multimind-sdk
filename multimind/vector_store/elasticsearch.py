@@ -1,12 +1,15 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend
+
 try:
     from elasticsearch import Elasticsearch
 except ImportError:
     Elasticsearch = None
+
 
 class ElasticsearchBackend(VectorStoreBackend):
     def __init__(
@@ -23,7 +26,7 @@ class ElasticsearchBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.hosts = hosts or os.environ.get("ELASTICSEARCH_HOSTS", "localhost:9200").split(",")
         self.api_key = api_key or os.environ.get("ELASTICSEARCH_API_KEY")
@@ -39,7 +42,9 @@ class ElasticsearchBackend(VectorStoreBackend):
         self.explain = explain
         self.logger = logging.getLogger(__name__)
         if Elasticsearch is None:
-            raise ImportError("elasticsearch is not installed. Please install it to use this backend.")
+            raise ImportError(
+                "elasticsearch is not installed. Please install it to use this backend."
+            )
         self.client = Elasticsearch(self.hosts, api_key=self.api_key)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
@@ -52,22 +57,21 @@ class ElasticsearchBackend(VectorStoreBackend):
             }
             self.client.index(index=self.index_name, id=doc_id, body=body)
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
-        query = {
-            "size": k,
-            "query": {
-                "knn": {
-                    "vector": {
-                        "vector": query_vector,
-                        "k": k
-                    }
-                }
-            }
-        }
+        query = {"size": k, "query": {"knn": {"vector": {"vector": query_vector, "k": k}}}}
         res = self.client.search(index=self.index_name, body=query)
         results = []
         for hit in res["hits"]["hits"]:
@@ -85,22 +89,24 @@ class ElasticsearchBackend(VectorStoreBackend):
                 vector=hit["_source"]["vector"],
                 metadata=meta,
                 document=doc,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "vector_score": hit["_score"],
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -111,14 +117,14 @@ class ElasticsearchBackend(VectorStoreBackend):
     async def delete_vectors(self, ids):
         for doc_id in ids:
             self.client.delete(index=self.index_name, id=doc_id)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         self.client.indices.delete(index=self.index_name, ignore=[400, 404])
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -140,11 +146,11 @@ class ElasticsearchBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

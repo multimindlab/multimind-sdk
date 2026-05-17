@@ -1,9 +1,10 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend
+
 # Placeholder: Replace with actual Epsilla SDK import if available
+
 
 class EpsillaBackend(VectorStoreBackend):
     def __init__(
@@ -20,27 +21,52 @@ class EpsillaBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
-        super().__init__(api_key, endpoint, collection, enable_hybrid_search, hybrid_weight, scoring_method, enable_metadata_indexing, live_indexing, metrics_enabled, plugin_registry, retry_policy, explain, **kwargs)
+        super().__init__(
+            api_key,
+            endpoint,
+            collection,
+            enable_hybrid_search,
+            hybrid_weight,
+            scoring_method,
+            enable_metadata_indexing,
+            live_indexing,
+            metrics_enabled,
+            plugin_registry,
+            retry_policy,
+            explain,
+            **kwargs,
+        )
         self._store = []
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Placeholder for batch add
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         # Placeholder for search logic
         results = []
         # Implement Epsilla vector search here
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -50,14 +76,14 @@ class EpsillaBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids):
         # Placeholder for batch delete
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # Placeholder for clear
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -79,14 +105,14 @@ class EpsillaBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise
 
     def add(self, vector, metadata=None):
         self._store.append((vector, metadata))
@@ -102,7 +128,11 @@ class EpsillaBackend(VectorStoreBackend):
         return False
 
     def search(self, *args, **kwargs):
-        raise NotImplementedError("EpsillaBackend.search is a placeholder. Integrate with Epsilla SDK.")
+        raise NotImplementedError(
+            "EpsillaBackend.search is a placeholder. Integrate with Epsilla SDK."
+        )
 
     def delete(self, *args, **kwargs):
-        raise NotImplementedError("EpsillaBackend.delete is a placeholder. Integrate with Epsilla SDK.") 
+        raise NotImplementedError(
+            "EpsillaBackend.delete is a placeholder. Integrate with Epsilla SDK."
+        )

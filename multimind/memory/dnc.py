@@ -2,17 +2,20 @@
 Differentiable Neural Computer (DNC) memory implementation.
 """
 
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 import numpy as np
+
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
 
 logger = logging.getLogger(__name__)
+
 
 class DNCMemory(BaseMemory):
     """Memory that implements Differentiable Neural Computer architecture."""
@@ -42,7 +45,7 @@ class DNCMemory(BaseMemory):
         compression_threshold: float = 0.8,
         enable_backup: bool = True,
         backup_interval: int = 3600,  # 1 hour
-        max_backups: int = 24
+        max_backups: int = 24,
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -109,8 +112,8 @@ class DNCMemory(BaseMemory):
                 "compression_ratio": 1.0,
                 "memory_location": None,
                 "read_heads": [],
-                "write_heads": []
-            }
+                "write_heads": [],
+            },
         }
 
         # Get item embedding
@@ -165,11 +168,13 @@ class DNCMemory(BaseMemory):
             # Update usage vector
             if self.enable_usage_tracking:
                 self.usage_vector[location] += 1
-                self.usage_history[item["id"]] = [{
-                    "timestamp": datetime.now().isoformat(),
-                    "location": location,
-                    "usage_count": self.usage_vector[location]
-                }]
+                self.usage_history[item["id"]] = [
+                    {
+                        "timestamp": datetime.now().isoformat(),
+                        "location": location,
+                        "usage_count": self.usage_vector[location],
+                    }
+                ]
 
             # Update link matrix if temporal linkage is enabled
             if self.enable_temporal_linkage and len(self.items) > 0:
@@ -216,11 +221,9 @@ class DNCMemory(BaseMemory):
                     item_idx, similarity = similarities[head_idx]
                     location = self.items[item_idx]["metadata"]["memory_location"]
                     self.read_weighting[head_idx, location] = similarity
-                    item["metadata"]["read_heads"].append({
-                        "head": head_idx,
-                        "location": location,
-                        "similarity": similarity
-                    })
+                    item["metadata"]["read_heads"].append(
+                        {"head": head_idx, "location": location, "similarity": similarity}
+                    )
 
         except Exception as e:
             logger.error(f"Error updating read weighting: {e}")
@@ -250,12 +253,14 @@ class DNCMemory(BaseMemory):
 
             # Update learning progress
             item["metadata"]["learning_progress"] = learning_progress
-            self.learning_history[item["id"]] = [{
-                "timestamp": datetime.now().isoformat(),
-                "progress": learning_progress,
-                "usage_count": usage_count,
-                "attention_score": attention_score
-            }]
+            self.learning_history[item["id"]] = [
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "progress": learning_progress,
+                    "usage_count": usage_count,
+                    "attention_score": attention_score,
+                }
+            ]
 
         except Exception as e:
             logger.error(f"Error updating learning: {e}")
@@ -271,11 +276,13 @@ class DNCMemory(BaseMemory):
             self.controller_state = np.mean(self.memory_matrix, axis=0)
 
             # Record optimization
-            self.optimization_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "memory_usage": np.mean(self.usage_vector),
-                "controller_state": self.controller_state.tolist()
-            })
+            self.optimization_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "memory_usage": np.mean(self.usage_vector),
+                    "controller_state": self.controller_state.tolist(),
+                }
+            )
 
             self.last_optimization = datetime.now()
 
@@ -311,15 +318,15 @@ class DNCMemory(BaseMemory):
             # Generate analysis prompt
             prompt = f"""
             Analyze DNC memory state:
-            
+
             Memory size: {self.memory_size}
             Word size: {self.word_size}
             Read heads: {self.num_read_heads}
             Write heads: {self.num_write_heads}
-            
+
             Memory usage: {np.mean(self.usage_vector):.2f}
             Controller state: {self.controller_state.tolist()}
-            
+
             Return a JSON object with:
             1. analysis: dict of string -> any
             2. suggestions: list of string
@@ -329,12 +336,14 @@ class DNCMemory(BaseMemory):
             analysis = MemoryUtils.safe_json_loads(response)
 
             # Record analysis
-            self.analysis_history.append({
-                "timestamp": datetime.now().isoformat(),
-                "analysis": analysis["analysis"],
-                "suggestions": analysis["suggestions"],
-                "metrics": analysis["metrics"]
-            })
+            self.analysis_history.append(
+                {
+                    "timestamp": datetime.now().isoformat(),
+                    "analysis": analysis["analysis"],
+                    "suggestions": analysis["suggestions"],
+                    "metrics": analysis["metrics"],
+                }
+            )
 
             self.last_analysis = datetime.now()
 
@@ -358,14 +367,14 @@ class DNCMemory(BaseMemory):
                 "item_embeddings": self.item_embeddings,
                 "attention_scores": self.attention_scores,
                 "usage_history": self.usage_history,
-                "learning_history": self.learning_history
+                "learning_history": self.learning_history,
             }
 
             self.backup_history.append(backup)
 
             # Maintain backup limit
             if len(self.backup_history) > self.max_backups:
-                self.backup_history = self.backup_history[-self.max_backups:]
+                self.backup_history = self.backup_history[-self.max_backups :]
 
             self.last_backup = datetime.now()
 
@@ -376,11 +385,9 @@ class DNCMemory(BaseMemory):
         """Get all messages from memory."""
         messages = []
         for item in self.items:
-            messages.append({
-                "role": "dnc_memory",
-                "content": item["content"],
-                "timestamp": item["timestamp"]
-            })
+            messages.append(
+                {"role": "dnc_memory", "content": item["content"], "timestamp": item["timestamp"]}
+            )
         return sorted(messages, key=lambda x: x["timestamp"])
 
     async def clear(self) -> None:
@@ -407,33 +414,36 @@ class DNCMemory(BaseMemory):
         """Save memory to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump({
-                    "memory_matrix": self.memory_matrix.tolist(),
-                    "usage_vector": self.usage_vector.tolist(),
-                    "precedence_vector": self.precedence_vector.tolist(),
-                    "link_matrix": self.link_matrix.tolist(),
-                    "write_weighting": self.write_weighting.tolist(),
-                    "read_weighting": self.read_weighting.tolist(),
-                    "read_vectors": self.read_vectors.tolist(),
-                    "controller_state": self.controller_state.tolist(),
-                    "items": self.items,
-                    "item_embeddings": self.item_embeddings,
-                    "attention_scores": self.attention_scores,
-                    "usage_history": self.usage_history,
-                    "learning_history": self.learning_history,
-                    "optimization_history": self.optimization_history,
-                    "analysis_history": self.analysis_history,
-                    "backup_history": self.backup_history,
-                    "last_optimization": self.last_optimization.isoformat(),
-                    "last_analysis": self.last_analysis.isoformat(),
-                    "last_backup": self.last_backup.isoformat()
-                }, f)
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "memory_matrix": self.memory_matrix.tolist(),
+                        "usage_vector": self.usage_vector.tolist(),
+                        "precedence_vector": self.precedence_vector.tolist(),
+                        "link_matrix": self.link_matrix.tolist(),
+                        "write_weighting": self.write_weighting.tolist(),
+                        "read_weighting": self.read_weighting.tolist(),
+                        "read_vectors": self.read_vectors.tolist(),
+                        "controller_state": self.controller_state.tolist(),
+                        "items": self.items,
+                        "item_embeddings": self.item_embeddings,
+                        "attention_scores": self.attention_scores,
+                        "usage_history": self.usage_history,
+                        "learning_history": self.learning_history,
+                        "optimization_history": self.optimization_history,
+                        "analysis_history": self.analysis_history,
+                        "backup_history": self.backup_history,
+                        "last_optimization": self.last_optimization.isoformat(),
+                        "last_analysis": self.last_analysis.isoformat(),
+                        "last_backup": self.last_backup.isoformat(),
+                    },
+                    f,
+                )
 
     async def load(self) -> None:
         """Load memory from persistent storage."""
         if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
                 self.memory_matrix = np.array(data.get("memory_matrix", []))
                 self.usage_vector = np.array(data.get("usage_vector", []))
@@ -467,90 +477,121 @@ class DNCMemory(BaseMemory):
             "memory_stats": {
                 "total_items": len(self.items),
                 "memory_usage": float(np.mean(self.usage_vector)),
-                "memory_density": float(np.count_nonzero(self.memory_matrix) / self.memory_matrix.size),
-                "controller_state": self.controller_state.tolist()
+                "memory_density": float(
+                    np.count_nonzero(self.memory_matrix) / self.memory_matrix.size
+                ),
+                "controller_state": self.controller_state.tolist(),
             },
             "attention_stats": {
                 "total_attention_scores": len(self.attention_scores),
-                "average_attention": sum(self.attention_scores.values()) / len(self.attention_scores) if self.attention_scores else 0,
-                "max_attention": max(self.attention_scores.values()) if self.attention_scores else 0
+                "average_attention": (
+                    sum(self.attention_scores.values()) / len(self.attention_scores)
+                    if self.attention_scores
+                    else 0
+                ),
+                "max_attention": (
+                    max(self.attention_scores.values()) if self.attention_scores else 0
+                ),
             },
             "learning_stats": {
-                "total_learning_records": sum(len(records) for records in self.learning_history.values()),
-                "average_progress": sum(
-                    record["progress"] for records in self.learning_history.values()
-                    for record in records
-                ) / sum(len(records) for records in self.learning_history.values()) if self.learning_history else 0
+                "total_learning_records": sum(
+                    len(records) for records in self.learning_history.values()
+                ),
+                "average_progress": (
+                    sum(
+                        record["progress"]
+                        for records in self.learning_history.values()
+                        for record in records
+                    )
+                    / sum(len(records) for records in self.learning_history.values())
+                    if self.learning_history
+                    else 0
+                ),
             },
             "optimization_stats": {
                 "total_optimizations": len(self.optimization_history),
-                "latest_optimization": self.optimization_history[-1]["timestamp"] if self.optimization_history else None,
-                "optimization_frequency": self.optimization_interval
+                "latest_optimization": (
+                    self.optimization_history[-1]["timestamp"]
+                    if self.optimization_history
+                    else None
+                ),
+                "optimization_frequency": self.optimization_interval,
             },
             "analysis_stats": {
                 "total_analyses": len(self.analysis_history),
-                "latest_analysis": self.analysis_history[-1]["timestamp"] if self.analysis_history else None,
-                "analysis_frequency": self.analysis_interval
+                "latest_analysis": (
+                    self.analysis_history[-1]["timestamp"] if self.analysis_history else None
+                ),
+                "analysis_frequency": self.analysis_interval,
             },
             "backup_stats": {
                 "total_backups": len(self.backup_history),
-                "latest_backup": self.backup_history[-1]["timestamp"] if self.backup_history else None,
-                "backup_frequency": self.backup_interval
-            }
+                "latest_backup": (
+                    self.backup_history[-1]["timestamp"] if self.backup_history else None
+                ),
+                "backup_frequency": self.backup_interval,
+            },
         }
         return stats
 
     async def get_dnc_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for DNC memory optimization."""
         suggestions = []
-        
+
         # Check memory usage
         if np.mean(self.usage_vector) > 0.8:
-            suggestions.append({
-                "type": "memory_usage",
-                "suggestion": "Consider increasing memory size or implementing more aggressive compression"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "memory_usage",
+                    "suggestion": "Consider increasing memory size or implementing more aggressive compression",
+                }
+            )
+
         # Check attention distribution
         if self.attention_scores:
             attention_values = list(self.attention_scores.values())
             if np.std(attention_values) < 0.1:
-                suggestions.append({
-                    "type": "attention_distribution",
-                    "suggestion": "Consider adjusting attention scoring to better differentiate items"
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "attention_distribution",
+                        "suggestion": "Consider adjusting attention scoring to better differentiate items",
+                    }
+                )
+
         # Check learning progress
         if self.learning_history:
             avg_progress = sum(
-                record["progress"] for records in self.learning_history.values()
+                record["progress"]
+                for records in self.learning_history.values()
                 for record in records
             ) / sum(len(records) for records in self.learning_history.values())
             if avg_progress < 0.3:
-                suggestions.append({
-                    "type": "learning_rate",
-                    "suggestion": "Consider increasing learning rate or improving learning mechanisms"
-                })
-        
+                suggestions.append(
+                    {
+                        "type": "learning_rate",
+                        "suggestion": "Consider increasing learning rate or improving learning mechanisms",
+                    }
+                )
+
         # Check optimization frequency
         if len(self.optimization_history) < 2:
-            suggestions.append({
-                "type": "optimization_frequency",
-                "suggestion": "Consider adjusting optimization interval"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "optimization_frequency",
+                    "suggestion": "Consider adjusting optimization interval",
+                }
+            )
+
         # Check analysis coverage
         if len(self.analysis_history) < 2:
-            suggestions.append({
-                "type": "analysis_frequency",
-                "suggestion": "Consider adjusting analysis interval"
-            })
-        
+            suggestions.append(
+                {"type": "analysis_frequency", "suggestion": "Consider adjusting analysis interval"}
+            )
+
         # Check backup coverage
         if len(self.backup_history) < 2:
-            suggestions.append({
-                "type": "backup_frequency",
-                "suggestion": "Consider adjusting backup interval"
-            })
-        
-        return suggestions 
+            suggestions.append(
+                {"type": "backup_frequency", "suggestion": "Consider adjusting backup interval"}
+            )
+
+        return suggestions

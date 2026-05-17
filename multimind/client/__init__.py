@@ -8,8 +8,4 @@ from .federated_router import FederatedRouter
 from .model_client import ModelClient
 from .rag_client import RAGClient
 
-__all__ = [
-    "FederatedRouter",
-    "ModelClient", 
-    "RAGClient"
-] 
+__all__ = ["FederatedRouter", "ModelClient", "RAGClient"]

@@ -4,14 +4,16 @@ AwaDB Vector Store Backend (Pro Version)
 - Supports hybrid search, metadata filtering, custom scoring, batch ops, persistence, monitoring, and plugin hooks
 """
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
 
 # Placeholder: Replace with actual AwaDB SDK import if available
 # from awadb import AwaDBClient
+
 
 class AwaDBBackend(VectorStoreBackend):
     def __init__(
@@ -28,7 +30,7 @@ class AwaDBBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.api_key = api_key or os.environ.get("AWADB_API_KEY")
         self.endpoint = endpoint or os.environ.get("AWADB_ENDPOINT")
@@ -57,12 +59,12 @@ class AwaDBBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
     async def search(
         self,
@@ -72,17 +74,19 @@ class AwaDBBackend(VectorStoreBackend):
         query_text: Optional[str] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
         explain = explain if explain is not None else self.explain
         results = []
         # Implement AwaDB vector search here
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -92,15 +96,15 @@ class AwaDBBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids: List[str]) -> None:
         """Delete vectors by ID (batch supported)."""
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         """Persist index/config to disk/cloud if supported."""
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "AwaDBBackend":
@@ -128,11 +132,11 @@ class AwaDBBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

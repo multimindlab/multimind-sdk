@@ -3,7 +3,8 @@ Base tool class for agent tools.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict
+
 
 class BaseTool(ABC):
     """Base class for all agent tools."""
@@ -22,7 +23,7 @@ class BaseTool(ABC):
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.get_parameters()
+            "parameters": self.get_parameters(),
         }
 
     @abstractmethod

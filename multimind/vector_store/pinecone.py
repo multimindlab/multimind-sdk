@@ -2,16 +2,19 @@
 Pinecone vector store backend implementation.
 """
 
-import logging
-from typing import List, Dict, Any, Optional, Callable
-import os
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 import pinecone
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
 
 class PineconeBackend(VectorStoreBackend):
     """Production-grade Pinecone vector store backend."""
+
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -22,7 +25,7 @@ class PineconeBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.api_key = api_key or os.environ.get("PINECONE_API_KEY")
         self.environment = environment or os.environ.get("PINECONE_ENVIRONMENT")
@@ -42,9 +45,7 @@ class PineconeBackend(VectorStoreBackend):
         pinecone.init(api_key=self.api_key, environment=self.environment)
         if self.index_name not in pinecone.list_indexes():
             pinecone.create_index(
-                name=self.index_name,
-                dimension=self.dimension,
-                metric=self.metric
+                name=self.index_name, dimension=self.dimension, metric=self.metric
             )
         self.index = pinecone.Index(self.index_name)
         self._initialized = True
@@ -54,7 +55,7 @@ class PineconeBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors to Pinecone."""
         await self.initialize()
@@ -73,7 +74,7 @@ class PineconeBackend(VectorStoreBackend):
             upsert_data.append((ids[i], vectors[i], meta))
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.index.upsert(vectors=upsert_data))
-        self.log_metrics('add_vectors', n)
+        self.log_metrics("add_vectors", n)
 
     async def search(
         self,
@@ -83,18 +84,17 @@ class PineconeBackend(VectorStoreBackend):
         filter_criteria: Optional[Dict[str, Any]] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Search Pinecone."""
         await self.initialize()
         loop = asyncio.get_event_loop()
+
         def _search():
             return self.index.query(
-                vector=query_vector,
-                top_k=k,
-                filter=filter_criteria,
-                include_metadata=True
+                vector=query_vector, top_k=k, filter=filter_criteria, include_metadata=True
             )
+
         results = await loop.run_in_executor(None, _search)
         search_results = []
         for match in results.matches:
@@ -102,13 +102,10 @@ class PineconeBackend(VectorStoreBackend):
             doc = meta.get("content", "")
             if metadata_fields:
                 meta = {k: v for k, v in meta.items() if k in metadata_fields}
-            search_results.append(SearchResult(
-                id=match.id,
-                score=match.score,
-                metadata=meta,
-                document=doc
-            ))
-        self.log_metrics('search', len(search_results))
+            search_results.append(
+                SearchResult(id=match.id, score=match.score, metadata=meta, document=doc)
+            )
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids: List[str]) -> None:
@@ -116,25 +113,25 @@ class PineconeBackend(VectorStoreBackend):
         await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.index.delete(ids=ids))
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear Pinecone index."""
         await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.index.delete(delete_all=True))
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         """Persist Pinecone to disk."""
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "PineconeBackend":
         """Load Pinecone from disk."""
         backend = cls(**config.connection_params)
         await backend.initialize()
-        return backend 
+        return backend
 
     def register_plugin(self, name: str, plugin: Callable):
         self.plugin_registry[name] = plugin
@@ -151,11 +148,11 @@ class PineconeBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

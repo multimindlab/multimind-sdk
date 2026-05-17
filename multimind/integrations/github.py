@@ -2,13 +2,15 @@
 GitHub integration handler for MCP workflows.
 """
 
-from typing import Dict, Any, Optional, List
-import aiohttp
 import logging
-from datetime import datetime
-from .base import IntegrationHandler, AsyncContextManager
+from typing import Any, Dict, Optional
+
+import aiohttp
+
+from .base import AsyncContextManager, IntegrationHandler
 
 logger = logging.getLogger(__name__)
+
 
 class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
     """Handler for GitHub integration operations."""
@@ -17,7 +19,7 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         """Initialize GitHub integration handler."""
         super().__init__(config)
         self.validate_config(["token"])
-        
+
         self.token = config["token"]
         self.api_base = "https://api.github.com"
         self.session: Optional[aiohttp.ClientSession] = None
@@ -27,7 +29,7 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         self.session = aiohttp.ClientSession(
             headers={
                 "Authorization": f"token {self.token}",
-                "Accept": "application/vnd.github.v3+json"
+                "Accept": "application/vnd.github.v3+json",
             }
         )
         return self
@@ -41,7 +43,7 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         """Execute GitHub integration operation."""
         try:
             operation = inputs.get("operation", "create_issue")
-            
+
             if operation == "create_issue":
                 result = await self.create_issue(inputs)
             elif operation == "create_pull_request":
@@ -52,11 +54,11 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
                 result = await self.create_repository(inputs)
             else:
                 raise ValueError(f"Unsupported GitHub operation: {operation}")
-            
+
             self._update_metadata(success=True)
             return result
-            
-        except Exception as e:
+
+        except Exception:
             self._update_metadata(success=False)
             raise
 
@@ -66,30 +68,28 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         repo = inputs["repo"]
         title = inputs["title"]
         body = inputs.get("body", "")
-        
-        payload = {
-            "title": title,
-            "body": body
-        }
-        
+
+        payload = {"title": title, "body": body}
+
         if "labels" in inputs:
             payload["labels"] = inputs["labels"]
         if "assignees" in inputs:
             payload["assignees"] = inputs["assignees"]
 
         async with self.session.post(
-            f"{self.api_base}/repos/{owner}/{repo}/issues",
-            json=payload
+            f"{self.api_base}/repos/{owner}/{repo}/issues", json=payload
         ) as response:
             result = await response.json()
-            
+
             if response.status != 201:
-                raise Exception(f"Failed to create GitHub issue: {result.get('message', 'Unknown error')}")
-            
+                raise Exception(
+                    f"Failed to create GitHub issue: {result.get('message', 'Unknown error')}"
+                )
+
             return {
                 "issue_number": result["number"],
                 "html_url": result["html_url"],
-                "state": result["state"]
+                "state": result["state"],
             }
 
     async def create_pull_request(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -100,27 +100,23 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         head = inputs["head"]
         base = inputs.get("base", "main")
         body = inputs.get("body", "")
-        
-        payload = {
-            "title": title,
-            "head": head,
-            "base": base,
-            "body": body
-        }
+
+        payload = {"title": title, "head": head, "base": base, "body": body}
 
         async with self.session.post(
-            f"{self.api_base}/repos/{owner}/{repo}/pulls",
-            json=payload
+            f"{self.api_base}/repos/{owner}/{repo}/pulls", json=payload
         ) as response:
             result = await response.json()
-            
+
             if response.status != 201:
-                raise Exception(f"Failed to create pull request: {result.get('message', 'Unknown error')}")
-            
+                raise Exception(
+                    f"Failed to create pull request: {result.get('message', 'Unknown error')}"
+                )
+
             return {
                 "pr_number": result["number"],
                 "html_url": result["html_url"],
-                "state": result["state"]
+                "state": result["state"],
             }
 
     async def list_repositories(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,22 +125,19 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         repo_type = inputs.get("type", "all")
         sort = inputs.get("sort", "updated")
         direction = inputs.get("direction", "desc")
-        
-        params = {
-            "type": repo_type,
-            "sort": sort,
-            "direction": direction
-        }
+
+        params = {"type": repo_type, "sort": sort, "direction": direction}
 
         async with self.session.get(
-            f"{self.api_base}/users/{owner}/repos",
-            params=params
+            f"{self.api_base}/users/{owner}/repos", params=params
         ) as response:
             result = await response.json()
-            
+
             if response.status != 200:
-                raise Exception(f"Failed to list repositories: {result.get('message', 'Unknown error')}")
-            
+                raise Exception(
+                    f"Failed to list repositories: {result.get('message', 'Unknown error')}"
+                )
+
             return {
                 "repositories": [
                     {
@@ -153,7 +146,7 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
                         "description": repo["description"],
                         "html_url": repo["html_url"],
                         "stars": repo["stargazers_count"],
-                        "forks": repo["forks_count"]
+                        "forks": repo["forks_count"],
                     }
                     for repo in result
                 ]
@@ -164,27 +157,26 @@ class GitHubIntegrationHandler(IntegrationHandler, AsyncContextManager):
         name = inputs["name"]
         description = inputs.get("description", "")
         private = inputs.get("private", False)
-        
+
         payload = {
             "name": name,
             "description": description,
             "private": private,
-            "auto_init": inputs.get("auto_init", True)
+            "auto_init": inputs.get("auto_init", True),
         }
 
-        async with self.session.post(
-            f"{self.api_base}/user/repos",
-            json=payload
-        ) as response:
+        async with self.session.post(f"{self.api_base}/user/repos", json=payload) as response:
             result = await response.json()
-            
+
             if response.status != 201:
-                raise Exception(f"Failed to create repository: {result.get('message', 'Unknown error')}")
-            
+                raise Exception(
+                    f"Failed to create repository: {result.get('message', 'Unknown error')}"
+                )
+
             return {
                 "name": result["name"],
                 "full_name": result["full_name"],
                 "html_url": result["html_url"],
                 "clone_url": result["clone_url"],
-                "private": result["private"]
-            } 
+                "private": result["private"],
+            }

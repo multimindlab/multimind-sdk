@@ -2,21 +2,21 @@
 SQLAlchemy-based memory implementation.
 """
 
-from typing import List, Dict, Any
-from datetime import datetime
 import asyncio
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, JSON
+from datetime import datetime
+from typing import Dict, List
+
+from sqlalchemy import JSON, Column, DateTime, Integer, String, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .base import BaseMemory
+
 
 class SQLAlchemyMemory(BaseMemory):
     """Memory that uses SQLAlchemy for database storage."""
 
     def __init__(
-        self,
-        database_url: str,
-        memory_key: str = "chat_history",
-        table_name: str = "messages"
+        self, database_url: str, memory_key: str = "chat_history", table_name: str = "messages"
     ):
         super().__init__(memory_key)
         engine_kwargs = {}
@@ -58,7 +58,7 @@ class SQLAlchemyMemory(BaseMemory):
             db_message = self.MessageModel(
                 role=message["role"],
                 content=message["content"],
-                metadata=message.get("metadata", {})
+                metadata=message.get("metadata", {}),
             )
             session.add(db_message)
             session.commit()
@@ -79,7 +79,7 @@ class SQLAlchemyMemory(BaseMemory):
                     "role": msg.role,
                     "content": msg.content,
                     "timestamp": msg.timestamp.isoformat(),
-                    "metadata": msg.metadata
+                    "metadata": msg.metadata,
                 }
                 for msg in messages
             ]
@@ -117,7 +117,7 @@ class SQLAlchemyMemory(BaseMemory):
                     "role": msg.role,
                     "content": msg.content,
                     "timestamp": msg.timestamp.isoformat(),
-                    "metadata": msg.metadata
+                    "metadata": msg.metadata,
                 }
                 for msg in messages
             ]
@@ -128,15 +128,17 @@ class SQLAlchemyMemory(BaseMemory):
         """Get messages since a specific timestamp."""
         session = self.Session()
         try:
-            messages = session.query(self.MessageModel).filter(
-                self.MessageModel.timestamp > timestamp
-            ).all()
+            messages = (
+                session.query(self.MessageModel)
+                .filter(self.MessageModel.timestamp > timestamp)
+                .all()
+            )
             return [
                 {
                     "role": msg.role,
                     "content": msg.content,
                     "timestamp": msg.timestamp.isoformat(),
-                    "metadata": msg.metadata
+                    "metadata": msg.metadata,
                 }
                 for msg in messages
             ]
@@ -149,4 +151,4 @@ class SQLAlchemyMemory(BaseMemory):
         try:
             return session.query(self.MessageModel).count()
         finally:
-            session.close() 
+            session.close()

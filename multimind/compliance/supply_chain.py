@@ -2,23 +2,23 @@
 Third-party and supply-chain risk management implementation.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, Regulation
+
+from .governance import GovernanceConfig
+
 
 class SupplyChainCompliance(BaseModel):
     """Third-party and supply-chain risk management."""
-    
+
     config: GovernanceConfig
     vendor_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     software_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    
+
     async def assess_vendor_security(
-        self,
-        vendor_id: str,
-        vendor_name: str,
-        assessment_type: str = "SIG"
+        self, vendor_id: str, vendor_name: str, assessment_type: str = "SIG"
     ) -> Dict[str, Any]:
         """Assess vendor security using SIG questionnaire."""
         assessment = {
@@ -34,9 +34,9 @@ class SupplyChainCompliance(BaseModel):
                         "access_control",
                         "data_protection",
                         "incident_management",
-                        "business_continuity"
+                        "business_continuity",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "privacy",
@@ -45,9 +45,9 @@ class SupplyChainCompliance(BaseModel):
                         "data_subject_rights",
                         "data_retention",
                         "data_transfers",
-                        "privacy_impact_assessments"
+                        "privacy_impact_assessments",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "compliance",
@@ -56,9 +56,9 @@ class SupplyChainCompliance(BaseModel):
                         "certifications",
                         "audits",
                         "monitoring",
-                        "reporting"
+                        "reporting",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "risk_management",
@@ -67,22 +67,19 @@ class SupplyChainCompliance(BaseModel):
                         "vendor_due_diligence",
                         "contract_management",
                         "performance_monitoring",
-                        "exit_planning"
+                        "exit_planning",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.vendor_records[vendor_id] = assessment
         return assessment
-    
+
     async def assess_software_composition(
-        self,
-        software_id: str,
-        software_name: str,
-        version: str
+        self, software_id: str, software_name: str, version: str
     ) -> Dict[str, Any]:
         """Assess software composition for security and compliance."""
         assessment = {
@@ -98,9 +95,9 @@ class SupplyChainCompliance(BaseModel):
                         "license_validation",
                         "license_attribution",
                         "license_compatibility",
-                        "license_obligations"
+                        "license_obligations",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "security_vulnerabilities",
@@ -109,9 +106,9 @@ class SupplyChainCompliance(BaseModel):
                         "dependency_checking",
                         "security_patches",
                         "security_updates",
-                        "security_monitoring"
+                        "security_monitoring",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "code_quality",
@@ -120,9 +117,9 @@ class SupplyChainCompliance(BaseModel):
                         "code_review",
                         "testing_coverage",
                         "documentation",
-                        "maintenance"
+                        "maintenance",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "supply_chain_security",
@@ -131,22 +128,18 @@ class SupplyChainCompliance(BaseModel):
                         "build_verification",
                         "artifact_verification",
                         "deployment_verification",
-                        "runtime_verification"
+                        "runtime_verification",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.software_records[software_id] = assessment
         return assessment
-    
-    async def assess_caiq_compliance(
-        self,
-        vendor_id: str,
-        vendor_name: str
-    ) -> Dict[str, Any]:
+
+    async def assess_caiq_compliance(self, vendor_id: str, vendor_name: str) -> Dict[str, Any]:
         """Assess vendor compliance using CAIQ questionnaire."""
         assessment = {
             "vendor_id": vendor_id,
@@ -161,9 +154,9 @@ class SupplyChainCompliance(BaseModel):
                         "privacy_compliance",
                         "security_compliance",
                         "industry_standards",
-                        "certifications"
+                        "certifications",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "data_governance",
@@ -172,9 +165,9 @@ class SupplyChainCompliance(BaseModel):
                         "data_retention",
                         "data_disposal",
                         "data_quality",
-                        "data_ownership"
+                        "data_ownership",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "facility_security",
@@ -183,9 +176,9 @@ class SupplyChainCompliance(BaseModel):
                         "environmental_controls",
                         "access_control",
                         "monitoring",
-                        "maintenance"
+                        "maintenance",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "human_resources",
@@ -194,9 +187,9 @@ class SupplyChainCompliance(BaseModel):
                         "security_training",
                         "confidentiality_agreements",
                         "incident_reporting",
-                        "disciplinary_process"
+                        "disciplinary_process",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "risk_management",
@@ -205,41 +198,36 @@ class SupplyChainCompliance(BaseModel):
                         "risk_monitoring",
                         "risk_mitigation",
                         "business_continuity",
-                        "disaster_recovery"
+                        "disaster_recovery",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.vendor_records[vendor_id] = assessment
         return assessment
-    
+
     async def get_vendor_history(
-        self,
-        vendor_id: Optional[str] = None,
-        framework: Optional[str] = None
+        self, vendor_id: Optional[str] = None, framework: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get vendor assessment history."""
         if vendor_id:
             return [self.vendor_records.get(vendor_id, {})]
-        
+
         if framework:
             return [
                 record
                 for record in self.vendor_records.values()
                 if record.get("framework") == framework
             ]
-        
+
         return list(self.vendor_records.values())
-    
-    async def get_software_history(
-        self,
-        software_id: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+
+    async def get_software_history(self, software_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get software assessment history."""
         if software_id:
             return [self.software_records.get(software_id, {})]
-        
-        return list(self.software_records.values()) 
+
+        return list(self.software_records.values())

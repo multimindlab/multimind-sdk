@@ -2,11 +2,13 @@
 Prompt chaining functionality for orchestrating complex LLM interactions.
 """
 
-from typing import List, Dict, Any, Optional, Callable
-from multimind.models.base import BaseLLM
 import logging
+from typing import Any, Callable, Dict, List, Optional
+
+from multimind.models.base import BaseLLM
 
 logger = logging.getLogger(__name__)
+
 
 class PromptChain:
     """Manages a sequence of prompts and their execution."""
@@ -15,7 +17,7 @@ class PromptChain:
         self,
         model: BaseLLM,
         prompts: Optional[List[Dict[str, Any]]] = None,
-        variables: Optional[Dict[str, Any]] = None
+        variables: Optional[Dict[str, Any]] = None,
     ):
         self.model = model
         self.prompts = prompts or []
@@ -26,14 +28,10 @@ class PromptChain:
         self,
         prompt: str,
         name: Optional[str] = None,
-        condition: Optional[Callable[[Dict[str, Any]], bool]] = None
+        condition: Optional[Callable[[Dict[str, Any]], bool]] = None,
     ) -> None:
         """Add a prompt to the chain."""
-        self.prompts.append({
-            "prompt": prompt,
-            "name": name,
-            "condition": condition
-        })
+        self.prompts.append({"prompt": prompt, "name": name, "condition": condition})
 
     def set_variable(self, name: str, value: Any) -> None:
         """Set a variable for use in prompts."""
@@ -65,18 +63,11 @@ class PromptChain:
             response = await self.model.generate(formatted_prompt)
 
             # Store resul
-            result = {
-                "prompt": formatted_prompt,
-                "response": response,
-                "name": prompt_info["name"]
-            }
+            result = {"prompt": formatted_prompt, "response": response, "name": prompt_info["name"]}
             self.results.append(result)
 
             # Update contex
-            context.update({
-                "last_response": response,
-                "last_prompt": formatted_prompt
-            })
+            context.update({"last_response": response, "last_prompt": formatted_prompt})
 
         return self.results
 

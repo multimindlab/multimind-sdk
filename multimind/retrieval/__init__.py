@@ -2,13 +2,13 @@
 Retrieval module for document retrieval strategies.
 """
 
-from .retriever import Retriever, RetrievalConfig, RetrievalResult
 from .enhanced_retrieval import EnhancedRetriever, HybridRetriever
+from .retriever import RetrievalConfig, RetrievalResult, Retriever
 
 __all__ = [
-    'Retriever',
-    'RetrievalConfig',
-    'RetrievalResult',
-    'EnhancedRetriever',
-    'HybridRetriever'
-] 
+    "Retriever",
+    "RetrievalConfig",
+    "RetrievalResult",
+    "EnhancedRetriever",
+    "HybridRetriever",
+]

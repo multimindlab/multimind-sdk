@@ -6,7 +6,4 @@ This module provides ensemble learning capabilities for combining multiple model
 
 from .advanced import AdvancedEnsemble, EnsembleMethod
 
-__all__ = [
-    "AdvancedEnsemble",
-    "EnsembleMethod"
-] 
+__all__ = ["AdvancedEnsemble", "EnsembleMethod"]

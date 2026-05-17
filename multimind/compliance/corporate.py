@@ -2,23 +2,23 @@
 Internal corporate and audit requirements implementation.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, Regulation
+
+from .governance import GovernanceConfig
+
 
 class CorporateCompliance(BaseModel):
     """Internal corporate and audit requirements manager."""
-    
+
     config: GovernanceConfig
     audit_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
     bcp_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    
+
     async def assess_sox_compliance(
-        self,
-        assessment_id: str,
-        system_id: str,
-        fiscal_year: str
+        self, assessment_id: str, system_id: str, fiscal_year: str
     ) -> Dict[str, Any]:
         """Assess compliance with Sarbanes-Oxley Act requirements."""
         assessment = {
@@ -35,9 +35,9 @@ class CorporateCompliance(BaseModel):
                         "risk_assessment",
                         "control_activities",
                         "information_communication",
-                        "monitoring"
+                        "monitoring",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "financial_reporting",
@@ -46,9 +46,9 @@ class CorporateCompliance(BaseModel):
                         "disclosures",
                         "material_weaknesses",
                         "significant_deficiencies",
-                        "fraud_prevention"
+                        "fraud_prevention",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "it_controls",
@@ -57,9 +57,9 @@ class CorporateCompliance(BaseModel):
                         "change_management",
                         "system_operations",
                         "backup_recovery",
-                        "security"
+                        "security",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "documentation",
@@ -68,22 +68,19 @@ class CorporateCompliance(BaseModel):
                         "testing_documentation",
                         "remediation_documentation",
                         "audit_trail",
-                        "evidence_retention"
+                        "evidence_retention",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.audit_records[assessment_id] = assessment
         return assessment
-    
+
     async def assess_business_continuity(
-        self,
-        plan_id: str,
-        system_id: str,
-        plan_type: str = "BCP"
+        self, plan_id: str, system_id: str, plan_type: str = "BCP"
     ) -> Dict[str, Any]:
         """Assess business continuity planning and disaster recovery."""
         assessment = {
@@ -99,9 +96,9 @@ class CorporateCompliance(BaseModel):
                         "recovery_time_objectives",
                         "recovery_point_objectives",
                         "resource_requirements",
-                        "interdependencies"
+                        "interdependencies",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "recovery_strategies",
@@ -110,9 +107,9 @@ class CorporateCompliance(BaseModel):
                         "disaster_recovery",
                         "crisis_management",
                         "emergency_response",
-                        "resource_management"
+                        "resource_management",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "plan_development",
@@ -121,9 +118,9 @@ class CorporateCompliance(BaseModel):
                         "roles_responsibilities",
                         "communication_plan",
                         "resource_plan",
-                        "maintenance_procedures"
+                        "maintenance_procedures",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "testing_exercises",
@@ -132,22 +129,19 @@ class CorporateCompliance(BaseModel):
                         "functional_exercises",
                         "full_scale_exercises",
                         "documentation_review",
-                        "plan_updates"
+                        "plan_updates",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.bcp_records[plan_id] = assessment
         return assessment
-    
+
     async def assess_internal_audit(
-        self,
-        audit_id: str,
-        system_id: str,
-        audit_type: str
+        self, audit_id: str, system_id: str, audit_type: str
     ) -> Dict[str, Any]:
         """Conduct internal audit assessment."""
         assessment = {
@@ -163,9 +157,9 @@ class CorporateCompliance(BaseModel):
                         "scope_definition",
                         "resource_allocation",
                         "timeline_development",
-                        "stakeholder_engagement"
+                        "stakeholder_engagement",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "audit_execution",
@@ -174,9 +168,9 @@ class CorporateCompliance(BaseModel):
                         "control_testing",
                         "sampling_methodology",
                         "documentation",
-                        "quality_review"
+                        "quality_review",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "findings_management",
@@ -185,9 +179,9 @@ class CorporateCompliance(BaseModel):
                         "risk_assessment",
                         "recommendation_development",
                         "stakeholder_communication",
-                        "remediation_tracking"
+                        "remediation_tracking",
                     ],
-                    "status": "compliant"
+                    "status": "compliant",
                 },
                 {
                     "category": "reporting",
@@ -196,49 +190,45 @@ class CorporateCompliance(BaseModel):
                         "executive_summary",
                         "detailed_findings",
                         "recommendations",
-                        "management_response"
+                        "management_response",
                     ],
-                    "status": "compliant"
-                }
+                    "status": "compliant",
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
-        
+
         self.audit_records[audit_id] = assessment
         return assessment
-    
+
     async def get_audit_history(
-        self,
-        audit_id: Optional[str] = None,
-        framework: Optional[str] = None
+        self, audit_id: Optional[str] = None, framework: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get audit assessment history."""
         if audit_id:
             return [self.audit_records.get(audit_id, {})]
-        
+
         if framework:
             return [
                 record
                 for record in self.audit_records.values()
                 if record.get("framework") == framework
             ]
-        
+
         return list(self.audit_records.values())
-    
+
     async def get_bcp_history(
-        self,
-        plan_id: Optional[str] = None,
-        framework: Optional[str] = None
+        self, plan_id: Optional[str] = None, framework: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get business continuity plan history."""
         if plan_id:
             return [self.bcp_records.get(plan_id, {})]
-        
+
         if framework:
             return [
                 record
                 for record in self.bcp_records.values()
                 if record.get("framework") == framework
             ]
-        
-        return list(self.bcp_records.values()) 
+
+        return list(self.bcp_records.values())

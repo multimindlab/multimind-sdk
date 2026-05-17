@@ -2,14 +2,16 @@
 Governance configuration for compliance management.
 """
 
+from datetime import datetime
 from enum import Enum
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class Regulation(str, Enum):
     """Compliance regulations."""
-    
+
     GDPR = "GDPR"  # General Data Protection Regulation
     AI_ACT = "AI_ACT"  # EU AI Act
     HIPAA = "HIPAA"  # Health Insurance Portability and Accountability Act
@@ -37,7 +39,7 @@ class Regulation(str, Enum):
     PDPL = "PDPL"  # Personal Data Protection Law (Saudi Arabia)
     PDPB = "PDPB"  # Personal Data Protection Bill (India)
     PIPL = "PIPL"  # Personal Information Protection Law (China)
-    
+
     # New regulations and standards
     EPRIVACY = "EPRIVACY"  # ePrivacy Directive/Regulation
     DORA = "DORA"  # Digital Operational Resilience Act
@@ -60,101 +62,83 @@ class Regulation(str, Enum):
     ICH = "ICH"  # International Council for Harmonisation of Technical Requirements for Pharmaceuticals for Human Use
     GCP = "GCP"  # Good Clinical Practice
 
+
 class RiskLevel(Enum):
     """AI system risk levels."""
+
     UNACCEPTABLE = "unacceptable"
     HIGH = "high"
     LIMITED = "limited"
     MINIMAL = "minimal"
 
+
 class DataCategory(Enum):
     """Data classification categories."""
+
     PERSONAL = "personal"
     SENSITIVE = "sensitive"
     PUBLIC = "public"
     RESTRICTED = "restricted"
 
+
 class GovernanceConfig(BaseModel):
     """Configuration for compliance governance."""
-    
+
     # Organization settings
     organization_id: str
     organization_name: str
     dpo_email: str
     dpo_phone: Optional[str] = None
-    
+
     # Regulation settings
     enabled_regulations: List[Regulation] = Field(
-        default=[Regulation.GDPR, Regulation.AI_ACT],
-        description="List of regulations to enforce"
+        default=[Regulation.GDPR, Regulation.AI_ACT], description="List of regulations to enforce"
     )
-    
+
     # Retention settings
     data_retention_days: int = Field(
-        default=365,
-        description="Default data retention period in days"
+        default=365, description="Default data retention period in days"
     )
     audit_log_retention_days: int = Field(
-        default=730,
-        description="Audit log retention period in days"
+        default=730, description="Audit log retention period in days"
     )
-    
+
     # Risk assessment settings
     risk_assessment_threshold: float = Field(
-        default=0.7,
-        description="Threshold for triggering risk assessment"
+        default=0.7, description="Threshold for triggering risk assessment"
     )
     enable_continuous_monitoring: bool = Field(
-        default=True,
-        description="Enable continuous risk monitoring"
+        default=True, description="Enable continuous risk monitoring"
     )
-    
+
     # Data protection settings
-    enable_encryption: bool = Field(
-        default=True,
-        description="Enable data encryption"
-    )
-    enable_pseudonymization: bool = Field(
-        default=True,
-        description="Enable data pseudonymization"
-    )
-    
+    enable_encryption: bool = Field(default=True, description="Enable data encryption")
+    enable_pseudonymization: bool = Field(default=True, description="Enable data pseudonymization")
+
     # Audit settings
-    enable_audit_logging: bool = Field(
-        default=True,
-        description="Enable audit logging"
-    )
-    audit_log_level: str = Field(
-        default="INFO",
-        description="Audit log level"
-    )
-    
+    enable_audit_logging: bool = Field(default=True, description="Enable audit logging")
+    audit_log_level: str = Field(default="INFO", description="Audit log level")
+
     # Policy settings
     policy_update_interval: int = Field(
-        default=30,
-        description="Policy update check interval in days"
+        default=30, description="Policy update check interval in days"
     )
-    
+
     # Documentation settings
     enable_auto_documentation: bool = Field(
-        default=True,
-        description="Enable automatic documentation generation"
+        default=True, description="Enable automatic documentation generation"
     )
     documentation_update_interval: int = Field(
-        default=90,
-        description="Documentation update interval in days"
+        default=90, description="Documentation update interval in days"
     )
-    
+
     # Custom settings
     custom_settings: Dict[str, Any] = Field(
-        default_factory=dict,
-        description="Custom compliance settings"
+        default_factory=dict, description="Custom compliance settings"
     )
-    
-    model_config = ConfigDict(
-        use_enum_values=True,
-        arbitrary_types_allowed=True
-    )
+
+    model_config = ConfigDict(use_enum_values=True, arbitrary_types_allowed=True)
+
 
 class ComplianceMetadata(BaseModel):
     """Metadata for compliance tracking."""
@@ -172,6 +156,4 @@ class ComplianceMetadata(BaseModel):
     version: int = 1
     metadata_hash: Optional[str] = None
 
-    model_config = ConfigDict(
-        use_enum_values=True
-    )
+    model_config = ConfigDict(use_enum_values=True)

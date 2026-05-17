@@ -2,13 +2,16 @@
 Slack integration handler for MCP workflows.
 """
 
-from typing import Dict, Any, Optional
-import aiohttp
 import logging
 from datetime import datetime
-from .base import IntegrationHandler, AsyncContextManager
+from typing import Any, Dict, Optional
+
+import aiohttp
+
+from .base import AsyncContextManager, IntegrationHandler
 
 logger = logging.getLogger(__name__)
+
 
 class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
     """Handler for Slack integration operations."""
@@ -17,7 +20,7 @@ class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
         """Initialize Slack integration handler."""
         super().__init__(config)
         self.validate_config(["token"])
-        
+
         self.token = config["token"]
         self.default_channel = config.get("default_channel")
         self.api_base = "https://slack.com/api"
@@ -25,9 +28,7 @@ class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
 
     async def __aenter__(self):
         """Set up aiohttp session."""
-        self.session = aiohttp.ClientSession(
-            headers={"Authorization": f"Bearer {self.token}"}
-        )
+        self.session = aiohttp.ClientSession(headers={"Authorization": f"Bearer {self.token}"})
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
@@ -39,7 +40,7 @@ class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
         """Execute Slack integration operation."""
         try:
             operation = inputs.get("operation", "send_message")
-            
+
             if operation == "send_message":
                 result = await self.send_message(inputs)
             elif operation == "create_channel":
@@ -48,11 +49,11 @@ class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
                 result = await self.list_channels()
             else:
                 raise ValueError(f"Unsupported Slack operation: {operation}")
-            
+
             self._update_metadata(success=True)
             return result
-            
-        except Exception as e:
+
+        except Exception:
             self._update_metadata(success=False)
             raise
 
@@ -64,75 +65,64 @@ class SlackIntegrationHandler(IntegrationHandler, AsyncContextManager):
 
         text = inputs["text"]
         blocks = inputs.get("blocks")
-        
-        payload = {
-            "channel": channel,
-            "text": text,
-            "as_user": True
-        }
-        
+
+        payload = {"channel": channel, "text": text, "as_user": True}
+
         if blocks:
             payload["blocks"] = blocks
 
-        async with self.session.post(
-            f"{self.api_base}/chat.postMessage",
-            json=payload
-        ) as response:
+        async with self.session.post(f"{self.api_base}/chat.postMessage", json=payload) as response:
             result = await response.json()
-            
+
             if not result["ok"]:
                 raise Exception(f"Failed to send Slack message: {result['error']}")
-            
+
             return {
                 "message_id": result["ts"],
                 "channel": channel,
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.utcnow().isoformat(),
             }
 
     async def create_channel(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new Slack channel."""
         name = inputs["name"]
         is_private = inputs.get("is_private", False)
-        
-        payload = {
-            "name": name,
-            "is_private": is_private
-        }
-        
+
+        payload = {"name": name, "is_private": is_private}
+
         async with self.session.post(
-            f"{self.api_base}/conversations.create",
-            json=payload
+            f"{self.api_base}/conversations.create", json=payload
         ) as response:
             result = await response.json()
-            
+
             if not result["ok"]:
                 raise Exception(f"Failed to create Slack channel: {result['error']}")
-            
+
             return {
                 "channel_id": result["channel"]["id"],
                 "name": result["channel"]["name"],
-                "is_private": result["channel"]["is_private"]
+                "is_private": result["channel"]["is_private"],
             }
 
     async def list_channels(self) -> Dict[str, Any]:
         """List all accessible Slack channels."""
         async with self.session.get(
             f"{self.api_base}/conversations.list",
-            params={"types": "public_channel,private_channel"}
+            params={"types": "public_channel,private_channel"},
         ) as response:
             result = await response.json()
-            
+
             if not result["ok"]:
                 raise Exception(f"Failed to list Slack channels: {result['error']}")
-            
+
             return {
                 "channels": [
                     {
                         "id": channel["id"],
                         "name": channel["name"],
                         "is_private": channel["is_private"],
-                        "member_count": channel.get("num_members", 0)
+                        "member_count": channel.get("num_members", 0),
                     }
                     for channel in result["channels"]
                 ]
-            } 
+            }

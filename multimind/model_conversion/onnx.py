@@ -1,31 +1,34 @@
 import os
+from typing import Any, Dict, Optional
+
 import torch
-from typing import Dict, Any, Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
 from .base import BaseModelConverter
 
 # Try to import onnx, but handle gracefully if not available
 try:
     import onnx
+
     ONNX_AVAILABLE = True
 except ImportError:
     ONNX_AVAILABLE = False
     onnx = None
 
+
 class ONNXConverter(BaseModelConverter):
     """Converter for ONNX models."""
-    
+
     def __init__(self):
         self.supported_formats = ["onnx"]
         self.required_dependencies = ["onnx", "onnxruntime"]
-    
-    def convert(self, 
-                model_path: str,
-                output_path: str,
-                config: Optional[Dict[str, Any]] = None) -> str:
+
+    def convert(
+        self, model_path: str, output_path: str, config: Optional[Dict[str, Any]] = None
+    ) -> str:
         """
         Convert a model to ONNX format.
-        
+
         Args:
             model_path: Path to the source model
             output_path: Path where the converted model should be saved
@@ -36,45 +39,48 @@ class ONNXConverter(BaseModelConverter):
                    - input_names: Input tensor names
                    - output_names: Output tensor names
                    - device: Device to use for conversion (default: "cpu")
-        
+
         Returns:
             str: Path to the converted model
         """
         if not ONNX_AVAILABLE:
             raise ImportError("ONNX is not available. Please install onnx to use this converter.")
-        
+
         if not self.validate(model_path):
             raise ValueError(f"Invalid model path: {model_path}")
-        
+
         # Create output directory if it doesn't exist
         os.makedirs(output_path, exist_ok=True)
-        
+
         # Load model and tokenizer
         model = AutoModelForCausalLM.from_pretrained(model_path)
         tokenizer = AutoTokenizer.from_pretrained(model_path)
-        
+
         # Set default config values
         config = config or {}
         opset_version = config.get("opset_version", 12)
         device = config.get("device", "cpu")
-        
+
         # Prepare dynamic axes configuration
-        dynamic_axes = config.get("dynamic_axes", {
-            "input_ids": {0: "batch_size", 1: "sequence"},
-            "attention_mask": {0: "batch_size", 1: "sequence"},
-            "output": {0: "batch_size", 1: "sequence"}
-        })
-        
+        dynamic_axes = config.get(
+            "dynamic_axes",
+            {
+                "input_ids": {0: "batch_size", 1: "sequence"},
+                "attention_mask": {0: "batch_size", 1: "sequence"},
+                "output": {0: "batch_size", 1: "sequence"},
+            },
+        )
+
         # Prepare input names
         input_names = config.get("input_names", ["input_ids", "attention_mask"])
         output_names = config.get("output_names", ["output"])
-        
+
         # Create dummy input for tracing
         dummy_input = {
             "input_ids": torch.ones(1, 10, dtype=torch.long, device=device),
-            "attention_mask": torch.ones(1, 10, dtype=torch.long, device=device)
+            "attention_mask": torch.ones(1, 10, dtype=torch.long, device=device),
         }
-        
+
         # Export model to ONNX
         onnx_path = os.path.join(output_path, "model.onnx")
         torch.onnx.export(
@@ -85,53 +91,53 @@ class ONNXConverter(BaseModelConverter):
             output_names=output_names,
             dynamic_axes=dynamic_axes,
             opset_version=opset_version,
-            do_constant_folding=True
+            do_constant_folding=True,
         )
-        
+
         # Save tokenizer
         tokenizer.save_pretrained(output_path)
-        
+
         # Save model configuration
         model.config.save_pretrained(output_path)
-        
+
         return output_path
-    
+
     def validate(self, model_path: str) -> bool:
         """
         Validate if the model can be converted.
-        
+
         Args:
             model_path: Path to the model to validate
-            
+
         Returns:
             bool: True if the model can be converted, False otherwise
         """
         try:
             # Check if required dependencies are installed
-            
+
             # Try to load the model and tokenizer
             AutoModelForCausalLM.from_pretrained(model_path)
             AutoTokenizer.from_pretrained(model_path)
             return True
         except Exception:
             return False
-    
+
     def get_metadata(self, model_path: str) -> Dict[str, Any]:
         """
         Get metadata about the model.
-        
+
         Args:
             model_path: Path to the model
-            
+
         Returns:
             Dict[str, Any]: Model metadata
         """
         if not ONNX_AVAILABLE:
             return {"error": "ONNX is not available"}
-        
+
         model = AutoModelForCausalLM.from_pretrained(model_path)
         tokenizer = AutoTokenizer.from_pretrained(model_path)
-        
+
         # Get ONNX-specific metadata if the model is already in ONNX format
         onnx_metadata = {}
         onnx_path = os.path.join(model_path, "model.onnx")
@@ -143,9 +149,11 @@ class ONNXConverter(BaseModelConverter):
                 "producer_version": onnx_model.producer_version,
                 "opset_version": onnx_model.opset_import[0].version,
                 "input_shapes": [input.type.tensor_type.shape for input in onnx_model.graph.input],
-                "output_shapes": [output.type.tensor_type.shape for output in onnx_model.graph.output]
+                "output_shapes": [
+                    output.type.tensor_type.shape for output in onnx_model.graph.output
+                ],
             }
-        
+
         return {
             "model_type": model.config.model_type,
             "vocab_size": model.config.vocab_size,
@@ -153,6 +161,7 @@ class ONNXConverter(BaseModelConverter):
             "num_layers": model.config.num_hidden_layers,
             "num_attention_heads": model.config.num_attention_heads,
             "tokenizer_type": tokenizer.__class__.__name__,
-            "model_size_mb": sum(p.numel() * p.element_size() for p in model.parameters()) / (1024 * 1024),
-            "onnx_metadata": onnx_metadata
-        } 
+            "model_size_mb": sum(p.numel() * p.element_size() for p in model.parameters())
+            / (1024 * 1024),
+            "onnx_metadata": onnx_metadata,
+        }

@@ -4,9 +4,11 @@ Calculator tool for agents.
 
 import ast
 import operator
-from typing import Any, Dict, Union, Optional
 from numbers import Real
+from typing import Any, Dict, Union
+
 from multimind.agents.tools.base import BaseTool
+
 
 class CalculatorTool(BaseTool):
     """A tool for performing mathematical calculations."""
@@ -16,17 +18,14 @@ class CalculatorTool(BaseTool):
     MAX_AST_DEPTH = 24
 
     def __init__(self):
-        super().__init__(
-            name="calculator",
-            description="Perform mathematical calculations"
-        )
+        super().__init__(name="calculator", description="Perform mathematical calculations")
         self.operators = {
             ast.Add: operator.add,
             ast.Sub: operator.sub,
             ast.Mult: operator.mul,
             ast.Div: operator.truediv,
             ast.Pow: operator.pow,
-            ast.USub: operator.neg
+            ast.USub: operator.neg,
         }
 
     async def run(self, **kwargs) -> Union[int, float]:
@@ -34,7 +33,7 @@ class CalculatorTool(BaseTool):
         if not self.validate_parameters(**kwargs):
             raise ValueError("Invalid parameters")
 
-        expression = kwargs['expression']
+        expression = kwargs["expression"]
         try:
             result = self._evaluate(expression)
             if isinstance(result, complex):
@@ -50,17 +49,15 @@ class CalculatorTool(BaseTool):
             "properties": {
                 "expression": {
                     "type": "string",
-                    "description": "Mathematical expression to evaluate"
+                    "description": "Mathematical expression to evaluate",
                 }
-            }
+            },
         }
 
     def _evaluate(self, expression: str) -> Union[int, float]:
         """Safely evaluate a mathematical expression."""
         if len(expression) > self.MAX_EXPRESSION_LENGTH:
-            raise ValueError(
-                f"Expression too long (max {self.MAX_EXPRESSION_LENGTH} characters)"
-            )
+            raise ValueError(f"Expression too long (max {self.MAX_EXPRESSION_LENGTH} characters)")
 
         def _ast_depth(node: ast.AST) -> int:
             children = list(ast.iter_child_nodes(node))
@@ -77,16 +74,13 @@ class CalculatorTool(BaseTool):
                     raise TypeError(f"Unsupported constant type: {type(val)}")
                 return float(val)
             elif isinstance(node, ast.BinOp):
-                return self.operators[type(node.op)](
-                    _eval(node.left),
-                    _eval(node.right)
-                )
+                return self.operators[type(node.op)](_eval(node.left), _eval(node.right))
             elif isinstance(node, ast.UnaryOp):
                 return self.operators[type(node.op)](_eval(node.operand))
             else:
                 raise TypeError(f"Unsupported operation: {type(node)}")
 
-        tree = ast.parse(expression, mode='eval')
+        tree = ast.parse(expression, mode="eval")
         node_count = sum(1 for _ in ast.walk(tree))
         if node_count > self.MAX_AST_NODES:
             raise ValueError(f"Expression too complex (max {self.MAX_AST_NODES} AST nodes)")

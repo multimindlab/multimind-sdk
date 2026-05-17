@@ -2,15 +2,17 @@
 Summary memory implementation for storing summarized conversations.
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
-from .base import BaseMemory
+from typing import Any, Dict, List, Optional
+
 from ..models.base import BaseLLM
+from .base import BaseMemory
 
 logger = logging.getLogger(__name__)
+
 
 class SummaryMemory(BaseMemory):
     """
@@ -39,7 +41,7 @@ class SummaryMemory(BaseMemory):
         compression_threshold: float = 0.8,
         enable_backup: bool = True,
         backup_interval: int = 3600,  # 1 hour
-        max_backups: int = 5
+        max_backups: int = 5,
     ):
         """Initialize summary memory."""
         super().__init__(memory_key)
@@ -72,26 +74,19 @@ class SummaryMemory(BaseMemory):
         await self.add_messages([message])
 
     async def add_messages(
-        self,
-        messages: List[Dict[str, str]],
-        metadata: Optional[Dict[str, Any]] = None
+        self, messages: List[Dict[str, str]], metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add messages and generate summary if needed."""
         self.message_count += len(messages)
 
         # Check if we need to generate a summary
-        if (
-            self.message_count >= self.summary_interval or
-            not self.summaries
-        ):
+        if self.message_count >= self.summary_interval or not self.summaries:
             await self._generate_summary(messages, metadata)
             self.message_count = 0
             self.last_summary = datetime.now()
 
     async def _generate_summary(
-        self,
-        messages: List[Dict[str, str]],
-        metadata: Optional[Dict[str, Any]] = None
+        self, messages: List[Dict[str, str]], metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Generate a summary of the messages."""
         if not messages:
@@ -99,8 +94,7 @@ class SummaryMemory(BaseMemory):
 
         # Prepare messages for summarization
         message_texts = [
-            f"{msg.get('role', 'unknown')}: {msg.get('content', '')}"
-            for msg in messages
+            f"{msg.get('role', 'unknown')}: {msg.get('content', '')}" for msg in messages
         ]
         combined_text = "\n".join(message_texts)
 
@@ -117,7 +111,7 @@ class SummaryMemory(BaseMemory):
             "content": summary,
             "timestamp": datetime.now().isoformat(),
             "message_count": len(messages),
-            "metadata": metadata or {}
+            "metadata": metadata or {},
         }
 
         # Add to summaries
@@ -127,19 +121,27 @@ class SummaryMemory(BaseMemory):
 
         # Trim if needed
         if len(self.summaries) > self.max_summaries:
-            self.summaries = self.summaries[-self.max_summaries:]
+            self.summaries = self.summaries[-self.max_summaries :]
             if self.enable_metadata:
                 new_metadata = {}
                 for i in range(len(self.summaries)):
-                    new_metadata[str(i)] = self.summary_metadata.get(str(i + len(self.summaries) - self.max_summaries), {})
+                    new_metadata[str(i)] = self.summary_metadata.get(
+                        str(i + len(self.summaries) - self.max_summaries), {}
+                    )
                 self.summary_metadata = new_metadata
 
         # Check if compression needed
-        if self.enable_compression and len(self.summaries) > self.max_summaries * self.compression_threshold:
+        if (
+            self.enable_compression
+            and len(self.summaries) > self.max_summaries * self.compression_threshold
+        ):
             await self._compress_summaries()
 
         # Check if backup needed
-        if self.enable_backup and (datetime.now() - self.last_backup).total_seconds() >= self.backup_interval:
+        if (
+            self.enable_backup
+            and (datetime.now() - self.last_backup).total_seconds() >= self.backup_interval
+        ):
             await self._backup()
 
     async def _extractive_summarize(self, text: str) -> str:
@@ -177,7 +179,9 @@ Summary:"""
         abstractive = await self._abstractive_summarize(text)
         return f"{extractive}\n\n{abstractive}"
 
-    def set_compression_strategy(self, strategy: str, llm: Optional[Any] = None, custom_fn: Optional[Any] = None):
+    def set_compression_strategy(
+        self, strategy: str, llm: Optional[Any] = None, custom_fn: Optional[Any] = None
+    ):
         """
         Set the compression strategy (llm, extractive, abstractive, hybrid, concat, or custom) and optional LLM or function.
         Args:
@@ -199,57 +203,75 @@ Summary:"""
         half = n // 2
         to_compress = self.summaries[:half]
         combined_content = None
-        method_used = self.compression_strategy if hasattr(self, 'compression_strategy') else 'concat'
-        if hasattr(self, 'compression_strategy'):
-            if self.compression_strategy == 'llm' and hasattr(self, 'compression_llm') and self.compression_llm:
+        method_used = (
+            self.compression_strategy if hasattr(self, "compression_strategy") else "concat"
+        )
+        if hasattr(self, "compression_strategy"):
+            if (
+                self.compression_strategy == "llm"
+                and hasattr(self, "compression_llm")
+                and self.compression_llm
+            ):
                 # Use LLM to summarize
-                prompt = "Summarize the following summaries:\n" + "\n".join([s["content"] for s in to_compress])
+                prompt = "Summarize the following summaries:\n" + "\n".join(
+                    [s["content"] for s in to_compress]
+                )
                 try:
                     combined_content = await self.compression_llm.generate(prompt)
-                    method_used = 'llm'
+                    method_used = "llm"
                 except Exception:
                     combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
-                    method_used = 'concat_fallback'
-            elif self.compression_strategy == 'extractive':
+                    method_used = "concat_fallback"
+            elif self.compression_strategy == "extractive":
                 # Use extractive summarization (e.g., select key sentences)
-                combined_content = "\n".join([s["content"].split(". ")[0] for s in to_compress])[:512] + "..."
-                method_used = 'extractive'
-            elif self.compression_strategy == 'abstractive':
+                combined_content = (
+                    "\n".join([s["content"].split(". ")[0] for s in to_compress])[:512] + "..."
+                )
+                method_used = "extractive"
+            elif self.compression_strategy == "abstractive":
                 # Use LLM for abstractive summary
-                prompt = "Write a concise summary of the following:\n" + "\n".join([s["content"] for s in to_compress])
+                prompt = "Write a concise summary of the following:\n" + "\n".join(
+                    [s["content"] for s in to_compress]
+                )
                 try:
                     combined_content = await self.llm.generate(prompt)
-                    method_used = 'abstractive'
+                    method_used = "abstractive"
                 except Exception:
                     combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
-                    method_used = 'concat_fallback'
-            elif self.compression_strategy == 'hybrid':
+                    method_used = "concat_fallback"
+            elif self.compression_strategy == "hybrid":
                 # Combine extractive and abstractive
                 extractive = "\n".join([s["content"].split(". ")[0] for s in to_compress])[:256]
                 prompt = f"Summarize the following points concisely:\n{extractive}"
                 try:
                     combined_content = await self.llm.generate(prompt)
-                    method_used = 'hybrid'
+                    method_used = "hybrid"
                 except Exception:
                     combined_content = extractive + "..."
-                    method_used = 'extractive_fallback'
-            elif self.compression_strategy == 'custom' and hasattr(self, 'compression_custom_fn') and self.compression_custom_fn:
-                combined_content = await self.compression_custom_fn([s["content"] for s in to_compress])
-                method_used = 'custom'
-            elif self.compression_strategy == 'concat':
+                    method_used = "extractive_fallback"
+            elif (
+                self.compression_strategy == "custom"
+                and hasattr(self, "compression_custom_fn")
+                and self.compression_custom_fn
+            ):
+                combined_content = await self.compression_custom_fn(
+                    [s["content"] for s in to_compress]
+                )
+                method_used = "custom"
+            elif self.compression_strategy == "concat":
                 combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
-                method_used = 'concat'
+                method_used = "concat"
             else:
                 combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
-                method_used = 'concat_default'
+                method_used = "concat_default"
         else:
             combined_content = " ".join([s["content"] for s in to_compress])[:512] + "..."
-            method_used = 'concat_default'
+            method_used = "concat_default"
         summary_entry = {
             "content": f"Combined summary: {combined_content}",
             "timestamp": datetime.now().isoformat(),
             "message_count": sum(s.get("message_count", 0) for s in to_compress),
-            "method": method_used
+            "method": method_used,
         }
         # Remove compressed summaries and add new one
         self.summaries = self.summaries[half:] + [summary_entry]
@@ -270,7 +292,7 @@ Summary:"""
             "summaries": self.summaries,
             "summary_metadata": self.summary_metadata,
             "message_count": self.message_count,
-            "last_summary": self.last_summary.isoformat() if self.last_summary else None
+            "last_summary": self.last_summary.isoformat() if self.last_summary else None,
         }
 
         self.backup_history.append(backup)
@@ -278,7 +300,7 @@ Summary:"""
 
         # Trim backup history if needed
         if len(self.backup_history) > self.max_backups:
-            self.backup_history = self.backup_history[-self.max_backups:]
+            self.backup_history = self.backup_history[-self.max_backups :]
 
         # Save to disk if storage path exists
         if self.storage_path:
@@ -301,10 +323,7 @@ Summary:"""
     def get_summaries_with_metadata(self) -> List[Dict[str, Any]]:
         """Get summaries with their metadata."""
         return [
-            {
-                "summary": summary,
-                "metadata": self.summary_metadata.get(str(i), {})
-            }
+            {"summary": summary, "metadata": self.summary_metadata.get(str(i), {})}
             for i, summary in enumerate(self.summaries)
         ]
 
@@ -328,7 +347,7 @@ Summary:"""
             "message_count": self.message_count,
             "last_summary": self.last_summary.isoformat() if self.last_summary else None,
             "last_backup": self.last_backup.isoformat(),
-            "backup_history": self.backup_history
+            "backup_history": self.backup_history,
         }
 
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -341,13 +360,15 @@ Summary:"""
             return
 
         try:
-            with open(self.storage_path, "r") as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
 
             self.summaries = data["summaries"]
             self.summary_metadata = data["summary_metadata"]
             self.message_count = data["message_count"]
-            self.last_summary = datetime.fromisoformat(data["last_summary"]) if data["last_summary"] else None
+            self.last_summary = (
+                datetime.fromisoformat(data["last_summary"]) if data["last_summary"] else None
+            )
             self.last_backup = datetime.fromisoformat(data["last_backup"])
             self.backup_history = data["backup_history"]
         except Exception as e:
@@ -367,5 +388,5 @@ Summary:"""
             "enable_compression": self.enable_compression,
             "enable_backup": self.enable_backup,
             "last_backup": self.last_backup.isoformat(),
-            "backup_count": len(self.backup_history)
-        } 
+            "backup_count": len(self.backup_history),
+        }

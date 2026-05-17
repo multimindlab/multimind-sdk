@@ -2,22 +2,21 @@
 Ollama model implementation for local model running.
 """
 
-import json
 import asyncio
+import json
+from collections.abc import AsyncGenerator
+from typing import Any, Dict, List, Optional, Union
+
 import aiohttp
-from typing import List, Dict, Any, Optional, AsyncGenerator, Union
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from .base import BaseLLM
+
 
 class OllamaModel(BaseLLM):
     """Runner for local models using Ollama."""
 
-    def __init__(
-        self,
-        model_name: str,
-        base_url: str = "http://localhost:11434",
-        **kwargs
-    ):
+    def __init__(self, model_name: str, base_url: str = "http://localhost:11434", **kwargs):
         super().__init__(model_name, **kwargs)
         self.base_url = base_url.rstrip("/")
         self._timeout = aiohttp.ClientTimeout(total=300)  # 5 min for slow local models
@@ -39,9 +38,7 @@ class OllamaModel(BaseLLM):
         self._session = None
 
     async def _make_request_stream(
-        self,
-        endpoint: str,
-        data: Dict[str, Any]
+        self, endpoint: str, data: Dict[str, Any]
     ) -> AsyncGenerator[Dict[str, Any], None]:
         """Make a streaming request to the Ollama API."""
         async for line in self._make_request_stream_raw(endpoint, data):
@@ -67,11 +64,7 @@ class OllamaModel(BaseLLM):
             async for line in response.content:
                 yield line
 
-    async def _make_request(
-        self,
-        endpoint: str,
-        data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def _make_request(self, endpoint: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """Make a regular request to the Ollama API."""
         return await self._make_request_with_retry(endpoint, data)
 
@@ -94,19 +87,10 @@ class OllamaModel(BaseLLM):
             return await response.json()
 
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the local model."""
-        data = {
-            "model": self.model_name,
-            "prompt": prompt,
-            "temperature": temperature,
-            **kwargs
-        }
+        data = {"model": self.model_name, "prompt": prompt, "temperature": temperature, **kwargs}
         if max_tokens:
             data["max_tokens"] = max_tokens
 
@@ -114,11 +98,7 @@ class OllamaModel(BaseLLM):
         return response.get("response", "")
 
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text from the local model."""
         data = {
@@ -126,7 +106,7 @@ class OllamaModel(BaseLLM):
             "prompt": prompt,
             "temperature": temperature,
             "stream": True,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -140,14 +120,14 @@ class OllamaModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion from the local model."""
         data = {
             "model": self.model_name,
             "messages": messages,
             "temperature": temperature,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -160,7 +140,7 @@ class OllamaModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion from the local model."""
         data = {
@@ -168,7 +148,7 @@ class OllamaModel(BaseLLM):
             "messages": messages,
             "temperature": temperature,
             "stream": True,
-            **kwargs
+            **kwargs,
         }
         if max_tokens:
             data["max_tokens"] = max_tokens
@@ -178,9 +158,7 @@ class OllamaModel(BaseLLM):
                 yield chunk["message"]["content"]
 
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings from the local model."""
         if isinstance(text, str):
@@ -190,11 +168,7 @@ class OllamaModel(BaseLLM):
 
         embeddings = []
         for t in texts:
-            data = {
-                "model": self.model_name,
-                "prompt": t,
-                **kwargs
-            }
+            data = {"model": self.model_name, "prompt": t, **kwargs}
             response = await self._make_request("api/embeddings", data)
             embeddings.append(response.get("embedding", []))
 
@@ -203,13 +177,13 @@ class OllamaModel(BaseLLM):
 
 class MistralModel(OllamaModel):
     """Convenience class for Mistral models running on Ollama."""
-    
+
     def __init__(
         self,
         model: str = "mistral",
         model_name: Optional[str] = None,
         base_url: str = "http://localhost:11434",
-        **kwargs
+        **kwargs,
     ):
         # Use model_name if provided, otherwise use model parameter
         actual_model_name = model_name if model_name is not None else model

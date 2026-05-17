@@ -2,36 +2,24 @@
 Advanced meta-learning features for hyperparameter optimization and multi-teacher distillation.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+import logging
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Optimizer, Adam
-from torch.optim.lr_scheduler import LambdaLR
-import numpy as np
-from sklearn.metrics import accuracy_score, f1_score
-from transformers import TrainerCallback, TrainerState, TrainerControl
-import logging
-from enum import Enum
-from scipy.stats import norm
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import Matern
-import optuna
+from torch.optim import Adam
+from transformers import TrainerCallback, TrainerControl, TrainerState
+
 from .advanced_optimization import (
-    HyperparameterSpace,
-    BayesianOptimizer,
-    KnowledgeDistillation,
+    DistilledMultiTaskTuner,
     OptimizedMultiTaskTuner,
-    DistilledMultiTaskTuner
 )
-from .multitask_peft import (
-    MultiTaskUniPELTPlusTuner,
-    TaskConfig,
-    TaskType,
-    UniPELTPlusMethod
-)
+from .multitask_peft import TaskConfig, TaskType, UniPELTPlusMethod
 
 logger = logging.getLogger(__name__)
+
 
 class MetaLearner:
     """Meta-learning for hyperparameter optimization."""
@@ -40,7 +28,7 @@ class MetaLearner:
         self,
         task_types: List[TaskType],
         methods: List[UniPELTPlusMethod],
-        meta_config: Optional[Dict[str, Any]] = None
+        meta_config: Optional[Dict[str, Any]] = None,
     ):
         self.task_types = task_types
         self.methods = methods
@@ -50,7 +38,7 @@ class MetaLearner:
             "meta_epochs": 10,
             "inner_epochs": 3,
             "meta_optimizer": "adam",
-            "meta_scheduler": "cosine"
+            "meta_scheduler": "cosine",
         }
 
         # Initialize meta-learners for each task type and method
@@ -62,9 +50,7 @@ class MetaLearner:
 
         # Task performance history
         self.task_history = {
-            (task_type, method): []
-            for task_type in task_types
-            for method in methods
+            (task_type, method): [] for task_type in task_types for method in methods
         }
 
     def _create_meta_learner(self) -> nn.Module:
@@ -75,22 +61,17 @@ class MetaLearner:
             nn.Dropout(0.1),
             nn.Linear(128, 64),
             nn.ReLU(),
-            nn.Linear(64, 32)
+            nn.Linear(64, 32),
         )
 
     def meta_train(
-        self,
-        tasks: List[TaskConfig],
-        train_datasets: Dict[str, Any],
-        eval_datasets: Dict[str, Any]
+        self, tasks: List[TaskConfig], train_datasets: Dict[str, Any], eval_datasets: Dict[str, Any]
     ) -> None:
         """Meta-train on a set of tasks."""
         for epoch in range(self.meta_config["meta_epochs"]):
             # Sample meta-batch of tasks
             meta_batch = np.random.choice(
-                tasks,
-                size=min(self.meta_config["meta_batch_size"], len(tasks)),
-                replace=False
+                tasks, size=min(self.meta_config["meta_batch_size"], len(tasks)), replace=False
             )
 
             meta_loss = 0.0
@@ -99,7 +80,7 @@ class MetaLearner:
                 task_loss = self._inner_loop(
                     task=task,
                     train_data=train_datasets[task.task_name],
-                    eval_data=eval_datasets[task.task_name]
+                    eval_data=eval_datasets[task.task_name],
                 )
                 meta_loss += task_loss
 
@@ -107,15 +88,12 @@ class MetaLearner:
             meta_loss /= len(meta_batch)
             self._outer_loop(meta_loss)
 
-            logger.info(f"Meta-epoch {epoch + 1}/{self.meta_config['meta_epochs']}, "
-                       f"Meta-loss: {meta_loss:.4f}")
+            logger.info(
+                f"Meta-epoch {epoch + 1}/{self.meta_config['meta_epochs']}, "
+                f"Meta-loss: {meta_loss:.4f}"
+            )
 
-    def _inner_loop(
-        self,
-        task: TaskConfig,
-        train_data: Any,
-        eval_data: Any
-    ) -> float:
+    def _inner_loop(self, task: TaskConfig, train_data: Any, eval_data: Any) -> float:
         """Inner loop of meta-learning."""
         task_loss = 0.0
 
@@ -132,7 +110,7 @@ class MetaLearner:
                 method=method,
                 hparams=hparams,
                 train_data=train_data,
-                eval_data=eval_data
+                eval_data=eval_data,
             )
 
             # Evaluate and update task history
@@ -152,14 +130,13 @@ class MetaLearner:
 
             # Update using meta-optimizer
             if self.meta_config["meta_optimizer"] == "adam":
-                optimizer = Adam(meta_learner.parameters(), lr=self.meta_config["meta_learning_rate"])
+                optimizer = Adam(
+                    meta_learner.parameters(), lr=self.meta_config["meta_learning_rate"]
+                )
                 optimizer.step()
 
     def _generate_hyperparameters(
-        self,
-        meta_learner: nn.Module,
-        task: TaskConfig,
-        method: UniPELTPlusMethod
+        self, meta_learner: nn.Module, task: TaskConfig, method: UniPELTPlusMethod
     ) -> Dict[str, Any]:
         """Generate hyperparameters using meta-learner."""
         # Get task and method embeddings
@@ -193,30 +170,21 @@ class MetaLearner:
         return emb
 
     def _emb_to_hyperparameters(
-        self,
-        emb: torch.Tensor,
-        method: UniPELTPlusMethod
+        self, emb: torch.Tensor, method: UniPELTPlusMethod
     ) -> Dict[str, Any]:
         """Convert embedding to hyperparameters."""
         # Define hyperparameter ranges
         ranges = {
             "learning_rate": (1e-5, 1e-3),
             "weight_decay": (0.0, 0.1),
-            "warmup_ratio": (0.0, 0.1)
+            "warmup_ratio": (0.0, 0.1),
         }
 
         # Add method-specific ranges
         if method == UniPELTPlusMethod.LORA:
-            ranges.update({
-                "r": (4, 32),
-                "alpha": (8, 64),
-                "dropout": (0.0, 0.2)
-            })
+            ranges.update({"r": (4, 32), "alpha": (8, 64), "dropout": (0.0, 0.2)})
         elif method == UniPELTPlusMethod.ADAPTER:
-            ranges.update({
-                "adapter_size": (64, 512),
-                "adapter_dropout": (0.0, 0.2)
-            })
+            ranges.update({"adapter_size": (64, 512), "adapter_dropout": (0.0, 0.2)})
 
         # Convert embedding to hyperparameters
         hparams = {}
@@ -233,6 +201,7 @@ class MetaLearner:
         # Simple negative performance as loss
         return -torch.tensor(performance, requires_grad=True)
 
+
 class MultiTeacherDistillation:
     """Multi-teacher knowledge distillation."""
 
@@ -240,7 +209,7 @@ class MultiTeacherDistillation:
         self,
         teacher_models: List[nn.Module],
         student_model: nn.Module,
-        distillation_config: Optional[Dict[str, Any]] = None
+        distillation_config: Optional[Dict[str, Any]] = None,
     ):
         self.teacher_models = teacher_models
         self.student_model = student_model
@@ -249,20 +218,16 @@ class MultiTeacherDistillation:
             "alpha": 0.5,  # Weight for distillation loss
             "teacher_weights": None,  # None for equal weights
             "distillation_strategy": "soft",  # or "hard"
-            "layer_matching": "auto"  # or "manual"
+            "layer_matching": "auto",  # or "manual"
         }
 
         # Initialize layer mappings for each teacher
-        self.layer_mappings = [
-            self._compute_layer_mappings(teacher)
-            for teacher in teacher_models
-        ]
+        self.layer_mappings = [self._compute_layer_mappings(teacher) for teacher in teacher_models]
 
         # Initialize teacher weights if not provided
         if self.distillation_config["teacher_weights"] is None:
             self.distillation_config["teacher_weights"] = [
-                1.0 / len(teacher_models)
-                for _ in teacher_models
+                1.0 / len(teacher_models) for _ in teacher_models
             ]
 
     def _compute_layer_mappings(self, teacher: nn.Module) -> Dict[str, str]:
@@ -300,10 +265,7 @@ class MultiTeacherDistillation:
                     # Use cosine similarity of flattened shapes
                     t_flat = torch.tensor(t_shape).float()
                     s_flat = torch.tensor(s_shape).float()
-                    similarity = F.cosine_similarity(
-                        t_flat.view(1, -1),
-                        s_flat.view(1, -1)
-                    ).item()
+                    similarity = F.cosine_similarity(t_flat.view(1, -1), s_flat.view(1, -1)).item()
 
                 if similarity > best_similarity:
                     best_similarity = similarity
@@ -318,27 +280,19 @@ class MultiTeacherDistillation:
         self,
         teacher_outputs: List[Dict[str, torch.Tensor]],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute distillation loss from multiple teachers."""
         if self.distillation_config["distillation_strategy"] == "soft":
-            return self._compute_soft_distillation_loss(
-                teacher_outputs,
-                student_outputs,
-                labels
-            )
+            return self._compute_soft_distillation_loss(teacher_outputs, student_outputs, labels)
         else:
-            return self._compute_hard_distillation_loss(
-                teacher_outputs,
-                student_outputs,
-                labels
-            )
+            return self._compute_hard_distillation_loss(teacher_outputs, student_outputs, labels)
 
     def _compute_soft_distillation_loss(
         self,
         teacher_outputs: List[Dict[str, torch.Tensor]],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute soft distillation loss using KL divergence."""
         temperature = self.distillation_config["temperature"]
@@ -358,8 +312,8 @@ class MultiTeacherDistillation:
         distillation_loss = F.kl_div(
             F.log_softmax(student_logits, dim=-1),
             F.softmax(teacher_logits, dim=-1),
-            reduction="batchmean"
-        ) * (temperature ** 2)
+            reduction="batchmean",
+        ) * (temperature**2)
 
         # Task-specific loss
         task_loss = F.cross_entropy(student_logits, labels)
@@ -371,7 +325,7 @@ class MultiTeacherDistillation:
         self,
         teacher_outputs: List[Dict[str, torch.Tensor]],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute hard distillation loss using teacher predictions."""
         alpha = self.distillation_config["alpha"]
@@ -385,17 +339,12 @@ class MultiTeacherDistillation:
         teacher_preds = torch.argmax(teacher_preds, dim=-1)
 
         # Compute losses
-        distillation_loss = F.cross_entropy(
-            student_outputs["logits"],
-            teacher_preds
-        )
-        task_loss = F.cross_entropy(
-            student_outputs["logits"],
-            labels
-        )
+        distillation_loss = F.cross_entropy(student_outputs["logits"], teacher_preds)
+        task_loss = F.cross_entropy(student_outputs["logits"], labels)
 
         # Combined loss
         return alpha * distillation_loss + (1 - alpha) * task_loss
+
 
 class MetaOptimizedMultiTaskTuner(OptimizedMultiTaskTuner):
     """Multi-task tuner with meta-learning for hyperparameter optimization."""
@@ -412,7 +361,7 @@ class MetaOptimizedMultiTaskTuner(OptimizedMultiTaskTuner):
         model_config: Optional[Dict[str, Any]] = None,
         resource_constraints: Optional[Dict[str, Any]] = None,
         meta_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -423,14 +372,14 @@ class MetaOptimizedMultiTaskTuner(OptimizedMultiTaskTuner):
             method_configs=method_configs,
             training_args=training_args,
             model_config=model_config,
-            resource_constraints=resource_constraints
+            resource_constraints=resource_constraints,
         )
 
         # Initialize meta-learner
         self.meta_learner = MetaLearner(
             task_types=[task.task_type for task in tasks],
             methods=available_methods,
-            meta_config=meta_config
+            meta_config=meta_config,
         )
 
     def train(
@@ -438,7 +387,7 @@ class MetaOptimizedMultiTaskTuner(OptimizedMultiTaskTuner):
         train_datasets: Dict[str, Any],
         eval_datasets: Optional[Dict[str, Any]] = None,
         meta_train: bool = True,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with meta-learning for hyperparameter optimization."""
         if meta_train:
@@ -446,11 +395,12 @@ class MetaOptimizedMultiTaskTuner(OptimizedMultiTaskTuner):
             self.meta_learner.meta_train(
                 tasks=self.tasks,
                 train_datasets=train_datasets,
-                eval_datasets=eval_datasets or train_datasets
+                eval_datasets=eval_datasets or train_datasets,
             )
 
         # Train with base class method
         super().train(train_datasets, eval_datasets, **kwargs)
+
 
 class MultiTeacherDistilledTuner(DistilledMultiTaskTuner):
     """Multi-task tuner with multi-teacher distillation."""
@@ -467,7 +417,7 @@ class MultiTeacherDistilledTuner(DistilledMultiTaskTuner):
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
         distillation_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -479,27 +429,24 @@ class MultiTeacherDistilledTuner(DistilledMultiTaskTuner):
             method_configs=method_configs,
             training_args=training_args,
             model_config=model_config,
-            distillation_config=distillation_config
+            distillation_config=distillation_config,
         )
 
         # Load additional teacher models
-        self.teacher_models = [
-            self._load_teacher_model(path)
-            for path in teacher_model_paths[1:]
-        ]
+        self.teacher_models = [self._load_teacher_model(path) for path in teacher_model_paths[1:]]
 
         # Initialize multi-teacher distillation
         self.distillation = MultiTeacherDistillation(
             teacher_models=[self.teacher_model] + self.teacher_models,
             student_model=self.model,
-            distillation_config=distillation_config
+            distillation_config=distillation_config,
         )
 
     def train(
         self,
         train_datasets: Dict[str, Any],
         eval_datasets: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with multi-teacher distillation."""
         if self.model is None:
@@ -515,7 +462,7 @@ class MultiTeacherDistilledTuner(DistilledMultiTaskTuner):
                 args: TrainingArguments,
                 state: TrainerState,
                 control: TrainerControl,
-                **kwargs
+                **kwargs,
             ):
                 # Get teacher outputs
                 teacher_outputs = []
@@ -525,15 +472,13 @@ class MultiTeacherDistilledTuner(DistilledMultiTaskTuner):
                         teacher_outputs.append(outputs)
 
                 # Get student outputs
-                student_outputs = self.tuner.model(
-                    **self.tuner.current_batch
-                )
+                student_outputs = self.tuner.model(**self.tuner.current_batch)
 
                 # Compute distillation loss
                 distillation_loss = self.tuner.distillation.compute_distillation_loss(
                     teacher_outputs=teacher_outputs,
                     student_outputs=student_outputs,
-                    labels=self.tuner.current_batch["labels"]
+                    labels=self.tuner.current_batch["labels"],
                 )
 
                 # Update model with combined loss

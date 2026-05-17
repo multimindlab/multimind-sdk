@@ -2,18 +2,15 @@
 Combined memory implementation that uses multiple memory types.
 """
 
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime
+from typing import Dict, List, Optional
+
 from .base import BaseMemory
+
 
 class CombinedMemory(BaseMemory):
     """Memory that combines multiple memory types."""
 
-    def __init__(
-        self,
-        memories: List[BaseMemory],
-        memory_key: str = "chat_history"
-    ):
+    def __init__(self, memories: List[BaseMemory], memory_key: str = "chat_history"):
         super().__init__(memory_key)
         self.memories = memories
 
@@ -50,4 +47,4 @@ class CombinedMemory(BaseMemory):
         for memory in self.memories:
             if isinstance(memory, memory_type):
                 return memory
-        return None 
+        return None
