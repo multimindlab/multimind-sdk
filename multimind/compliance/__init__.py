@@ -1,40 +1,52 @@
-"""
-MultiMind Compliance Module
+"""MultiMind Compliance Module.
 
-This module provides comprehensive compliance monitoring and evaluation capabilities,
-including advanced features for privacy, security, and regulatory compliance.
+Comprehensive compliance monitoring and evaluation: privacy, security, and
+regulatory features (GDPR, HIPAA, NIS2, …).
+
+Requires the ``compliance`` extras (``cryptography``, ``bcrypt``, ``pycryptodome``):
+``pip install 'multimind-sdk[compliance]'``.
 """
 
 import os
 import warnings
-from .advanced_config import (
-    ComplianceShardConfig,
-    SelfHealingConfig,
-    ExplainableDTOConfig,
-    ModelWatermarkingConfig,
-    AdaptivePrivacyConfig,
-    RegulatoryChangeConfig,
-    FederatedComplianceConfig,
-    load_advanced_config,
-    save_advanced_config
-)
 
-from .advanced import (
-    ComplianceShard,
-    SelfHealingCompliance,
-    ExplainableDTO,
-    ModelWatermarking,
-    AdaptivePrivacy,
-    RegulatoryChangeDetector,
-    FederatedCompliance,
-    ComplianceLevel,
-    ComplianceMetrics
-)
-
-from .governance import GovernanceConfig, Regulation
-from .model_training import ComplianceTrainer
-from .privacy import PrivacyCompliance, DataCategory, NotificationType, AuditAction, ComplianceStatus
-from multimind.cli.compliance import run_compliance
+try:
+    from .advanced_config import (
+        ComplianceShardConfig,
+        SelfHealingConfig,
+        ExplainableDTOConfig,
+        ModelWatermarkingConfig,
+        AdaptivePrivacyConfig,
+        RegulatoryChangeConfig,
+        FederatedComplianceConfig,
+        load_advanced_config,
+        save_advanced_config,
+    )
+    from .advanced import (
+        ComplianceShard,
+        SelfHealingCompliance,
+        ExplainableDTO,
+        ModelWatermarking,
+        AdaptivePrivacy,
+        RegulatoryChangeDetector,
+        FederatedCompliance,
+        ComplianceLevel,
+        ComplianceMetrics,
+    )
+    from .governance import GovernanceConfig, Regulation
+    from .model_training import ComplianceTrainer
+    from .privacy import (
+        PrivacyCompliance,
+        DataCategory,
+        NotificationType,
+        AuditAction,
+        ComplianceStatus,
+    )
+except ImportError as exc:  # pragma: no cover - exercised on minimal installs
+    raise ImportError(
+        "Compliance features require additional dependencies. "
+        "Install with: pip install 'multimind-sdk[compliance]'"
+    ) from exc
 
 def _log_legacy_warning(message: str) -> None:
     """Log legacy warning only if explicitly enabled."""
@@ -74,8 +86,6 @@ __all__ = [
     'ComplianceStatus',
     # Training
     'ComplianceTrainer',
-    # CLI
-    'run_compliance',
 ]
 
 # Backward compatibility: import legacy CLI and API functions if available

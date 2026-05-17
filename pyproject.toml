@@ -1,21 +1,22 @@
 [build-system]
-requires = ["setuptools>=65.0", "wheel"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "multimind-sdk"
-version = "0.2.2"
-description = "The Future of AI Development - 60+ Vector Databases • 100+ AI Models • Quantum Memory • Hybrid RAG • Enterprise Compliance"
+dynamic = ["version"]
+description = "The compliance-first AI agent framework. Multi-model AI, RAG, agents, and enterprise readiness."
 readme = "README.md"
-requires-python = ">=3.8"
-license = {text = "Apache License 2.0"}
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
 authors = [
-    {name = "AI2Innovate Team", email = "contact@multimind.dev"}
+    {name = "MultimindLAB Team", email = "contact@multimind.dev"},
 ]
 keywords = [
-    "ai", "artificial-intelligence", "llm", "machine-learning",
-    "rag", "vector-database", "agents", "fine-tuning", "quantum-memory",
-    "hybrid-rag", "enterprise-ai", "compliance", "multi-modal"
+    "ai", "llm", "agents", "rag", "multi-model",
+    "compliance", "gdpr", "hipaa", "nis2",
+    "langchain-alternative", "ai-framework",
+    "vector-database", "fine-tuning", "enterprise-ai",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,189 +25,232 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-# ============================================================
-# CORE DEPENDENCIES - Always installed
-# ============================================================
+# Minimal core dependencies — only what's needed for basic multi-model chat.
+# Heavy extras (torch, chromadb, fastapi, …) live in [project.optional-dependencies]
+# and are accessed via lazy imports (see multimind/_lazy.py).
 dependencies = [
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+    "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "python-dotenv>=0.19.0",
+    "python-dotenv>=1.0.0",
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "PyYAML>=6.0",
     "aiohttp>=3.8.0",
-    "typing-extensions>=4.0.0",
-    "click>=8.1.0",
-    "rich>=14.0.0",
-    "coloredlogs>=15.0.0",
     "requests>=2.28.0",
-    "numpy>=1.21.0",
-    "pandas>=2.0.0",
+    "typing-extensions>=4.0.0",
     "tenacity>=8.2.0",
-    "datasets>=2.0.0", 
+    "coloredlogs>=15.0.0",
 ]
 
-# ============================================================
-# OPTIONAL DEPENDENCIES - Install only what you need
-# ============================================================
 [project.optional-dependencies]
 
-# Core LLM providers
-llm = [
-    "openai>=1.0.0",
-    "anthropic>=0.52.1",
-    "mistralai>=0.0.12",
-]
-
-# Router module
-router = [
-    "fastapi>=0.95.0",
-    "uvicorn>=0.21.0",
-    "httpx>=0.23.0",
-]
-
-# Memory systems
-memory = [
-    "redis>=5.0.0",
-]
-
-# Basic RAG
+# RAG and basic vector store support
 rag = [
     "faiss-cpu>=1.7.0",
-    "sentence-transformers>=4.0.0",
+    "sentence-transformers>=2.2.0",
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
+    "numpy>=1.21.0",
 ]
 
-# Advanced vector stores
+# Additional vector databases
 vector-stores = [
-    "chromadb>=1.0.0",
-    "pinecone-client>=6.0.0",
-    "weaviate-client>=3.0.0",
-    "qdrant-client>=2.0.0",
+    "chromadb>=0.4.0",
+    "qdrant-client>=1.6.0",
+    "weaviate-client>=4.0.0",
+    "pinecone-client>=3.0.0",
     "pymilvus>=2.0.0",
     "elasticsearch>=8.0.0",
-    "opensearch-py>=2.0.0",
-    "astrapy>=1.0.0",
 ]
 
-# Document processing
+# Agent framework — relies on memory + tools, not faiss directly
+agents = [
+    "multimind-sdk[memory]",
+]
+
+# In-process memory backends
+memory = [
+    "redis>=5.0.0",
+    "numpy>=1.21.0",
+]
+
+# Document loaders / processors
 documents = [
     "pdfplumber>=0.9.0",
     "PyPDF2>=3.0.0",
     "python-docx>=1.0.0",
     "python-pptx>=0.6.0",
     "pillow>=9.0.0",
-    "opencv-python>=4.5.0",
     "pytesseract>=0.3.0",
     "unstructured>=0.10.0",
 ]
 
-# Fine-tuning
-fine-tuning = [
+# Fine-tuning (CPU/general) — no GPU-only deps here so it installs on macOS/ARM
+finetune = [
     "torch>=2.0.0",
     "transformers>=4.30.0",
-    "peft>=0.7.0",
-    "bitsandbytes>=0.41.0",
-    "datasets>=2.0.0",
+    "datasets>=2.14.0",
+    "accelerate>=0.20.0",
+    "peft>=0.5.0",
     "scikit-learn>=1.0.0",
+    "numpy>=1.21.0",
+    "pandas>=2.0.0",
+    # Hyperparameter / meta-learning search — used eagerly by
+    # multimind.fine_tuning.meta_learning, advanced_optimization,
+    # advanced_meta_learning. Without it, the whole fine_tuning package
+    # fails to import.
+    "optuna>=3.0.0",
 ]
 
-# Advanced compliance
+# GPU-only fine-tuning extras (Linux + CUDA). Kept separate from `finetune`
+# because bitsandbytes does not install on macOS or ARM without GPU.
+finetune-gpu = [
+    "multimind-sdk[finetune]",
+    "bitsandbytes>=0.42.0; sys_platform == 'linux'",
+]
+
+# Compliance features
 compliance = [
     "cryptography>=41.0.0",
+    "bcrypt>=4.0.0",
     "pycryptodome>=3.18.0",
 ]
 
-# Development & Testing
+# Gateway / API server
+gateway = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "redis>=5.0.0",
+    "python-jose>=3.3.0",
+    "python-multipart>=0.0.6",
+]
+
+# Development tools
 dev = [
     "pytest>=7.0.0",
-    "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
     "black>=23.0.0",
-    "isort>=5.12.0",
-    "mypy>=1.0.0",
     "ruff>=0.1.0",
+    "mypy>=1.5.0",
     "pre-commit>=3.0.0",
     "sphinx>=7.0.0",
     "sphinx-rtd-theme>=1.3.0",
+    "myst-parser>=0.18.0",
 ]
 
-# Everything (all features)
+# Everything (sans dev/finetune-gpu)
 all = [
-    "multimind-sdk[llm,router,memory,rag,vector-stores,documents,fine-tuning,compliance,dev]",
-]
-
-# Minimal (just core + LLMs for quick start)
-minimal = [
-    "multimind-sdk[llm]",
+    "multimind-sdk[rag,vector-stores,agents,memory,documents,finetune,compliance,gateway]",
 ]
 
 [project.urls]
-"Homepage" = "https://multimind.dev"
-"Bug Tracker" = "https://github.com/multimind-dev/multimind-sdk/issues"
-"Source Code" = "https://github.com/multimind-dev/multimind-sdk"
-"Documentation" = "https://docs.multimind.dev"
-"Discord" = "https://discord.gg/K64U65je7h"
+Homepage = "https://www.multimind.dev"
+Documentation = "https://github.com/multimindlab/multimind-sdk/tree/develop/docs"
+Repository = "https://github.com/multimindlab/multimind-sdk"
+Issues = "https://github.com/multimindlab/multimind-sdk/issues"
+Changelog = "https://github.com/multimindlab/multimind-sdk/releases"
+Discord = "https://discord.gg/K64U65je7h"
 
 [project.scripts]
-multimind = "multimind.gateway.cli:main"
+multimind = "multimind.cli:main"
 
-[tool.setuptools]
-packages = ["multimind"]
+[tool.setuptools.dynamic]
+version = {attr = "multimind.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["multimind*"]
+exclude = ["tests*", "examples*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]
 multimind = ["py.typed"]
 
+# ── Linting & Formatting ─────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = [".git", "__pycache__", "build", "dist", "venv", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["multimind"]
+
 [tool.black]
 line-length = 100
-target-version = ["py38", "py39", "py310", "py311", "py312"]
-include = '\.pyi?$'
+target-version = ["py39", "py310", "py311", "py312"]
 extend-exclude = '''
 /(
-  # directories
   \.eggs
   | \.git
-  | \.hg
   | \.mypy_cache
-  | \.tox
   | \.venv
+  | venv
   | build
   | dist
-  | venv
 )/
 '''
 
-[tool.isort]
-profile = "black"
-line_length = 100
-skip_glob = ["*/migrations/*"]
-
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 check_untyped_defs = true
 ignore_missing_imports = true
-warn_unused_ignores = true
-warn_redundant_casts = true
-warn_unused_configs = true
-
-[tool.ruff]
-line-length = 100
-select = ["E", "F", "W"]
-ignore = ["E501"]  # Black handles line length
-exclude = [".git", "__pycache__", "build", "dist"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# Add the repo root to sys.path so tests/examples that do
+# `from examples.cli.basic_agent import main` work regardless of how
+# pytest is invoked (`pytest tests/` vs `python -m pytest tests/`).
+# This replaces the historical CI workaround `PYTHONPATH=$PWD`.
+pythonpath = ["."]
 python_files = ["test_*.py", "*_test.py"]
-addopts = "-v --tb=short"
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=multimind",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=20",
+]
 asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+    "unit: marks tests as unit tests",
+    "requires_gpu: marks tests that require GPU",
+    "requires_api_key: marks tests requiring API keys",
+    "skip: marks tests as skipped (deselect with '-m \"not skip\"')",
+]
 filterwarnings = [
-    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
     "ignore::DeprecationWarning",
+    "ignore::UserWarning:transformers",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
 ]
