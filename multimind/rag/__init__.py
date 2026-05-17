@@ -1,16 +1,23 @@
-"""
-RAG (Retrieval Augmented Generation) module.
+"""RAG (Retrieval Augmented Generation) module.
+
+Requires the ``rag`` extras: ``pip install 'multimind-sdk[rag]'``.
 """
 
-from .rag import RAG, RAGConfig
-from .base import BaseRAG, RAGError
-from .postprocessing import PostProcessor, PostProcessingConfig
+try:
+    from .base import BaseRAG, RAGError
+    from .postprocessing import PostProcessingConfig, PostProcessor
+    from .rag import RAG, RAGConfig
+except ImportError as exc:  # pragma: no cover - exercised on minimal installs
+    raise ImportError(
+        "RAG features require additional dependencies. "
+        "Install with: pip install 'multimind-sdk[rag]'"
+    ) from exc
 
 __all__ = [
-    'RAG',
-    'RAGConfig',
-    'BaseRAG',
-    'RAGError',
-    'PostProcessor',
-    'PostProcessingConfig'
-] 
+    "RAG",
+    "RAGConfig",
+    "BaseRAG",
+    "RAGError",
+    "PostProcessor",
+    "PostProcessingConfig",
+]

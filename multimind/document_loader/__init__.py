@@ -1,29 +1,37 @@
-"""
-Document loader module for loading and ingesting documents.
+"""Document loader module for loading and ingesting documents.
+
+Requires the ``documents`` extras (``pdfplumber``, ``python-docx``, ``pillow``, …):
+``pip install 'multimind-sdk[documents]'``.
 """
 
-from .data_ingestion import DataIngestion
-from .document_loader import (
-    DocumentMetadata,
-    LoadedDocument,
-    DocumentFormat,
-    DocumentSource,
-    DocumentConnector,
-    BaseDocumentLoader,
-    LocalDocumentLoader,
-    WebDocumentLoader,
-    DatabaseDocumentLoader,
-    StreamDocumentLoader,
-    DocumentLoaderFactory,
-    WebsiteDocumentLoader,
-    EmailDocumentLoader,
-    SpreadsheetDocumentLoader,
-    PresentationDocumentLoader,
-    ImageDocumentLoader,
-    AudioDocumentLoader,
-    VideoDocumentLoader,
-    DefaultFileLoader,
-)
+try:
+    from .data_ingestion import DataIngestion
+    from .document_loader import (
+        DocumentMetadata,
+        LoadedDocument,
+        DocumentFormat,
+        DocumentSource,
+        DocumentConnector,
+        BaseDocumentLoader,
+        LocalDocumentLoader,
+        WebDocumentLoader,
+        DatabaseDocumentLoader,
+        StreamDocumentLoader,
+        DocumentLoaderFactory,
+        WebsiteDocumentLoader,
+        EmailDocumentLoader,
+        SpreadsheetDocumentLoader,
+        PresentationDocumentLoader,
+        ImageDocumentLoader,
+        AudioDocumentLoader,
+        VideoDocumentLoader,
+        DefaultFileLoader,
+    )
+except ImportError as exc:  # pragma: no cover - exercised on minimal installs
+    raise ImportError(
+        "Document loading features require additional dependencies. "
+        "Install with: pip install 'multimind-sdk[documents]'"
+    ) from exc
 
 __all__ = [
     'DataIngestion',

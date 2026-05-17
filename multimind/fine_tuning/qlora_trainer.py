@@ -2,26 +2,33 @@
 QLoRA (Quantized LoRA) implementation for memory-efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from datasets import Dataset as HFDataset
+from peft import (
+    LoraConfig,
+    TaskType,
+    get_peft_model,
+    prepare_model_for_kbit_training,
+)
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-from peft import (
-    LoraConfig,
-    get_peft_model,
-    prepare_model_for_kbit_training,
-    TaskType
-)
-import bitsandbytes as bnb
-import logging
-from datasets import Dataset as HFDataset
+
+# Note: bitsandbytes is NOT imported at module level. QLoRA's 4-bit/8-bit
+# quantization is handled transitively by peft.prepare_model_for_kbit_training
+# at runtime when the user actually trains with a quantized model. Importing
+# bitsandbytes here would break the entire fine_tuning package on macOS/ARM
+# where bitsandbytes is unavailable. To use real 4-bit QLoRA, install:
+#     pip install 'multimind-sdk[finetune-gpu]'   # Linux + CUDA
 
 logger = logging.getLogger(__name__)
 
