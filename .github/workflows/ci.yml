@@ -20,7 +20,7 @@ jobs:
   # Lint (fast — runs once, on one Python version)
   # ---------------------------------------------------------------------------
   lint:
-    name: Lint (ruff + black)
+    name: Lint (ruff check + ruff format)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,11 +28,11 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install lint tools
-        run: pip install "ruff>=0.4" "black>=24.0"
-      - name: ruff check
+        run: pip install "ruff>=0.4"
+      - name: ruff check (lints)
         run: ruff check multimind/
-      - name: black --check
-        run: black --check multimind/
+      - name: ruff format --check (formatter)
+        run: ruff format --check multimind/
 
   # ---------------------------------------------------------------------------
   # Core tests across the supported Python matrix.

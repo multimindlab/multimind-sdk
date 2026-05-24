@@ -95,7 +95,7 @@ class CognitiveScratchpadMemory(BaseMemory):
             prompt = f"""
             Break down the reasoning process for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. steps: list of strings (each step in the reasoning process)

@@ -185,7 +185,7 @@ class DocumentProcessor:
                 import PyPDF2
             except ImportError:
                 raise ImportError(
-                    "PyPDF2 is required for PDF processing. " "Install with: pip install PyPDF2"
+                    "PyPDF2 is required for PDF processing. Install with: pip install PyPDF2"
                 )
 
             text = ""

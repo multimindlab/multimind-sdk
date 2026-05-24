@@ -101,8 +101,8 @@ class KnowledgeGraphMemory(BaseMemory):
             # Use LLM to extract entities and relationships with types
             prompt = f"""
             Extract entities and their relationships from the following text.
-            For each entity, specify its type from: {', '.join(self.entity_types)}
-            For each relationship, specify its type from: {', '.join(self.relationship_types)}
+            For each entity, specify its type from: {", ".join(self.entity_types)}
+            For each relationship, specify its type from: {", ".join(self.relationship_types)}
             Format the output as a list of (entity1, entity1_type, relationship, relationship_type, entity2, entity2_type) tuples.
             Text: {text}
             """

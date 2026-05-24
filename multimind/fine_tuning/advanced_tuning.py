@@ -191,7 +191,7 @@ class CompacterTuner:
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(
-            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
         )
 
     def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
@@ -384,7 +384,7 @@ class HyperLoRATuner:
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(
-            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
         )
 
     def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:

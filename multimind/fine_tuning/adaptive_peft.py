@@ -248,7 +248,8 @@ class AdaptiveUniPELTPlusTuner(UniPELTPlusTuner):
 
         # Get initial method selection
         initial_methods = self.method_selector.select_methods(
-            model_size=1e9, task_type=model_type  # Estimate based on model name
+            model_size=1e9,
+            task_type=model_type,  # Estimate based on model name
         )
 
         super().__init__(

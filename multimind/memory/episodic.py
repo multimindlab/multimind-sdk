@@ -64,9 +64,9 @@ class EpisodicMemory(BaseMemory):
         self.episode_weights: Dict[str, float] = {}  # episode_id -> weight
         self.episode_chains: Dict[str, List[str]] = {}  # episode_id -> chain of related episode_ids
         self.episode_importance: Dict[str, float] = {}  # episode_id -> importance score
-        self.emotional_profiles: Dict[str, Dict[str, float]] = (
-            {}
-        )  # episode_id -> emotion -> intensity
+        self.emotional_profiles: Dict[
+            str, Dict[str, float]
+        ] = {}  # episode_id -> emotion -> intensity
         self.last_consolidation = datetime.now()
 
     async def add_message(self, message: Dict[str, str]) -> None:
@@ -130,7 +130,7 @@ class EpisodicMemory(BaseMemory):
             5. Importance of the episode (0-1)
             6. Emotional intensity (0-1)
 
-            Episode: {episode['content']}
+            Episode: {episode["content"]}
 
             Return in format:
             Location: <location>
@@ -180,7 +180,7 @@ class EpisodicMemory(BaseMemory):
             prompt = f"""
             Analyze the emotional profile of this episode and determine the intensity (0-1) of each emotion:
 
-            Episode: {episode['content']}
+            Episode: {episode["content"]}
 
             Return in format:
             Emotion: <emotion name>

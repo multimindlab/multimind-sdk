@@ -123,7 +123,7 @@ class EventSourcedMemory(BaseMemory):
             prompt = f"""
             Analyze patterns in this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. patterns: list of strings
@@ -173,7 +173,7 @@ class EventSourcedMemory(BaseMemory):
             prompt = f"""
             Analyze causality for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. causes: list of strings

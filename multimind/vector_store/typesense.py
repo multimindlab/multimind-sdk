@@ -98,7 +98,7 @@ class TypesenseVectorStore(VectorStoreBackend):
             try:
                 search_params = {
                     "q": "*",
-                    "vector_query": f'vector:([{",".join(map(str, query_vector))}], k:{k})',
+                    "vector_query": f"vector:([{','.join(map(str, query_vector))}], k:{k})",
                     "query_by": "document",
                     "per_page": k,
                 }
@@ -176,6 +176,6 @@ class TypesenseVectorStore(VectorStoreBackend):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise

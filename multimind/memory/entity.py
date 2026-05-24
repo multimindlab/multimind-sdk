@@ -35,9 +35,9 @@ class EntityMemory(BaseMemory):
         self.entities: Dict[str, Dict[str, Any]] = {}  # entity_id -> entity_data
         self.relationships: Dict[str, Set[str]] = {}  # entity_id -> set of related entity_ids
         self.entity_metadata: Dict[str, Dict[str, Any]] = {}  # entity_id -> metadata
-        self.relationship_metadata: Dict[tuple, Dict[str, Any]] = (
-            {}
-        )  # (entity1_id, entity2_id) -> metadata
+        self.relationship_metadata: Dict[
+            tuple, Dict[str, Any]
+        ] = {}  # (entity1_id, entity2_id) -> metadata
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add a generic message entry to memory."""

@@ -110,29 +110,29 @@ class DeclarativeMemory(BaseMemory):
         # Initialize declarative memory storage
         self.facts: List[Dict[str, Any]] = []
         self.fact_embeddings: List[List[float]] = []
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # fact_id -> {relationship_type -> target_ids}
-        self.verification_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # fact_id -> verification records
-        self.consistency_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # fact_id -> consistency records
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # fact_id -> {relationship_type -> target_ids}
+        self.verification_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # fact_id -> verification records
+        self.consistency_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # fact_id -> consistency records
         self.learning_history: Dict[str, List[Dict[str, Any]]] = {}
         self.fact_history: List[Dict[str, Any]] = []  # Recent fact updates
         self.evolution_history: Dict[str, List[Dict[str, Any]]] = {}  # fact_id -> evolution records
-        self.validation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # fact_id -> validation records
-        self.integrated_knowledge: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # integration_id -> integrated knowledge
+        self.validation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # fact_id -> validation records
+        self.integrated_knowledge: Dict[
+            str, Dict[str, Any]
+        ] = {}  # integration_id -> integrated knowledge
         self.semantic_reasoning: Dict[str, Dict[str, Any]] = {}  # reasoning_id -> reasoning results
         self.uncertainty_measures: Dict[str, Dict[str, Any]] = {}  # fact_id -> uncertainty data
-        self.contradictions: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # fact_id -> contradiction records
+        self.contradictions: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # fact_id -> contradiction records
         self.temporal_relations: Dict[str, Dict[str, Any]] = {}  # fact_id -> temporal data
         self.causal_chains: Dict[str, List[Dict[str, Any]]] = {}  # fact_id -> causal chain data
         self.knowledge_graph: Dict[str, Dict[str, Any]] = {}  # node_id -> node data
@@ -275,7 +275,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Verify this fact using multiple methods:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. verification_score: float (0-1)
@@ -319,7 +319,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Check consistency of this fact with other facts:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. consistency_score: float (0-1)
@@ -361,7 +361,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Integrate this fact with existing knowledge:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. integration_score: float (0-1)
@@ -406,7 +406,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Perform semantic reasoning on this fact:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. reasoning_score: float (0-1)
@@ -453,7 +453,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Assess uncertainty in this fact:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. uncertainty_score: float (0-1)
@@ -495,7 +495,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Detect contradictions with this fact:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. contradiction_score: float (0-1)
@@ -602,7 +602,7 @@ class DeclarativeMemory(BaseMemory):
             prompt = f"""
             Validate this fact:
 
-            {fact['content']}
+            {fact["content"]}
 
             Return a JSON object with:
             1. validation_score: float (0-1)

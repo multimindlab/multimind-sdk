@@ -82,20 +82,20 @@ class AssociativeMemory(BaseMemory):
         self.associations: List[Dict[str, Any]] = []
         self.association_embeddings: List[List[float]] = []
         self.patterns: Dict[str, Dict[str, Any]] = {}  # pattern_id -> pattern data
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # association_id -> {relationship_type -> target_ids}
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # association_id -> {relationship_type -> target_ids}
         self.clusters: Dict[str, List[str]] = {}  # cluster_id -> association_ids
-        self.learning_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # association_id -> learning records
-        self.temporal_relationships: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # association_id -> temporal records
+        self.learning_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # association_id -> learning records
+        self.temporal_relationships: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # association_id -> temporal records
         self.confidence_scores: Dict[str, float] = {}  # association_id -> confidence score
-        self.evolution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # association_id -> evolution records
+        self.evolution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # association_id -> evolution records
         self.last_pattern_update = datetime.now()
         self.last_cluster_update = datetime.now()
         self.last_analysis = datetime.now()
@@ -207,11 +207,11 @@ class AssociativeMemory(BaseMemory):
             prompt = f"""
             Determine the relationship type between these two pieces of information:
 
-            Information 1: {assoc1['content']}
-            Information 2: {assoc2['content']}
+            Information 1: {assoc1["content"]}
+            Information 2: {assoc2["content"]}
             Similarity: {similarity}
 
-            Available relationship types: {', '.join(self.relationship_types)}
+            Available relationship types: {", ".join(self.relationship_types)}
 
             Return the most appropriate relationship type or 'none' if no clear relationship exists.
             """
@@ -285,7 +285,7 @@ class AssociativeMemory(BaseMemory):
             prompt = f"""
             Extract common elements or patterns from these pieces of information:
 
-            {chr(10).join(f'Information {i+1}: {assoc["content"]}' for i, assoc in enumerate(associations))}
+            {chr(10).join(f"Information {i + 1}: {assoc['content']}" for i, assoc in enumerate(associations))}
 
             Return a list of common elements, one per line.
             """

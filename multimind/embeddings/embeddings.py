@@ -387,8 +387,7 @@ class SentenceT5Embedder(BaseLLM):
             from sentence_transformers import SentenceTransformer
         except ImportError:
             raise ImportError(
-                "Sentence-Transformers is required. "
-                "Install with: pip install sentence-transformers"
+                "Sentence-Transformers is required. Install with: pip install sentence-transformers"
             )
 
         self.device = device
@@ -552,8 +551,7 @@ def get_embedder(embedder_type: str, **kwargs) -> BaseLLM:
 
     if embedder_type not in embedders:
         raise ValueError(
-            f"Unsupported embedder type: {embedder_type}. "
-            f"Supported types: {list(embedders.keys())}"
+            f"Unsupported embedder type: {embedder_type}. Supported types: {list(embedders.keys())}"
         )
 
     return embedders[embedder_type](**kwargs)

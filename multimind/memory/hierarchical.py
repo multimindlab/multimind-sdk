@@ -174,7 +174,7 @@ class HierarchicalMemory(BaseMemory):
             3. A confidence score between 0 and 1
 
             Existing categories: {list(self.node_map.keys())}
-            Message: {message['content']}
+            Message: {message["content"]}
 
             Return the category, parent_id, and confidence score.
             """

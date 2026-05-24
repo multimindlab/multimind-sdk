@@ -131,7 +131,7 @@ class TimescaleVectorStore(VectorStoreBackend):
         def _delete():
             with self.conn.cursor() as cur:
                 cur.execute(
-                    f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s']*len(ids))})", ids
+                    f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s'] * len(ids))})", ids
                 )
                 self.conn.commit()
 
@@ -177,6 +177,6 @@ class TimescaleVectorStore(VectorStoreBackend):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise

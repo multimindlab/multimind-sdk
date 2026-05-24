@@ -64,23 +64,23 @@ class ProceduralMemory(BaseMemory):
         # Initialize procedure storage
         self.procedures: List[Dict[str, Any]] = []
         self.procedure_embeddings: List[List[float]] = []
-        self.execution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # procedure_id -> execution records
+        self.execution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # procedure_id -> execution records
         self.procedure_weights: Dict[str, float] = {}  # procedure_id -> weight
         self.procedure_metadata: Dict[str, Dict[str, Any]] = {}  # procedure_id -> metadata
-        self.optimization_cache: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # procedure_id -> optimization suggestions
-        self.procedure_chains: Dict[str, List[str]] = (
-            {}
-        )  # procedure_id -> chain of related procedures
-        self.monitoring_metrics: Dict[str, Dict[str, Any]] = (
-            {}
-        )  # procedure_id -> monitoring metrics
-        self.learning_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # procedure_id -> learning records
+        self.optimization_cache: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # procedure_id -> optimization suggestions
+        self.procedure_chains: Dict[
+            str, List[str]
+        ] = {}  # procedure_id -> chain of related procedures
+        self.monitoring_metrics: Dict[
+            str, Dict[str, Any]
+        ] = {}  # procedure_id -> monitoring metrics
+        self.learning_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # procedure_id -> learning records
         self.last_optimization = datetime.now()
         self.last_validation = datetime.now()
         self.last_monitoring = datetime.now()
@@ -275,13 +275,13 @@ class ProceduralMemory(BaseMemory):
             prompt = f"""
             Adapt this procedure based on the failed execution:
 
-            Procedure: {procedure['content']}
+            Procedure: {procedure["content"]}
             Steps:
-            {chr(10).join(f"{i+1}. {step}" for i, step in enumerate(procedure['steps']))}
+            {chr(10).join(f"{i + 1}. {step}" for i, step in enumerate(procedure["steps"]))}
 
             Failed Execution:
-            Duration: {execution_record['duration']}
-            Notes: {execution_record['notes']}
+            Duration: {execution_record["duration"]}
+            Notes: {execution_record["notes"]}
 
             Return adapted steps in format:
             Steps:
@@ -317,14 +317,14 @@ class ProceduralMemory(BaseMemory):
                 prompt = f"""
                 Optimize this procedure based on its execution history:
 
-                Procedure: {procedure['content']}
+                Procedure: {procedure["content"]}
                 Steps:
-                {chr(10).join(f"{i+1}. {step}" for i, step in enumerate(procedure['steps']))}
+                {chr(10).join(f"{i + 1}. {step}" for i, step in enumerate(procedure["steps"]))}
 
                 Execution History:
-                Success Rate: {procedure['metadata']['success_rate']}
-                Average Duration: {procedure['metadata']['average_duration']}
-                Total Executions: {procedure['metadata']['execution_count']}
+                Success Rate: {procedure["metadata"]["success_rate"]}
+                Average Duration: {procedure["metadata"]["average_duration"]}
+                Total Executions: {procedure["metadata"]["execution_count"]}
 
                 Return optimized steps in format:
                 Steps:
@@ -363,12 +363,12 @@ class ProceduralMemory(BaseMemory):
                 prompt = f"""
                 Validate this procedure and its steps:
 
-                Procedure: {procedure['content']}
-                Category: {procedure['metadata']['category']}
-                Prerequisites: {procedure['metadata']['prerequisites']}
-                Expected Outcome: {procedure['metadata']['expected_outcome']}
+                Procedure: {procedure["content"]}
+                Category: {procedure["metadata"]["category"]}
+                Prerequisites: {procedure["metadata"]["prerequisites"]}
+                Expected Outcome: {procedure["metadata"]["expected_outcome"]}
                 Steps:
-                {chr(10).join(f"{i+1}. {step}" for i, step in enumerate(procedure['steps']))}
+                {chr(10).join(f"{i + 1}. {step}" for i, step in enumerate(procedure["steps"]))}
 
                 Return validation results in format:
                 Valid: <true/false>

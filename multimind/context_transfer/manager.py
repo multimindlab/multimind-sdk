@@ -175,9 +175,9 @@ class ContextTransferManager:
             content = message.get("content", "")
 
             if role == "user":
-                summary_parts.append(f"User (Message {i+1}): {content}")
+                summary_parts.append(f"User (Message {i + 1}): {content}")
             elif role == "assistant":
-                summary_parts.append(f"Assistant (Response {i+1}): {content}")
+                summary_parts.append(f"Assistant (Response {i + 1}): {content}")
             elif role == "system":
                 summary_parts.append(f"System Configuration: {content}")
 

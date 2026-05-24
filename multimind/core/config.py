@@ -122,7 +122,7 @@ class GatewayConfig(BaseSettings):
         if normalized_default not in allowed_models:
             available = ", ".join(sorted(allowed_models))
             raise ValueError(
-                f"Invalid default_model '{value.default_model}'. " f"Must be one of: {available}"
+                f"Invalid default_model '{value.default_model}'. Must be one of: {available}"
             )
         return value
 

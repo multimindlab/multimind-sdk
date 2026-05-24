@@ -99,23 +99,23 @@ class SensoryMemory(BaseMemory):
         # Initialize sensory memory storage
         self.experiences: List[Dict[str, Any]] = []
         self.experience_embeddings: List[List[float]] = []
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # experience_id -> {relationship_type -> target_ids}
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # experience_id -> {relationship_type -> target_ids}
         self.patterns: Dict[str, List[str]] = {}  # pattern_id -> experience_ids
-        self.learning_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # experience_id -> learning records
+        self.learning_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # experience_id -> learning records
         self.experience_history: List[Dict[str, Any]] = []  # Recent experience updates
-        self.evolution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # experience_id -> evolution records
-        self.validation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # experience_id -> validation records
-        self.cross_modal_links: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # experience_id -> {modality -> related_ids}
+        self.evolution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # experience_id -> evolution records
+        self.validation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # experience_id -> validation records
+        self.cross_modal_links: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # experience_id -> {modality -> related_ids}
         self.fused_experiences: Dict[str, Dict[str, Any]] = {}  # fused_id -> fused experience data
         self.advanced_patterns: Dict[str, Dict[str, Any]] = {}  # pattern_id -> pattern data
         self.last_analysis = datetime.now()
@@ -248,7 +248,7 @@ class SensoryMemory(BaseMemory):
             prompt = f"""
             Analyze the sensory information in this message:
 
-            {experience['content']}
+            {experience["content"]}
 
             Return a JSON object with:
             1. modalities: list of strings (e.g., visual, auditory, tactile)
@@ -347,25 +347,25 @@ class SensoryMemory(BaseMemory):
             prompt = f"""
             Determine the relationship type between these two sensory experiences:
 
-            Experience 1: {experience1['content']}
-            Modalities: {', '.join(experience1['metadata']['modalities'])}
-            Intensity: {experience1['metadata']['intensity']}
-            Valence: {experience1['metadata']['valence']}
-            Arousal: {experience1['metadata']['arousal']}
-            Location: {experience1['metadata']['location']}
-            Context: {experience1['metadata']['context']}
+            Experience 1: {experience1["content"]}
+            Modalities: {", ".join(experience1["metadata"]["modalities"])}
+            Intensity: {experience1["metadata"]["intensity"]}
+            Valence: {experience1["metadata"]["valence"]}
+            Arousal: {experience1["metadata"]["arousal"]}
+            Location: {experience1["metadata"]["location"]}
+            Context: {experience1["metadata"]["context"]}
 
-            Experience 2: {experience2['content']}
-            Modalities: {', '.join(experience2['metadata']['modalities'])}
-            Intensity: {experience2['metadata']['intensity']}
-            Valence: {experience2['metadata']['valence']}
-            Arousal: {experience2['metadata']['arousal']}
-            Location: {experience2['metadata']['location']}
-            Context: {experience2['metadata']['context']}
+            Experience 2: {experience2["content"]}
+            Modalities: {", ".join(experience2["metadata"]["modalities"])}
+            Intensity: {experience2["metadata"]["intensity"]}
+            Valence: {experience2["metadata"]["valence"]}
+            Arousal: {experience2["metadata"]["arousal"]}
+            Location: {experience2["metadata"]["location"]}
+            Context: {experience2["metadata"]["context"]}
 
             Similarity: {similarity}
 
-            Available relationship types: {', '.join(self.relationship_types)}
+            Available relationship types: {", ".join(self.relationship_types)}
 
             Return the most appropriate relationship type or 'none' if no clear relationship exists.
             """
@@ -496,15 +496,15 @@ class SensoryMemory(BaseMemory):
             prompt = f"""
             Validate the sensory information of this experience:
 
-            {experience['content']}
+            {experience["content"]}
 
-            Modalities: {', '.join(experience['metadata']['modalities'])}
-            Intensity: {experience['metadata']['intensity']}
-            Valence: {experience['metadata']['valence']}
-            Arousal: {experience['metadata']['arousal']}
-            Duration: {experience['metadata']['duration']}
-            Location: {experience['metadata']['location']}
-            Context: {experience['metadata']['context']}
+            Modalities: {", ".join(experience["metadata"]["modalities"])}
+            Intensity: {experience["metadata"]["intensity"]}
+            Valence: {experience["metadata"]["valence"]}
+            Arousal: {experience["metadata"]["arousal"]}
+            Duration: {experience["metadata"]["duration"]}
+            Location: {experience["metadata"]["location"]}
+            Context: {experience["metadata"]["context"]}
 
             Return a JSON object with:
             1. validation_score: float (0-1)
@@ -1051,21 +1051,21 @@ class SensoryMemory(BaseMemory):
             prompt = f"""
             Create a fused sensory experience from these two experiences:
 
-            Experience 1: {experience1['content']}
-            Modalities: {', '.join(experience1['metadata']['modalities'])}
-            Intensity: {experience1['metadata']['intensity']}
-            Valence: {experience1['metadata']['valence']}
-            Arousal: {experience1['metadata']['arousal']}
-            Location: {experience1['metadata']['location']}
-            Context: {experience1['metadata']['context']}
+            Experience 1: {experience1["content"]}
+            Modalities: {", ".join(experience1["metadata"]["modalities"])}
+            Intensity: {experience1["metadata"]["intensity"]}
+            Valence: {experience1["metadata"]["valence"]}
+            Arousal: {experience1["metadata"]["arousal"]}
+            Location: {experience1["metadata"]["location"]}
+            Context: {experience1["metadata"]["context"]}
 
-            Experience 2: {experience2['content']}
-            Modalities: {', '.join(experience2['metadata']['modalities'])}
-            Intensity: {experience2['metadata']['intensity']}
-            Valence: {experience2['metadata']['valence']}
-            Arousal: {experience2['metadata']['arousal']}
-            Location: {experience2['metadata']['location']}
-            Context: {experience2['metadata']['context']}
+            Experience 2: {experience2["content"]}
+            Modalities: {", ".join(experience2["metadata"]["modalities"])}
+            Intensity: {experience2["metadata"]["intensity"]}
+            Valence: {experience2["metadata"]["valence"]}
+            Arousal: {experience2["metadata"]["arousal"]}
+            Location: {experience2["metadata"]["location"]}
+            Context: {experience2["metadata"]["context"]}
 
             Return a JSON object with:
             1. content: string (fused description)

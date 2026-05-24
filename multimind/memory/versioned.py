@@ -171,7 +171,7 @@ class VersionedMemory(BaseMemory):
             prompt = f"""
             Generate metadata for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. metadata: dict of string -> any
@@ -316,7 +316,7 @@ class VersionedMemory(BaseMemory):
             prompt = f"""
             Analyze version history for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Version history:
             {json.dumps(version_history, indent=2)}

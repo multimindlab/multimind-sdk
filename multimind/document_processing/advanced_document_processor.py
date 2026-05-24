@@ -216,7 +216,7 @@ class AdvancedDocumentProcessor:
         4. Position
 
         Document:
-        {document['content']}
+        {document["content"]}
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
@@ -272,7 +272,7 @@ class AdvancedDocumentProcessor:
         3. Position
 
         Document:
-        {document['content']}
+        {document["content"]}
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
@@ -291,7 +291,7 @@ class AdvancedDocumentProcessor:
         3. Context (preceding and following content)
 
         Document:
-        {document['content']}
+        {document["content"]}
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
@@ -310,7 +310,7 @@ class AdvancedDocumentProcessor:
         3. Position
 
         Document:
-        {document['content']}
+        {document["content"]}
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
@@ -390,8 +390,8 @@ class AdvancedDocumentProcessor:
             # Combine image features with text
             combined_content = f"""
             Image Description: {image_data.text}
-            Detected Objects: {', '.join(obj['label'] for obj in image_data.objects)}
-            Captions: {', '.join(image_data.captions)}
+            Detected Objects: {", ".join(obj["label"] for obj in image_data.objects)}
+            Captions: {", ".join(image_data.captions)}
             """
 
             chunks.append(

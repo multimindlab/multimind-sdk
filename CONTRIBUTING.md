@@ -41,15 +41,52 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-2. Install development dependencies:
+2. Install development dependencies + pre-commit hooks in one shot:
    ```bash
-   pip install -e ".[dev]"
+   make install
    ```
 
-3. Install pre-commit hooks:
+   If you don't have GNU `make`, the equivalent two commands are:
    ```bash
+   pip install -e ".[dev]"
    pre-commit install
    ```
+
+3. (Optional) Install every extras group for end-to-end work on RAG, agents,
+   compliance, fine-tuning, etc.:
+   ```bash
+   make install-all
+   ```
+
+### Common dev tasks (via `make`)
+
+| Command           | What it does                                                          |
+| ----------------- | --------------------------------------------------------------------- |
+| `make help`       | Show every target with a one-line description.                        |
+| `make test`       | Run tests excluding `integration`, `requires_api_key`, `slow` markers. |
+| `make test-all`   | Run the full test suite.                                              |
+| `make lint`       | `ruff check` + `ruff format --check` (no file mutation).              |
+| `make format`     | `ruff check --fix` + `ruff format` (mutates files).                   |
+| `make typecheck`  | Run mypy (advisory — typing migration is in progress).                |
+| `make clean`      | Remove build artifacts and tool caches.                               |
+| `make build`      | Build sdist + wheel into `dist/`.                                     |
+
+### Pre-commit
+
+`pre-commit install` wires the hooks in `.pre-commit-config.yaml` into
+`git commit`. They run automatically on every commit and currently cover:
+
+- Whitespace / EOF / merge-conflict / private-key / large-file checks
+- `ruff check --fix` (lints + safe auto-fixes)
+- `ruff format` (formatter — replaces black; settings in `[tool.ruff.format]`)
+
+Mypy is *not* in pre-commit yet — see the comment in
+`.pre-commit-config.yaml` for the rationale. Use `make typecheck` to run it
+manually.
+
+If a hook modifies files (e.g. `ruff --fix` cleans an import), the commit
+fails with a clear message. Re-run `git add` for the modified files and
+commit again.
 
 ## Contribution Workflow
 
@@ -86,24 +123,36 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 - Follow [PEP 8](https://www.python.org/dev/peps/pep-0008/) guidelines
 - Use type hints for all function parameters and return values
 - Document all public functions, classes, and methods using docstrings
-- Maximum line length: 88 characters (Black formatter default)
+- Maximum line length: 100 characters (configured in `[tool.ruff]`)
 
 ### Code Formatting
 
-We use the following tools for code formatting and linting:
+We standardize on a single tool — **Ruff** — for linting, import sorting,
+and formatting. There is no separate `black` / `isort` / `flake8` step.
 
-- [Black](https://black.readthedocs.io/) for code formatting
-- [isort](https://pycqa.github.io/isort/) for import sorting
-- [flake8](https://flake8.pycqa.org/) for linting
-- [mypy](https://mypy.readthedocs.io/) for type checking
+- `ruff check` — lint + import sorting (replaces flake8 + isort)
+- `ruff format` — code formatter (replaces black)
+- `mypy` — type checking (advisory; opt-in via `make typecheck`)
 
-Run the formatters:
+Run them via the Makefile (recommended):
+
 ```bash
-black .
-isort .
-flake8
-mypy .
+make format     # auto-fix + reformat (mutates files)
+make lint       # check only (no file changes)
+make typecheck  # advisory mypy run
 ```
+
+Or invoke ruff directly:
+
+```bash
+ruff check multimind/        # report lint issues
+ruff check multimind/ --fix  # apply safe auto-fixes
+ruff format multimind/       # apply formatter
+```
+
+All settings live in `pyproject.toml` under `[tool.ruff]` and
+`[tool.ruff.format]` — single source of truth for CI, pre-commit, and
+local runs.
 
 ### Documentation Style
 

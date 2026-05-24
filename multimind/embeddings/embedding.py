@@ -228,10 +228,10 @@ class EmbeddingModel:
 
         # Generate combined embedding
         combined_text = f"""
-        Title: {document['title']}
-        Content: {document['content']}
-        Summary: {document.get('summary', '')}
-        Metadata: {json.dumps(document.get('metadata', {}))}
+        Title: {document["title"]}
+        Content: {document["content"]}
+        Summary: {document.get("summary", "")}
+        Metadata: {json.dumps(document.get("metadata", {}))}
         """
 
         combined_embedding = await self.generate_embedding(combined_text, config)
