@@ -707,7 +707,7 @@ class AdvancedPrompting:
     def _format_documents(self, documents: List[Dict[str, Any]]) -> str:
         """Format documents for prompt."""
         return "\n\n".join(
-            f"Document {i+1}:\n{json.dumps(doc, indent=2)}" for i, doc in enumerate(documents)
+            f"Document {i + 1}:\n{json.dumps(doc, indent=2)}" for i, doc in enumerate(documents)
         )
 
     def _format_history(self, history: List[Dict[str, Any]]) -> str:

@@ -76,13 +76,13 @@ class WorkingMemory(BaseMemory):
         self.item_embeddings: List[List[float]] = []
         self.attention_scores: Dict[str, float] = {}  # item_id -> attention score
         self.attention_history: Dict[str, List[Dict[str, Any]]] = {}  # item_id -> attention records
-        self.consolidation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # item_id -> consolidation records
+        self.consolidation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # item_id -> consolidation records
         self.priority_scores: Dict[str, float] = {}  # item_id -> priority score
-        self.compression_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # item_id -> compression records
+        self.compression_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # item_id -> compression records
         self.backup_history: List[Dict[str, Any]] = []  # List of backup records
         self.last_decay = datetime.now()
         self.last_consolidation = datetime.now()
@@ -245,7 +245,7 @@ class WorkingMemory(BaseMemory):
                 prompt = f"""
                 Compress this information while maintaining key points:
 
-                {item['content']}
+                {item["content"]}
 
                 Return compressed version.
                 """

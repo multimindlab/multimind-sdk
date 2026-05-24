@@ -239,7 +239,7 @@ class PromptGenerator:
         # Format context
         context_text = "\n\n".join(
             [
-                f"Document {i+1} (Relevance: {score:.2f}):\n{chunk['text']}"
+                f"Document {i + 1} (Relevance: {score:.2f}):\n{chunk['text']}"
                 for i, (chunk, score) in enumerate(zip(context.chunks, context.relevance_scores))
             ]
         )
@@ -249,7 +249,7 @@ class PromptGenerator:
         if few_shot_examples and template == PromptTemplate.FEW_SHOT:
             few_shot_text = "\n\n".join(
                 [
-                    f"Example {i+1}:\nQuestion: {ex['question']}\nAnswer: {ex['answer']}"
+                    f"Example {i + 1}:\nQuestion: {ex['question']}\nAnswer: {ex['answer']}"
                     for i, ex in enumerate(few_shot_examples)
                 ]
             )

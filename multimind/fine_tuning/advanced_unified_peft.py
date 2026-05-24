@@ -149,9 +149,9 @@ class UniPELTPlusTuner(UniPELTTuner):
 
         # Update token dimension for prompt tuning
         if UniPELTPlusMethod.PROMPT in self.methods:
-            self.method_configs[UniPELTPlusMethod.PROMPT][
-                "token_dim"
-            ] = self.model.config.hidden_size
+            self.method_configs[UniPELTPlusMethod.PROMPT]["token_dim"] = (
+                self.model.config.hidden_size
+            )
 
         # Configure each PEFT method
         for method in self.methods:
@@ -344,7 +344,7 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(
-            f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)"
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
         )
 
     def get_component_weights(self) -> Dict[str, Dict[str, torch.Tensor]]:

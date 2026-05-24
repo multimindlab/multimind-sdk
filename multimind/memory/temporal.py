@@ -77,18 +77,18 @@ class TemporalMemory(BaseMemory):
         # Initialize temporal memory storage
         self.events: List[Dict[str, Any]] = []
         self.event_embeddings: List[List[float]] = []
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # event_id -> {relationship_type -> target_ids}
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # event_id -> {relationship_type -> target_ids}
         self.patterns: Dict[str, List[str]] = {}  # pattern_id -> event_ids
         self.learning_history: Dict[str, List[Dict[str, Any]]] = {}  # event_id -> learning records
         self.event_history: List[Dict[str, Any]] = []  # Recent event updates
-        self.evolution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # event_id -> evolution records
-        self.validation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # event_id -> validation records
+        self.evolution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # event_id -> evolution records
+        self.validation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # event_id -> validation records
         self.last_analysis = datetime.now()
         self.last_relationship_update = datetime.now()
         self.last_pattern_update = datetime.now()
@@ -191,7 +191,7 @@ class TemporalMemory(BaseMemory):
             prompt = f"""
             Analyze the temporal information in this message:
 
-            {event['content']}
+            {event["content"]}
 
             Return a JSON object with:
             1. start_time: string (ISO format) or null
@@ -274,21 +274,21 @@ class TemporalMemory(BaseMemory):
             prompt = f"""
             Determine the temporal relationship type between these two events:
 
-            Event 1: {event1['content']}
-            Start Time: {event1['metadata']['start_time']}
-            End Time: {event1['metadata']['end_time']}
-            Duration: {event1['metadata']['duration']}
-            Type: {event1['metadata']['temporal_type']}
+            Event 1: {event1["content"]}
+            Start Time: {event1["metadata"]["start_time"]}
+            End Time: {event1["metadata"]["end_time"]}
+            Duration: {event1["metadata"]["duration"]}
+            Type: {event1["metadata"]["temporal_type"]}
 
-            Event 2: {event2['content']}
-            Start Time: {event2['metadata']['start_time']}
-            End Time: {event2['metadata']['end_time']}
-            Duration: {event2['metadata']['duration']}
-            Type: {event2['metadata']['temporal_type']}
+            Event 2: {event2["content"]}
+            Start Time: {event2["metadata"]["start_time"]}
+            End Time: {event2["metadata"]["end_time"]}
+            Duration: {event2["metadata"]["duration"]}
+            Type: {event2["metadata"]["temporal_type"]}
 
             Similarity: {similarity}
 
-            Available relationship types: {', '.join(self.relationship_types)}
+            Available relationship types: {", ".join(self.relationship_types)}
 
             Return the most appropriate relationship type or 'none' if no clear relationship exists.
             """
@@ -419,12 +419,12 @@ class TemporalMemory(BaseMemory):
             prompt = f"""
             Validate the temporal information of this event:
 
-            {event['content']}
+            {event["content"]}
 
-            Start Time: {event['metadata']['start_time']}
-            End Time: {event['metadata']['end_time']}
-            Duration: {event['metadata']['duration']}
-            Type: {event['metadata']['temporal_type']}
+            Start Time: {event["metadata"]["start_time"]}
+            End Time: {event["metadata"]["end_time"]}
+            Duration: {event["metadata"]["duration"]}
+            Type: {event["metadata"]["temporal_type"]}
 
             Return a JSON object with:
             1. validation_score: float (0-1)

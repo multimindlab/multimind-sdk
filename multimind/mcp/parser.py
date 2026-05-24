@@ -32,8 +32,7 @@ class MCPParser:
         # Version check
         if spec["version"] != self.schema["version"]:
             raise ValueError(
-                f"Unsupported MCP version: {spec['version']}. "
-                f"Expected: {self.schema['version']}"
+                f"Unsupported MCP version: {spec['version']}. Expected: {self.schema['version']}"
             )
 
         # Validate models
@@ -92,7 +91,7 @@ class MCPParser:
             # Check if connected steps exis
             if conn["from"] not in step_ids or conn["to"] not in step_ids:
                 raise ValueError(
-                    f"Invalid connection: step {conn['from']} or {conn['to']} " "does not exist"
+                    f"Invalid connection: step {conn['from']} or {conn['to']} does not exist"
                 )
 
     def parse_file(self, file_path: str) -> Dict[str, Any]:

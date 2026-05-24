@@ -147,6 +147,6 @@ class ZepVectorStore(VectorStoreBackend):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise

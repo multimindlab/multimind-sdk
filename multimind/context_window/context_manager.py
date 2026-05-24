@@ -563,12 +563,12 @@ class ContextManager:
     def _format_context(self) -> str:
         """Format context for LLM input."""
         return "\n\n".join(
-            f"Chunk {i+1}:\n{chunk.content}" for i, chunk in enumerate(self.window.chunks)
+            f"Chunk {i + 1}:\n{chunk.content}" for i, chunk in enumerate(self.window.chunks)
         )
 
     def _format_chunks(self, chunks: List[ContextChunk]) -> str:
         """Format chunks for LLM input."""
-        return "\n\n".join(f"Chunk {i+1}:\n{chunk.content}" for i, chunk in enumerate(chunks))
+        return "\n\n".join(f"Chunk {i + 1}:\n{chunk.content}" for i, chunk in enumerate(chunks))
 
     async def search_context(
         self, query: str, k: int = 5, filter_criteria: Optional[Dict[str, Any]] = None, **kwargs

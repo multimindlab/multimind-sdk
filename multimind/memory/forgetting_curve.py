@@ -152,7 +152,7 @@ class ForgettingCurveMemory(BaseMemory):
             prompt = f"""
             Analyze the importance of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. importance_score: float (0-1)
@@ -194,7 +194,7 @@ class ForgettingCurveMemory(BaseMemory):
             prompt = f"""
             Analyze potential interference with this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. interference_score: float (0-1)

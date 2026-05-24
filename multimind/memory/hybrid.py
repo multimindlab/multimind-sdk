@@ -240,7 +240,7 @@ class HybridMemory(BaseMemory):
             prompt = f"""
             Route message to appropriate memory types:
 
-            Message: {message['content']}
+            Message: {message["content"]}
 
             Available memory types:
             {json.dumps(self.memory_configs, indent=2)}
@@ -277,7 +277,7 @@ class HybridMemory(BaseMemory):
             prompt = f"""
             Analyze routing performance:
 
-            Message: {message['content']}
+            Message: {message["content"]}
             Routed to: {routed_memories}
 
             Memory configurations:

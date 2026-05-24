@@ -262,7 +262,8 @@ class MultiTaskUniPELTPlusTuner(AdaptiveUniPELTPlusTuner):
         initial_methods = set()
         for task_name in [task.task_name for task in tasks]:
             task_methods = self.task_selector.select_methods_for_tasks(
-                model_size=1e9, active_tasks=[task_name]  # Estimate based on model name
+                model_size=1e9,
+                active_tasks=[task_name],  # Estimate based on model name
             )[task_name]
             initial_methods.update(task_methods)
 

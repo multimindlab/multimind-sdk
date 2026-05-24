@@ -173,7 +173,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze the novelty of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. novelty_score: float (0-1)
@@ -199,7 +199,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze the salience of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. salience_score: float (0-1)
@@ -225,7 +225,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Generate a semantic vector for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. semantic_vector: list of floats
@@ -250,7 +250,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze patterns in this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. patterns: list of strings
@@ -290,7 +290,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze temporal novelty of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. temporal_novelty: float (0-1)
@@ -324,7 +324,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze concept novelty of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. concepts: dict of string -> float (concept -> novelty score)
@@ -354,7 +354,7 @@ class NoveltyMemory(BaseMemory):
             prompt = f"""
             Analyze relation novelty of this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. relations: dict of string -> float (relation -> novelty score)

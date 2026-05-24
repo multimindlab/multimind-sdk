@@ -369,7 +369,7 @@ class PromptAssembly:
 
         # Format documents
         docs_text = "\n\n".join(
-            f"Document {i+1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
+            f"Document {i + 1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
         )
 
         prompt = f"""
@@ -409,7 +409,7 @@ class PromptAssembly:
 
         # Format documents
         docs_text = "\n\n".join(
-            f"Document {i+1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
+            f"Document {i + 1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
         )
 
         prompt = f"""
@@ -446,7 +446,7 @@ class PromptAssembly:
 
         # Format documents
         docs_text = "\n\n".join(
-            f"Document {i+1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
+            f"Document {i + 1}:\n{doc.get('content', '')}" for i, doc in enumerate(documents)
         )
 
         prompt = f"""

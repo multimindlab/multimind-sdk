@@ -47,9 +47,9 @@ class SemanticMemory(BaseMemory):
         self.relationships: Dict[str, Set[str]] = {}  # concept_id -> set of related concept_ids
         self.concept_weights: Dict[str, float] = {}  # concept_id -> weight
         self.concept_metadata: Dict[str, Dict[str, Any]] = {}  # concept_id -> metadata
-        self.inference_cache: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # concept_id -> inferred relationships
+        self.inference_cache: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # concept_id -> inferred relationships
         self.last_validation = datetime.now()
 
     async def add_message(self, message: Dict[str, str]) -> None:
@@ -191,13 +191,13 @@ class SemanticMemory(BaseMemory):
             prompt = f"""
             Determine the relationship type between these concepts:
 
-            Concept 1: {concept1['content']}
-            Category: {concept1['metadata']['category']}
-            Properties: {concept1['metadata']['properties']}
+            Concept 1: {concept1["content"]}
+            Category: {concept1["metadata"]["category"]}
+            Properties: {concept1["metadata"]["properties"]}
 
-            Concept 2: {concept2['content']}
-            Category: {concept2['metadata']['category']}
-            Properties: {concept2['metadata']['properties']}
+            Concept 2: {concept2["content"]}
+            Category: {concept2["metadata"]["category"]}
+            Properties: {concept2["metadata"]["properties"]}
 
             Choose from: is_a, part_of, has_property, related_to, contradicts, supports
             """
@@ -234,9 +234,9 @@ class SemanticMemory(BaseMemory):
             prompt = f"""
             Based on this concept and its relationships, infer new relationships:
 
-            Concept: {concept['content']}
-            Category: {concept['metadata']['category']}
-            Properties: {concept['metadata']['properties']}
+            Concept: {concept["content"]}
+            Category: {concept["metadata"]["category"]}
+            Properties: {concept["metadata"]["properties"]}
             Current Relationships: {relationships}
 
             Return inferred relationships in format:
@@ -281,10 +281,10 @@ class SemanticMemory(BaseMemory):
                 prompt = f"""
                 Validate this concept and its relationships:
 
-                Concept: {concept['content']}
-                Category: {concept['metadata']['category']}
-                Properties: {concept['metadata']['properties']}
-                Relationships: {self.relationships.get(concept['id'], set())}
+                Concept: {concept["content"]}
+                Category: {concept["metadata"]["category"]}
+                Properties: {concept["metadata"]["properties"]}
+                Relationships: {self.relationships.get(concept["id"], set())}
 
                 Return validation results in format:
                 Valid: <true/false>

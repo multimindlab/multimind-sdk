@@ -129,7 +129,7 @@ class StarRocksBackend(VectorStoreBackend):
         def _delete():
             with self._conn.cursor() as cur:
                 cur.execute(
-                    f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s']*len(ids))})", ids
+                    f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s'] * len(ids))})", ids
                 )
 
         await loop.run_in_executor(None, _delete)
@@ -173,6 +173,6 @@ class StarRocksBackend(VectorStoreBackend):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise

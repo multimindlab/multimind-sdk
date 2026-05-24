@@ -96,7 +96,7 @@ class ActiveLearningMemory(BaseMemory):
             prompt = f"""
             Analyze potential feedback for this item:
 
-            {item['content']}
+            {item["content"]}
 
             Return a JSON object with:
             1. feedback_types: list of strings

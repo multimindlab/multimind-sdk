@@ -68,9 +68,9 @@ class ContextualMemory(BaseMemory):
         self.context_weights: Dict[str, float] = {}  # context_id -> weight
         self.context_metadata: Dict[str, Dict[str, Any]] = {}  # context_id -> metadata
         self.context_summaries: Dict[str, str] = {}  # context_id -> summary
-        self.context_evolution: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # context_id -> evolution history
+        self.context_evolution: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # context_id -> evolution history
         self.last_summarization = datetime.now()
 
     async def add_message(self, message: Dict[str, str]) -> None:
@@ -142,7 +142,7 @@ class ContextualMemory(BaseMemory):
             4. Important keywords
             5. Context confidence (0-1)
 
-            Context: {context['messages']}
+            Context: {context["messages"]}
 
             Return in format:
             Topic: <topic>
@@ -187,7 +187,7 @@ class ContextualMemory(BaseMemory):
                     prompt = f"""
                     Summarize the following conversation context while preserving key information:
 
-                    Context: {context['messages']}
+                    Context: {context["messages"]}
 
                     Return a concise summary that captures the main points and relationships.
                     """
@@ -219,7 +219,7 @@ class ContextualMemory(BaseMemory):
             2. Key changes or developments
             3. Confidence in evolution analysis (0-1)
 
-            Context: {context['messages']}
+            Context: {context["messages"]}
             Previous evolution: {self.context_evolution[context_id]}
 
             Return in format:
@@ -325,10 +325,10 @@ class ContextualMemory(BaseMemory):
             try:
                 prompt = f"""
                 Determine the relationship type between these contexts:
-                Context 1: {self.contexts[0]['messages']}
-                Context 2: {self.contexts[1]['messages']}
+                Context 1: {self.contexts[0]["messages"]}
+                Context 2: {self.contexts[1]["messages"]}
 
-                Choose from: {', '.join(self.relationship_types)}
+                Choose from: {", ".join(self.relationship_types)}
                 """
                 response = await self.llm.generate(prompt)
                 relationship_type = response.strip()

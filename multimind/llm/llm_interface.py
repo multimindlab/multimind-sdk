@@ -442,7 +442,7 @@ class LLMInterface:
         """Combine ensemble results using LLM."""
         # Format results
         results_text = "\n\n".join(
-            f"Model {i+1} ({r.model}):\n{r.text}" for i, r in enumerate(results)
+            f"Model {i + 1} ({r.model}):\n{r.text}" for i, r in enumerate(results)
         )
 
         # Generate combination prompt

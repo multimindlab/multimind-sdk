@@ -77,20 +77,20 @@ class SpatialMemory(BaseMemory):
         # Initialize spatial memory storage
         self.locations: List[Dict[str, Any]] = []
         self.location_embeddings: List[List[float]] = []
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # location_id -> {relationship_type -> target_ids}
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # location_id -> {relationship_type -> target_ids}
         self.clusters: Dict[str, List[str]] = {}  # cluster_id -> location_ids
-        self.learning_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # location_id -> learning records
+        self.learning_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # location_id -> learning records
         self.location_history: List[Dict[str, Any]] = []  # Recent location updates
-        self.evolution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # location_id -> evolution records
-        self.validation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # location_id -> validation records
+        self.evolution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # location_id -> evolution records
+        self.validation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # location_id -> validation records
         self.last_analysis = datetime.now()
         self.last_relationship_update = datetime.now()
         self.last_cluster_update = datetime.now()
@@ -191,7 +191,7 @@ class SpatialMemory(BaseMemory):
             prompt = f"""
             Analyze the spatial information in this message:
 
-            {location['content']}
+            {location["content"]}
 
             Return a JSON object with:
             1. coordinates: dict with x, y, z (if available)
@@ -283,19 +283,19 @@ class SpatialMemory(BaseMemory):
             prompt = f"""
             Determine the spatial relationship type between these two locations:
 
-            Location 1: {location1['content']}
-            Coordinates: {location1['metadata']['coordinates']}
-            Dimensions: {location1['metadata']['dimensions']}
-            Properties: {location1['metadata']['properties']}
+            Location 1: {location1["content"]}
+            Coordinates: {location1["metadata"]["coordinates"]}
+            Dimensions: {location1["metadata"]["dimensions"]}
+            Properties: {location1["metadata"]["properties"]}
 
-            Location 2: {location2['content']}
-            Coordinates: {location2['metadata']['coordinates']}
-            Dimensions: {location2['metadata']['dimensions']}
-            Properties: {location2['metadata']['properties']}
+            Location 2: {location2["content"]}
+            Coordinates: {location2["metadata"]["coordinates"]}
+            Dimensions: {location2["metadata"]["dimensions"]}
+            Properties: {location2["metadata"]["properties"]}
 
             Similarity: {similarity}
 
-            Available relationship types: {', '.join(self.relationship_types)}
+            Available relationship types: {", ".join(self.relationship_types)}
 
             Return the most appropriate relationship type or 'none' if no clear relationship exists.
             """
@@ -434,11 +434,11 @@ class SpatialMemory(BaseMemory):
             prompt = f"""
             Validate the spatial information of this location:
 
-            {location['content']}
+            {location["content"]}
 
-            Coordinates: {location['metadata']['coordinates']}
-            Dimensions: {location['metadata']['dimensions']}
-            Properties: {location['metadata']['properties']}
+            Coordinates: {location["metadata"]["coordinates"]}
+            Dimensions: {location["metadata"]["dimensions"]}
+            Properties: {location["metadata"]["properties"]}
 
             Return a JSON object with:
             1. validation_score: float (0-1)

@@ -80,17 +80,17 @@ class EmotionalMemory(BaseMemory):
         self.states: List[Dict[str, Any]] = []
         self.state_embeddings: List[List[float]] = []
         self.emotion_patterns: Dict[str, Dict[str, Any]] = {}  # pattern_id -> pattern data
-        self.adaptation_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # state_id -> adaptation records
+        self.adaptation_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # state_id -> adaptation records
         self.learning_history: Dict[str, List[Dict[str, Any]]] = {}  # state_id -> learning records
         self.emotion_history: List[Dict[str, Any]] = []  # Recent emotion states
-        self.evolution_history: Dict[str, List[Dict[str, Any]]] = (
-            {}
-        )  # state_id -> evolution records
-        self.relationships: Dict[str, Dict[str, List[str]]] = (
-            {}
-        )  # state_id -> {relationship_type -> target_ids}
+        self.evolution_history: Dict[
+            str, List[Dict[str, Any]]
+        ] = {}  # state_id -> evolution records
+        self.relationships: Dict[
+            str, Dict[str, List[str]]
+        ] = {}  # state_id -> {relationship_type -> target_ids}
         self.clusters: Dict[str, List[str]] = {}  # cluster_id -> state_ids
         self.last_analysis = datetime.now()
         self.last_pattern_update = datetime.now()
@@ -293,17 +293,17 @@ class EmotionalMemory(BaseMemory):
             prompt = f"""
             Determine the relationship type between these two emotional states:
 
-            State 1: {state1['content']}
-            Emotions: {state1['metadata']['emotions']}
-            Intensity: {state1['metadata']['intensity']}
+            State 1: {state1["content"]}
+            Emotions: {state1["metadata"]["emotions"]}
+            Intensity: {state1["metadata"]["intensity"]}
 
-            State 2: {state2['content']}
-            Emotions: {state2['metadata']['emotions']}
-            Intensity: {state2['metadata']['intensity']}
+            State 2: {state2["content"]}
+            Emotions: {state2["metadata"]["emotions"]}
+            Intensity: {state2["metadata"]["intensity"]}
 
             Similarity: {similarity}
 
-            Available relationship types: {', '.join(self.relationship_types)}
+            Available relationship types: {", ".join(self.relationship_types)}
 
             Return the most appropriate relationship type or 'none' if no clear relationship exists.
             """
