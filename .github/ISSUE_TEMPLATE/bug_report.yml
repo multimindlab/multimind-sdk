@@ -1,0 +1,37 @@
+name: Bug Report
+description: Report a bug in MultiMind SDK
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: What happened? What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal code to reproduce the issue
+      render: python
+  - type: input
+    id: version
+    attributes:
+      label: MultiMind SDK Version
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: python-version
+    attributes:
+      label: Python Version
+      placeholder: "3.11"
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation Method
+      options:
+        - pip install multimind-sdk
+        - pip install -e . (development)
+        - Docker
