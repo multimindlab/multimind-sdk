@@ -1,30 +1,15 @@
----
-name: Pull Request
-about: Use this template to submit a pull request
----
+## What does this PR do?
 
-## Description
-Please include a summary of the change and which issue is fixed. Also include relevant motivation and context.
+<!-- Brief description -->
 
-Fixes # (issue)
+## Related Issues
 
-## Type of Change
-- [ ] Bug fix
-- [ ] New feature
-- [ ] Documentation update
-- [ ] Refactoring
-- [ ] Other (please describe):
+<!-- Closes #XX -->
 
 ## Checklist
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] I have checked my code and corrected any misspellings
 
-## Screenshots (if applicable)
-
-## Additional Context
-Add any other context or information about the pull request here. 
+- [ ] Tests pass (`make test`)
+- [ ] Linter passes (`make lint`)
+- [ ] Documentation updated (if applicable)
+- [ ] CHANGELOG.md updated
+- [ ] No breaking changes (or clearly documented)

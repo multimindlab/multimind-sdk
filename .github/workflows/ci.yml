@@ -35,6 +35,40 @@ jobs:
         run: ruff format --check multimind/
 
   # ---------------------------------------------------------------------------
+  # Security scanning.
+  #
+  #   bandit    — static analysis of our own code. HIGH-severity findings
+  #               fail the job (0 today). Medium/low are surfaced in the log
+  #               but don't block (the codebase has ~190 medium findings,
+  #               mostly B615 HuggingFace revision-pinning noise — tracked
+  #               for a future cleanup, see SECURITY.md).
+  #   pip-audit — dependency CVE scan. Advisory (continue-on-error) because
+  #               several CVEs live in transitive deps without a fixed
+  #               release yet; we still want them visible on every PR.
+  # ---------------------------------------------------------------------------
+  security:
+    name: Security (bandit + pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install security tools
+        run: pip install bandit pip-audit
+      - name: bandit (high-severity gate)
+        run: bandit -r multimind/ -lll
+      - name: bandit (full report — informational)
+        if: always()
+        run: bandit -r multimind/ -ll || true
+      - name: pip-audit (dependency CVEs — advisory)
+        if: always()
+        continue-on-error: true
+        run: |
+          pip install -e ".[dev]"
+          pip-audit --progress-spinner off
+
+  # ---------------------------------------------------------------------------
   # Core tests across the supported Python matrix.
   #
   # Installs only the [dev] extra so we exercise the lazy-imports surface

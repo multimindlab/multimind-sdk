@@ -2,7 +2,7 @@
 # Run `make help` to see the full list with descriptions.
 
 .PHONY: help install install-all test test-all test-fast lint format typecheck \
-        clean build publish-test publish docs
+        security clean build publish-test publish docs
 
 help:  ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -36,6 +36,11 @@ format:  ## Auto-format and auto-fix with ruff
 typecheck:  ## Run mypy — advisory only (typing migration still in progress)
 	-mypy multimind/ --ignore-missing-imports
 	@echo "(typecheck is advisory — see [tool.mypy] in pyproject.toml)"
+
+security:  ## Run security scanners (bandit high-severity gate + pip-audit)
+	bandit -r multimind/ -lll
+	-bandit -r multimind/ -ll
+	-pip-audit --progress-spinner off
 
 clean:  ## Remove build artifacts and tool caches
 	rm -rf build/ dist/ *.egg-info .pytest_cache .mypy_cache .ruff_cache htmlcov/ \
