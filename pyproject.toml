@@ -117,7 +117,7 @@ finetune = [
 # because bitsandbytes does not install on macOS or ARM without GPU.
 finetune-gpu = [
     "multimind-sdk[finetune]",
-    "bitsandbytes>=0.42.0; sys_platform == 'linux'",
+    "bitsandbytes>=0.49.2; sys_platform == 'linux'",
 ]
 
 # Compliance features
