@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Auto assign users
-        uses: kentaro-m/auto-assign-action@v1.2.4
+        uses: kentaro-m/auto-assign-action@v2.0.2
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/auto_assign.yml # Uncomment and create this file if you want custom config
