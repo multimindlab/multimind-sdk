@@ -148,7 +148,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
-    "pytest-mock>=3.10.0",
+    "pytest-mock>=3.15.1",
     # Lint + format (single tool — ruff handles both `check` and `format`)
     "ruff>=0.4.0",
     "mypy>=1.5.0",
