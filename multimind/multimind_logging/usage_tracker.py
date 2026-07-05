@@ -6,8 +6,7 @@ import json
 import logging
 import sqlite3
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
-from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -29,18 +28,21 @@ class UsageTracker:
         cursor = self.conn.cursor()
 
         # Create costs table if it does not exist
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS costs (
                 model TEXT PRIMARY KEY,
                 input_cost_per_token REAL NOT NULL,
                 output_cost_per_token REAL NOT NULL,
                 last_updated TEXT NOT NULL
             )
-        """)
+        """
+        )
         logger.info("Costs table creation attempted.")
 
         # Create usage table if it does not exist
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 timestamp TEXT NOT NULL,
@@ -51,7 +53,8 @@ class UsageTracker:
                 cost REAL,
                 metadata TEXT
             )
-        """)
+        """
+        )
         logger.info("Usage table creation attempted.")
 
         self.conn.commit()
@@ -62,7 +65,7 @@ class UsageTracker:
         operation: str,
         input_tokens: Optional[int] = None,
         output_tokens: Optional[int] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Track model usage."""
         # Get costs for model
@@ -78,41 +81,39 @@ class UsageTracker:
         # Store usage
         cursor = self.conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO usage (
                 timestamp, model, operation, input_tokens,
                 output_tokens, cost, metadata
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            datetime.now().isoformat(),
-            model,
-            operation,
-            input_tokens,
-            output_tokens,
-            cost,
-            json.dumps(metadata) if metadata else None
-        ))
+        """,
+            (
+                datetime.now().isoformat(),
+                model,
+                operation,
+                input_tokens,
+                output_tokens,
+                cost,
+                json.dumps(metadata) if metadata else None,
+            ),
+        )
 
         self.conn.commit()
 
     def set_model_costs(
-        self,
-        model: str,
-        input_cost_per_token: float,
-        output_cost_per_token: float
+        self, model: str, input_cost_per_token: float, output_cost_per_token: float
     ) -> None:
         """Set costs for a model."""
         cursor = self.conn.cursor()
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT OR REPLACE INTO costs (
                 model, input_cost_per_token, output_cost_per_token, last_updated
             ) VALUES (?, ?, ?, ?)
-        """, (
-            model,
-            input_cost_per_token,
-            output_cost_per_token,
-            datetime.now().isoformat()
-        ))
+        """,
+            (model, input_cost_per_token, output_cost_per_token, datetime.now().isoformat()),
+        )
         self.conn.commit()
 
     def _get_model_costs(self, model: str) -> Tuple[float, float]:
@@ -121,7 +122,7 @@ class UsageTracker:
 
         cursor.execute(
             "SELECT input_cost_per_token, output_cost_per_token FROM costs WHERE model = ?",
-            (model,)
+            (model,),
         )
         result = cursor.fetchone()
 
@@ -135,7 +136,7 @@ class UsageTracker:
         self,
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Get usage summary for a time period."""
         cursor = self.conn.cursor()
@@ -164,25 +165,19 @@ class UsageTracker:
         results = cursor.fetchall()
 
         # Format results
-        summary = {
-            "total_cost": 0,
-            "models": {}
-        }
+        summary = {"total_cost": 0, "models": {}}
 
         for row in results:
             model, operation, count, input_tokens, output_tokens, cost = row
 
             if model not in summary["models"]:
-                summary["models"][model] = {
-                    "total_cost": 0,
-                    "operations": {}
-                }
+                summary["models"][model] = {"total_cost": 0, "operations": {}}
 
             summary["models"][model]["operations"][operation] = {
                 "count": count,
                 "input_tokens": input_tokens,
                 "output_tokens": output_tokens,
-                "cost": cost
+                "cost": cost,
             }
 
             summary["models"][model]["total_cost"] += cost
@@ -195,7 +190,7 @@ class UsageTracker:
         file_path: str,
         format: str = "json",
         start_date: Optional[str] = None,
-        end_date: Optional[str] = None
+        end_date: Optional[str] = None,
     ) -> None:
         """Export usage data to file."""
         cursor = self.conn.cursor()
@@ -227,7 +222,7 @@ class UsageTracker:
 
         # Export to file
         if format == "json":
-            with open(file_path, 'w') as f:
+            with open(file_path, "w") as f:
                 json.dump(data, f, indent=2)
         else:
             raise ValueError(f"Unsupported export format: {format}")

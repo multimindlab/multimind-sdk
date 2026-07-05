@@ -2,17 +2,20 @@
 Accessibility and anti-discrimination compliance implementation.
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import logging
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
-from .governance import GovernanceConfig, Regulation
+
+from .governance import GovernanceConfig
 
 logger = logging.getLogger("AccessibilityCompliance")
 
+
 class AccessibilityCompliance(BaseModel):
     """Accessibility and anti-discrimination compliance manager."""
-    
+
     config: GovernanceConfig
     assessment_records: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
 
@@ -31,25 +34,24 @@ class AccessibilityCompliance(BaseModel):
 
     @staticmethod
     def _bool_control_status(
-        evidence: Dict[str, Any],
-        controls: List[str],
-        category: str
+        evidence: Dict[str, Any], controls: List[str], category: str
     ) -> Dict[str, Any]:
         """Evaluate controls backed by boolean evidence flags."""
-        missing_controls = [control for control in controls if not AccessibilityCompliance._safe_bool(evidence.get(control))]
+        missing_controls = [
+            control
+            for control in controls
+            if not AccessibilityCompliance._safe_bool(evidence.get(control))
+        ]
         status = "compliant" if not missing_controls else "non_compliant"
         return {
             "category": category,
             "controls": controls,
             "status": status,
-            "missing_controls": missing_controls
+            "missing_controls": missing_controls,
         }
-    
+
     async def validate_wcag_compliance(
-        self,
-        assessment_id: str,
-        system_id: str,
-        version: str = "2.1"
+        self, assessment_id: str, system_id: str, version: str = "2.1"
     ) -> Dict[str, Any]:
         """Validate compliance with WCAG 2.1 guidelines."""
         evidence = self._get_system_evidence(system_id)
@@ -75,8 +77,8 @@ class AccessibilityCompliance(BaseModel):
                                 "alt_text",
                                 "captions",
                                 "audio_descriptions",
-                                "sign_language"
-                            ]
+                                "sign_language",
+                            ],
                         },
                         {
                             "name": "time_based_media",
@@ -85,8 +87,8 @@ class AccessibilityCompliance(BaseModel):
                                 "captions",
                                 "audio_descriptions",
                                 "sign_language",
-                                "media_alternatives"
-                            ]
+                                "media_alternatives",
+                            ],
                         },
                         {
                             "name": "adaptable",
@@ -94,8 +96,8 @@ class AccessibilityCompliance(BaseModel):
                             "controls": [
                                 "content_structure",
                                 "presentation_control",
-                                "sensory_characteristics"
-                            ]
+                                "sensory_characteristics",
+                            ],
                         },
                         {
                             "name": "distinguishable",
@@ -104,10 +106,10 @@ class AccessibilityCompliance(BaseModel):
                                 "color_contrast",
                                 "audio_control",
                                 "text_resizing",
-                                "images_of_text"
-                            ]
-                        }
-                    ]
+                                "images_of_text",
+                            ],
+                        },
+                    ],
                 },
                 {
                     "principle": "operable",
@@ -119,8 +121,8 @@ class AccessibilityCompliance(BaseModel):
                                 "keyboard_navigation",
                                 "no_keyboard_trap",
                                 "keyboard_shortcuts",
-                                "focus_visible"
-                            ]
+                                "focus_visible",
+                            ],
                         },
                         {
                             "name": "enough_time",
@@ -129,16 +131,13 @@ class AccessibilityCompliance(BaseModel):
                                 "timing_adjustable",
                                 "pause_stop_hide",
                                 "no_timing",
-                                "interruptions"
-                            ]
+                                "interruptions",
+                            ],
                         },
                         {
                             "name": "seizures",
                             "level": "A",
-                            "controls": [
-                                "three_flashes",
-                                "three_flashes_below_threshold"
-                            ]
+                            "controls": ["three_flashes", "three_flashes_below_threshold"],
                         },
                         {
                             "name": "navigable",
@@ -147,10 +146,10 @@ class AccessibilityCompliance(BaseModel):
                                 "bypass_blocks",
                                 "page_titled",
                                 "focus_order",
-                                "link_purpose"
-                            ]
-                        }
-                    ]
+                                "link_purpose",
+                            ],
+                        },
+                    ],
                 },
                 {
                     "principle": "understandable",
@@ -162,8 +161,8 @@ class AccessibilityCompliance(BaseModel):
                                 "language_of_page",
                                 "language_of_parts",
                                 "unusual_words",
-                                "abbreviations"
-                            ]
+                                "abbreviations",
+                            ],
                         },
                         {
                             "name": "predictable",
@@ -172,8 +171,8 @@ class AccessibilityCompliance(BaseModel):
                                 "on_focus",
                                 "on_input",
                                 "consistent_navigation",
-                                "consistent_identification"
-                            ]
+                                "consistent_identification",
+                            ],
                         },
                         {
                             "name": "input_assistance",
@@ -182,10 +181,10 @@ class AccessibilityCompliance(BaseModel):
                                 "error_identification",
                                 "labels_instructions",
                                 "error_suggestion",
-                                "error_prevention"
-                            ]
-                        }
-                    ]
+                                "error_prevention",
+                            ],
+                        },
+                    ],
                 },
                 {
                     "principle": "robust",
@@ -193,23 +192,20 @@ class AccessibilityCompliance(BaseModel):
                         {
                             "name": "compatible",
                             "level": "A",
-                            "controls": [
-                                "parsing",
-                                "name_role_value",
-                                "status_messages"
-                            ]
+                            "controls": ["parsing", "name_role_value", "status_messages"],
                         }
-                    ]
-                }
+                    ],
+                },
             ],
-            "overall_status": "compliant"
+            "overall_status": "compliant",
         }
 
         missing_controls = []
         for principle in assessment["requirements"]:
             for guideline in principle["guidelines"]:
                 guideline_missing = [
-                    control for control in guideline["controls"]
+                    control
+                    for control in guideline["controls"]
                     if not self._safe_bool(evidence.get(control))
                 ]
                 guideline["missing_controls"] = guideline_missing
@@ -218,19 +214,23 @@ class AccessibilityCompliance(BaseModel):
 
         assessment["overall_status"] = "compliant" if not missing_controls else "non_compliant"
         assessment["summary"] = {
-            "checked_controls": len(set(c for p in assessment["requirements"] for g in p["guidelines"] for c in g["controls"])),
+            "checked_controls": len(
+                set(
+                    c
+                    for p in assessment["requirements"]
+                    for g in p["guidelines"]
+                    for c in g["controls"]
+                )
+            ),
             "missing_controls": sorted(set(missing_controls)),
             "missing_count": len(set(missing_controls)),
         }
 
         self.assessment_records[assessment_id] = assessment
         return assessment
-    
+
     async def validate_ada_compliance(
-        self,
-        assessment_id: str,
-        system_id: str,
-        title: str = "III"
+        self, assessment_id: str, system_id: str, title: str = "III"
     ) -> Dict[str, Any]:
         """Validate compliance with Americans with Disabilities Act."""
         evidence = self._get_system_evidence(system_id)
@@ -276,7 +276,11 @@ class AccessibilityCompliance(BaseModel):
                 "digital_accessibility",
             ),
         ]
-        overall_status = "compliant" if all(r["status"] == "compliant" for r in requirements) else "non_compliant"
+        overall_status = (
+            "compliant"
+            if all(r["status"] == "compliant" for r in requirements)
+            else "non_compliant"
+        )
         assessment = {
             "assessment_id": assessment_id,
             "framework": "ADA",
@@ -284,17 +288,14 @@ class AccessibilityCompliance(BaseModel):
             "assessed_at": datetime.now(),
             "system_id": system_id,
             "requirements": requirements,
-            "overall_status": overall_status
+            "overall_status": overall_status,
         }
-        
+
         self.assessment_records[assessment_id] = assessment
         return assessment
-    
+
     async def validate_equality_act(
-        self,
-        assessment_id: str,
-        system_id: str,
-        jurisdiction: str
+        self, assessment_id: str, system_id: str, jurisdiction: str
     ) -> Dict[str, Any]:
         """Validate compliance with Equality Act requirements."""
         evidence = self._get_system_evidence(system_id)
@@ -330,7 +331,11 @@ class AccessibilityCompliance(BaseModel):
                 "positive_action",
             ),
         ]
-        overall_status = "compliant" if all(r["status"] == "compliant" for r in requirements) else "non_compliant"
+        overall_status = (
+            "compliant"
+            if all(r["status"] == "compliant" for r in requirements)
+            else "non_compliant"
+        )
         assessment = {
             "assessment_id": assessment_id,
             "framework": "EQUALITY_ACT",
@@ -338,26 +343,24 @@ class AccessibilityCompliance(BaseModel):
             "assessed_at": datetime.now(),
             "system_id": system_id,
             "requirements": requirements,
-            "overall_status": overall_status
+            "overall_status": overall_status,
         }
-        
+
         self.assessment_records[assessment_id] = assessment
         return assessment
-    
+
     async def get_assessment_history(
-        self,
-        assessment_id: Optional[str] = None,
-        framework: Optional[str] = None
+        self, assessment_id: Optional[str] = None, framework: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         """Get assessment history."""
         if assessment_id:
             return [self.assessment_records.get(assessment_id, {})]
-        
+
         if framework:
             return [
                 record
                 for record in self.assessment_records.values()
                 if record.get("framework") == framework
             ]
-        
-        return list(self.assessment_records.values()) 
+
+        return list(self.assessment_records.values())

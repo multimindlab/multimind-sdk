@@ -2,19 +2,21 @@
 Enhanced Multi-model wrapper with intelligent model selection and routing.
 """
 
-from typing import List, Dict, Any, Optional, Union, AsyncGenerator, Tuple
-import asyncio
 import logging
 import time
+from collections.abc import AsyncGenerator
 from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from .base import BaseLLM
 from .factory import ModelFactory
 
 logger = logging.getLogger(__name__)
 
+
 class ModelMetrics:
     """Class to track model performance metrics."""
-    
+
     def __init__(self):
         self.response_times: List[float] = []
         self.error_rates: List[float] = []
@@ -38,17 +40,22 @@ class ModelMetrics:
         """Calculate performance score based on metrics."""
         if not self.response_times:
             return 0.0
-        
+
         avg_response_time = sum(self.response_times) / len(self.response_times)
         avg_error_rate = sum(self.error_rates) / len(self.error_rates)
-        success_rate = self.success_count / (self.success_count + self.error_count) if (self.success_count + self.error_count) > 0 else 0
-        
+        success_rate = (
+            self.success_count / (self.success_count + self.error_count)
+            if (self.success_count + self.error_count) > 0
+            else 0
+        )
+
         # Normalize metrics (lower is better for response time and error rate)
         response_score = 1.0 / (1.0 + avg_response_time)
         error_score = 1.0 - avg_error_rate
-        
+
         # Combine scores with weights
-        return (response_score * 0.4 + error_score * 0.3 + success_rate * 0.3)
+        return response_score * 0.4 + error_score * 0.3 + success_rate * 0.3
+
 
 class MultiModelWrapper(BaseLLM):
     """Enhanced wrapper class for managing multiple AI models with intelligent routing."""
@@ -61,11 +68,11 @@ class MultiModelWrapper(BaseLLM):
         model_weights: Optional[Dict[str, float]] = None,
         auto_optimize: bool = True,
         performance_window: int = 100,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize the multi-model wrapper.
-        
+
         Args:
             model_factory: ModelFactory instance for creating model instances
             primary_model: Primary model provider to use
@@ -96,8 +103,7 @@ class MultiModelWrapper(BaseLLM):
         # Initialize primary model
         try:
             self.models[self.primary_model] = self.model_factory.get_model(
-                self.primary_model,
-                **self._model_factory_kwargs
+                self.primary_model, **self._model_factory_kwargs
             )
             self.model_metrics[self.primary_model] = ModelMetrics()
         except Exception as e:
@@ -107,8 +113,7 @@ class MultiModelWrapper(BaseLLM):
         for model in self.fallback_models:
             try:
                 self.models[model] = self.model_factory.get_model(
-                    model,
-                    **self._model_factory_kwargs
+                    model, **self._model_factory_kwargs
                 )
                 self.model_metrics[model] = ModelMetrics()
             except Exception as e:
@@ -117,16 +122,16 @@ class MultiModelWrapper(BaseLLM):
     def _analyze_task(self, task_type: str, **kwargs) -> Dict[str, float]:
         """
         Analyze task characteristics to determine optimal model weights.
-        
+
         Args:
             task_type: Type of task (e.g., 'chat', 'completion', 'embedding')
             **kwargs: Additional context for task analysis
-            
+
         Returns:
             Dictionary of model weights based on task analysis
         """
         weights = self.model_weights.copy()
-        
+
         # Adjust weights based on task type
         if task_type == "creative":
             weights["openai"] = weights.get("openai", 0.0) * 1.2
@@ -135,29 +140,29 @@ class MultiModelWrapper(BaseLLM):
         elif task_type == "code":
             weights["openai"] = weights.get("openai", 0.0) * 1.1
             weights["claude"] = weights.get("claude", 0.0) * 1.1
-        
+
         # Adjust weights based on performance metrics
         if self.auto_optimize:
             for model, metrics in self.model_metrics.items():
                 if model in weights:
                     performance_score = metrics.get_performance_score()
-                    weights[model] *= (1.0 + performance_score)
-        
+                    weights[model] *= 1.0 + performance_score
+
         # Normalize weights
         total = sum(weights.values())
         if total > 0:
-            weights = {k: v/total for k, v in weights.items()}
-        
+            weights = {k: v / total for k, v in weights.items()}
+
         return weights
 
     async def _select_model(self, task_type: str, **kwargs) -> Tuple[str, BaseLLM]:
         """
         Intelligently select the best model for the given task.
-        
+
         Args:
             task_type: Type of task (e.g., 'chat', 'completion', 'embedding')
             **kwargs: Additional context for model selection
-            
+
         Returns:
             Tuple of (model_name, model_instance)
         """
@@ -168,18 +173,14 @@ class MultiModelWrapper(BaseLLM):
 
         # Analyze task and get optimized weights
         weights = self._analyze_task(task_type, **kwargs)
-        
+
         # Select model with highest weight
         if weights:
             available_models = {
-                name: model for name, model in self.models.items()
-                if name in weights
+                name: model for name, model in self.models.items() if name in weights
             }
             if available_models:
-                selected_model = max(
-                    available_models.items(),
-                    key=lambda x: weights[x[0]]
-                )
+                selected_model = max(available_models.items(), key=lambda x: weights[x[0]])
                 return selected_model
 
         # Default to primary model if available
@@ -191,21 +192,17 @@ class MultiModelWrapper(BaseLLM):
         return model_name, self.models[model_name]
 
     async def _execute_with_metrics(
-        self,
-        model_name: str,
-        model: BaseLLM,
-        operation: str,
-        **kwargs
+        self, model_name: str, model: BaseLLM, operation: str, **kwargs
     ) -> Any:
         """
         Execute model operation with performance tracking.
-        
+
         Args:
             model_name: Name of the model
             model: Model instance
             operation: Operation to execute
             **kwargs: Arguments for the operation
-            
+
         Returns:
             Operation result
         """
@@ -219,27 +216,21 @@ class MultiModelWrapper(BaseLLM):
                 result = await model.embeddings(**kwargs)
             else:
                 raise ValueError(f"Unsupported operation: {operation}")
-            
+
             # Update metrics
             self.model_metrics[model_name].update_metrics(
-                response_time=time.time() - start_time,
-                error=False
+                response_time=time.time() - start_time, error=False
             )
             return result
         except Exception as e:
             # Update metrics
             self.model_metrics[model_name].update_metrics(
-                response_time=time.time() - start_time,
-                error=True
+                response_time=time.time() - start_time, error=True
             )
             raise e
 
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text using the most appropriate model."""
         model_name, model = await self._select_model("completion", **kwargs)
@@ -251,7 +242,7 @@ class MultiModelWrapper(BaseLLM):
                 prompt=prompt,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
             # Try fallback models if primary fails
@@ -265,27 +256,20 @@ class MultiModelWrapper(BaseLLM):
                             prompt=prompt,
                             temperature=temperature,
                             max_tokens=max_tokens,
-                            **kwargs
+                            **kwargs,
                         )
                     except Exception:
                         continue
             raise e
 
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate text stream using the most appropriate model."""
         model_name, model = await self._select_model("completion_stream", **kwargs)
         try:
             async for chunk in model.generate_stream(
-                prompt=prompt,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+                prompt=prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
             ):
                 yield chunk
         except Exception as e:
@@ -294,10 +278,7 @@ class MultiModelWrapper(BaseLLM):
                 if fallback in self.models and fallback != model_name:
                     try:
                         async for chunk in self.models[fallback].generate_stream(
-                            prompt=prompt,
-                            temperature=temperature,
-                            max_tokens=max_tokens,
-                            **kwargs
+                            prompt=prompt, temperature=temperature, max_tokens=max_tokens, **kwargs
                         ):
                             yield chunk
                         return
@@ -310,7 +291,7 @@ class MultiModelWrapper(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion using the most appropriate model."""
         model_name, model = await self._select_model("chat", **kwargs)
@@ -322,7 +303,7 @@ class MultiModelWrapper(BaseLLM):
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
-                **kwargs
+                **kwargs,
             )
         except Exception as e:
             # Try fallback models if primary fails
@@ -336,7 +317,7 @@ class MultiModelWrapper(BaseLLM):
                             messages=messages,
                             temperature=temperature,
                             max_tokens=max_tokens,
-                            **kwargs
+                            **kwargs,
                         )
                     except Exception:
                         continue
@@ -347,16 +328,13 @@ class MultiModelWrapper(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream using the most appropriate model."""
         model_name, model = await self._select_model("chat_stream", **kwargs)
         try:
             async for chunk in model.chat_stream(
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                **kwargs
+                messages=messages, temperature=temperature, max_tokens=max_tokens, **kwargs
             ):
                 yield chunk
         except Exception as e:
@@ -368,7 +346,7 @@ class MultiModelWrapper(BaseLLM):
                             messages=messages,
                             temperature=temperature,
                             max_tokens=max_tokens,
-                            **kwargs
+                            **kwargs,
                         ):
                             yield chunk
                         return
@@ -377,19 +355,13 @@ class MultiModelWrapper(BaseLLM):
             raise e
 
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using the most appropriate model."""
         model_name, model = await self._select_model("embeddings", **kwargs)
         try:
             return await self._execute_with_metrics(
-                model_name,
-                model,
-                "embeddings",
-                text=text,
-                **kwargs
+                model_name, model, "embeddings", text=text, **kwargs
             )
         except Exception as e:
             # Try fallback models if primary fails
@@ -397,11 +369,7 @@ class MultiModelWrapper(BaseLLM):
                 if fallback in self.models and fallback != model_name:
                     try:
                         return await self._execute_with_metrics(
-                            fallback,
-                            self.models[fallback],
-                            "embeddings",
-                            text=text,
-                            **kwargs
+                            fallback, self.models[fallback], "embeddings", text=text, **kwargs
                         )
                     except Exception:
                         continue
@@ -412,9 +380,21 @@ class MultiModelWrapper(BaseLLM):
         return {
             model: {
                 "performance_score": metrics.get_performance_score(),
-                "success_rate": metrics.success_count / (metrics.success_count + metrics.error_count) if (metrics.success_count + metrics.error_count) > 0 else 0,
-                "avg_response_time": sum(metrics.response_times) / len(metrics.response_times) if metrics.response_times else 0,
-                "error_rate": sum(metrics.error_rates) / len(metrics.error_rates) if metrics.error_rates else 0
+                "success_rate": (
+                    metrics.success_count / (metrics.success_count + metrics.error_count)
+                    if (metrics.success_count + metrics.error_count) > 0
+                    else 0
+                ),
+                "avg_response_time": (
+                    sum(metrics.response_times) / len(metrics.response_times)
+                    if metrics.response_times
+                    else 0
+                ),
+                "error_rate": (
+                    sum(metrics.error_rates) / len(metrics.error_rates)
+                    if metrics.error_rates
+                    else 0
+                ),
             }
             for model, metrics in self.model_metrics.items()
-        } 
+        }

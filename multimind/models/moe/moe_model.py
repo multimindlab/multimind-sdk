@@ -6,19 +6,23 @@ logger = logging.getLogger(__name__)
 try:
     import torch
     import torch.nn as nn
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
     logger.warning("PyTorch not available. MoE model features will be disabled.")
 
-from typing import Optional, Dict, Any, Tuple
+from typing import Any, Dict, Optional, Tuple
+
 from .moe_layer import MoELayer
 
 if TORCH_AVAILABLE:
+
     class MoEModel(nn.Module):
         """
         Main Mixture of Experts model implementation.
         """
+
         def __init__(
             self,
             input_dim: int,
@@ -31,7 +35,7 @@ if TORCH_AVAILABLE:
             k: int = 2,
             capacity_factor: float = 1.0,
             use_aux_loss: bool = True,
-            use_noisy_gate: bool = True
+            use_noisy_gate: bool = True,
         ):
             super().__init__()
             self.input_dim = input_dim
@@ -46,23 +50,24 @@ if TORCH_AVAILABLE:
             self.input_norm = nn.LayerNorm(hidden_dim)
 
             # MoE layers
-            self.moe_layers = nn.ModuleList([
-                MoELayer(
-                    input_dim=hidden_dim,
-                    num_experts=num_experts,
-                    expert_dim=hidden_dim * 4,  # FFN expansion factor
-                    k=k,
-                    capacity_factor=capacity_factor,
-                    dropout=expert_dropout,
-                    use_aux_loss=use_aux_loss,
-                    use_noisy_gate=use_noisy_gate
-                ) for _ in range(num_layers)
-            ])
+            self.moe_layers = nn.ModuleList(
+                [
+                    MoELayer(
+                        input_dim=hidden_dim,
+                        num_experts=num_experts,
+                        expert_dim=hidden_dim * 4,  # FFN expansion factor
+                        k=k,
+                        capacity_factor=capacity_factor,
+                        dropout=expert_dropout,
+                        use_aux_loss=use_aux_loss,
+                        use_noisy_gate=use_noisy_gate,
+                    )
+                    for _ in range(num_layers)
+                ]
+            )
 
             # Layer norms
-            self.layer_norms = nn.ModuleList([
-                nn.LayerNorm(hidden_dim) for _ in range(num_layers)
-            ])
+            self.layer_norms = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(num_layers)])
 
             # Output projection
             self.output_proj = nn.Linear(hidden_dim, input_dim)
@@ -86,17 +91,15 @@ if TORCH_AVAILABLE:
                     nn.init.zeros_(module.bias)
 
         def forward(
-            self,
-            x: torch.Tensor,
-            return_aux_loss: bool = False
+            self, x: torch.Tensor, return_aux_loss: bool = False
         ) -> Tuple[torch.Tensor, Optional[Dict[str, torch.Tensor]]]:
             """
             Forward pass through the MoE model.
-            
+
             Args:
                 x: Input tensor of shape [batch_size, seq_len, input_dim]
                 return_aux_loss: Whether to return auxiliary losses
-                
+
             Returns:
                 Tuple of (output tensor, auxiliary losses if requested)
             """
@@ -113,11 +116,11 @@ if TORCH_AVAILABLE:
             for i, (moe_layer, layer_norm) in enumerate(zip(self.moe_layers, self.layer_norms)):
                 # Layer norm
                 x = layer_norm(x)
-                
+
                 # MoE layer
                 moe_output, aux_loss = moe_layer(x, return_aux_loss=return_aux_loss)
                 x = x + moe_output  # Residual connection
-                
+
                 if return_aux_loss and aux_loss is not None:
                     aux_losses[f"layer_{i}_aux_loss"] = aux_loss
                     total_aux_loss += aux_loss
@@ -152,10 +155,11 @@ if TORCH_AVAILABLE:
                 "num_experts": self.num_experts,
                 "num_layers": self.num_layers,
                 "num_heads": self.num_heads,
-                "k": self.k
+                "k": self.k,
             }
 
 else:
+
     class MoEModel:
         def __init__(self, *args, **kwargs):
-            raise ImportError("PyTorch is required for MoEModel. Please install torch.") 
+            raise ImportError("PyTorch is required for MoEModel. Please install torch.")

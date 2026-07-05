@@ -3,7 +3,9 @@ Base class for all LLM implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional, Union, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Dict, List, Optional, Union
+
 
 class BaseLLM(ABC):
     """Abstract base class for all LLM implementations."""
@@ -14,22 +16,14 @@ class BaseLLM(ABC):
 
     @abstractmethod
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the model."""
         pass
 
     @abstractmethod
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
         yield ""  # Placeholder to make it an async generator
@@ -40,7 +34,7 @@ class BaseLLM(ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion from the model."""
         pass
@@ -51,16 +45,14 @@ class BaseLLM(ABC):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Chat stream with the model."""
         yield ""  # Placeholder to make it an async generator
 
     @abstractmethod
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         pass
@@ -68,11 +60,11 @@ class BaseLLM(ABC):
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
         return None  # Placeholder implementation
-    
+
     async def get_cost(self, prompt_tokens: int = 0, completion_tokens: int = 0) -> float:
         """Get the cost estimate for this model."""
         return 0.0  # Placeholder implementation
-    
+
     async def get_latency(self) -> Optional[float]:
         """Get the latency estimate for this model."""
         return None  # Placeholder implementation

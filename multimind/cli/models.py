@@ -3,25 +3,27 @@ Model management commands for MultiMind CLI
 """
 
 import asyncio
-import click
 import os
 from typing import List, Optional
+
+import click
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
 from rich.progress import Progress
+from rich.table import Table
 
-from ..core.models import ModelResponse
+from ..gateway.config import config
 from ..gateway.models import get_model_handler
 from ..gateway.monitoring import monitor
-from ..gateway.config import config
 
 console = Console()
+
 
 @click.group()
 def models():
     """Model management commands"""
     pass
+
 
 @models.command()
 @click.argument("prompt")
@@ -48,11 +50,7 @@ def compare(prompt: str, models: List[str]):
 
         # Display results
         for model, response in responses.items():
-            console.print(Panel(
-                response.content,
-                title=f"{model} Response",
-                border_style="green"
-            ))
+            console.print(Panel(response.content, title=f"{model} Response", border_style="green"))
 
             if response.usage:
                 usage_table = Table(title=f"{model} Usage")
@@ -62,6 +60,7 @@ def compare(prompt: str, models: List[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @models.command()
 @click.option("--model", "-m", help="Specific model to show metrics for")
@@ -81,8 +80,9 @@ def metrics(model: Optional[str]):
 
         for model_name, data in metrics.items():
             m = data["metrics"]
-            success_rate = (m.successful_requests / m.total_requests * 100
-                          if m.total_requests > 0 else 0)
+            success_rate = (
+                m.successful_requests / m.total_requests * 100 if m.total_requests > 0 else 0
+            )
 
             metrics_table.add_row(
                 model_name,
@@ -90,7 +90,7 @@ def metrics(model: Optional[str]):
                 f"{success_rate:.1f}%",
                 f"{m.avg_response_time:.2f}s",
                 str(m.total_tokens),
-                f"${m.total_cost:.4f}"
+                f"${m.total_cost:.4f}",
             )
 
         console.print(metrics_table)
@@ -107,16 +107,14 @@ def metrics(model: Optional[str]):
             latency = f"{health.latency_ms:.0f}ms" if health.latency_ms else "N/A"
 
             health_table.add_row(
-                model_name,
-                status,
-                latency,
-                health.last_check.strftime("%Y-%m-%d %H:%M:%S")
+                model_name, status, latency, health.last_check.strftime("%Y-%m-%d %H:%M:%S")
             )
 
         console.print(health_table)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+
 
 @models.command()
 @click.option("--model", "-m", help="Specific model to check")
@@ -146,20 +144,25 @@ def health(model: Optional[str]):
             status_str = "✅" if health.is_healthy else "❌"
             latency = f"{health.latency_ms:.0f}ms" if health.latency_ms else "N/A"
 
-            console.print(Panel(
-                f"Status: {status_str}\n"
-                f"Latency: {latency}\n"
-                f"Last Check: {health.last_check.strftime('%Y-%m-%d %H:%M:%S')}\n"
-                f"Error: {health.error_message or 'None'}",
-                title=f"{model_name} Health Check",
-                border_style="green" if health.is_healthy else "red"
-            ))
+            console.print(
+                Panel(
+                    f"Status: {status_str}\n"
+                    f"Latency: {latency}\n"
+                    f"Last Check: {health.last_check.strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    f"Error: {health.error_message or 'None'}",
+                    title=f"{model_name} Health Check",
+                    border_style="green" if health.is_healthy else "red",
+                )
+            )
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
 
+
 @models.command()
-@click.option('--output-dir', type=click.Path(), default='./output', help='Directory where models are saved.')
+@click.option(
+    "--output-dir", type=click.Path(), default="./output", help="Directory where models are saved."
+)
 def list(output_dir):
     """List available or fine-tuned models"""
     try:
@@ -176,56 +179,71 @@ def list(output_dir):
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
 
+
 @models.command()
-@click.option('--model', '-m', type=str, help='Model name to download (e.g., bert-base-uncased).')
+@click.option("--model", "-m", type=str, help="Model name to download (e.g., bert-base-uncased).")
 def download(model):
     """Download a pretrained or fine-tuned model"""
     if not model:
-        model = click.prompt('Model name to download')
+        model = click.prompt("Model name to download")
     try:
         from transformers import AutoModelForCausalLM
+
         AutoModelForCausalLM.from_pretrained(model)
         console.print(f"[green]Downloaded model: {model}[/green]")
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
 
+
 @models.command()
-@click.option('--model', '-m', type=click.Path(exists=True), help='Path to model to export.')
-@click.option('--format', '-f', type=click.Choice(['onnx', 'torchscript'], case_sensitive=False), help='Export format.')
-@click.option('--output', '-o', type=click.Path(), help='Output path for exported model.')
+@click.option("--model", "-m", type=click.Path(exists=True), help="Path to model to export.")
+@click.option(
+    "--format",
+    "-f",
+    type=click.Choice(["onnx", "torchscript"], case_sensitive=False),
+    help="Export format.",
+)
+@click.option("--output", "-o", type=click.Path(), help="Output path for exported model.")
 def export(model, format, output):
     """Export a model to ONNX or TorchScript format"""
     if not model:
-        model = click.prompt('Model path', type=click.Path(exists=True))
+        model = click.prompt("Model path", type=click.Path(exists=True))
     if not format:
-        format = click.prompt('Export format (onnx/torchscript)', type=click.Choice(['onnx', 'torchscript']))
+        format = click.prompt(
+            "Export format (onnx/torchscript)", type=click.Choice(["onnx", "torchscript"])
+        )
     if not output:
-        output = click.prompt('Output path', type=click.Path())
+        output = click.prompt("Output path", type=click.Path())
     try:
         from transformers import AutoModelForCausalLM
+
         model_obj = AutoModelForCausalLM.from_pretrained(model)
-        if format == 'onnx':
+        if format == "onnx":
             import torch
+
             dummy_input = torch.randint(0, 100, (1, 16))
             torch.onnx.export(model_obj, dummy_input, output)
-        elif format == 'torchscript':
+        elif format == "torchscript":
             import torch
+
             scripted = torch.jit.script(model_obj)
             scripted.save(output)
         console.print(f"[green]Exported {model} to {format} at {output}[/green]")
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
 
+
 @models.command()
-@click.option('--model', '-m', type=click.Path(), help='Path to model to delete.')
+@click.option("--model", "-m", type=click.Path(), help="Path to model to delete.")
 def delete(model):
     """Delete a local fine-tuned model"""
     if not model:
-        model = click.prompt('Model path to delete', type=click.Path())
-    if click.confirm(f'Are you sure you want to delete {model}?'):
+        model = click.prompt("Model path to delete", type=click.Path())
+    if click.confirm(f"Are you sure you want to delete {model}?"):
         try:
             if os.path.isdir(model):
                 import shutil
+
                 shutil.rmtree(model)
             else:
                 os.remove(model)
@@ -233,4 +251,4 @@ def delete(model):
         except Exception as e:
             console.print(f"[red]Error deleting model: {str(e)}[/red]")
     else:
-        console.print("[yellow]Aborted.[/yellow]") 
+        console.print("[yellow]Aborted.[/yellow]")

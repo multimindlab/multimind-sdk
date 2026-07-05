@@ -2,12 +2,12 @@
 Event-sourced memory implementation.
 """
 
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
-import numpy as np
+from typing import Any, Dict, List, Optional
+
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
@@ -33,7 +33,7 @@ class EventSourcedMemory(BaseMemory):
         enable_causality_analysis: bool = True,
         causality_threshold: float = 0.6,
         enable_optimization: bool = True,
-        optimization_interval: int = 3600  # 1 hour
+        optimization_interval: int = 3600,  # 1 hour
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -49,7 +49,7 @@ class EventSourcedMemory(BaseMemory):
         self.causality_threshold = causality_threshold
         self.enable_optimization = enable_optimization
         self.optimization_interval = optimization_interval
-        
+
         # Initialize storage
         self.items: List[Dict[str, Any]] = []
         self.events: List[Dict[str, Any]] = []  # Event log
@@ -72,25 +72,26 @@ class EventSourcedMemory(BaseMemory):
                 "modified_at": datetime.now().isoformat(),
                 "event_count": 0,
                 "pattern_count": 0,
-                "causal_count": 0
-            }
+                "causal_count": 0,
+            },
         }
-        
+
         # Add to storage
         self.items.append(new_item)
-        
+
         # Create events
         await self._create_events(item_id, new_item)
-        
+
         # Analyze events if needed
-        if self.enable_event_analysis and (
-            datetime.now() - self.last_analysis
-        ).total_seconds() >= self.analysis_interval:
+        if (
+            self.enable_event_analysis
+            and (datetime.now() - self.last_analysis).total_seconds() >= self.analysis_interval
+        ):
             await self._analyze_events()
-        
+
         # Maintain item limit
         await self._maintain_item_limit()
-        
+
         await self.save()
 
     async def _create_events(self, item_id: str, item: Dict[str, Any]) -> None:
@@ -101,24 +102,19 @@ class EventSourcedMemory(BaseMemory):
             "type": "item_created",
             "timestamp": datetime.now().isoformat(),
             "item_id": item_id,
-            "data": {
-                "content": item["content"],
-                "metadata": item["metadata"]
-            }
+            "data": {"content": item["content"], "metadata": item["metadata"]},
         }
         self.events.append(creation_event)
-        
+
         # Create analysis events
         if self.enable_pattern_detection:
             await self._create_pattern_events(item_id, item)
-        
+
         if self.enable_causality_analysis:
             await self._create_causality_events(item_id, item)
-        
+
         # Update item metadata
-        item["metadata"]["event_count"] = len([
-            e for e in self.events if e["item_id"] == item_id
-        ])
+        item["metadata"]["event_count"] = len([e for e in self.events if e["item_id"] == item_id])
 
     async def _create_pattern_events(self, item_id: str, item: Dict[str, Any]) -> None:
         """Create pattern detection events."""
@@ -126,9 +122,9 @@ class EventSourcedMemory(BaseMemory):
             # Generate pattern analysis prompt
             prompt = f"""
             Analyze patterns in this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. patterns: list of strings
             2. pattern_types: list of strings
@@ -136,7 +132,7 @@ class EventSourcedMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             patterns = MemoryUtils.safe_json_loads(response)
-            
+
             # Create pattern events
             for i, pattern in enumerate(patterns["patterns"]):
                 pattern_event = {
@@ -147,24 +143,26 @@ class EventSourcedMemory(BaseMemory):
                     "data": {
                         "pattern": pattern,
                         "pattern_type": patterns["pattern_types"][i],
-                        "confidence": patterns["pattern_confidence"][i]
-                    }
+                        "confidence": patterns["pattern_confidence"][i],
+                    },
                 }
                 self.events.append(pattern_event)
-                
+
                 # Update patterns
                 pattern_id = f"pattern_{len(self.patterns)}"
                 if pattern_id not in self.patterns:
                     self.patterns[pattern_id] = []
-                self.patterns[pattern_id].append({
-                    "item_id": item_id,
-                    "event_id": pattern_event["id"],
-                    "timestamp": pattern_event["timestamp"]
-                })
-            
+                self.patterns[pattern_id].append(
+                    {
+                        "item_id": item_id,
+                        "event_id": pattern_event["id"],
+                        "timestamp": pattern_event["timestamp"],
+                    }
+                )
+
             # Update item metadata
             item["metadata"]["pattern_count"] = len(patterns["patterns"])
-            
+
         except Exception as e:
             logger.error(f"Error creating pattern events: {e}")
 
@@ -174,9 +172,9 @@ class EventSourcedMemory(BaseMemory):
             # Generate causality analysis prompt
             prompt = f"""
             Analyze causality for this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. causes: list of strings
             2. effects: list of strings
@@ -184,7 +182,7 @@ class EventSourcedMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             causality = MemoryUtils.safe_json_loads(response)
-            
+
             # Create causality events
             for i, cause in enumerate(causality["causes"]):
                 causality_event = {
@@ -195,24 +193,26 @@ class EventSourcedMemory(BaseMemory):
                     "data": {
                         "cause": cause,
                         "effect": causality["effects"][i],
-                        "confidence": causality["confidence"][i]
-                    }
+                        "confidence": causality["confidence"][i],
+                    },
                 }
                 self.events.append(causality_event)
-                
+
                 # Update causal chains
                 chain_id = f"chain_{len(self.causal_chains)}"
                 if chain_id not in self.causal_chains:
                     self.causal_chains[chain_id] = []
-                self.causal_chains[chain_id].append({
-                    "item_id": item_id,
-                    "event_id": causality_event["id"],
-                    "timestamp": causality_event["timestamp"]
-                })
-            
+                self.causal_chains[chain_id].append(
+                    {
+                        "item_id": item_id,
+                        "event_id": causality_event["id"],
+                        "timestamp": causality_event["timestamp"],
+                    }
+                )
+
             # Update item metadata
             item["metadata"]["causal_count"] = len(causality["causes"])
-            
+
         except Exception as e:
             logger.error(f"Error creating causality events: {e}")
 
@@ -221,11 +221,11 @@ class EventSourcedMemory(BaseMemory):
         # Analyze event patterns
         if self.enable_pattern_detection:
             await self._analyze_patterns()
-        
+
         # Analyze causality
         if self.enable_causality_analysis:
             await self._analyze_causality()
-        
+
         # Update last analysis time
         self.last_analysis = datetime.now()
 
@@ -237,16 +237,16 @@ class EventSourcedMemory(BaseMemory):
             if event["type"] not in event_groups:
                 event_groups[event["type"]] = []
             event_groups[event["type"]].append(event)
-        
+
         # Analyze each group
         for event_type, events in event_groups.items():
             try:
                 # Generate pattern analysis prompt
                 prompt = f"""
                 Analyze patterns in these events:
-                
+
                 {json.dumps(events, indent=2)}
-                
+
                 Return a JSON object with:
                 1. patterns: list of strings
                 2. pattern_types: list of strings
@@ -254,18 +254,15 @@ class EventSourcedMemory(BaseMemory):
                 """
                 response = await self.llm.generate(prompt)
                 patterns = MemoryUtils.safe_json_loads(response)
-                
+
                 # Update patterns
                 for i, pattern in enumerate(patterns["patterns"]):
                     pattern_id = f"pattern_{len(self.patterns)}"
                     self.patterns[pattern_id] = [
-                        {
-                            "event_id": event["id"],
-                            "timestamp": event["timestamp"]
-                        }
+                        {"event_id": event["id"], "timestamp": event["timestamp"]}
                         for event in events
                     ]
-                
+
             except Exception as e:
                 logger.error(f"Error analyzing patterns: {e}")
 
@@ -277,16 +274,16 @@ class EventSourcedMemory(BaseMemory):
             if event["item_id"] not in item_events:
                 item_events[event["item_id"]] = []
             item_events[event["item_id"]].append(event)
-        
+
         # Analyze each item's events
         for item_id, events in item_events.items():
             try:
                 # Generate causality analysis prompt
                 prompt = f"""
                 Analyze causality in these events:
-                
+
                 {json.dumps(events, indent=2)}
-                
+
                 Return a JSON object with:
                 1. causes: list of strings
                 2. effects: list of strings
@@ -294,18 +291,15 @@ class EventSourcedMemory(BaseMemory):
                 """
                 response = await self.llm.generate(prompt)
                 causality = MemoryUtils.safe_json_loads(response)
-                
+
                 # Update causal chains
                 for i, cause in enumerate(causality["causes"]):
                     chain_id = f"chain_{len(self.causal_chains)}"
                     self.causal_chains[chain_id] = [
-                        {
-                            "event_id": event["id"],
-                            "timestamp": event["timestamp"]
-                        }
+                        {"event_id": event["id"], "timestamp": event["timestamp"]}
                         for event in events
                     ]
-                
+
             except Exception as e:
                 logger.error(f"Error analyzing causality: {e}")
 
@@ -314,56 +308,50 @@ class EventSourcedMemory(BaseMemory):
         # Check item limit
         if len(self.items) > self.max_items:
             # Sort items by timestamp
-            sorted_items = sorted(
-                self.items,
-                key=lambda x: datetime.fromisoformat(x["timestamp"])
-            )
-            
+            sorted_items = sorted(self.items, key=lambda x: datetime.fromisoformat(x["timestamp"]))
+
             # Remove oldest items
-            items_to_remove = sorted_items[:len(self.items) - self.max_items]
+            items_to_remove = sorted_items[: len(self.items) - self.max_items]
             for item in items_to_remove:
                 await self._remove_item(item["id"])
-        
+
         # Check event limit
         if len(self.events) > self.max_events:
             # Sort events by timestamp
             sorted_events = sorted(
-                self.events,
-                key=lambda x: datetime.fromisoformat(x["timestamp"])
+                self.events, key=lambda x: datetime.fromisoformat(x["timestamp"])
             )
-            
+
             # Remove oldest events
-            self.events = sorted_events[len(self.events) - self.max_events:]
+            self.events = sorted_events[len(self.events) - self.max_events :]
 
     async def _remove_item(self, item_id: str) -> None:
         """Remove an item and its associated events."""
         # Remove from items
         self.items = [i for i in self.items if i["id"] != item_id]
-        
+
         # Remove associated events
         self.events = [e for e in self.events if e["item_id"] != item_id]
-        
+
         # Remove from patterns
         for pattern_id, pattern_data in self.patterns.items():
-            self.patterns[pattern_id] = [
-                p for p in pattern_data if p["item_id"] != item_id
-            ]
-        
+            self.patterns[pattern_id] = [p for p in pattern_data if p["item_id"] != item_id]
+
         # Remove from causal chains
         for chain_id, chain_data in self.causal_chains.items():
-            self.causal_chains[chain_id] = [
-                c for c in chain_data if c["item_id"] != item_id
-            ]
+            self.causal_chains[chain_id] = [c for c in chain_data if c["item_id"] != item_id]
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""
         messages = []
         for item in self.items:
-            messages.append({
-                "role": "event_sourced_memory",
-                "content": item["content"],
-                "timestamp": item["timestamp"]
-            })
+            messages.append(
+                {
+                    "role": "event_sourced_memory",
+                    "content": item["content"],
+                    "timestamp": item["timestamp"],
+                }
+            )
         return sorted(messages, key=lambda x: x["timestamp"])
 
     async def clear(self) -> None:
@@ -378,20 +366,23 @@ class EventSourcedMemory(BaseMemory):
         """Save items and events to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump({
-                    "items": self.items,
-                    "events": self.events,
-                    "patterns": self.patterns,
-                    "causal_chains": self.causal_chains,
-                    "last_analysis": self.last_analysis.isoformat(),
-                    "last_optimization": self.last_optimization.isoformat()
-                }, f)
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "items": self.items,
+                        "events": self.events,
+                        "patterns": self.patterns,
+                        "causal_chains": self.causal_chains,
+                        "last_analysis": self.last_analysis.isoformat(),
+                        "last_optimization": self.last_optimization.isoformat(),
+                    },
+                    f,
+                )
 
     async def load(self) -> None:
         """Load items and events from persistent storage."""
         if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
                 self.items = data.get("items", [])
                 self.events = data.get("events", [])
@@ -411,55 +402,65 @@ class EventSourcedMemory(BaseMemory):
             "event_stats": {
                 "total_events": len(self.events),
                 "event_types": len(set(e["type"] for e in self.events)),
-                "average_events_per_item": len(self.events) / len(self.items) if self.items else 0
+                "average_events_per_item": len(self.events) / len(self.items) if self.items else 0,
             },
             "pattern_stats": {
                 "total_patterns": len(self.patterns),
-                "average_patterns_per_item": sum(
-                    len(patterns) for patterns in self.patterns.values()
-                ) / len(self.patterns) if self.patterns else 0
+                "average_patterns_per_item": (
+                    sum(len(patterns) for patterns in self.patterns.values()) / len(self.patterns)
+                    if self.patterns
+                    else 0
+                ),
             },
             "causality_stats": {
                 "total_chains": len(self.causal_chains),
-                "average_chain_length": sum(
-                    len(chain) for chain in self.causal_chains.values()
-                ) / len(self.causal_chains) if self.causal_chains else 0
-            }
+                "average_chain_length": (
+                    sum(len(chain) for chain in self.causal_chains.values())
+                    / len(self.causal_chains)
+                    if self.causal_chains
+                    else 0
+                ),
+            },
         }
-        
+
         return stats
 
     async def get_event_sourced_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for event-sourced memory optimization."""
         suggestions = []
-        
+
         # Check item count
         if len(self.items) > self.max_items * 0.8:
-            suggestions.append({
-                "type": "item_limit",
-                "suggestion": "Consider increasing max_items or removing older items"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "item_limit",
+                    "suggestion": "Consider increasing max_items or removing older items",
+                }
+            )
+
         # Check event count
         stats = await self.get_event_sourced_stats()
         if stats["event_stats"]["total_events"] > self.max_events * 0.8:
-            suggestions.append({
-                "type": "event_limit",
-                "suggestion": "Consider increasing max_events or compressing events"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "event_limit",
+                    "suggestion": "Consider increasing max_events or compressing events",
+                }
+            )
+
         # Check pattern coverage
         if stats["pattern_stats"]["average_patterns_per_item"] < 2:
-            suggestions.append({
-                "type": "pattern_coverage",
-                "suggestion": "Consider improving pattern detection"
-            })
-        
+            suggestions.append(
+                {"type": "pattern_coverage", "suggestion": "Consider improving pattern detection"}
+            )
+
         # Check causality coverage
         if stats["causality_stats"]["average_chain_length"] < 2:
-            suggestions.append({
-                "type": "causality_coverage",
-                "suggestion": "Consider improving causality analysis"
-            })
-        
-        return suggestions 
+            suggestions.append(
+                {
+                    "type": "causality_coverage",
+                    "suggestion": "Consider improving causality analysis",
+                }
+            )
+
+        return suggestions

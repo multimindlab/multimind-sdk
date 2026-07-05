@@ -3,19 +3,19 @@ Patterns module for advanced RAG patterns.
 """
 
 from .advanced_patterns import (
-    RetrievalStep,
     FusionResult,
+    GraphRAG,
     MultiHopRetriever,
     RAGFusion,
-    GraphRAG,
-    SelfImprovingRAG
+    RetrievalStep,
+    SelfImprovingRAG,
 )
 
 __all__ = [
-    'RetrievalStep',
-    'FusionResult',
-    'MultiHopRetriever',
-    'RAGFusion',
-    'GraphRAG',
-    'SelfImprovingRAG'
-] 
+    "RetrievalStep",
+    "FusionResult",
+    "MultiHopRetriever",
+    "RAGFusion",
+    "GraphRAG",
+    "SelfImprovingRAG",
+]

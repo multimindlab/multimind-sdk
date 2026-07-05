@@ -2,8 +2,9 @@
 Memory management for agents.
 """
 
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 
 class AgentMemory:
     """Manages agent memory and state."""
@@ -61,13 +62,17 @@ class AgentMemory:
             recent_task_timestamps,
             recent_response_timestamps,
         ):
-            history.append({
-                "task": task,
-                "response": response,
-                # Prefer response timestamp because it reflects when the completion arrived.
-                "timestamp": resp_ts.isoformat() if isinstance(resp_ts, datetime) else None,
-                "task_timestamp": task_ts.isoformat() if isinstance(task_ts, datetime) else None,
-            })
+            history.append(
+                {
+                    "task": task,
+                    "response": response,
+                    # Prefer response timestamp because it reflects when the completion arrived.
+                    "timestamp": resp_ts.isoformat() if isinstance(resp_ts, datetime) else None,
+                    "task_timestamp": (
+                        task_ts.isoformat() if isinstance(task_ts, datetime) else None
+                    ),
+                }
+            )
         return history
 
     def clear(self) -> None:

@@ -1,12 +1,13 @@
-import os
-import logging
 import asyncio
-import numpy as np
-import asyncpg
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 import psycopg2
 from timescale_vector import TimescaleVector
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class TimescaleVectorStore(VectorStoreBackend):
     def __init__(
@@ -21,7 +22,7 @@ class TimescaleVectorStore(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.host = host or os.environ.get("TIMESCALE_HOST", "localhost")
         self.port = port or int(os.environ.get("TIMESCALE_PORT", 5432))
@@ -39,21 +40,23 @@ class TimescaleVectorStore(VectorStoreBackend):
             port=self.port,
             user=self.user,
             password=self.password,
-            dbname=self.database
+            dbname=self.database,
         )
         self._ensure_table()
         self.ts_vector = TimescaleVector(self.conn)
 
     def _ensure_table(self):
         with self.conn.cursor() as cur:
-            cur.execute(f"""
+            cur.execute(
+                f"""
                 CREATE TABLE IF NOT EXISTS {self.table} (
                     id TEXT PRIMARY KEY,
                     vector VECTOR({self.dim}),
                     metadata JSONB,
                     document TEXT
                 )
-            """)
+            """
+            )
             self.conn.commit()
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
@@ -62,20 +65,35 @@ class TimescaleVectorStore(VectorStoreBackend):
         metadatas = metadatas or [{} for _ in range(n)]
         docs = documents or ["" for _ in range(n)]
         loop = asyncio.get_event_loop()
+
         def _add():
             with self.conn.cursor() as cur:
                 for i in range(n):
-                    cur.execute(f"""
+                    cur.execute(
+                        f"""
                         INSERT INTO {self.table} (id, vector, metadata, document)
                         VALUES (%s, %s, %s, %s)
                         ON CONFLICT (id) DO UPDATE SET vector = EXCLUDED.vector, metadata = EXCLUDED.metadata, document = EXCLUDED.document
-                    """, (ids[i], list(map(float, vectors[i])), metadatas[i], docs[i]))
+                    """,
+                        (ids[i], list(map(float, vectors[i])), metadatas[i], docs[i]),
+                    )
                 self.conn.commit()
-        await loop.run_in_executor(None, _add)
-        self.log_metrics('add_vectors', n)
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+        await loop.run_in_executor(None, _add)
+        self.log_metrics("add_vectors", n)
+
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         loop = asyncio.get_event_loop()
+
         def _search():
             with self.conn.cursor() as cur:
                 where = []
@@ -98,37 +116,41 @@ class TimescaleVectorStore(VectorStoreBackend):
                 search_results = []
                 for row in results:
                     id_, meta, doc, dist = row
-                    search_results.append(SearchResult(
-                        id=id_,
-                        score=-dist,
-                        metadata=meta,
-                        document=doc
-                    ))
+                    search_results.append(
+                        SearchResult(id=id_, score=-dist, metadata=meta, document=doc)
+                    )
                 return search_results
+
         search_results = await loop.run_in_executor(None, _search)
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
         loop = asyncio.get_event_loop()
+
         def _delete():
             with self.conn.cursor() as cur:
-                cur.execute(f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s']*len(ids))})", ids)
+                cur.execute(
+                    f"DELETE FROM {self.table} WHERE id IN ({','.join(['%s'] * len(ids))})", ids
+                )
                 self.conn.commit()
+
         await loop.run_in_executor(None, _delete)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         loop = asyncio.get_event_loop()
+
         def _clear():
             with self.conn.cursor() as cur:
                 cur.execute(f"TRUNCATE TABLE {self.table}")
                 self.conn.commit()
+
         await loop.run_in_executor(None, _clear)
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -150,11 +172,11 @@ class TimescaleVectorStore(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

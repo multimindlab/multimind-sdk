@@ -2,16 +2,19 @@
 Chroma vector store backend implementation.
 """
 
+import asyncio
 import logging
-from typing import List, Dict, Any, Optional, Callable
+from typing import Any, Callable, Dict, List, Optional
+
 import chromadb
 from chromadb.config import Settings
-import asyncio
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
 
 class ChromaBackend(VectorStoreBackend):
     """Chroma vector store backend with advanced features."""
+
     def __init__(
         self,
         collection_name: str = "default",
@@ -26,7 +29,7 @@ class ChromaBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.collection_name = collection_name
         self.dimension = dimension
@@ -48,11 +51,11 @@ class ChromaBackend(VectorStoreBackend):
         """Initialize Chroma client and collection."""
         settings = Settings(**self.chroma_settings)
         self.client = chromadb.Client(settings)
-        
+
         # Create or get collection
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            metadata={"dimension": self.dimension} if self.dimension else None
+            metadata={"dimension": self.dimension} if self.dimension else None,
         )
 
     async def add_vectors(
@@ -60,27 +63,25 @@ class ChromaBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors to Chroma collection."""
         if not self.collection:
             await self.initialize()
-        
+
         # Prepare documents and metadatas
-        docs = [doc["content"] if isinstance(doc, dict) and "content" in doc else str(doc) for doc in documents]
+        docs = [
+            doc["content"] if isinstance(doc, dict) and "content" in doc else str(doc)
+            for doc in documents
+        ]
         if not ids:
             ids = [f"doc_{i}" for i in range(len(docs))]
-        
+
         # Add to collection
-        self.collection.add(
-            embeddings=vectors,
-            documents=docs,
-            metadatas=metadatas,
-            ids=ids
-        )
+        self.collection.add(embeddings=vectors, documents=docs, metadatas=metadatas, ids=ids)
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
     async def search(
         self,
@@ -90,19 +91,17 @@ class ChromaBackend(VectorStoreBackend):
         filter_criteria: Optional[Dict[str, Any]] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Search Chroma collection."""
         if not self.collection:
             await self.initialize()
-        
+
         explain = explain if explain is not None else self.explain
         results = self.collection.query(
-            query_embeddings=[query_vector],
-            n_results=k,
-            where=filter_criteria
+            query_embeddings=[query_vector], n_results=k, where=filter_criteria
         )
-        
+
         # Convert to SearchResult format
         search_results = []
         for i in range(len(results["ids"][0])):
@@ -120,23 +119,25 @@ class ChromaBackend(VectorStoreBackend):
                 vector=query_vector,
                 metadata=meta,
                 document=doc,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "vector_score": results["distances"][0][i] if "distances" in results else 1.0,
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             search_results.append(result)
-        
+
         if scoring_method and scoring_method != "weighted_sum":
             search_results = self._apply_custom_scoring(search_results, scoring_method)
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -148,29 +149,29 @@ class ChromaBackend(VectorStoreBackend):
         """Delete vectors from Chroma collection."""
         if not self.collection:
             await self.initialize()
-        
+
         self.collection.delete(ids=ids)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear Chroma collection."""
         if not self.collection:
             await self.initialize()
-        
+
         self.collection.delete(where={})
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         """Persist Chroma collection to disk."""
         # Chroma persists automatically to the configured directory
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "ChromaBackend":
         """Load Chroma collection from disk."""
         backend = cls(**config.connection_params)
         await backend.initialize()
-        return backend 
+        return backend
 
     def register_plugin(self, name: str, plugin: Callable):
         self.plugin_registry[name] = plugin
@@ -187,11 +188,11 @@ class ChromaBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

@@ -2,12 +2,14 @@
 Forgetting curve memory implementation based on Ebbinghaus's forgetting curve model.
 """
 
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
+
 import numpy as np
+
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
@@ -45,7 +47,7 @@ class ForgettingCurveMemory(BaseMemory):
         enable_interference_analysis: bool = True,
         interference_threshold: float = 0.6,
         enable_optimization: bool = True,
-        optimization_interval: int = 3600  # 1 hour
+        optimization_interval: int = 3600,  # 1 hour
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -73,7 +75,7 @@ class ForgettingCurveMemory(BaseMemory):
         self.interference_threshold = interference_threshold
         self.enable_optimization = enable_optimization
         self.optimization_interval = optimization_interval
-        
+
         # Initialize storage
         self.items: List[Dict[str, Any]] = []
         self.strengths: Dict[str, float] = {}  # item_id -> strength
@@ -103,55 +105,55 @@ class ForgettingCurveMemory(BaseMemory):
                 "learning_progress": 0.0,
                 "interference_score": 0.0,
                 "consolidation_score": 0.0,
-                "optimization_score": 0.0
-            }
+                "optimization_score": 0.0,
+            },
         }
-        
+
         # Add to storage
         self.items.append(new_item)
         self.strengths[item_id] = self.initial_strength
-        
+
         # Initialize review history
         self.review_history[item_id] = []
-        
+
         # Initialize learning curve
         self.learning_curves[item_id] = []
-        
+
         # Initialize interference graph
         self.interference_graph[item_id] = set()
-        
+
         # Calculate initial importance
         if self.enable_importance_weighting:
             await self._calculate_importance(item_id)
-        
+
         # Schedule first review
         if self.enable_spaced_repetition:
             await self._schedule_review(item_id)
-        
+
         # Analyze interference
         if self.enable_interference_analysis:
             await self._analyze_interference(item_id)
-        
+
         # Update learning curve
         if self.enable_learning_curve:
             await self._update_learning_curve(item_id)
-        
+
         # Maintain item limit
         await self._maintain_item_limit()
-        
+
         await self.save()
 
     async def _calculate_importance(self, item_id: str) -> None:
         """Calculate importance score for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate importance analysis prompt
             prompt = f"""
             Analyze the importance of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. importance_score: float (0-1)
             2. importance_factors: list of strings
@@ -159,10 +161,10 @@ class ForgettingCurveMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             importance = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["importance"] = importance["importance_score"]
-            
+
         except Exception as e:
             logger.error(f"Error calculating importance: {e}")
 
@@ -170,18 +172,15 @@ class ForgettingCurveMemory(BaseMemory):
         """Schedule next review using spaced repetition."""
         item = next(i for i in self.items if i["id"] == item_id)
         review_count = item["metadata"]["review_count"]
-        
+
         # Calculate next review interval using exponential spacing
         base_interval = self.min_review_interval
         max_interval = self.max_review_interval
-        
+
         # Adjust interval based on review count and importance
         importance_factor = item["metadata"]["importance"]
-        interval = min(
-            max_interval,
-            base_interval * (2 ** review_count) * (1 + importance_factor)
-        )
-        
+        interval = min(max_interval, base_interval * (2**review_count) * (1 + importance_factor))
+
         # Schedule next review
         next_review = datetime.now() + timedelta(seconds=interval)
         item["metadata"]["next_review"] = next_review.isoformat()
@@ -189,14 +188,14 @@ class ForgettingCurveMemory(BaseMemory):
     async def _analyze_interference(self, item_id: str) -> None:
         """Analyze potential interference with other items."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate interference analysis prompt
             prompt = f"""
             Analyze potential interference with this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. interference_score: float (0-1)
             2. interfering_items: list of strings
@@ -205,100 +204,102 @@ class ForgettingCurveMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             interference = MemoryUtils.safe_json_loads(response)
-            
+
             # Update interference graph
             for interfering_item in interference["interfering_items"]:
                 self.interference_graph[item_id].add(interfering_item)
-            
+
             # Update item metadata
             item["metadata"]["interference_score"] = interference["interference_score"]
-            
+
         except Exception as e:
             logger.error(f"Error analyzing interference: {e}")
 
     async def _update_learning_curve(self, item_id: str) -> None:
         """Update learning curve for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         # Calculate learning progress
         strength = self.strengths[item_id]
         importance = item["metadata"]["importance"]
         review_count = item["metadata"]["review_count"]
-        
+
         # Update learning progress
         progress = min(
             1.0,
-            item["metadata"]["learning_progress"] +
-            self.learning_rate * (strength * importance * (1 + 0.1 * review_count))
+            item["metadata"]["learning_progress"]
+            + self.learning_rate * (strength * importance * (1 + 0.1 * review_count)),
         )
-        
+
         item["metadata"]["learning_progress"] = progress
-        
+
         # Record learning curve point
-        self.learning_curves[item_id].append({
-            "timestamp": datetime.now().isoformat(),
-            "strength": strength,
-            "importance": importance,
-            "review_count": review_count,
-            "progress": progress
-        })
+        self.learning_curves[item_id].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "strength": strength,
+                "importance": importance,
+                "review_count": review_count,
+                "progress": progress,
+            }
+        )
 
     async def _update_strength(self, item_id: str) -> None:
         """Update memory strength based on forgetting curve."""
         item = next(i for i in self.items if i["id"] == item_id)
         current_strength = self.strengths[item_id]
-        
+
         # Calculate time since last review
-        last_review = datetime.fromisoformat(
-            item["metadata"]["last_review"] or item["timestamp"]
-        )
+        last_review = datetime.fromisoformat(item["metadata"]["last_review"] or item["timestamp"])
         time_diff = (datetime.now() - last_review).total_seconds()
-        
+
         # Calculate decay factor
         decay_factor = np.exp(-self.decay_rate * time_diff)
-        
+
         # Apply importance weighting
         importance_factor = item["metadata"]["importance"]
-        
+
         # Calculate new strength
         new_strength = current_strength * decay_factor * (1 + 0.2 * importance_factor)
-        
+
         # Update strength
         self.strengths[item_id] = max(0.0, min(1.0, new_strength))
-        
+
         # Update item metadata
         item["metadata"]["strength"] = new_strength
 
     async def _review_item(self, item_id: str) -> None:
         """Review an item and update its strength."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         # Update strength
         await self._update_strength(item_id)
-        
+
         # Apply review boost
         current_strength = self.strengths[item_id]
         new_strength = min(1.0, current_strength + self.review_boost)
         self.strengths[item_id] = new_strength
-        
+
         # Update review count
         item["metadata"]["review_count"] += 1
-        
+
         # Update last review timestamp
         item["metadata"]["last_review"] = datetime.now().isoformat()
-        
+
         # Record review
-        self.review_history[item_id].append({
-            "timestamp": datetime.now().isoformat(),
-            "strength_before": current_strength,
-            "strength_after": new_strength,
-            "review_count": item["metadata"]["review_count"]
-        })
-        
+        self.review_history[item_id].append(
+            {
+                "timestamp": datetime.now().isoformat(),
+                "strength_before": current_strength,
+                "strength_after": new_strength,
+                "review_count": item["metadata"]["review_count"],
+            }
+        )
+
         # Schedule next review
         if self.enable_spaced_repetition:
             await self._schedule_review(item_id)
-        
+
         # Update learning curve
         if self.enable_learning_curve:
             await self._update_learning_curve(item_id)
@@ -308,15 +309,11 @@ class ForgettingCurveMemory(BaseMemory):
         if len(self.items) > self.max_items:
             # Sort items by strength and importance
             sorted_items = sorted(
-                self.items,
-                key=lambda x: (
-                    self.strengths[x["id"]] *
-                    x["metadata"]["importance"]
-                )
+                self.items, key=lambda x: (self.strengths[x["id"]] * x["metadata"]["importance"])
             )
-            
+
             # Remove weakest items
-            items_to_remove = sorted_items[:len(self.items) - self.max_items]
+            items_to_remove = sorted_items[: len(self.items) - self.max_items]
             for item in items_to_remove:
                 await self._remove_item(item["id"])
 
@@ -324,19 +321,19 @@ class ForgettingCurveMemory(BaseMemory):
         """Remove an item and its associated data."""
         # Remove from items
         self.items = [i for i in self.items if i["id"] != item_id]
-        
+
         # Remove from strengths
         if item_id in self.strengths:
             del self.strengths[item_id]
-        
+
         # Remove from review history
         if item_id in self.review_history:
             del self.review_history[item_id]
-        
+
         # Remove from learning curves
         if item_id in self.learning_curves:
             del self.learning_curves[item_id]
-        
+
         # Remove from interference graph
         if item_id in self.interference_graph:
             del self.interference_graph[item_id]
@@ -345,11 +342,13 @@ class ForgettingCurveMemory(BaseMemory):
         """Get all messages from all items."""
         messages = []
         for item in self.items:
-            messages.append({
-                "role": "forgetting_curve_memory",
-                "content": item["content"],
-                "timestamp": item["timestamp"]
-            })
+            messages.append(
+                {
+                    "role": "forgetting_curve_memory",
+                    "content": item["content"],
+                    "timestamp": item["timestamp"],
+                }
+            )
         return sorted(messages, key=lambda x: x["timestamp"])
 
     async def clear(self) -> None:
@@ -365,25 +364,28 @@ class ForgettingCurveMemory(BaseMemory):
         """Save items to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump({
-                    "items": self.items,
-                    "strengths": self.strengths,
-                    "review_history": self.review_history,
-                    "learning_curves": self.learning_curves,
-                    "interference_graph": {
-                        k: list(v) for k, v in self.interference_graph.items()
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "items": self.items,
+                        "strengths": self.strengths,
+                        "review_history": self.review_history,
+                        "learning_curves": self.learning_curves,
+                        "interference_graph": {
+                            k: list(v) for k, v in self.interference_graph.items()
+                        },
+                        "last_review": self.last_review.isoformat(),
+                        "last_adaptive": self.last_adaptive.isoformat(),
+                        "last_consolidation": self.last_consolidation.isoformat(),
+                        "last_optimization": self.last_optimization.isoformat(),
                     },
-                    "last_review": self.last_review.isoformat(),
-                    "last_adaptive": self.last_adaptive.isoformat(),
-                    "last_consolidation": self.last_consolidation.isoformat(),
-                    "last_optimization": self.last_optimization.isoformat()
-                }, f)
+                    f,
+                )
 
     async def load(self) -> None:
         """Load items from persistent storage."""
         if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
                 self.items = data.get("items", [])
                 self.strengths = data.get("strengths", {})
@@ -410,80 +412,92 @@ class ForgettingCurveMemory(BaseMemory):
         stats = {
             "total_items": len(self.items),
             "strength_stats": {
-                "average_strength": sum(self.strengths.values()) / len(self.strengths) if self.strengths else 0,
+                "average_strength": (
+                    sum(self.strengths.values()) / len(self.strengths) if self.strengths else 0
+                ),
                 "strong_items": sum(1 for s in self.strengths.values() if s > 0.7),
-                "weak_items": sum(1 for s in self.strengths.values() if s < 0.3)
+                "weak_items": sum(1 for s in self.strengths.values() if s < 0.3),
             },
             "review_stats": {
-                "total_reviews": sum(
-                    len(reviews) for reviews in self.review_history.values()
+                "total_reviews": sum(len(reviews) for reviews in self.review_history.values()),
+                "average_reviews": (
+                    sum(len(reviews) for reviews in self.review_history.values())
+                    / len(self.review_history)
+                    if self.review_history
+                    else 0
                 ),
-                "average_reviews": sum(
-                    len(reviews) for reviews in self.review_history.values()
-                ) / len(self.review_history) if self.review_history else 0
             },
             "learning_stats": {
-                "average_progress": sum(
-                    item["metadata"]["learning_progress"]
-                    for item in self.items
-                ) / len(self.items) if self.items else 0,
+                "average_progress": (
+                    sum(item["metadata"]["learning_progress"] for item in self.items)
+                    / len(self.items)
+                    if self.items
+                    else 0
+                ),
                 "items_with_progress": sum(
-                    1 for item in self.items
-                    if item["metadata"]["learning_progress"] > 0
-                )
+                    1 for item in self.items if item["metadata"]["learning_progress"] > 0
+                ),
             },
             "interference_stats": {
                 "total_interferences": sum(
-                    len(interferences)
-                    for interferences in self.interference_graph.values()
+                    len(interferences) for interferences in self.interference_graph.values()
                 ),
-                "average_interference": sum(
-                    len(interferences)
-                    for interferences in self.interference_graph.values()
-                ) / len(self.interference_graph) if self.interference_graph else 0
-            }
+                "average_interference": (
+                    sum(len(interferences) for interferences in self.interference_graph.values())
+                    / len(self.interference_graph)
+                    if self.interference_graph
+                    else 0
+                ),
+            },
         }
-        
+
         return stats
 
     async def get_forgetting_curve_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for forgetting curve optimization."""
         suggestions = []
-        
+
         # Check item count
         if len(self.items) > self.max_items * 0.8:
-            suggestions.append({
-                "type": "item_limit",
-                "suggestion": "Consider increasing max_items or removing weaker items"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "item_limit",
+                    "suggestion": "Consider increasing max_items or removing weaker items",
+                }
+            )
+
         # Check strength distribution
         stats = await self.get_forgetting_curve_stats()
         if stats["strength_stats"]["average_strength"] < 0.5:
-            suggestions.append({
-                "type": "strength_improvement",
-                "suggestion": "Consider increasing review frequency or decay rate"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "strength_improvement",
+                    "suggestion": "Consider increasing review frequency or decay rate",
+                }
+            )
+
         # Check review coverage
         if stats["review_stats"]["average_reviews"] < 2:
-            suggestions.append({
-                "type": "review_coverage",
-                "suggestion": "Consider increasing review frequency"
-            })
-        
+            suggestions.append(
+                {"type": "review_coverage", "suggestion": "Consider increasing review frequency"}
+            )
+
         # Check learning progress
         if stats["learning_stats"]["average_progress"] < 0.5:
-            suggestions.append({
-                "type": "learning_enhancement",
-                "suggestion": "Consider enhancing learning mechanisms"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "learning_enhancement",
+                    "suggestion": "Consider enhancing learning mechanisms",
+                }
+            )
+
         # Check interference
         if stats["interference_stats"]["average_interference"] > 3:
-            suggestions.append({
-                "type": "interference_reduction",
-                "suggestion": "Consider reducing interference between items"
-            })
-        
-        return suggestions 
+            suggestions.append(
+                {
+                    "type": "interference_reduction",
+                    "suggestion": "Consider reducing interference between items",
+                }
+            )
+
+        return suggestions

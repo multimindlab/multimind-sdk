@@ -1,35 +1,73 @@
+import pytest
 import torch
 import torch.nn as nn
-import pytest
+
 from multimind.client.model_client import (
-    LSTMModelClient, RNNModelClient, GRUModelClient, SpaCyClient, S4Client, HyenaClient, MoEModelClient
+    GRUModelClient,
+    HyenaClient,
+    LSTMModelClient,
+    MoEModelClient,
+    RNNModelClient,
+    S4Client,
+    SpaCyClient,
 )
+
 
 class DummyTokenizer:
     def encode(self, text, return_tensors=None):
         return torch.tensor([[1, 2, 3]])
+
     def decode(self, ids, skip_special_tokens=True):
         return "dummy decoded"
 
+
+# Defined at module scope so torch.save/pickle can resolve it by qualified
+# name when tests reload the saved model. (Local classes inside test
+# functions can't be pickled, which is why these tests used to be skipped.)
+_VOCAB_SIZE = 16
+
+
+class DummyRecurrentModel(nn.Module):
+    """Minimal recurrent stand-in for LSTM/RNN/GRU model clients.
+
+    The real clients call ``output.argmax(dim=-1)[0, -1].item()``, so the
+    forward pass needs to return logits with shape ``[batch, seq_len, vocab]``.
+    """
+
+    def forward(self, x, hidden=None):
+        batch, seq_len = x.shape
+        return torch.randn(batch, seq_len, _VOCAB_SIZE), None
+
+
 tokenizer = DummyTokenizer()
 
-def make_dummy_model():
-    class DummyModel(nn.Module):
-        def forward(self, x, hidden=None):
-            return torch.randn_like(x, dtype=torch.float), None
-    return DummyModel()
 
-@pytest.mark.skip(reason="DummyModel cannot be serialized by torch.save due to local class definition; skipping.")
-def test_lstm_model_client():
-    pass
+def _save_model(tmp_path) -> str:
+    """Persist a DummyRecurrentModel to a temp file and return the path."""
+    path = tmp_path / "model.pt"
+    torch.save(DummyRecurrentModel(), str(path))
+    return str(path)
 
-@pytest.mark.skip(reason="DummyModel cannot be serialized by torch.save due to local class definition; skipping.")
-def test_rnn_model_client():
-    pass
 
-@pytest.mark.skip(reason="DummyModel cannot be serialized by torch.save due to local class definition; skipping.")
-def test_gru_model_client():
-    pass
+def test_lstm_model_client(tmp_path):
+    path = _save_model(tmp_path)
+    client = LSTMModelClient(path, tokenizer)
+    out = client.generate("hello")
+    assert isinstance(out, (torch.Tensor, str))
+
+
+def test_rnn_model_client(tmp_path):
+    path = _save_model(tmp_path)
+    client = RNNModelClient(path, tokenizer)
+    out = client.generate("hello")
+    assert isinstance(out, (torch.Tensor, str))
+
+
+def test_gru_model_client(tmp_path):
+    path = _save_model(tmp_path)
+    client = GRUModelClient(path, tokenizer)
+    out = client.generate("hello")
+    assert isinstance(out, (torch.Tensor, str))
 
 def test_spacy_client():
     try:

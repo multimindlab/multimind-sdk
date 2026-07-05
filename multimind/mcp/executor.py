@@ -2,9 +2,11 @@
 Executor for Model Composition Protocol (MCP) workflows.
 """
 
-from typing import Dict, Any, List, Optional
-from multimind.models.base import BaseLLM
+from typing import Any, Dict, Optional
+
 from multimind.mcp.parser import MCPParser
+from multimind.models.base import BaseLLM
+
 
 class MCPExecutor:
     """Executes MCP workflows."""
@@ -12,7 +14,7 @@ class MCPExecutor:
     def __init__(
         self,
         parser: Optional[MCPParser] = None,
-        model_registry: Optional[Dict[str, BaseLLM]] = None
+        model_registry: Optional[Dict[str, BaseLLM]] = None,
     ):
         self.parser = parser or MCPParser()
         self.model_registry = model_registry or {}
@@ -23,9 +25,7 @@ class MCPExecutor:
         self.model_registry[name] = model
 
     async def execute(
-        self,
-        spec: Dict[str, Any],
-        initial_context: Optional[Dict[str, Any]] = None
+        self, spec: Dict[str, Any], initial_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Execute an MCP workflow."""
         # Parse and validate spec
@@ -40,11 +40,7 @@ class MCPExecutor:
 
         return self.workflow_state
 
-    async def _execute_step(
-        self,
-        step: Dict[str, Any],
-        spec: Dict[str, Any]
-    ) -> None:
+    async def _execute_step(self, step: Dict[str, Any], spec: Dict[str, Any]) -> None:
         """Execute a single workflow step."""
         step_type = step["type"]
         step_id = step["id"]
@@ -66,11 +62,7 @@ class MCPExecutor:
         # Update workflow state
         self.workflow_state[step_id] = result
 
-    def _get_step_inputs(
-        self,
-        step: Dict[str, Any],
-        spec: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def _get_step_inputs(self, step: Dict[str, Any], spec: Dict[str, Any]) -> Dict[str, Any]:
         """Get inputs for a step from workflow state."""
         inputs = {}
 
@@ -92,10 +84,7 @@ class MCPExecutor:
         return inputs
 
     async def _execute_model_step(
-        self,
-        step_id: str,
-        config: Dict[str, Any],
-        inputs: Dict[str, Any]
+        self, step_id: str, config: Dict[str, Any], inputs: Dict[str, Any]
     ) -> Any:
         """Execute a model step."""
         model_name = config["model"]
@@ -113,10 +102,7 @@ class MCPExecutor:
         return response
 
     async def _execute_transform_step(
-        self,
-        step_id: str,
-        config: Dict[str, Any],
-        inputs: Dict[str, Any]
+        self, step_id: str, config: Dict[str, Any], inputs: Dict[str, Any]
     ) -> Any:
         """Execute a transform step."""
         transform_type = config["type"]
@@ -136,10 +122,7 @@ class MCPExecutor:
             raise ValueError(f"Unsupported transform type: {transform_type}")
 
     async def _execute_condition_step(
-        self,
-        step_id: str,
-        config: Dict[str, Any],
-        inputs: Dict[str, Any]
+        self, step_id: str, config: Dict[str, Any], inputs: Dict[str, Any]
     ) -> bool:
         """Execute a condition step."""
         condition_type = config["type"]
@@ -157,11 +140,7 @@ class MCPExecutor:
         else:
             raise ValueError(f"Unsupported condition type: {condition_type}")
 
-    def _prepare_model_prompt(
-        self,
-        config: Dict[str, Any],
-        inputs: Dict[str, Any]
-    ) -> str:
+    def _prepare_model_prompt(self, config: Dict[str, Any], inputs: Dict[str, Any]) -> str:
         """Prepare prompt for model step."""
         template = config["prompt_template"]
 

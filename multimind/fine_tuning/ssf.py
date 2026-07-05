@@ -2,21 +2,22 @@
 SSF (Scaling and Shifting Features) implementation for efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from datasets import Dataset as HFDataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-import logging
-from datasets import Dataset as HFDataset
 
 logger = logging.getLogger(__name__)
+
 
 class SSFLayer(nn.Module):
     """SSF layer that applies scaling and shifting to features."""
@@ -27,7 +28,7 @@ class SSFLayer(nn.Module):
         init_scale: float = 1.0,
         init_shift: float = 0.0,
         dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.hidden_size = hidden_size
@@ -53,6 +54,7 @@ class SSFLayer(nn.Module):
 
         return output
 
+
 class SSFTuner:
     """SSF implementation for fine-tuning."""
 
@@ -62,17 +64,13 @@ class SSFTuner:
         output_dir: str,
         ssf_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
 
         # Default SSF configuration
-        self.ssf_config = ssf_config or {
-            "init_scale": 1.0,
-            "init_shift": 0.0,
-            "dropout": 0.1
-        }
+        self.ssf_config = ssf_config or {"init_scale": 1.0, "init_shift": 0.0, "dropout": 0.1}
 
         # Default training arguments
         self.training_args = training_args or {
@@ -85,7 +83,7 @@ class SSFTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -96,14 +94,9 @@ class SSFTuner:
         """Prepare the model for SSF fine-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -117,10 +110,7 @@ class SSFTuner:
                 child_name = name.split(".")[-1]
 
                 # Create SSF layer
-                ssf_layer = SSFLayer(
-                    hidden_size=module.normalized_shape[0],
-                    **self.ssf_config
-                )
+                ssf_layer = SSFLayer(hidden_size=module.normalized_shape[0], **self.ssf_config)
 
                 # Insert SSF layer after LayerNorm
                 setattr(parent, f"{child_name}_ssf", ssf_layer)
@@ -128,29 +118,22 @@ class SSFTuner:
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -159,7 +142,7 @@ class SSFTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using SSF."""
         if self.model is None:
@@ -178,10 +161,7 @@ class SSFTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -206,9 +186,7 @@ class SSFTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -222,4 +200,4 @@ class SSFTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params 
+        return params

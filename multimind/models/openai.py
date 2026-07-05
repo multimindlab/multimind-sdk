@@ -3,22 +3,21 @@ OpenAI model implementation.
 """
 
 import os
+from collections.abc import AsyncGenerator
+from typing import Any, Dict, List, Optional, Union, cast
+
 import openai
-from typing import List, Dict, Any, Optional, AsyncGenerator, Union, cast
 from openai.types.chat import ChatCompletionMessageParam
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
+
 
 class OpenAIModel(BaseLLM):
     """OpenAI model implementation."""
 
-    def __init__(
-        self,
-        model_name: str,
-        api_key: Optional[str] = None,
-        **kwargs
-    ):
+    def __init__(self, model_name: str, api_key: Optional[str] = None, **kwargs):
         super().__init__(model_name, **kwargs)
         # Load API key from environment if not provided
         if api_key is None:
@@ -71,11 +70,7 @@ class OpenAIModel(BaseLLM):
         return await self.client.embeddings.create(**kwargs)
 
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text using OpenAI's completion API."""
         response = await self._chat_completions_create(
@@ -88,11 +83,7 @@ class OpenAIModel(BaseLLM):
         return response.choices[0].message.content or ""
 
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text using OpenAI's completion API."""
         stream = await self._chat_completions_create(
@@ -107,7 +98,9 @@ class OpenAIModel(BaseLLM):
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
 
-    def _validate_messages(self, messages: List[Dict[str, str]]) -> List[ChatCompletionMessageParam]:
+    def _validate_messages(
+        self, messages: List[Dict[str, str]]
+    ) -> List[ChatCompletionMessageParam]:
         """Convert and validate messages to OpenAI format."""
         valid_messages = []
         for msg in messages:
@@ -115,10 +108,9 @@ class OpenAIModel(BaseLLM):
                 raise ValueError("Each message must have 'role' and 'content' keys")
             if msg["role"] not in ("system", "user", "assistant", "function", "tool"):
                 raise ValueError(f"Invalid message role: {msg['role']}")
-            valid_messages.append(cast(ChatCompletionMessageParam, {
-                "role": msg["role"],
-                "content": msg["content"]
-            }))
+            valid_messages.append(
+                cast(ChatCompletionMessageParam, {"role": msg["role"], "content": msg["content"]})
+            )
         return valid_messages
 
     async def chat(
@@ -126,7 +118,7 @@ class OpenAIModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion using OpenAI's chat API."""
         valid_messages = self._validate_messages(messages)
@@ -144,7 +136,7 @@ class OpenAIModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion using OpenAI's chat API."""
         valid_messages = self._validate_messages(messages)
@@ -161,9 +153,7 @@ class OpenAIModel(BaseLLM):
                 yield chunk.choices[0].delta.content
 
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using OpenAI's embeddings API."""
         if isinstance(text, str):

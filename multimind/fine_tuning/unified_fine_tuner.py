@@ -3,10 +3,11 @@ Unified Fine-Tuning Toolkit for Transformers and Non-Transformers
 Supports: Hyperparameter tuning, Adapter/PEFT, MoE, Prompt Engineering, RAG
 """
 
-from typing import Any, Callable, Dict, List, Optional
 import logging
+from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
 
 # --- 1. Hyperparameter Optimization ---
 class HyperparameterTuner:
@@ -14,6 +15,7 @@ class HyperparameterTuner:
     Generic hyperparameter tuner using Optuna or Ray Tune.
     Supports any model (transformer or non-transformer) and search space.
     """
+
     def __init__(self, model_builder: Callable, search_space: Dict, backend: str = "optuna"):
         """
         model_builder: function that builds a model given hyperparameters
@@ -36,6 +38,7 @@ class HyperparameterTuner:
         )
         return {"best_param": 42}
 
+
 # --- 2. Parameter-Efficient Adaptation (Adapters/PEFT) ---
 class AdapterModule:
     """
@@ -43,6 +46,7 @@ class AdapterModule:
     Can be plugged into any model (transformer or non-transformer).
     Extend this class for your specific adapter logic.
     """
+
     def __init__(self, input_dim: int, output_dim: int, **kwargs):
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -54,12 +58,14 @@ class AdapterModule:
         """
         raise NotImplementedError("Implement adapter forward logic.")
 
+
 # --- 3. Mixture-of-Experts (MoE) ---
 class MoEWrapper:
     """
     Generic Mixture-of-Experts wrapper.
     Can combine any set of expert models (transformers, RNNs, trees, etc.) with a gating network.
     """
+
     def __init__(self, experts: List[Any], gating_network: Any):
         self.experts = experts
         self.gating_network = gating_network
@@ -70,17 +76,20 @@ class MoEWrapper:
         """
         raise NotImplementedError("Implement MoE routing logic.")
 
+
 # --- 4. Prompt Engineering ---
 class PromptEngineeringMixin:
     """
     Mixin for prompt-based adaptation (few-shot, CoT, etc.).
     Can be used with any model that supports context input.
     """
+
     def format_prompt(self, prompt: str, examples: Optional[List[str]] = None, **kwargs) -> str:
         """
         Format prompt with few-shot examples, CoT, etc.
         """
         raise NotImplementedError("Implement prompt formatting logic.")
+
 
 # --- 5. Retrieval-Augmented Generation (RAG) ---
 class RAGPipeline:
@@ -88,6 +97,7 @@ class RAGPipeline:
     Model-agnostic RAG pipeline: retriever + generator.
     The generator can be any decoder model (transformer or non-transformer).
     """
+
     def __init__(self, retriever: Any, generator: Any):
         self.retriever = retriever
         self.generator = generator
@@ -96,4 +106,4 @@ class RAGPipeline:
         """
         Retrieve context and generate output.
         """
-        raise NotImplementedError("Implement RAG pipeline logic.") 
+        raise NotImplementedError("Implement RAG pipeline logic.")

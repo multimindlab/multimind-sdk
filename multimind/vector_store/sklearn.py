@@ -1,9 +1,12 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import logging
 import asyncio
+import logging
+from typing import Any, Callable, Dict, List, Optional
+
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class SklearnBackend(VectorStoreBackend):
     def __init__(
@@ -13,7 +16,7 @@ class SklearnBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.metric = metric
         self.dim = dim
@@ -37,7 +40,7 @@ class SklearnBackend(VectorStoreBackend):
         self._metadatas.extend(metadatas)
         self._documents.extend(documents)
         self._fit_nn()
-        self.log_metrics('add_vectors', n)
+        self.log_metrics("add_vectors", n)
 
     def _fit_nn(self):
         if self._vectors:
@@ -46,12 +49,23 @@ class SklearnBackend(VectorStoreBackend):
         else:
             self._nn = None
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         if not self._nn:
             return []
         query_vec = np.array(query_vector, dtype=np.float32).reshape(1, -1)
         loop = asyncio.get_event_loop()
-        dists, indices = await loop.run_in_executor(None, lambda: self._nn.kneighbors(query_vec, n_neighbors=k))
+        dists, indices = await loop.run_in_executor(
+            None, lambda: self._nn.kneighbors(query_vec, n_neighbors=k)
+        )
         results = []
         for rank, idx in enumerate(indices[0]):
             meta = self._metadatas[idx]
@@ -61,13 +75,15 @@ class SklearnBackend(VectorStoreBackend):
                     continue
             if metadata_fields:
                 meta = {k: v for k, v in meta.items() if k in metadata_fields}
-            results.append(SearchResult(
-                id=self._ids[idx],
-                score=-dists[0][rank],  # negative distance for similarity
-                metadata=meta,
-                document=doc
-            ))
-        self.log_metrics('search', len(results))
+            results.append(
+                SearchResult(
+                    id=self._ids[idx],
+                    score=-dists[0][rank],  # negative distance for similarity
+                    metadata=meta,
+                    document=doc,
+                )
+            )
+        self.log_metrics("search", len(results))
         return results[:k]
 
     async def delete_vectors(self, ids):
@@ -78,7 +94,7 @@ class SklearnBackend(VectorStoreBackend):
         self._metadatas = [self._metadatas[i] for i in keep]
         self._documents = [self._documents[i] for i in keep]
         self._fit_nn()
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         self._vectors = []
@@ -86,10 +102,10 @@ class SklearnBackend(VectorStoreBackend):
         self._metadatas = []
         self._documents = []
         self._fit_nn()
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -111,11 +127,11 @@ class SklearnBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

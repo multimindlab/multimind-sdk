@@ -1,13 +1,16 @@
-import os
-import logging
 import asyncio
-from supabase import create_client, Client
-import numpy as np
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from supabase import Client, create_client
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class SupabaseVectorStore(VectorStoreBackend):
     """Supabase Vector Store Backend."""
+
     def __init__(
         self,
         url: Optional[str] = None,
@@ -17,7 +20,7 @@ class SupabaseVectorStore(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.url = url or os.environ.get("SUPABASE_URL")
         self.api_key = api_key or os.environ.get("SUPABASE_API_KEY")
@@ -51,20 +54,32 @@ class SupabaseVectorStore(VectorStoreBackend):
         metadatas = metadatas or [{} for _ in range(n)]
         docs = documents or ["" for _ in range(n)]
         loop = asyncio.get_event_loop()
+
         def _add():
             for i in range(n):
                 data = {
                     "id": ids[i],
                     "vector": list(map(float, vectors[i])),
                     "metadata": metadatas[i],
-                    "document": docs[i]
+                    "document": docs[i],
                 }
                 self.client.table(self.table).upsert(data).execute()
-        await loop.run_in_executor(None, _add)
-        self.log_metrics('add_vectors', n)
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+        await loop.run_in_executor(None, _add)
+        self.log_metrics("add_vectors", n)
+
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         loop = asyncio.get_event_loop()
+
         def _search():
             # Use Postgres L2 distance or cosine similarity if available
             sql = f"""
@@ -79,41 +94,50 @@ class SupabaseVectorStore(VectorStoreBackend):
             sql += " ORDER BY distance ASC LIMIT %s"
             params.append(k)
             try:
-                res = self.client.postgrest.rpc("execute_sql", {"sql": sql, "params": params}).execute()
-                results = res.data if hasattr(res, 'data') else []
+                res = self.client.postgrest.rpc(
+                    "execute_sql", {"sql": sql, "params": params}
+                ).execute()
+                results = res.data if hasattr(res, "data") else []
             except Exception as e:
                 self.logger.error(f"Search failed: {e}")
                 results = []
             search_results = []
             for row in results:
-                search_results.append(SearchResult(
-                    id=row.get("id"),
-                    score=-row.get("distance", 0),
-                    metadata=row.get("metadata"),
-                    document=row.get("document")
-                ))
+                search_results.append(
+                    SearchResult(
+                        id=row.get("id"),
+                        score=-row.get("distance", 0),
+                        metadata=row.get("metadata"),
+                        document=row.get("document"),
+                    )
+                )
             return search_results
+
         search_results = await loop.run_in_executor(None, _search)
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
         loop = asyncio.get_event_loop()
+
         def _delete():
             for id_ in ids:
                 self.client.table(self.table).delete().eq("id", id_).execute()
+
         await loop.run_in_executor(None, _delete)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         loop = asyncio.get_event_loop()
+
         def _clear():
             self.client.table(self.table).delete().neq("id", "").execute()
+
         await loop.run_in_executor(None, _clear)
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -135,11 +159,11 @@ class SupabaseVectorStore(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

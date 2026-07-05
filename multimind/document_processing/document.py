@@ -2,22 +2,24 @@
 Document processing utilities for RAG system.
 """
 
-from typing import List, Dict, Any, Optional, Union
 import logging
 import re
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 # Optional tiktoken import for token counting
 try:
     import tiktoken
+
     TIKTOKEN_AVAILABLE = True
 except ImportError:
     TIKTOKEN_AVAILABLE = False
     logger.warning("tiktoken not available. Token counting features will be disabled.")
 
 from pathlib import Path
+
 
 @dataclass
 class Document:
@@ -33,14 +35,12 @@ class Document:
         if not isinstance(self.metadata, dict):
             raise ValueError("Document metadata must be a dictionary")
 
+
 class DocumentProcessor:
     """Process documents for RAG system."""
 
     def __init__(
-        self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
-        tokenizer: Optional[str] = None
+        self, chunk_size: int = 1000, chunk_overlap: int = 200, tokenizer: Optional[str] = None
     ):
         """Initialize document processor.
 
@@ -64,11 +64,7 @@ class DocumentProcessor:
             # Fallback to character-based estimation (rough approximation)
             return len(text) // 4  # Rough estimate: 1 token ≈ 4 characters
 
-    def _split_text(
-        self,
-        text: str,
-        separator: str = "\n"
-    ) -> List[str]:
+    def _split_text(self, text: str, separator: str = "\n") -> List[str]:
         """Split text into chunks based on separator."""
         # Split by separator
         segments = text.split(separator)
@@ -130,9 +126,7 @@ class DocumentProcessor:
         return chunks
 
     def process_document(
-        self,
-        document: Union[str, Document],
-        metadata: Optional[Dict[str, Any]] = None
+        self, document: Union[str, Document], metadata: Optional[Dict[str, Any]] = None
     ) -> List[Document]:
         """Process a document into chunks.
 
@@ -160,19 +154,13 @@ class DocumentProcessor:
         # Create Document objects
         documents = []
         for i, chunk in enumerate(chunks):
-            chunk_metadata = {
-                **doc_metadata,
-                "chunk_index": i,
-                "total_chunks": len(chunks)
-            }
+            chunk_metadata = {**doc_metadata, "chunk_index": i, "total_chunks": len(chunks)}
             documents.append(Document(text=chunk, metadata=chunk_metadata))
 
         return documents
 
     def process_file(
-        self,
-        file_path: Union[str, Path],
-        metadata: Optional[Dict[str, Any]] = None
+        self, file_path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
     ) -> List[Document]:
         """Process a file into document chunks.
 
@@ -189,19 +177,15 @@ class DocumentProcessor:
         file_path = Path(file_path)
 
         # Read file based on extension
-        if file_path.suffix == ".txt":
-            with open(file_path, "r", encoding="utf-8") as f:
-                text = f.read()
-        elif file_path.suffix == ".md":
-            with open(file_path, "r", encoding="utf-8") as f:
+        if file_path.suffix == ".txt" or file_path.suffix == ".md":
+            with open(file_path, encoding="utf-8") as f:
                 text = f.read()
         elif file_path.suffix == ".pdf":
             try:
                 import PyPDF2
             except ImportError:
                 raise ImportError(
-                    "PyPDF2 is required for PDF processing. "
-                    "Install with: pip install PyPDF2"
+                    "PyPDF2 is required for PDF processing. Install with: pip install PyPDF2"
                 )
 
             text = ""
@@ -216,7 +200,7 @@ class DocumentProcessor:
         file_metadata = {
             "source": str(file_path),
             "file_type": file_path.suffix[1:],
-            "file_name": file_path.name
+            "file_name": file_path.name,
         }
         if metadata:
             file_metadata.update(metadata)
@@ -237,7 +221,9 @@ class DocumentProcessor:
 
         return text.strip()
 
-    def process_file(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+    def process_file(
+        self, file_path: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> List[Document]:
         """Process a file and return a list of Document objects."""
         extension = Path(file_path).suffix.lower()
         if extension == ".pdf":
@@ -247,12 +233,14 @@ class DocumentProcessor:
         else:
             raise ValueError(f"Unsupported file format: {extension}")
 
-    def _process_pdf(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+    def _process_pdf(
+        self, file_path: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> List[Document]:
         """Process a PDF file, including OCR for image-based PDFs."""
         try:
             import PyPDF2
-            from pytesseract import image_to_string
             from pdf2image import convert_from_path
+            from pytesseract import image_to_string
         except ImportError:
             raise ImportError(
                 "PyPDF2, pytesseract, and pdf2image are required for PDF processing. "
@@ -274,32 +262,44 @@ class DocumentProcessor:
 
         return self.process_document(text, metadata)
 
-    def _process_text_file(self, file_path: str, metadata: Optional[Dict[str, Any]] = None) -> List[Document]:
+    def _process_text_file(
+        self, file_path: str, metadata: Optional[Dict[str, Any]] = None
+    ) -> List[Document]:
         """Process text-based files like TXT, CSV, JSON, XML, and EPUB."""
         extension = Path(file_path).suffix.lower()
         if extension == ".txt":
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 text = f.read()
         elif extension == ".csv":
             import csv
-            with open(file_path, "r", encoding="utf-8") as f:
+
+            with open(file_path, encoding="utf-8") as f:
                 reader = csv.reader(f)
                 text = "\n".join([", ".join(row) for row in reader])
         elif extension == ".json":
             import json
-            with open(file_path, "r", encoding="utf-8") as f:
+
+            with open(file_path, encoding="utf-8") as f:
                 data = json.load(f)
                 text = json.dumps(data, indent=2)
         elif extension == ".xml":
             from xml.etree import ElementTree as ET
+
             tree = ET.parse(file_path)
             root = tree.getroot()
             text = ET.tostring(root, encoding="unicode")
         elif extension == ".epub":
             import ebooklib
             from ebooklib import epub
+
             book = epub.read_epub(file_path)
-            text = "\n".join([item.get_body_content().decode("utf-8") for item in book.items if item.get_type() == ebooklib.ITEM_DOCUMENT])
+            text = "\n".join(
+                [
+                    item.get_body_content().decode("utf-8")
+                    for item in book.items
+                    if item.get_type() == ebooklib.ITEM_DOCUMENT
+                ]
+            )
         else:
             raise ValueError(f"Unsupported text file format: {extension}")
 

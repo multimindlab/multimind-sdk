@@ -1,9 +1,12 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 from hologres_vector import HologresVector
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class HologresBackend(VectorStoreBackend):
     def __init__(
@@ -26,7 +29,7 @@ class HologresBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.host = host or os.environ.get("HOLO_HOST")
         self.port = port or os.environ.get("HOLO_PORT")
@@ -67,13 +70,25 @@ class HologresBackend(VectorStoreBackend):
         metadatas = metadatas if metadatas else [{} for _ in vectors]
         ids = ids if ids else [str(i) for i in range(len(vectors))]
         await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.client.upsert_vectors(vectors, ids, schema_datas=schema_datas, metadatas=metadatas)
+            None,
+            lambda: self.client.upsert_vectors(
+                vectors, ids, schema_datas=schema_datas, metadatas=metadatas
+            ),
         )
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         # Integrated query: nearest neighbor + filter
         search_kwargs = {"k": k}
@@ -85,35 +100,41 @@ class HologresBackend(VectorStoreBackend):
         results = []
         for doc in res:
             meta = doc.get("metadata", {})
-            doc_content = {k: v for k, v in doc.items() if k not in ["id", "vector", "metadata", "distance"]}
+            doc_content = {
+                k: v for k, v in doc.items() if k not in ["id", "vector", "metadata", "distance"]
+            }
             score = 1.0 / (1.0 + doc.get("distance", 0.0))
             bm25_score = None
             if self.enable_hybrid_search and query_text:
                 bm25_score = self._bm25_score(query_text, str(doc_content))
                 score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
-            if filter_criteria and not all(doc_content.get(k) == v for k, v in filter_criteria.items()):
+            if filter_criteria and not all(
+                doc_content.get(k) == v for k, v in filter_criteria.items()
+            ):
                 continue
             result = SearchResult(
                 id=doc.get("id"),
                 vector=doc.get("vector"),
                 metadata=meta,
                 document=doc_content,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "distance": doc.get("distance", 0.0),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -127,18 +148,16 @@ class HologresBackend(VectorStoreBackend):
             await asyncio.get_event_loop().run_in_executor(
                 None, lambda: self.client.delete_vectors(schema_data_filters={"id": doc_id})
             )
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # Delete all data
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.client.delete_vectors()
-        )
-        self.log_metrics('clear', 1)
+        await asyncio.get_event_loop().run_in_executor(None, lambda: self.client.delete_vectors())
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
         # Hologres is a managed service, so persistence is not typically needed
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -160,11 +179,11 @@ class HologresBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

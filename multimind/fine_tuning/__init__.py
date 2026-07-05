@@ -1,43 +1,67 @@
+"""Fine-tuning module for MultiMind SDK.
+
+Provides PEFT, LoRA/QLoRA, adapters, MoE training, distillation, and friends.
+Requires the ``finetune`` extras: ``pip install 'multimind-sdk[finetune]'``
+(or ``[finetune-gpu]`` on Linux+CUDA for bitsandbytes-backed QLoRA).
 """
-Fine-tuning module for MultiMind SDK.
 
-This module provides fine-tuning capabilities for language models.
-"""
-
-# Core fine-tuning classes
-from .adapter_drop import AdapterDropTuner
-from .adapter_fusion import AdapterFusionTuner
-from .adapter_tuning import AdapterTuner
-from .lora_trainer import LoRATrainer
-from .qlora_trainer import QLoraTuner
-from .prompt_tuning import PromptTuner, PrefixTuner
-from .peft_methods import PEFTTuner
-from .unified_peft import UniPELTTuner
-from .advanced_unified_peft import UniPELTPlusTuner
-from .moe_tuning import MoETrainer
-from .rag_fine_tuner import RAGFineTuner
-from .ssf import SSFTuner
-from .intrinsic_said import IntrinsicSAIDTuner
-from .ia3_bitfit import IA3Tuner, BitFitTuner
-from .prompt_pooling import PromptPoolingTuner
-from .advanced_tuning import CompacterTuner, HyperLoRATuner
-from .mam_adapter import MAMAdapterTuner
-from .unified_tuning import UniPELTTuner as UnifiedUniPELTTuner, MAMAdapterTuner as UnifiedMAMAdapterTuner
-
-# Advanced fine-tuning classes
-from .adaptive_peft import AdaptiveUniPELTPlusTuner, AdaptiveEnhancedMAMTuner
-from .multitask_peft import MultiTaskUniPELTPlusTuner, CrossModelUniPELTPlusTuner
-from .meta_learning import MetaLearner, MultiTeacherDistillation
-from .advanced_meta_learning import MAMLLearner, ReptileLearner, FewShotLearner, TransferLearner
-from .advanced_optimization import BayesianOptimizer, KnowledgeDistillation, OptimizedMultiTaskTuner, DistilledMultiTaskTuner
-
-# Unified fine-tuning components
-from .unified_fine_tuner import HyperparameterTuner, AdapterModule, MoEWrapper, PromptEngineeringMixin, RAGPipeline
+try:
+    from .adapter_drop import AdapterDropTuner
+    from .adapter_fusion import AdapterFusionTuner
+    from .adapter_tuning import AdapterTuner
+    from .adaptive_peft import AdaptiveEnhancedMAMTuner, AdaptiveUniPELTPlusTuner
+    from .advanced_meta_learning import (
+        FewShotLearner,
+        MAMLLearner,
+        ReptileLearner,
+        TransferLearner,
+    )
+    from .advanced_optimization import (
+        BayesianOptimizer,
+        DistilledMultiTaskTuner,
+        KnowledgeDistillation,
+        OptimizedMultiTaskTuner,
+    )
+    from .advanced_tuning import CompacterTuner, HyperLoRATuner
+    from .advanced_unified_peft import UniPELTPlusTuner
+    from .ia3_bitfit import BitFitTuner, IA3Tuner
+    from .intrinsic_said import IntrinsicSAIDTuner
+    from .lora_trainer import LoRATrainer
+    from .mam_adapter import MAMAdapterTuner
+    from .meta_learning import MetaLearner, MultiTeacherDistillation
+    from .moe_tuning import MoETrainer
+    from .multitask_peft import CrossModelUniPELTPlusTuner, MultiTaskUniPELTPlusTuner
+    from .peft_methods import PEFTTuner
+    from .prompt_pooling import PromptPoolingTuner
+    from .prompt_tuning import PrefixTuner, PromptTuner
+    from .qlora_trainer import QLoraTuner
+    from .rag_fine_tuner import RAGFineTuner
+    from .ssf import SSFTuner
+    from .unified_fine_tuner import (
+        AdapterModule,
+        HyperparameterTuner,
+        MoEWrapper,
+        PromptEngineeringMixin,
+        RAGPipeline,
+    )
+    from .unified_peft import UniPELTTuner
+    from .unified_tuning import (
+        MAMAdapterTuner as UnifiedMAMAdapterTuner,
+    )
+    from .unified_tuning import (
+        UniPELTTuner as UnifiedUniPELTTuner,
+    )
+except ImportError as exc:  # pragma: no cover - exercised on minimal installs
+    raise ImportError(
+        "Fine-tuning features require additional dependencies. "
+        "Install with: pip install 'multimind-sdk[finetune]' "
+        "(or 'multimind-sdk[finetune-gpu]' on Linux+CUDA for bitsandbytes)."
+    ) from exc
 
 __all__ = [
     # Core fine-tuning
     "AdapterDropTuner",
-    "AdapterFusionTuner", 
+    "AdapterFusionTuner",
     "AdapterTuner",
     "LoRATrainer",
     "QLoraTuner",
@@ -58,7 +82,6 @@ __all__ = [
     "MAMAdapterTuner",
     "UnifiedUniPELTTuner",
     "UnifiedMAMAdapterTuner",
-    
     # Advanced fine-tuning
     "AdaptiveUniPELTPlusTuner",
     "AdaptiveEnhancedMAMTuner",
@@ -74,11 +97,10 @@ __all__ = [
     "KnowledgeDistillation",
     "OptimizedMultiTaskTuner",
     "DistilledMultiTaskTuner",
-    
     # Unified components
     "HyperparameterTuner",
     "AdapterModule",
     "MoEWrapper",
     "PromptEngineeringMixin",
     "RAGPipeline",
-] 
+]

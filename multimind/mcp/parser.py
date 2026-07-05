@@ -3,21 +3,21 @@ Parser for Model Composition Protocol (MCP) specifications.
 """
 
 import json
-from typing import Dict, Any, List, Optional
-from pathlib import Path
 import os
+from typing import Any, Dict, List, Optional
+
 
 class MCPParser:
     """Parses and validates MCP specifications."""
 
     def __init__(self, schema_path: Optional[str] = None):
-        self.schema_path = schema_path or os.path.join(os.path.dirname(__file__), 'schema.json')
+        self.schema_path = schema_path or os.path.join(os.path.dirname(__file__), "schema.json")
         self.schema = self._load_schema()
 
     def _load_schema(self) -> Dict[str, Any]:
         """Load MCP schema from file."""
         try:
-            with open(self.schema_path, 'r') as f:
+            with open(self.schema_path) as f:
                 return json.load(f)
         except Exception as e:
             raise ValueError(f"Failed to load MCP schema: {str(e)}")
@@ -32,8 +32,7 @@ class MCPParser:
         # Version check
         if spec["version"] != self.schema["version"]:
             raise ValueError(
-                f"Unsupported MCP version: {spec['version']}. "
-                f"Expected: {self.schema['version']}"
+                f"Unsupported MCP version: {spec['version']}. Expected: {self.schema['version']}"
             )
 
         # Validate models
@@ -92,14 +91,13 @@ class MCPParser:
             # Check if connected steps exis
             if conn["from"] not in step_ids or conn["to"] not in step_ids:
                 raise ValueError(
-                    f"Invalid connection: step {conn['from']} or {conn['to']} "
-                    "does not exist"
+                    f"Invalid connection: step {conn['from']} or {conn['to']} does not exist"
                 )
 
     def parse_file(self, file_path: str) -> Dict[str, Any]:
         """Parse MCP specification from file."""
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path) as f:
                 spec = json.load(f)
             return self.parse(spec)
         except Exception as e:

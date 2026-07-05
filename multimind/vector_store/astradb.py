@@ -4,16 +4,18 @@ AstraDB Vector Store Backend (Pro Version)
 - Supports hybrid search, metadata filtering, custom scoring, batch ops, persistence, monitoring, and plugin hooks
 """
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
 
 try:
     from astrapy.db import AstraDB
 except ImportError:
     AstraDB = None
+
 
 class AstraDBBackend(VectorStoreBackend):
     def __init__(
@@ -30,7 +32,7 @@ class AstraDBBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.token = token or os.environ.get("ASTRA_DB_TOKEN")
         self.api_endpoint = api_endpoint or os.environ.get("ASTRA_DB_API_ENDPOINT")
@@ -57,7 +59,7 @@ class AstraDBBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
         for i, vector in enumerate(vectors):
@@ -69,8 +71,8 @@ class AstraDBBackend(VectorStoreBackend):
             }
             self.col.insert_one(doc)
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
     async def search(
         self,
@@ -80,7 +82,7 @@ class AstraDBBackend(VectorStoreBackend):
         filter_criteria: Optional[Dict[str, Any]] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
         explain = explain if explain is not None else self.explain
@@ -102,22 +104,24 @@ class AstraDBBackend(VectorStoreBackend):
                 vector=doc["vector"],
                 metadata=meta,
                 document=doc_content,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "vector_score": doc.get("score", 1.0),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -129,16 +133,16 @@ class AstraDBBackend(VectorStoreBackend):
         """Delete vectors by ID (batch supported)."""
         for doc_id in ids:
             self.col.delete_one({"_id": doc_id})
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
         self.col.delete_many({})
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         """Persist index/config to disk/cloud if supported."""
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "AstraDBBackend":
@@ -170,11 +174,11 @@ class AstraDBBackend(VectorStoreBackend):
                 self.plugin_registry[name](*args, **kwargs)
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

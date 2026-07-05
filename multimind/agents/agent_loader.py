@@ -3,12 +3,14 @@ Agent loader for loading agent configurations from MCP files.
 """
 
 import json
-from typing import Dict, Any, Optional, List
 from pathlib import Path
+from typing import Dict, List, Optional
+
 from multimind.agents.agent import Agent
 from multimind.agents.memory import AgentMemory
 from multimind.agents.tools.base import BaseTool
 from multimind.models.base import BaseLLM
+
 
 class AgentLoader:
     """Loads agent configurations from MCP files."""
@@ -42,7 +44,7 @@ class AgentLoader:
         self,
         config_path: str,
         model: Optional[BaseLLM] = None,
-        tools: Optional[List[BaseTool]] = None
+        tools: Optional[List[BaseTool]] = None,
     ) -> Agent:
         """Load an agent from a configuration file."""
         safe_config_path = self._resolve_safe_path(config_path)
@@ -51,18 +53,14 @@ class AgentLoader:
 
         # Load config
         try:
-            with open(safe_config_path, "r", encoding="utf-8") as f:
+            with open(safe_config_path, encoding="utf-8") as f:
                 config = json.load(f)
         except FileNotFoundError as e:
             raise FileNotFoundError(f"Agent config file not found: {safe_config_path}") from e
         except json.JSONDecodeError as e:
-            raise ValueError(
-                f"Invalid JSON in agent config file: {safe_config_path}. {e}"
-            ) from e
+            raise ValueError(f"Invalid JSON in agent config file: {safe_config_path}. {e}") from e
         except OSError as e:
-            raise RuntimeError(
-                f"Failed to read agent config file: {safe_config_path}. {e}"
-            ) from e
+            raise RuntimeError(f"Failed to read agent config file: {safe_config_path}. {e}") from e
 
         if not isinstance(config, dict):
             raise ValueError(f"Agent config must be a JSON object: {safe_config_path}")
@@ -89,24 +87,17 @@ class AgentLoader:
 
         # Create memory
         memory_config = config.get("memory", {})
-        memory = AgentMemory(
-            max_history=memory_config.get("max_history", 100)
-        )
+        memory = AgentMemory(max_history=memory_config.get("max_history", 100))
 
         # Create agent
         agent = Agent(
-            model=model,
-            memory=memory,
-            tools=tools,
-            system_prompt=config["system_prompt"]
+            model=model, memory=memory, tools=tools, system_prompt=config["system_prompt"]
         )
 
         return agent
 
     def load_agents_from_dir(
-        self,
-        dir_path: str,
-        model: Optional[BaseLLM] = None
+        self, dir_path: str, model: Optional[BaseLLM] = None
     ) -> Dict[str, Agent]:
         """Load multiple agents from a directory of config files."""
         agents = {}
@@ -116,9 +107,6 @@ class AgentLoader:
 
         for config_file in config_dir.glob("*.json"):
             agent_name = config_file.stem
-            agents[agent_name] = self.load_agent(
-                str(config_file),
-                model=model
-            )
+            agents[agent_name] = self.load_agent(str(config_file), model=model)
 
         return agents

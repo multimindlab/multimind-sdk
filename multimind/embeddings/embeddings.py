@@ -2,11 +2,13 @@
 Embedding model implementations for RAG system.
 """
 
-from typing import List, Dict, Any, Optional, Union, AsyncGenerator, Coroutine
-from dataclasses import dataclass
 import logging
+from collections.abc import AsyncGenerator, Coroutine
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Union
+
 import numpy as np
-import asyncio
+
 from ..models.base import BaseLLM
 
 logger = logging.getLogger(__name__)
@@ -15,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EmbeddingConfig:
     """Configuration for embedding generation."""
+
     model_name: str = "text-embedding-ada-002"
     batch_size: int = 100
     cache_enabled: bool = True
@@ -23,18 +26,19 @@ class EmbeddingConfig:
     normalize: bool = True
     custom_params: Dict[str, Any] = None
 
+
 class EmbeddingGenerator:
     """Main embedding generator that can use different embedding models."""
-    
+
     def __init__(self, config: EmbeddingConfig):
         """Initialize embedding generator.
-        
+
         Args:
             config: Configuration for embedding generation
         """
         self.config = config
         self.embedder = self._get_embedder()
-    
+
     def _get_embedder(self) -> BaseLLM:
         """Get the appropriate embedder based on configuration."""
         if "openai" in self.config.model_name.lower():
@@ -42,51 +46,51 @@ class EmbeddingGenerator:
                 model=self.config.model_name,
                 batch_size=self.config.batch_size,
                 cache_enabled=self.config.cache_enabled,
-                **(self.config.custom_params or {})
+                **(self.config.custom_params or {}),
             )
         elif "sentence" in self.config.model_name.lower():
             return SentenceT5Embedder(
                 model_name=self.config.model_name,
                 device=self.config.device,
                 batch_size=self.config.batch_size,
-                **(self.config.custom_params or {})
+                **(self.config.custom_params or {}),
             )
         else:
             return HuggingFaceEmbedder(
                 model_name=self.config.model_name,
                 device=self.config.device,
                 batch_size=self.config.batch_size,
-                **(self.config.custom_params or {})
+                **(self.config.custom_params or {}),
             )
-    
+
     async def generate(self, texts: List[str]) -> List[List[float]]:
         """Generate embeddings for a list of texts.
-        
+
         Args:
             texts: List of texts to embed
-            
+
         Returns:
             List of embedding vectors
         """
         embeddings = await self.embedder.embed(texts)
-        
+
         if self.config.normalize:
             embeddings = self._normalize_embeddings(embeddings)
-        
+
         return embeddings
-    
+
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text.
-        
+
         Args:
             text: Text to embed
-            
+
         Returns:
             Embedding vector
         """
         embeddings = await self.generate([text])
         return embeddings[0]
-    
+
     def _normalize_embeddings(self, embeddings: List[List[float]]) -> List[List[float]]:
         """Normalize embeddings to unit vectors."""
         normalized = []
@@ -97,18 +101,16 @@ class EmbeddingGenerator:
             else:
                 normalized.append(embedding)
         return normalized
-    
+
     async def initialize(self) -> None:
         """Initialize the embedding generator."""
         # Any initialization logic can go here
         pass
-    
+
     def get_stats(self) -> Dict[str, Any]:
         """Get embedding generator statistics."""
-        return {
-            "config": self.config.__dict__,
-            "embedder_type": self.embedder.__class__.__name__
-        }
+        return {"config": self.config.__dict__, "embedder_type": self.embedder.__class__.__name__}
+
 
 class OpenAIEmbedder(BaseLLM):
     """OpenAI embedding model implementation."""
@@ -118,7 +120,7 @@ class OpenAIEmbedder(BaseLLM):
         model: str = "text-embedding-ada-002",
         batch_size: int = 100,
         cache_enabled: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """Initialize OpenAI embedder.
 
@@ -131,9 +133,7 @@ class OpenAIEmbedder(BaseLLM):
         try:
             import openai
         except ImportError:
-            raise ImportError(
-                "OpenAI package is required. Install with: pip install openai"
-            )
+            raise ImportError("OpenAI package is required. Install with: pip install openai")
 
         self.model = model
         self.batch_size = batch_size
@@ -142,11 +142,7 @@ class OpenAIEmbedder(BaseLLM):
         self.kwargs = kwargs
         self.cache = {} if cache_enabled else None
 
-    async def embed(
-        self,
-        texts: List[str],
-        **kwargs
-    ) -> List[List[float]]:
+    async def embed(self, texts: List[str], **kwargs) -> List[List[float]]:
         """Generate embeddings for a list of texts.
 
         Args:
@@ -162,13 +158,11 @@ class OpenAIEmbedder(BaseLLM):
         # Process in batches
         all_embeddings = []
         for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
+            batch = texts[i : i + self.batch_size]
 
             # Call OpenAI API
             response = await self.client.embeddings.create(
-                model=self.model,
-                input=batch,
-                **api_kwargs
+                model=self.model, input=batch, **api_kwargs
             )
 
             # Extract embeddings
@@ -177,7 +171,9 @@ class OpenAIEmbedder(BaseLLM):
 
         return all_embeddings
 
-    def embeddings(self, texts: List[str], reduce_dimensionality: bool = False) -> List[List[float]]:
+    def embeddings(
+        self, texts: List[str], reduce_dimensionality: bool = False
+    ) -> List[List[float]]:
         """Generate embeddings with optional caching and dimensionality reduction."""
         if self.cache_enabled:
             uncached_texts = [text for text in texts if text not in self.cache]
@@ -190,6 +186,7 @@ class OpenAIEmbedder(BaseLLM):
 
         if reduce_dimensionality:
             from sklearn.decomposition import PCA
+
             pca = PCA(n_components=50)  # Example: Reduce to 50 dimensions
             embeddings = pca.fit_transform(embeddings).tolist()
 
@@ -204,40 +201,57 @@ class OpenAIEmbedder(BaseLLM):
         """Get the quality score for this model."""
         return None  # Placeholder implementation
 
-    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def generate(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> str:
         """Generate text from the model."""
         return "Generated text"  # Placeholder implementation
 
-    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate text stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Generated text stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> str:
         """Generate chat completion from the model."""
         return "Chat response"  # Placeholder implementation
 
-    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate chat completion stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Chat response stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+    async def embeddings(
+        self, text: Union[str, List[str]], **kwargs
+    ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         return [[0.0]]  # Placeholder implementation
+
 
 class HuggingFaceEmbedder(BaseLLM):
     """HuggingFace embedding model implementation."""
 
-    def __init__(
-        self,
-        model_name: str,
-        device: str = "cpu",
-        batch_size: int = 32,
-        **kwargs
-    ):
+    def __init__(self, model_name: str, device: str = "cpu", batch_size: int = 32, **kwargs):
         """Initialize HuggingFace embedder.
 
         Args:
@@ -247,8 +261,8 @@ class HuggingFaceEmbedder(BaseLLM):
             **kwargs: Additional arguments for model
         """
         try:
-            from transformers import AutoTokenizer, AutoModel
             import torch
+            from transformers import AutoModel, AutoTokenizer
         except ImportError:
             raise ImportError(
                 "Transformers and PyTorch are required. "
@@ -262,11 +276,7 @@ class HuggingFaceEmbedder(BaseLLM):
         self.model.to(device)
         self.model.eval()
 
-    async def embed(
-        self,
-        texts: List[str],
-        **kwargs
-    ) -> List[List[float]]:
+    async def embed(self, texts: List[str], **kwargs) -> List[List[float]]:
         """Generate embeddings for a list of texts.
 
         Args:
@@ -282,15 +292,11 @@ class HuggingFaceEmbedder(BaseLLM):
 
         # Process in batches
         for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
+            batch = texts[i : i + self.batch_size]
 
             # Tokenize
             encoded = self.tokenizer(
-                batch,
-                padding=True,
-                truncation=True,
-                return_tensors="pt",
-                **kwargs
+                batch, padding=True, truncation=True, return_tensors="pt", **kwargs
             )
 
             # Move to device
@@ -312,29 +318,52 @@ class HuggingFaceEmbedder(BaseLLM):
         """Get the quality score for this model."""
         return None  # Placeholder implementation
 
-    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def generate(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> str:
         """Generate text from the model."""
         return "Generated text"  # Placeholder implementation
 
-    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate text stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Generated text stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> str:
         """Generate chat completion from the model."""
         return "Chat response"  # Placeholder implementation
 
-    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate chat completion stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Chat response stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+    async def embeddings(
+        self, text: Union[str, List[str]], **kwargs
+    ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         return [[0.0]]  # Placeholder implementation
+
 
 class SentenceT5Embedder(BaseLLM):
     """Sentence-T5 embedding model implementation."""
@@ -344,7 +373,7 @@ class SentenceT5Embedder(BaseLLM):
         model_name: str = "sentence-transformers/sentence-t5-base",
         device: str = "cpu",
         batch_size: int = 32,
-        **kwargs
+        **kwargs,
     ):
         """Initialize Sentence-T5 embedder.
 
@@ -358,19 +387,14 @@ class SentenceT5Embedder(BaseLLM):
             from sentence_transformers import SentenceTransformer
         except ImportError:
             raise ImportError(
-                "Sentence-Transformers is required. "
-                "Install with: pip install sentence-transformers"
+                "Sentence-Transformers is required. Install with: pip install sentence-transformers"
             )
 
         self.device = device
         self.batch_size = batch_size
         self.model = SentenceTransformer(model_name, device=device, **kwargs)
 
-    async def embed(
-        self,
-        texts: List[str],
-        **kwargs
-    ) -> List[List[float]]:
+    async def embed(self, texts: List[str], **kwargs) -> List[List[float]]:
         """Generate embeddings for a list of texts.
 
         Args:
@@ -383,14 +407,11 @@ class SentenceT5Embedder(BaseLLM):
         # Process in batches
         all_embeddings = []
         for i in range(0, len(texts), self.batch_size):
-            batch = texts[i:i + self.batch_size]
+            batch = texts[i : i + self.batch_size]
 
             # Generate embeddings
             batch_embeddings = self.model.encode(
-                batch,
-                batch_size=self.batch_size,
-                show_progress_bar=False,
-                **kwargs
+                batch, batch_size=self.batch_size, show_progress_bar=False, **kwargs
             )
 
             # Convert to lis
@@ -402,38 +423,64 @@ class SentenceT5Embedder(BaseLLM):
         """Get the quality score for this model."""
         return None  # Placeholder implementation
 
-    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def generate(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> str:
         """Generate text from the model."""
         return "Generated text"  # Placeholder implementation
 
-    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate text stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Generated text stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> str:
         """Generate chat completion from the model."""
         return "Chat response"  # Placeholder implementation
 
-    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
         """Generate chat completion stream from the model."""
+
         async def wrapper() -> AsyncGenerator[str, None]:
             yield "Chat response stream"  # Placeholder implementation
+
         return wrapper()
 
-    async def embeddings(self, text: Union[str, List[str]], **kwargs) -> Union[List[float], List[List[float]]]:
+    async def embeddings(
+        self, text: Union[str, List[str]], **kwargs
+    ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         return [[0.0]]  # Placeholder implementation
 
+
 from PIL import Image
+
 # Optional transformers import for image embedding features
 try:
-    from transformers import CLIPProcessor, CLIPModel
+    from transformers import CLIPModel, CLIPProcessor
+
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
     logger.warning("transformers not available. Image embedding features will be disabled.")
+
 
 class ImageEmbedder(BaseLLM):
     """Image embedding model implementation."""
@@ -462,8 +509,10 @@ class ImageEmbedder(BaseLLM):
             List of embedding vectors.
         """
         if not TRANSFORMERS_AVAILABLE or self.model is None or self.processor is None:
-            raise ImportError("Transformers is required for ImageEmbedder. Please install transformers.")
-        
+            raise ImportError(
+                "Transformers is required for ImageEmbedder. Please install transformers."
+            )
+
         inputs = self.processor(images=images, return_tensors="pt", padding=True)
         outputs = self.model.get_image_features(**inputs)
         return outputs.detach().numpy().tolist()
@@ -476,14 +525,12 @@ class ImageEmbedder(BaseLLM):
 
     def get_image_features(self, inputs: Any) -> Any:
         """Get image features from the model."""
-        if not hasattr(self.model, 'get_image_features'):
+        if not hasattr(self.model, "get_image_features"):
             raise AttributeError("Model does not have `get_image_features` method")
         return self.model.get_image_features(**inputs)
 
-def get_embedder(
-    embedder_type: str,
-    **kwargs
-) -> BaseLLM:
+
+def get_embedder(embedder_type: str, **kwargs) -> BaseLLM:
     """Factory function to create embedder instances.
 
     Args:
@@ -499,13 +546,12 @@ def get_embedder(
     embedders = {
         "openai": OpenAIEmbedder,
         "huggingface": HuggingFaceEmbedder,
-        "sentence-t5": SentenceT5Embedder
+        "sentence-t5": SentenceT5Embedder,
     }
 
     if embedder_type not in embedders:
         raise ValueError(
-            f"Unsupported embedder type: {embedder_type}. "
-            f"Supported types: {list(embedders.keys())}"
+            f"Unsupported embedder type: {embedder_type}. Supported types: {list(embedders.keys())}"
         )
 
     return embedders[embedder_type](**kwargs)

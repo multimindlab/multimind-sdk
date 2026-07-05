@@ -2,22 +2,20 @@
 Redis-based memory implementation.
 """
 
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime
 import json
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import redis.asyncio as redis  # type: ignore[import-not-found]
 from redis import exceptions as redis_exceptions
+
 from .base import BaseMemory
+
 
 class RedisMemory(BaseMemory):
     """Memory that uses Redis for storage."""
 
-    def __init__(
-        self,
-        redis_url: str,
-        memory_key: str = "chat_history",
-        ttl: Optional[int] = None
-    ):
+    def __init__(self, redis_url: str, memory_key: str = "chat_history", ttl: Optional[int] = None):
         super().__init__(memory_key)
         try:
             # decode_responses=True makes Redis return str (not bytes) for reads like LRANGE.
@@ -44,18 +42,11 @@ class RedisMemory(BaseMemory):
 
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add message to Redis."""
-        message_with_timestamp = {
-            **message,
-            "timestamp": datetime.now().isoformat()
-        }
-        
+        message_with_timestamp = {**message, "timestamp": datetime.now().isoformat()}
+
         # Add to Redis list
-        await self._redis_call(
-            "rpush",
-            self.memory_key,
-            json.dumps(message_with_timestamp)
-        )
-        
+        await self._redis_call("rpush", self.memory_key, json.dumps(message_with_timestamp))
+
         # Set TTL if specified
         if self.ttl:
             await self._redis_call("expire", self.memory_key, self.ttl)
@@ -85,18 +76,10 @@ class RedisMemory(BaseMemory):
         """Get messages since a specific timestamp."""
         all_messages = await self._redis_call("lrange", self.memory_key, 0, -1)
         all_messages = [json.loads(msg) for msg in all_messages]
-        return [
-            msg for msg in all_messages
-            if datetime.fromisoformat(msg["timestamp"]) > timestamp
-        ]
+        return [msg for msg in all_messages if datetime.fromisoformat(msg["timestamp"]) > timestamp]
 
     async def trim_messages(self, max_messages: int) -> None:
         """Trim the message list to a maximum size."""
         current_count = await self.get_message_count()
         if current_count > max_messages:
-            await self._redis_call(
-                "ltrim",
-                self.memory_key,
-                current_count - max_messages,
-                -1
-            ) 
+            await self._redis_call("ltrim", self.memory_key, current_count - max_messages, -1)

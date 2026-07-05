@@ -4,12 +4,15 @@ AnalyticDB Vector Store Backend (Pro Version)
 - Supports hybrid search, metadata filtering, custom scoring, batch ops, persistence, monitoring, and plugin hooks
 """
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
-import psycopg2
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+import psycopg2
+
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
 
 class AnalyticDBBackend(VectorStoreBackend):
     def __init__(
@@ -29,7 +32,7 @@ class AnalyticDBBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.host = host or os.environ.get("ANALYTICDB_HOST")
         self.port = port
@@ -50,7 +53,11 @@ class AnalyticDBBackend(VectorStoreBackend):
         if not all([self.host, self.user, self.password, self.database]):
             raise ValueError("All connection parameters must be provided for AnalyticDB.")
         self.conn = psycopg2.connect(
-            host=self.host, port=self.port, user=self.user, password=self.password, dbname=self.database
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            dbname=self.database,
         )
         self.cur = self.conn.cursor()
 
@@ -59,19 +66,19 @@ class AnalyticDBBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             self.cur.execute(
                 f"INSERT INTO {self.table} (id, vector, metadata, document) VALUES (%s, %s, %s, %s)",
-                (doc_id, vector, metadatas[i], documents[i])
+                (doc_id, vector, metadatas[i], documents[i]),
             )
         self.conn.commit()
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
     async def search(
         self,
@@ -81,7 +88,7 @@ class AnalyticDBBackend(VectorStoreBackend):
         query_text: Optional[str] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
         explain = explain if explain is not None else self.explain
@@ -95,29 +102,29 @@ class AnalyticDBBackend(VectorStoreBackend):
             if self.enable_hybrid_search and query_text:
                 bm25_score = self._bm25_score(query_text, document.get("content", ""))
                 score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
-            if filter_criteria and not all(metadata.get(k) == v for k, v in filter_criteria.items()):
+            if filter_criteria and not all(
+                metadata.get(k) == v for k, v in filter_criteria.items()
+            ):
                 continue
             result = SearchResult(
-                id=id,
-                vector=vector,
-                metadata=metadata,
-                document=document,
-                score=score
+                id=id, vector=vector, metadata=metadata, document=document, score=score
             )
             if explain:
                 result.explanation = {
                     "vector_score": 1 / (1 + dist),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results[:k]
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -130,17 +137,17 @@ class AnalyticDBBackend(VectorStoreBackend):
         for doc_id in ids:
             self.cur.execute(f"DELETE FROM {self.table} WHERE id = %s", (doc_id,))
         self.conn.commit()
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
         self.cur.execute(f"DELETE FROM {self.table}")
         self.conn.commit()
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         """Persist index/config to disk/cloud if supported."""
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "AnalyticDBBackend":
@@ -173,12 +180,12 @@ class AnalyticDBBackend(VectorStoreBackend):
                 self.plugin_registry[name](*args, **kwargs)
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise
 
@@ -186,4 +193,4 @@ class AnalyticDBBackend(VectorStoreBackend):
 
     # ... (rest of the original code remains unchanged)
 
-    # ... (rest of the original code remains unchanged) 
+    # ... (rest of the original code remains unchanged)

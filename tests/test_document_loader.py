@@ -53,23 +53,33 @@ def test_default_file_loader_load(tmp_path):
 
 @pytest.mark.asyncio
 async def test_data_ingestion_ingest(tmp_path):
-    """Test DataIngestion document ingestion."""
-    from unittest.mock import Mock
-    from multimind.models.base import BaseLLM
+    """Test DataIngestion document ingestion end-to-end with a fully-async mock model.
+
+    Previously this test used ``Mock(spec=BaseLLM)``, but the language-detect
+    path does ``response.strip().lower()`` on the model's response, which
+    only works if the mock returns a real string. With a plain ``Mock`` the
+    method returned a coroutine that the framework treated as a bare value,
+    triggering ``'coroutine' object has no attribute 'lower'`` and a skip.
+    """
+    from unittest.mock import AsyncMock
+
     from multimind.document_loader.data_ingestion import SourceType
-    
-    # Create a mock model
-    mock_model = Mock(spec=BaseLLM)
+    from multimind.models.base import BaseLLM
+
+    mock_model = AsyncMock(spec=BaseLLM)
+    mock_model.generate.return_value = "en"
+
     ingestion = DataIngestion(model=mock_model)
-    
+
     test_file = tmp_path / "test.txt"
     test_file.write_text("hello world")
-    
+
     try:
-        # Test ingestion (may fail if aiofiles is not available, which is acceptable)
         result = await ingestion.ingest_document(str(test_file), SourceType.FILE)
-        assert result is not None
-        assert result.content == "hello world"
     except (ImportError, AttributeError) as e:
-        # Skip if required dependencies are missing
-        pytest.skip(f"Data ingestion requires optional dependencies: {e}") 
+        # aiofiles / aiohttp not installed — acceptable in core install.
+        pytest.skip(f"Data ingestion requires optional dependencies: {e}")
+        return
+
+    assert result is not None
+    assert result.content == "hello world"

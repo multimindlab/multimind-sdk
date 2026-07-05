@@ -2,40 +2,50 @@
 Configuration for advanced compliance features.
 """
 
-from typing import Dict, Any, List, Optional
-from pydantic import BaseModel, Field
 from enum import Enum
-from datetime import datetime
+from typing import Any, Dict, List
+
+from pydantic import BaseModel, Field
+
 
 class PrivacyLevel(str, Enum):
     """Privacy protection levels."""
+
     MINIMAL = "minimal"
     STANDARD = "standard"
     STRICT = "strict"
     MAXIMAL = "maximal"
 
+
 class WatermarkType(str, Enum):
     """Types of model watermarks."""
+
     VISIBLE = "visible"
     INVISIBLE = "invisible"
     DYNAMIC = "dynamic"
 
+
 class ComplianceLevel(str, Enum):
     """Compliance verification levels."""
+
     BASIC = "basic"
     STANDARD = "standard"
     ADVANCED = "advanced"
     CRITICAL = "critical"
 
+
 class ConsensusMethod(str, Enum):
     """Methods for reaching consensus in federated compliance."""
+
     MAJORITY = "majority"
     WEIGHTED = "weighted"
     BYZANTINE = "byzantine"
     PROOF_OF_COMPLIANCE = "proof_of_compliance"
 
+
 class ComplianceShardConfig(BaseModel):
     """Enhanced configuration for compliance shards."""
+
     shard_id: str
     jurisdiction: str
     epsilon: float = 1.0
@@ -44,14 +54,14 @@ class ComplianceShardConfig(BaseModel):
     compliance_level: ComplianceLevel = ComplianceLevel.STANDARD
     encryption_enabled: bool = True
     metrics_tracking: bool = True
-    resource_limits: Dict[str, float] = Field(default_factory=lambda: {
-        "cpu": 1.0,
-        "memory": 1024.0,
-        "network": 100.0
-    })
+    resource_limits: Dict[str, float] = Field(
+        default_factory=lambda: {"cpu": 1.0, "memory": 1024.0, "network": 100.0}
+    )
+
 
 class SelfHealingConfig(BaseModel):
     """Enhanced configuration for self-healing compliance."""
+
     auto_patch: bool = True
     rollback_enabled: bool = True
     notification_channels: List[str]
@@ -62,8 +72,10 @@ class SelfHealingConfig(BaseModel):
     patch_validation: bool = True
     impact_analysis: bool = True
 
+
 class ExplainableDTOConfig(BaseModel):
     """Enhanced configuration for explainable DTOs."""
+
     model_version: str
     confidence_threshold: float = 0.8
     explanation_depth: int = 3
@@ -73,8 +85,10 @@ class ExplainableDTOConfig(BaseModel):
     explanation_history: bool = True
     visualization_enabled: bool = True
 
+
 class ModelWatermarkingConfig(BaseModel):
     """Enhanced configuration for model watermarking."""
+
     watermark_type: WatermarkType
     fingerprint_size: int = 256
     tracking_enabled: bool = True
@@ -84,8 +98,10 @@ class ModelWatermarkingConfig(BaseModel):
     verification_history: bool = True
     security_level: str = "high"
 
+
 class AdaptivePrivacyConfig(BaseModel):
     """Enhanced configuration for adaptive privacy."""
+
     initial_epsilon: float = 1.0
     min_epsilon: float = 0.1
     max_epsilon: float = 10.0
@@ -96,8 +112,10 @@ class AdaptivePrivacyConfig(BaseModel):
     validation_enabled: bool = True
     guarantees_verification: bool = True
 
+
 class RegulatoryChangeConfig(BaseModel):
     """Enhanced configuration for regulatory change detection."""
+
     sources: List[Dict[str, str]]
     check_interval: int = 3600  # seconds
     auto_patch: bool = True
@@ -107,8 +125,10 @@ class RegulatoryChangeConfig(BaseModel):
     patch_testing: bool = True
     change_history: bool = True
 
+
 class FederatedComplianceConfig(BaseModel):
     """Enhanced configuration for federated compliance."""
+
     shards: List[ComplianceShardConfig]
     coordinator: Dict[str, Any]
     aggregation_method: str = "weighted"
@@ -117,6 +137,7 @@ class FederatedComplianceConfig(BaseModel):
     load_balancing: bool = True
     verification_history: bool = True
     security_level: str = "high"
+
 
 # Default configurations
 DEFAULT_SHARD_CONFIG = ComplianceShardConfig(
@@ -127,7 +148,7 @@ DEFAULT_SHARD_CONFIG = ComplianceShardConfig(
     metadata={},
     compliance_level=ComplianceLevel.STANDARD,
     encryption_enabled=True,
-    metrics_tracking=True
+    metrics_tracking=True,
 )
 
 DEFAULT_SELF_HEALING_CONFIG = SelfHealingConfig(
@@ -139,7 +160,7 @@ DEFAULT_SELF_HEALING_CONFIG = SelfHealingConfig(
     effectiveness_tracking=True,
     rollback_points=10,
     patch_validation=True,
-    impact_analysis=True
+    impact_analysis=True,
 )
 
 DEFAULT_EXPLAINABLE_DTO_CONFIG = ExplainableDTOConfig(
@@ -150,7 +171,7 @@ DEFAULT_EXPLAINABLE_DTO_CONFIG = ExplainableDTOConfig(
     uncertainty_estimation=True,
     factor_importance=True,
     explanation_history=True,
-    visualization_enabled=True
+    visualization_enabled=True,
 )
 
 DEFAULT_WATERMARKING_CONFIG = ModelWatermarkingConfig(
@@ -161,7 +182,7 @@ DEFAULT_WATERMARKING_CONFIG = ModelWatermarkingConfig(
     tamper_detection=True,
     version_tracking=True,
     verification_history=True,
-    security_level="high"
+    security_level="high",
 )
 
 DEFAULT_ADAPTIVE_PRIVACY_CONFIG = AdaptivePrivacyConfig(
@@ -173,13 +194,13 @@ DEFAULT_ADAPTIVE_PRIVACY_CONFIG = AdaptivePrivacyConfig(
     adaptation_strategy="dynamic",
     privacy_metrics=True,
     validation_enabled=True,
-    guarantees_verification=True
+    guarantees_verification=True,
 )
 
 DEFAULT_REGULATORY_CONFIG = RegulatoryChangeConfig(
     sources=[
         {"name": "EU", "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/RSS/"},
-        {"name": "US", "url": "https://www.federalregister.gov/api/v1/documents.rss"}
+        {"name": "US", "url": "https://www.federalregister.gov/api/v1/documents.rss"},
     ],
     check_interval=3600,
     auto_patch=True,
@@ -187,7 +208,7 @@ DEFAULT_REGULATORY_CONFIG = RegulatoryChangeConfig(
     impact_analysis=True,
     patch_validation=True,
     patch_testing=True,
-    change_history=True
+    change_history=True,
 )
 
 DEFAULT_FEDERATED_CONFIG = FederatedComplianceConfig(
@@ -198,12 +219,14 @@ DEFAULT_FEDERATED_CONFIG = FederatedComplianceConfig(
     consensus_method=ConsensusMethod.WEIGHTED,
     load_balancing=True,
     verification_history=True,
-    security_level="high"
+    security_level="high",
 )
+
 
 def load_advanced_config(config_path: str) -> Dict[str, Any]:
     """Load advanced compliance configuration from file."""
     import json
+
     try:
         with open(config_path, encoding="utf-8") as f:
             return json.load(f)
@@ -214,10 +237,12 @@ def load_advanced_config(config_path: str) -> Dict[str, Any]:
     except OSError as e:
         raise RuntimeError(f"Failed to read advanced compliance config: {config_path}") from e
 
+
 def save_advanced_config(config: Dict[str, Any], config_path: str):
     """Save advanced compliance configuration to file."""
     import json
     import os
+
     try:
         parent = os.path.dirname(config_path)
         if parent:

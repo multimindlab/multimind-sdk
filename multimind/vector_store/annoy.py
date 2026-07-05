@@ -4,12 +4,15 @@ Annoy Vector Store Backend (Pro Version)
 - Supports hybrid search, metadata filtering, custom scoring, batch ops, persistence, monitoring, and plugin hooks
 """
 
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import logging
-from annoy import AnnoyIndex
-import os
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
+from annoy import AnnoyIndex
+
+from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
 
 class AnnoyBackend(VectorStoreBackend):
     def __init__(
@@ -26,7 +29,7 @@ class AnnoyBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.vector_dim = vector_dim
         self.n_trees = n_trees
@@ -41,7 +44,7 @@ class AnnoyBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.explain = explain
         self.logger = logging.getLogger(__name__)
-        self.index = AnnoyIndex(self.vector_dim, 'angular')
+        self.index = AnnoyIndex(self.vector_dim, "angular")
         self.id_map = {}
         self.rev_id_map = {}
         self.metadata = {}
@@ -55,7 +58,7 @@ class AnnoyBackend(VectorStoreBackend):
         vectors: List[List[float]],
         metadatas: List[Dict[str, Any]],
         documents: List[Dict[str, Any]],
-        ids: Optional[List[str]] = None
+        ids: Optional[List[str]] = None,
     ) -> None:
         for i, vector in enumerate(vectors):
             idx = self.next_idx
@@ -68,8 +71,8 @@ class AnnoyBackend(VectorStoreBackend):
             self.next_idx += 1
         self.index.build(self.n_trees)
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
     async def search(
         self,
@@ -79,7 +82,7 @@ class AnnoyBackend(VectorStoreBackend):
         query_text: Optional[str] = None,
         scoring_method: Optional[str] = None,
         metadata_fields: Optional[List[str]] = None,
-        explain: Optional[bool] = None
+        explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         idxs, dists = self.index.get_nns_by_vector(query_vector, k, include_distances=True)
@@ -98,28 +101,26 @@ class AnnoyBackend(VectorStoreBackend):
             if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
                 continue
             result = SearchResult(
-                id=id_str,
-                vector=query_vector,
-                metadata=meta,
-                document=doc,
-                score=score
+                id=id_str, vector=query_vector, metadata=meta, document=doc, score=score
             )
             if explain:
                 result.explanation = {
                     "vector_score": 1 / (1 + dist),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         # Custom scoring/fusion
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         # Simple BM25 placeholder (replace with real BM25 if needed)
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         # Example: reciprocal rank fusion
@@ -135,26 +136,26 @@ class AnnoyBackend(VectorStoreBackend):
                 self.rev_id_map.pop(idx, None)
                 self.metadata.pop(id_str, None)
                 self.documents.pop(id_str, None)
-        self.index = AnnoyIndex(self.vector_dim, 'angular')
+        self.index = AnnoyIndex(self.vector_dim, "angular")
         self.next_idx = 0
         for id_str, idx in self.id_map.items():
-            self.index.add_item(idx, self.documents[id_str]['vector'])
+            self.index.add_item(idx, self.documents[id_str]["vector"])
             self.next_idx += 1
         self.index.build(self.n_trees)
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
-        self.index = AnnoyIndex(self.vector_dim, 'angular')
+        self.index = AnnoyIndex(self.vector_dim, "angular")
         self.id_map.clear()
         self.rev_id_map.clear()
         self.metadata.clear()
         self.documents.clear()
         self.next_idx = 0
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:
         self.index.save(path)
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "AnnoyBackend":
@@ -177,11 +178,11 @@ class AnnoyBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise
