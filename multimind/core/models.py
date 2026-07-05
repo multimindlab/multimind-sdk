@@ -2,23 +2,25 @@
 Core model functionality for MultiMind
 """
 
-import json
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ModelResponse:
     """Standardized response from any model"""
+
     content: str
     model: str
     usage: Optional[Dict[str, int]] = None
     finish_reason: Optional[str] = None
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
+
 
 class ModelHandler(ABC):
     """Abstract base class for model handlers"""
@@ -35,4 +37,4 @@ class ModelHandler(ABC):
     @abstractmethod
     async def generate(self, prompt: str, **kwargs) -> ModelResponse:
         """Generate text from a prompt"""
-        pass 
+        pass

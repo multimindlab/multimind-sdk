@@ -2,18 +2,18 @@
 Unified API endpoint for multi-modal processing with MoE support.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Header
-from pydantic import BaseModel, Field
-from typing import Dict, List, Any, Optional, Union
-import asyncio
-import logging
-import os
 import base64
 import io
+import logging
+import os
+from typing import Any, Dict, List, Optional
+
+from fastapi import Depends, FastAPI, Header, HTTPException
+
 from ..models.base import BaseLLM
 from ..models.factory import ModelFactory
 from ..models.moe import Expert
-from ..types import UnifiedRequest, UnifiedResponse, ModalityInput
+from ..types import UnifiedRequest, UnifiedResponse
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,7 @@ def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> 
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
 
+
 # Reuse a single factory across requests to avoid re-creating model caches.
 _MODEL_FACTORY = ModelFactory()
 
@@ -43,6 +44,7 @@ def _get_router():
     global _ROUTER
     if _ROUTER is None:
         from ..router.multi_modal_router import MultiModalRouter
+
         _ROUTER = MultiModalRouter()
     return _ROUTER
 
@@ -51,6 +53,7 @@ def _get_workflow_registry():
     global _WORKFLOW_REGISTRY
     if _WORKFLOW_REGISTRY is None:
         from .mcp.registry import WorkflowRegistry
+
         _WORKFLOW_REGISTRY = WorkflowRegistry()
     return _WORKFLOW_REGISTRY
 
@@ -72,7 +75,14 @@ class _TextExpertAdapter(Expert):
 class _ImageExpertAdapter(Expert):
     """Expert wrapper for image analysis/captioning."""
 
-    def __init__(self, expert_id: str, provider: Any, model: str, default_prompt: str = "Describe this image", **kwargs):
+    def __init__(
+        self,
+        expert_id: str,
+        provider: Any,
+        model: str,
+        default_prompt: str = "Describe this image",
+        **kwargs,
+    ):
         super().__init__(expert_id, **kwargs)
         self.provider = provider
         self.model = model
@@ -140,10 +150,7 @@ class _AudioExpertAdapter(Expert):
 
         bio = io.BytesIO(audio_bytes)
         bio.name = "audio.mp3"
-        resp = await self.client.audio.transcriptions.create(
-            model=self.model,
-            file=bio
-        )
+        resp = await self.client.audio.transcriptions.create(model=self.model, file=bio)
         return getattr(resp, "text", None) or str(resp)
 
 
@@ -179,12 +186,18 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
             openai_key = os.getenv("OPENAI_API_KEY")
             if openai_key:
                 from ..providers.openai import OpenAIProvider
+
                 provider = OpenAIProvider(ProviderConfig(api_key=openai_key))
-                experts["image_expert"] = _ImageExpertAdapter("image_expert", provider=provider, model="gpt-4o-mini")
+                experts["image_expert"] = _ImageExpertAdapter(
+                    "image_expert", provider=provider, model="gpt-4o-mini"
+                )
             else:
                 from ..providers.ollama import OllamaProvider
+
                 provider = OllamaProvider(ProviderConfig(api_base=os.getenv("OLLAMA_BASE_URL")))
-                experts["image_expert"] = _ImageExpertAdapter("image_expert", provider=provider, model="llava-phi3:latest")
+                experts["image_expert"] = _ImageExpertAdapter(
+                    "image_expert", provider=provider, model="llava-phi3:latest"
+                )
         except Exception:
             pass
 
@@ -193,12 +206,14 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
         if openai_key:
             try:
                 import openai
+
                 client = openai.AsyncOpenAI(api_key=openai_key)
                 experts["audio_expert"] = _AudioExpertAdapter("audio_expert", openai_client=client)
             except Exception:
                 pass
 
     return experts
+
 
 @app.post("/v1/process", response_model=UnifiedResponse)
 async def process_request(request: UnifiedRequest, authenticated: bool = Depends(verify_api_key)):
@@ -208,13 +223,13 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
 
         router = _get_router()
         workflow_registry = _get_workflow_registry()
-        
+
         # Convert inputs to router format (support multiple inputs per modality)
         content: Dict[str, Any] = {}
         for inp in request.inputs:
             content.setdefault(inp.modality, []).append(inp.content)
         modalities = [input.modality for input in request.inputs]
-        
+
         if request.use_moe:
             # Strict MoE path: do not use router fallback in this branch.
             experts = _build_experts(modalities, router)
@@ -228,6 +243,7 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
                 )
 
             from ..models.moe.unified_moe import UnifiedMoE
+
             moe_model = UnifiedMoE(mode="modality", experts=experts)
             result = await moe_model.process(content)
 
@@ -267,7 +283,15 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
                 synthesized_text = await experts["text_expert"].process({"text": synthesis_prompt})
 
             # Final outputs shape used by examples
-            final_text = synthesized_text if synthesized_text else (result.get("output") if isinstance(result.get("output"), str) else str(result.get("output")))
+            final_text = (
+                synthesized_text
+                if synthesized_text
+                else (
+                    result.get("output")
+                    if isinstance(result.get("output"), str)
+                    else str(result.get("output"))
+                )
+            )
             outputs: Dict[str, Any] = {"text": final_text}
             if image_text is not None:
                 outputs["image_text"] = image_text
@@ -282,17 +306,15 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
                     "num_experts": len(experts),
                     "expert_outputs": expert_outputs,
                     "text_synthesis_used": synthesized_text is not None,
-                    **result.get("metrics", {})
-                }
+                    **result.get("metrics", {}),
+                },
             )
         else:
             # Use router-based processing
             router_request = MultiModalRequest(
-                content=content,
-                modalities=modalities,
-                constraints=request.constraints
+                content=content, modalities=modalities, constraints=request.constraints
             )
-            
+
             if request.workflow:
                 # Use MCP workflow
                 workflow = workflow_registry.get_workflow(request.workflow)
@@ -300,21 +322,18 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
             else:
                 # Use direct routing
                 result = await router.route_request(router_request)
-            
+
             return UnifiedResponse(
-                outputs=result,
-                metrics={
-                    "processing_type": "router",
-                    "workflow": request.workflow
-                }
+                outputs=result, metrics={"processing_type": "router", "workflow": request.workflow}
             )
-            
+
     except HTTPException:
         # Preserve intended HTTP status codes (e.g., 400 for invalid input).
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("Error processing request")
         raise HTTPException(status_code=500, detail="Internal server error")
+
 
 @app.get("/v1/models")
 async def list_models(authenticated: bool = Depends(verify_api_key)):
@@ -326,18 +345,17 @@ async def list_models(authenticated: bool = Depends(verify_api_key)):
         models[modality] = list(model_dict.keys())
     return {"models": models}
 
+
 @app.get("/v1/workflows")
 async def list_workflows(authenticated: bool = Depends(verify_api_key)):
     """List available MCP workflows."""
     workflow_registry = _get_workflow_registry()
     return {"workflows": workflow_registry.list_workflows()}
 
+
 @app.get("/v1/metrics")
 async def get_metrics(authenticated: bool = Depends(verify_api_key)):
     """Get performance metrics for models."""
     router = _get_router()
 
-    return {
-        "costs": router.cost_tracker.costs,
-        "performance": router.performance_metrics.metrics
-    } 
+    return {"costs": router.cost_tracker.costs, "performance": router.performance_metrics.metrics}

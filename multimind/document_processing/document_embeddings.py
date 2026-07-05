@@ -1,7 +1,9 @@
 """
 All embedding strategy classes and utilities for document embeddings.
 """
-from typing import Callable, List, Any, Optional
+
+from typing import Any, Callable, List, Optional
+
 
 class EmbeddingStrategy:
     """
@@ -31,6 +33,7 @@ class EmbeddingStrategy:
         emb = EmbeddingStrategy(lambda texts: hf_embed(texts, model, tokenizer))
         emb.embed(["hello", "world"])
     """
+
     def __init__(self, embed_fn: Callable[[List[str]], List[Any]], api_key: Optional[str] = None):
         self.embed_fn = embed_fn
         self.api_key = api_key
@@ -62,13 +65,16 @@ class ImageEmbeddingStrategy:
         emb = ImageEmbeddingStrategy(lambda imgs: clip_embed(imgs, model, processor))
         emb.embed([Image.open('img1.png'), Image.open('img2.jpg')])
     """
+
     def __init__(self, embed_fn: Callable[[List[Any]], List[Any]], model: Optional[Any] = None):
         self.embed_fn = embed_fn
         self.model = model
+
     def embed(self, images: List[Any]) -> List[Any]:
         if self.model:
             return self.embed_fn(images, self.model)
         return self.embed_fn(images)
+
 
 class AudioEmbeddingStrategy:
     """
@@ -84,13 +90,16 @@ class AudioEmbeddingStrategy:
         emb = AudioEmbeddingStrategy(lambda audios: audio_embed(audios, model))
         emb.embed(['audio1.wav', 'audio2.mp3'])
     """
+
     def __init__(self, embed_fn: Callable[[List[Any]], List[Any]], model: Optional[Any] = None):
         self.embed_fn = embed_fn
         self.model = model
+
     def embed(self, audios: List[Any]) -> List[Any]:
         if self.model:
             return self.embed_fn(audios, self.model)
         return self.embed_fn(audios)
+
 
 class VideoEmbeddingStrategy:
     """
@@ -106,13 +115,16 @@ class VideoEmbeddingStrategy:
         emb = VideoEmbeddingStrategy(lambda videos: video_embed(videos, model))
         emb.embed(['video1.mp4', 'video2.mov'])
     """
+
     def __init__(self, embed_fn: Callable[[List[Any]], List[Any]], model: Optional[Any] = None):
         self.embed_fn = embed_fn
         self.model = model
+
     def embed(self, videos: List[Any]) -> List[Any]:
         if self.model:
             return self.embed_fn(videos, self.model)
         return self.embed_fn(videos)
+
 
 class BatchingEmbeddingStrategy:
     """
@@ -121,15 +133,18 @@ class BatchingEmbeddingStrategy:
         embedding_strategy: An embedding strategy instance (text, image, audio, video, etc.)
         batch_size: Number of items per batch
     """
+
     def __init__(self, embedding_strategy: Any, batch_size: int = 32):
         self.embedding_strategy = embedding_strategy
         self.batch_size = batch_size
+
     def embed(self, items: List[Any]) -> List[Any]:
         results = []
         for i in range(0, len(items), self.batch_size):
-            batch = items[i:i+self.batch_size]
+            batch = items[i : i + self.batch_size]
             results.extend(self.embedding_strategy.embed(batch))
         return results
+
 
 class CachingEmbeddingStrategy:
     """
@@ -137,13 +152,15 @@ class CachingEmbeddingStrategy:
     Args:
         embedding_strategy: An embedding strategy instance (text, image, audio, video, etc.)
     """
+
     def __init__(self, embedding_strategy: Any):
         self.embedding_strategy = embedding_strategy
         self.cache = {}
+
     def embed(self, items: List[Any]) -> List[Any]:
         uncached = [item for item in items if item not in self.cache]
         if uncached:
             new_embeds = self.embedding_strategy.embed(uncached)
             for item, emb in zip(uncached, new_embeds):
                 self.cache[item] = emb
-        return [self.cache[item] for item in items] 
+        return [self.cache[item] for item in items]

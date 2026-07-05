@@ -2,12 +2,14 @@
 Time-weighted memory implementation that weights messages based on recency.
 """
 
-from typing import List, Dict, Any, Optional, Callable
-from datetime import datetime, timedelta
 import json
-from pathlib import Path
 import math
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
 from .base import BaseMemory
+
 
 class TimeWeightedMemory(BaseMemory):
     """Memory that weights messages based on their recency."""
@@ -20,7 +22,7 @@ class TimeWeightedMemory(BaseMemory):
         max_age_days: int = 30,  # Maximum age of messages to keep
         min_weight: float = 0.1,  # Minimum weight for messages
         decay_function: str = "exponential",  # Type of decay function
-        time_units: str = "days"  # Time units for decay
+        time_units: str = "days",  # Time units for decay
     ):
         super().__init__(memory_key)
         self.storage_path = Path(storage_path) if storage_path else None
@@ -37,7 +39,7 @@ class TimeWeightedMemory(BaseMemory):
             **message,
             "timestamp": datetime.now().isoformat(),
             "weight": 1.0,  # Initial weight for new messages
-            "importance": 1.0  # Initial importance score
+            "importance": 1.0,  # Initial importance score
         }
         self.messages.append(message_with_metadata)
         self._update_weights()
@@ -61,7 +63,7 @@ class TimeWeightedMemory(BaseMemory):
         """Save messages to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
+            with open(self.storage_path, "w") as f:
                 json.dump(self.messages, f)
 
     async def load(self) -> None:
@@ -71,7 +73,7 @@ class TimeWeightedMemory(BaseMemory):
     def _load_sync(self) -> None:
         """Load messages from persistent storage."""
         if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path) as f:
                 self.messages = json.load(f)
 
     def _get_decay_function(self) -> Callable[[float], float]:
@@ -100,77 +102,69 @@ class TimeWeightedMemory(BaseMemory):
         """Update weights of all messages based on their age."""
         current_time = datetime.now()
         decay_func = self._get_decay_function()
-        
+
         # Update weights and remove old messages
         self.messages = [
-            msg for msg in self.messages
-            if self._is_message_valid(msg, current_time, decay_func)
+            msg for msg in self.messages if self._is_message_valid(msg, current_time, decay_func)
         ]
-        
+
         # Sort by timestamp
         self.messages.sort(key=lambda x: x["timestamp"])
 
     def _is_message_valid(
-        self,
-        message: Dict[str, Any],
-        current_time: datetime,
-        decay_func: Callable[[float], float]
+        self, message: Dict[str, Any], current_time: datetime, decay_func: Callable[[float], float]
     ) -> bool:
         """Check if message is still valid based on age and weight."""
         msg_time = datetime.fromisoformat(message["timestamp"])
         time_delta = current_time - msg_time
-        
+
         # Convert to appropriate time units
         age = self._convert_time_units(time_delta)
-        
+
         # Remove messages older than max_age_days
         if age > self.max_age_days:
             return False
-        
+
         # Calculate weight based on age and importance
         base_weight = decay_func(age)
         importance = message.get("importance", 1.0)
         weight = base_weight * importance
         message["weight"] = max(weight, self.min_weight)
-        
+
         return True
 
     def get_weighted_messages(self, min_weight: Optional[float] = None) -> List[Dict[str, Any]]:
         """Get messages with weights above the minimum threshold."""
         self._update_weights()
-        
+
         if min_weight is None:
             min_weight = self.min_weight
-        
-        return [
-            msg for msg in self.messages
-            if msg["weight"] >= min_weight
-        ]
+
+        return [msg for msg in self.messages if msg["weight"] >= min_weight]
 
     def get_recent_messages(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get messages from the last N hours."""
         self._update_weights()
         cutoff_time = datetime.now() - timedelta(hours=hours)
-        
+
         return [
-            msg for msg in self.messages
-            if datetime.fromisoformat(msg["timestamp"]) >= cutoff_time
+            msg for msg in self.messages if datetime.fromisoformat(msg["timestamp"]) >= cutoff_time
         ]
 
     def get_weighted_context(self, min_weight: Optional[float] = None) -> str:
         """Get context from messages weighted by recency."""
         weighted_messages = self.get_weighted_messages(min_weight)
-        
+
         # Sort by weight in descending order
         weighted_messages.sort(key=lambda x: x["weight"], reverse=True)
-        
+
         # Format context
         context = []
         for msg in weighted_messages:
             context.append(
                 f"{msg['role']} (weight: {msg['weight']:.2f}, importance: {msg.get('importance', 1.0):.2f}): {msg['content']}"
             )
-        
+
         return "\n".join(context)
 
     def get_average_weight(self) -> float:
@@ -178,7 +172,7 @@ class TimeWeightedMemory(BaseMemory):
         self._update_weights()
         if not self.messages:
             return 0.0
-        
+
         return sum(msg["weight"] for msg in self.messages) / len(self.messages)
 
     def get_message_count_by_weight(self, weight_threshold: float) -> int:
@@ -198,42 +192,48 @@ class TimeWeightedMemory(BaseMemory):
         self._update_weights()
         if not self.messages:
             return {}
-        
+
         weights = [msg["weight"] for msg in self.messages]
         return {
             "min": min(weights),
             "max": max(weights),
             "mean": sum(weights) / len(weights),
             "median": sorted(weights)[len(weights) // 2],
-            "std_dev": math.sqrt(sum((w - sum(weights)/len(weights))**2 for w in weights) / len(weights))
+            "std_dev": math.sqrt(
+                sum((w - sum(weights) / len(weights)) ** 2 for w in weights) / len(weights)
+            ),
         }
 
     def get_time_based_stats(self) -> Dict[str, Any]:
         """Get statistics about message timing."""
         if not self.messages:
             return {}
-        
+
         timestamps = [datetime.fromisoformat(msg["timestamp"]) for msg in self.messages]
-        time_diffs = [(timestamps[i+1] - timestamps[i]).total_seconds() 
-                     for i in range(len(timestamps)-1)]
-        
+        time_diffs = [
+            (timestamps[i + 1] - timestamps[i]).total_seconds() for i in range(len(timestamps) - 1)
+        ]
+
         return {
             "total_messages": len(self.messages),
             "time_span": (timestamps[-1] - timestamps[0]).total_seconds(),
             "avg_time_between_messages": sum(time_diffs) / len(time_diffs) if time_diffs else 0,
-            "message_frequency": len(self.messages) / ((timestamps[-1] - timestamps[0]).total_seconds() / 3600)
-            if len(timestamps) > 1 else 0
+            "message_frequency": (
+                len(self.messages) / ((timestamps[-1] - timestamps[0]).total_seconds() / 3600)
+                if len(timestamps) > 1
+                else 0
+            ),
         }
 
     def get_importance_distribution(self) -> Dict[str, float]:
         """Get distribution of message importance scores."""
         if not self.messages:
             return {}
-        
+
         importances = [msg.get("importance", 1.0) for msg in self.messages]
         return {
             "min": min(importances),
             "max": max(importances),
             "mean": sum(importances) / len(importances),
-            "median": sorted(importances)[len(importances) // 2]
-        } 
+            "median": sorted(importances)[len(importances) // 2],
+        }

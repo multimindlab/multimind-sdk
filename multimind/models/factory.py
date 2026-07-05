@@ -3,14 +3,16 @@ Factory for creating and managing model instances.
 """
 
 import os
-from typing import Dict, Optional, List, Type, Final
+from typing import Dict, Final, List, Optional, Type
+
 from dotenv import load_dotenv
 
 from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
-from .openai import OpenAIModel
 from .claude import ClaudeModel
 from .ollama import OllamaModel
+from .openai import OpenAIModel
+
 
 class ModelFactory:
     """Factory for creating and managing model instances."""
@@ -29,12 +31,12 @@ class ModelFactory:
         self._model_classes: Dict[str, Type[BaseLLM]] = {
             "openai": OpenAIModel,
             "claude": ClaudeModel,
-            "ollama": OllamaModel
+            "ollama": OllamaModel,
         }
 
         # Initialize API keys
-        self.openai_key = os.getenv('OPENAI_API_KEY')
-        self.claude_key = os.getenv('CLAUDE_API_KEY')
+        self.openai_key = os.getenv("OPENAI_API_KEY")
+        self.claude_key = os.getenv("CLAUDE_API_KEY")
 
     def available_models(self) -> List[str]:
         """Get list of available model providers based on API keys."""
@@ -83,12 +85,7 @@ class ModelFactory:
 
         return available
 
-    def get_model(
-        self,
-        provider: str,
-        model_name: Optional[str] = None,
-        **kwargs
-    ) -> BaseLLM:
+    def get_model(self, provider: str, model_name: Optional[str] = None, **kwargs) -> BaseLLM:
         """Get or create a model instance."""
         if provider not in self._model_classes:
             raise ValueError(f"Unsupported model provider: {provider}")
@@ -98,7 +95,7 @@ class ModelFactory:
             model_name = {
                 "openai": "gpt-4",
                 "claude": "claude-3-opus-20240229",
-                "ollama": "mistral"
+                "ollama": "mistral",
             }.get(provider)
 
         # Create instance key

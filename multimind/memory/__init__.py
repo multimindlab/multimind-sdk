@@ -6,8 +6,8 @@ from .base import BaseMemory
 from .buffer import BufferMemory
 from .summary import SummaryMemory
 from .summary_buffer import SummaryBufferMemory
-from .utils import MemoryUtils
 from .token_aware import TokenAwareMemory
+from .utils import MemoryUtils
 
 __all__ = [
     "BaseMemory",
@@ -15,5 +15,5 @@ __all__ = [
     "SummaryMemory",
     "SummaryBufferMemory",
     "MemoryUtils",
-    "TokenAwareMemory"
+    "TokenAwareMemory",
 ]

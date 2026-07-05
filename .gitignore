@@ -1,53 +1,75 @@
-# Environment variables
-.env
-.env.*
-!.env.example
-
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+*.egg
+*.egg-info/
+.eggs/
+.installed.cfg
+
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
 downloads/
 eggs/
-.eggs/
 lib/
 lib64/
 parts/
 sdist/
 var/
 wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+*.tar.gz
+*.whl
 
-# Virtual Environment
+# Virtual environments
+.venv/
 venv/
 ENV/
 env/
 .env/
-.venv/
 
-# IDE
+# Environment files (keep .env.example tracked)
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# IDE / editor
 .idea/
 .vscode/
 *.swp
 *.swo
-.DS_Store
+*~
+*~.nib
+.settings/
+.loadpath
+.recommenders
+local.properties
 
-# Testing
-.coverage
-htmlcov/
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
 .pytest_cache/
 .tox/
 .nox/
+.coverage
+.coverage.*
 coverage.xml
+htmlcov/
 *.cover
+test-results.xml
 .hypothesis/
+pytest-summary.txt
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
 
 # Logs
 *.log
@@ -62,37 +84,33 @@ multimind.log
 *.onnx
 *.gguf
 
-# Documentation
-docs/_build/
-site/
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+usage.db
 
-# Distribution
-dist/
-build/
-*.egg-info/
-
-# Jupyter Notebook
-.ipynb_checkpoints
+# Jupyter
+.ipynb_checkpoints/
 *.ipynb
+
+# Docker
+docker-compose.override.yml
 
 # Local development
 *.local
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-chat_sessions/
-
-# Temporary files
 *.tmp
 *.bak
-*.swp
-*~.nib
-local.properties
-.settings/
-.loadpath
-.recommenders
+local_settings.py
+chat_sessions/
 
-# Project specific
+# Documentation builds
+docs/_build/
+site/
+
+# Project-specific
 multimind-docs/node_modules/
 multimind-docs/.next/
-multimind-docs/out/ 
+multimind-docs/out/

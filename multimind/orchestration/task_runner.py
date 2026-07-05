@@ -2,18 +2,17 @@
 Task runner for orchestrating complex workflows.
 """
 
-from typing import List, Dict, Any, Optional, Callable, Union
+from typing import Any, Dict, List, Optional, Union
+
 from multimind.models.base import BaseLLM
 from multimind.orchestration.prompt_chain import PromptChain
+
 
 class TaskRunner:
     """Manages execution of complex tasks using LLMs and tools."""
 
     def __init__(
-        self,
-        model: BaseLLM,
-        tasks: Optional[List[Dict[str, Any]]] = None,
-        max_retries: int = 3
+        self, model: BaseLLM, tasks: Optional[List[Dict[str, Any]]] = None, max_retries: int = 3
     ):
         self.model = model
         self.tasks = tasks or []
@@ -25,15 +24,17 @@ class TaskRunner:
         name: str,
         prompt: Union[str, PromptChain],
         dependencies: Optional[List[str]] = None,
-        retry_prompt: Optional[str] = None
+        retry_prompt: Optional[str] = None,
     ) -> None:
         """Add a task to the runner."""
-        self.tasks.append({
-            "name": name,
-            "prompt": prompt,
-            "dependencies": dependencies or [],
-            "retry_prompt": retry_prompt
-        })
+        self.tasks.append(
+            {
+                "name": name,
+                "prompt": prompt,
+                "dependencies": dependencies or [],
+                "retry_prompt": retry_prompt,
+            }
+        )
 
     async def run(self, initial_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Run all tasks in dependency order."""
@@ -80,11 +81,7 @@ class TaskRunner:
         # Return tasks in sorted order
         return sorted(self.tasks, key=lambda t: order.index(t["name"]))
 
-    async def _run_task(
-        self,
-        task: Dict[str, Any],
-        context: Dict[str, Any]
-    ) -> Any:
+    async def _run_task(self, task: Dict[str, Any], context: Dict[str, Any]) -> Any:
         """Run a single task with retries."""
         prompt = task["prompt"]
         retries = 0
@@ -102,7 +99,9 @@ class TaskRunner:
             except Exception as e:
                 retries += 1
                 if retries == self.max_retries:
-                    raise RuntimeError(f"Task {task['name']} failed after {retries} retries: {str(e)}")
+                    raise RuntimeError(
+                        f"Task {task['name']} failed after {retries} retries: {str(e)}"
+                    )
 
                 # Use retry prompt if available
                 if task["retry_prompt"]:

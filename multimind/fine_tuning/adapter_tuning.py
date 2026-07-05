@@ -2,20 +2,22 @@
 Adapter tuning and p-tuning implementations for parameter-efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union
+import logging
+from typing import Any, Dict, List, Optional, Union
+
 import torch
+from datasets import Dataset as HFDataset
+from peft import LoraConfig, get_peft_model
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    TrainingArguments,
+    DataCollatorForLanguageModeling,
     Trainer,
-    DataCollatorForLanguageModeling
+    TrainingArguments,
 )
-from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
-from datasets import Dataset as HFDataset
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class AdapterTuner:
     """Adapter tuning implementation for efficient fine-tuning."""
@@ -26,7 +28,7 @@ class AdapterTuner:
         output_dir: str,
         adapter_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -38,7 +40,7 @@ class AdapterTuner:
             "adapter_non_linearity": "relu",
             "adapter_dropout": 0.1,
             "target_modules": ["q_proj", "v_proj"],
-            "task_type": TaskType.CAUSAL_LM
+            "task_type": TaskType.CAUSAL_LM,
         }
 
         # Default training arguments
@@ -52,7 +54,7 @@ class AdapterTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -63,14 +65,9 @@ class AdapterTuner:
         """Prepare the model for adapter tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -83,27 +80,18 @@ class AdapterTuner:
         # Print trainable parameters
         self.model.print_trainable_parameters()
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create datase
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -112,7 +100,7 @@ class AdapterTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using adapter tuning."""
         if self.model is None:
@@ -131,10 +119,7 @@ class AdapterTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -159,9 +144,7 @@ class AdapterTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -176,7 +159,7 @@ class PTuner:
         output_dir: str,
         p_tuning_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -187,7 +170,7 @@ class PTuner:
             "encoder_hidden_size": 128,
             "encoder_num_layers": 2,
             "encoder_dropout": 0.1,
-            "task_type": TaskType.CAUSAL_LM
+            "task_type": TaskType.CAUSAL_LM,
         }
 
         # Default training arguments
@@ -201,7 +184,7 @@ class PTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -212,14 +195,9 @@ class PTuner:
         """Prepare the model for p-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -232,27 +210,18 @@ class PTuner:
         # Print trainable parameters
         self.model.print_trainable_parameters()
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create datase
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -261,7 +230,7 @@ class PTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using p-tuning."""
         if self.model is None:
@@ -280,10 +249,7 @@ class PTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -308,9 +274,7 @@ class PTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")

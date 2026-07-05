@@ -2,25 +2,22 @@
 Prompt tuning and prefix tuning implementations for parameter-efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union
+import logging
+from typing import Any, Dict, List, Optional, Union
+
 import torch
+from datasets import Dataset as HFDataset
+from peft import PrefixTuningConfig, PromptTuningConfig, TaskType, get_peft_model
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    TrainingArguments,
+    DataCollatorForLanguageModeling,
     Trainer,
-    DataCollatorForLanguageModeling
+    TrainingArguments,
 )
-from peft import (
-    PromptTuningConfig,
-    PrefixTuningConfig,
-    get_peft_model,
-    TaskType
-)
-from datasets import Dataset as HFDataset
-import logging
 
 logger = logging.getLogger(__name__)
+
 
 class PromptTuner:
     """Prompt tuning implementation for efficient fine-tuning."""
@@ -31,7 +28,7 @@ class PromptTuner:
         output_dir: str,
         prompt_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -42,7 +39,7 @@ class PromptTuner:
             "num_virtual_tokens": 20,
             "prompt_tuning_init_text": "Classify if the tweet is a complaint or an appreciation:",
             "token_dim": 768,  # Will be set automatically based on model
-            "task_type": TaskType.CAUSAL_LM
+            "task_type": TaskType.CAUSAL_LM,
         }
 
         # Default training arguments
@@ -56,7 +53,7 @@ class PromptTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -67,14 +64,9 @@ class PromptTuner:
         """Prepare the model for prompt tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -90,27 +82,18 @@ class PromptTuner:
         # Print trainable parameters
         self.model.print_trainable_parameters()
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create datase
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -119,7 +102,7 @@ class PromptTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using prompt tuning."""
         if self.model is None:
@@ -138,10 +121,7 @@ class PromptTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -166,9 +146,7 @@ class PromptTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -183,7 +161,7 @@ class PrefixTuner:
         output_dir: str,
         prefix_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -193,7 +171,7 @@ class PrefixTuner:
             "num_virtual_tokens": 20,
             "encoder_hidden_size": 768,  # Will be set automatically based on model
             "prefix_projection": True,
-            "task_type": TaskType.CAUSAL_LM
+            "task_type": TaskType.CAUSAL_LM,
         }
 
         # Default training arguments
@@ -207,7 +185,7 @@ class PrefixTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -218,14 +196,9 @@ class PrefixTuner:
         """Prepare the model for prefix tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -241,27 +214,18 @@ class PrefixTuner:
         # Print trainable parameters
         self.model.print_trainable_parameters()
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create datase
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -270,7 +234,7 @@ class PrefixTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using prefix tuning."""
         if self.model is None:
@@ -289,10 +253,7 @@ class PrefixTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -317,9 +278,7 @@ class PrefixTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")

@@ -7,19 +7,22 @@ try:
     import torch
     import torch.nn as nn
     import torch.nn.functional as F
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
     logger.warning("PyTorch not available. MoE features will be disabled.")
 
-from typing import Optional, Tuple, List
 import math
+from typing import Optional, Tuple
 
 if TORCH_AVAILABLE:
+
     class MoELayer(nn.Module):
         """
         Mixture of Experts (MoE) layer implementation with advanced routing and load balancing.
         """
+
         def __init__(
             self,
             input_dim: int,
@@ -29,7 +32,7 @@ if TORCH_AVAILABLE:
             capacity_factor: float = 1.0,
             dropout: float = 0.1,
             use_aux_loss: bool = True,
-            use_noisy_gate: bool = True
+            use_noisy_gate: bool = True,
         ):
             super().__init__()
             self.input_dim = input_dim
@@ -41,15 +44,18 @@ if TORCH_AVAILABLE:
             self.use_noisy_gate = use_noisy_gate
 
             # Expert networks
-            self.experts = nn.ModuleList([
-                nn.Sequential(
-                    nn.Linear(input_dim, expert_dim),
-                    nn.LayerNorm(expert_dim),
-                    nn.ReLU(),
-                    nn.Dropout(dropout),
-                    nn.Linear(expert_dim, input_dim)
-                ) for _ in range(num_experts)
-            ])
+            self.experts = nn.ModuleList(
+                [
+                    nn.Sequential(
+                        nn.Linear(input_dim, expert_dim),
+                        nn.LayerNorm(expert_dim),
+                        nn.ReLU(),
+                        nn.Dropout(dropout),
+                        nn.Linear(expert_dim, input_dim),
+                    )
+                    for _ in range(num_experts)
+                ]
+            )
 
             # Router network with noise
             self.router = nn.Linear(input_dim, num_experts)
@@ -68,7 +74,9 @@ if TORCH_AVAILABLE:
                 return logits + noise
             return logits
 
-        def _load_balancing_loss(self, router_probs: torch.Tensor, expert_indices: torch.Tensor) -> torch.Tensor:
+        def _load_balancing_loss(
+            self, router_probs: torch.Tensor, expert_indices: torch.Tensor
+        ) -> torch.Tensor:
             """Calculate load balancing loss to ensure even expert utilization."""
             if not self.use_aux_loss:
                 return torch.tensor(0.0, device=router_probs.device)
@@ -83,7 +91,9 @@ if TORCH_AVAILABLE:
             load_balancing_loss = torch.sum(expert_usage * mean_expert_usage) / self.num_experts
             return load_balancing_loss
 
-        def _capacity_loss(self, router_probs: torch.Tensor, expert_indices: torch.Tensor) -> torch.Tensor:
+        def _capacity_loss(
+            self, router_probs: torch.Tensor, expert_indices: torch.Tensor
+        ) -> torch.Tensor:
             """Calculate capacity loss to prevent overloading experts."""
             if not self.use_aux_loss:
                 return torch.tensor(0.0, device=router_probs.device)
@@ -92,24 +102,26 @@ if TORCH_AVAILABLE:
             capacity = math.ceil(router_probs.size(0) * self.capacity_factor / self.num_experts)
             expert_counts = torch.zeros(self.num_experts, device=router_probs.device)
             for i in range(self.k):
-                expert_counts.scatter_add_(0, expert_indices[:, i], torch.ones_like(expert_indices[:, i], dtype=torch.float))
+                expert_counts.scatter_add_(
+                    0,
+                    expert_indices[:, i],
+                    torch.ones_like(expert_indices[:, i], dtype=torch.float),
+                )
 
             # Calculate capacity loss
             capacity_loss = torch.sum(torch.relu(expert_counts - capacity)) / router_probs.size(0)
             return capacity_loss
 
         def forward(
-            self,
-            x: torch.Tensor,
-            return_aux_loss: bool = False
+            self, x: torch.Tensor, return_aux_loss: bool = False
         ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
             """
             Forward pass through the MoE layer.
-            
+
             Args:
                 x: Input tensor of shape [batch_size, seq_len, input_dim]
                 return_aux_loss: Whether to return auxiliary losses
-                
+
             Returns:
                 Tuple of (output tensor, auxiliary loss if requested)
             """
@@ -157,10 +169,16 @@ if TORCH_AVAILABLE:
             changes = sorted_expert_ids[1:] != sorted_expert_ids[:-1]
             device = sorted_expert_ids.device
             group_starts = torch.cat(
-                [torch.zeros(1, device=device, dtype=torch.long), torch.nonzero(changes, as_tuple=False).flatten() + 1]
+                [
+                    torch.zeros(1, device=device, dtype=torch.long),
+                    torch.nonzero(changes, as_tuple=False).flatten() + 1,
+                ]
             )  # [G]
             group_ends = torch.cat(
-                [group_starts[1:], torch.tensor([sorted_expert_ids.numel()], device=device, dtype=torch.long)]
+                [
+                    group_starts[1:],
+                    torch.tensor([sorted_expert_ids.numel()], device=device, dtype=torch.long),
+                ]
             )  # [G]
 
             group_count = int(group_starts.numel())
@@ -201,7 +219,9 @@ if TORCH_AVAILABLE:
             """Reset expert usage statistics."""
             self.expert_usage.zero_()
             self.expert_loss.zero_()
+
 else:
+
     class MoELayer:
         def __init__(self, *args, **kwargs):
-            raise ImportError("PyTorch is required for MoELayer. Please install torch.") 
+            raise ImportError("PyTorch is required for MoELayer. Please install torch.")

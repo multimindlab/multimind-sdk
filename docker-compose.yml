@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   multimind:
     build:
@@ -62,7 +60,7 @@ services:
       - ALLOW_RESET=true
       - ANONYMIZED_TELEMETRY=false
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/v1/heartbeat\")' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -75,7 +73,7 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:11434/api/version\")' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

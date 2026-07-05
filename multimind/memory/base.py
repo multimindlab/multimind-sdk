@@ -3,8 +3,9 @@ Base memory class for all memory implementations.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Dict, List
+
 
 class BaseMemory(ABC):
     """Abstract base class for all memory implementations."""
@@ -36,4 +37,4 @@ class BaseMemory(ABC):
     @abstractmethod
     async def load(self) -> None:
         """Load memory from persistent storage."""
-        pass 
+        pass

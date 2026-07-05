@@ -2,22 +2,24 @@
 Client library for the MultiMind RAG API.
 """
 
-from typing import List, Dict, Any, Optional, Union
-import aiohttp
 import json
 from pathlib import Path
-from datetime import datetime
-import asyncio
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
 from pydantic import BaseModel
+
 
 class Document(BaseModel):
     text: str
     metadata: Dict[str, Any] = {}
 
+
 class QueryRequest(BaseModel):
     query: str
     top_k: Optional[int] = 3
     filter_metadata: Optional[Dict[str, Any]] = None
+
 
 class GenerateRequest(BaseModel):
     query: str
@@ -26,6 +28,7 @@ class GenerateRequest(BaseModel):
     max_tokens: Optional[int] = None
     filter_metadata: Optional[Dict[str, Any]] = None
 
+
 class RAGClient:
     """Client for interacting with the MultiMind RAG API."""
 
@@ -33,7 +36,7 @@ class RAGClient:
         self,
         base_url: str = "http://localhost:8000",
         api_key: Optional[str] = None,
-        token: Optional[str] = None
+        token: Optional[str] = None,
     ):
         """Initialize the RAG client.
 
@@ -61,8 +64,7 @@ class RAGClient:
         """
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.base_url}/token",
-                data={"username": username, "password": password}
+                f"{self.base_url}/token", data={"username": username, "password": password}
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Login failed: {await response.text()}")
@@ -70,10 +72,7 @@ class RAGClient:
                 self.headers["Authorization"] = f"Bearer {data['access_token']}"
                 return data["access_token"]
 
-    async def add_documents(
-        self,
-        documents: List[Document]
-    ) -> Dict[str, Any]:
+    async def add_documents(self, documents: List[Document]) -> Dict[str, Any]:
         """Add documents to the RAG system.
 
         Args:
@@ -86,16 +85,14 @@ class RAGClient:
             async with session.post(
                 f"{self.base_url}/documents",
                 json={"documents": [doc.dict() for doc in documents]},
-                headers=self.headers
+                headers=self.headers,
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Failed to add documents: {await response.text()}")
                 return await response.json()
 
     async def add_file(
-        self,
-        file_path: Union[str, Path],
-        metadata: Optional[Dict[str, Any]] = None
+        self, file_path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Add a file to the RAG system.
 
@@ -112,28 +109,19 @@ class RAGClient:
 
         async with aiohttp.ClientSession() as session:
             data = aiohttp.FormData()
-            data.add_field(
-                "file",
-                file_path.open("rb"),
-                filename=file_path.name
-            )
+            data.add_field("file", file_path.open("rb"), filename=file_path.name)
             if metadata:
                 data.add_field("metadata", json.dumps(metadata))
 
             async with session.post(
-                f"{self.base_url}/files",
-                data=data,
-                headers=self.headers
+                f"{self.base_url}/files", data=data, headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Failed to add file: {await response.text()}")
                 return await response.json()
 
     async def query(
-        self,
-        query: str,
-        top_k: Optional[int] = 3,
-        filter_metadata: Optional[Dict[str, Any]] = None
+        self, query: str, top_k: Optional[int] = 3, filter_metadata: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Query the RAG system.
 
@@ -145,17 +133,11 @@ class RAGClient:
         Returns:
             Query results
         """
-        request = QueryRequest(
-            query=query,
-            top_k=top_k,
-            filter_metadata=filter_metadata
-        )
+        request = QueryRequest(query=query, top_k=top_k, filter_metadata=filter_metadata)
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.base_url}/query",
-                json=request.dict(),
-                headers=self.headers
+                f"{self.base_url}/query", json=request.dict(), headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Query failed: {await response.text()}")
@@ -167,7 +149,7 @@ class RAGClient:
         top_k: Optional[int] = 3,
         temperature: Optional[float] = 0.7,
         max_tokens: Optional[int] = None,
-        filter_metadata: Optional[Dict[str, Any]] = None
+        filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Generate a response using the RAG system.
 
@@ -186,14 +168,12 @@ class RAGClient:
             top_k=top_k,
             temperature=temperature,
             max_tokens=max_tokens,
-            filter_metadata=filter_metadata
+            filter_metadata=filter_metadata,
         )
 
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{self.base_url}/generate",
-                json=request.dict(),
-                headers=self.headers
+                f"{self.base_url}/generate", json=request.dict(), headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Generation failed: {await response.text()}")
@@ -207,8 +187,7 @@ class RAGClient:
         """
         async with aiohttp.ClientSession() as session:
             async with session.delete(
-                f"{self.base_url}/documents",
-                headers=self.headers
+                f"{self.base_url}/documents", headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Failed to clear documents: {await response.text()}")
@@ -222,19 +201,14 @@ class RAGClient:
         """
         async with aiohttp.ClientSession() as session:
             async with session.get(
-                f"{self.base_url}/documents/count",
-                headers=self.headers
+                f"{self.base_url}/documents/count", headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Failed to get document count: {await response.text()}")
                 data = await response.json()
                 return data["count"]
 
-    async def switch_model(
-        self,
-        model_type: str,
-        model_name: str
-    ) -> Dict[str, Any]:
+    async def switch_model(self, model_type: str, model_name: str) -> Dict[str, Any]:
         """Switch the model used by the RAG system.
 
         Args:
@@ -250,9 +224,7 @@ class RAGClient:
             data.add_field("model_name", model_name)
 
             async with session.post(
-                f"{self.base_url}/models/switch",
-                data=data,
-                headers=self.headers
+                f"{self.base_url}/models/switch", data=data, headers=self.headers
             ) as response:
                 if response.status != 200:
                     raise Exception(f"Failed to switch model: {await response.text()}")
@@ -265,10 +237,7 @@ class RAGClient:
             Health status
         """
         async with aiohttp.ClientSession() as session:
-            async with session.get(
-                f"{self.base_url}/health",
-                headers=self.headers
-            ) as response:
+            async with session.get(f"{self.base_url}/health", headers=self.headers) as response:
                 if response.status != 200:
                     raise Exception(f"Health check failed: {await response.text()}")
                 return await response.json()

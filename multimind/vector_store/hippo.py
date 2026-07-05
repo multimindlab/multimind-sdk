@@ -1,9 +1,12 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 from hippo_api import HippoClient
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class HippoBackend(VectorStoreBackend):
     def __init__(
@@ -20,7 +23,7 @@ class HippoBackend(VectorStoreBackend):
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ):
         self.api_key = api_key or os.environ.get("HIPPO_API_KEY")
         self.endpoint = endpoint or os.environ.get("HIPPO_ENDPOINT")
@@ -52,22 +55,27 @@ class HippoBackend(VectorStoreBackend):
             if ids:
                 item["id"] = ids[i]
             items.append(item)
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.col.insert_many(items)
-        )
+        await asyncio.get_event_loop().run_in_executor(None, lambda: self.col.insert_many(items))
         if self.live_indexing:
-            await self._run_plugin('on_live_index', vectors, metadatas, documents, ids)
-        self.log_metrics('add_vectors', len(vectors))
+            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
+        self.log_metrics("add_vectors", len(vectors))
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         explain = explain if explain is not None else self.explain
         # Build search query
         query = {"vector": query_vector, "k": k}
         if filter_criteria:
             query["filter"] = filter_criteria
-        res = await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.col.search(query)
-        )
+        res = await asyncio.get_event_loop().run_in_executor(None, lambda: self.col.search(query))
         results = []
         for doc in res:
             meta = doc.get("metadata", {})
@@ -84,22 +92,24 @@ class HippoBackend(VectorStoreBackend):
                 vector=doc.get("vector"),
                 metadata=meta,
                 document=doc_content,
-                score=score
+                score=score,
             )
             if explain:
                 result.explanation = {
                     "vector_score": doc.get("score", 1.0),
                     "bm25_score": bm25_score,
-                    "final_score": score
+                    "final_score": score,
                 }
             results.append(result)
         if scoring_method and scoring_method != "weighted_sum":
             results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics('search', len(results))
+        self.log_metrics("search", len(results))
         return results
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        return float(len(set(query_text.split()) & set(doc_text.split()))) / (len(doc_text.split()) + 1)
+        return float(len(set(query_text.split()) & set(doc_text.split()))) / (
+            len(doc_text.split()) + 1
+        )
 
     def _apply_custom_scoring(self, results: List[SearchResult], method: str) -> List[SearchResult]:
         if method == "reciprocal_rank":
@@ -111,17 +121,15 @@ class HippoBackend(VectorStoreBackend):
         await asyncio.get_event_loop().run_in_executor(
             None, lambda: [self.col.delete_one({"id": doc_id}) for doc_id in ids]
         )
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
-        await asyncio.get_event_loop().run_in_executor(
-            None, lambda: self.col.delete_many({})
-        )
-        self.log_metrics('clear', 1)
+        await asyncio.get_event_loop().run_in_executor(None, lambda: self.col.delete_many({}))
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
         # Hippo is a managed service, so persistence is not typically needed
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -143,11 +151,11 @@ class HippoBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

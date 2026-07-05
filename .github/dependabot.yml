@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Python dependencies (pyproject.toml / requirements.txt)
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    ignore:
+      # torch major bumps are large and often break the ML stack — pin to
+      # minor/patch updates and handle majors deliberately.
+      - dependency-name: "torch"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions used in our workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - "dependencies"
+      - "ci"

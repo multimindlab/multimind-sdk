@@ -3,21 +3,22 @@ Anthropic Claude model implementation.
 """
 
 import os
-from typing import List, Dict, Any, Optional, AsyncGenerator, Union
+from collections.abc import AsyncGenerator
+from typing import Any, Dict, List, Optional, Union
+
 import anthropic
 from anthropic import AsyncAnthropic
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
 from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
+
 
 class ClaudeModel(BaseLLM):
     """Anthropic Claude model implementation."""
 
     def __init__(
-        self,
-        model_name: str = "claude-3-opus-20240229",
-        api_key: Optional[str] = None,
-        **kwargs
+        self, model_name: str = "claude-3-opus-20240229", api_key: Optional[str] = None, **kwargs
     ):
         super().__init__(model_name, **kwargs)
         # Load API key from environment if not provided
@@ -49,11 +50,7 @@ class ClaudeModel(BaseLLM):
         return await self.client.messages.create(**kwargs)
 
     async def generate(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text using Claude's completion API."""
         # Anthropic API requires max_tokens to be set
@@ -69,11 +66,7 @@ class ClaudeModel(BaseLLM):
         return response.content[0].text if response.content else ""
 
     async def generate_stream(
-        self,
-        prompt: str,
-        temperature: float = 0.7,
-        max_tokens: Optional[int] = None,
-        **kwargs
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
         """Generate streaming text using Claude's completion API."""
         # Anthropic API requires max_tokens to be set
@@ -96,7 +89,7 @@ class ClaudeModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate chat completion using Claude's chat API."""
         # Anthropic API requires max_tokens to be set
@@ -116,7 +109,7 @@ class ClaudeModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> AsyncGenerator[str, None]:
         """Generate streaming chat completion using Claude's chat API."""
         # Anthropic API requires max_tokens to be set
@@ -135,9 +128,7 @@ class ClaudeModel(BaseLLM):
                 yield chunk.delta.text
 
     async def embeddings(
-        self,
-        text: Union[str, List[str]],
-        **kwargs
+        self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings using Claude's embeddings API."""
         raise NotImplementedError("Claude does not currently support embeddings generation")

@@ -3,30 +3,22 @@ Advanced optimization features for PEFT methods including task-specific hyperpar
 and cross-task knowledge distillation.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+import logging
+from typing import Any, Dict, List, Optional, Union
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LambdaLR
-import numpy as np
-from sklearn.metrics import accuracy_score, f1_score
-from transformers import TrainerCallback, TrainerState, TrainerControl
-import logging
-from enum import Enum
-from scipy.stats import norm
+from datasets import Dataset as HFDataset
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern
-import optuna
-from .multitask_peft import (
-    MultiTaskUniPELTPlusTuner,
-    TaskConfig,
-    TaskType,
-    UniPELTPlusMethod
-)
-from datasets import Dataset as HFDataset
+from transformers import TrainerCallback, TrainerControl, TrainerState
+
+from .multitask_peft import MultiTaskUniPELTPlusTuner, TaskConfig, TaskType, UniPELTPlusMethod
 
 logger = logging.getLogger(__name__)
+
 
 class HyperparameterSpace:
     """Define hyperparameter search space for PEFT methods."""
@@ -35,7 +27,7 @@ class HyperparameterSpace:
         self,
         method: UniPELTPlusMethod,
         task_type: TaskType,
-        space_config: Optional[Dict[str, Any]] = None
+        space_config: Optional[Dict[str, Any]] = None,
     ):
         self.method = method
         self.task_type = task_type
@@ -48,39 +40,23 @@ class HyperparameterSpace:
             "weight_decay": (0.0, 0.1),
             "warmup_ratio": (0.0, 0.1),
             "gradient_accumulation_steps": (1, 8),
-            "max_grad_norm": (0.1, 1.0)
+            "max_grad_norm": (0.1, 1.0),
         }
 
         method_spaces = {
-            UniPELTPlusMethod.LORA: {
-                "r": (4, 32),
-                "alpha": (8, 64),
-                "dropout": (0.0, 0.2)
-            },
-            UniPELTPlusMethod.ADAPTER: {
-                "adapter_size": (64, 512),
-                "adapter_dropout": (0.0, 0.2)
-            },
-            UniPELTPlusMethod.PROMPT: {
-                "prompt_length": (10, 100),
-                "prompt_dropout": (0.0, 0.2)
-            }
+            UniPELTPlusMethod.LORA: {"r": (4, 32), "alpha": (8, 64), "dropout": (0.0, 0.2)},
+            UniPELTPlusMethod.ADAPTER: {"adapter_size": (64, 512), "adapter_dropout": (0.0, 0.2)},
+            UniPELTPlusMethod.PROMPT: {"prompt_length": (10, 100), "prompt_dropout": (0.0, 0.2)},
         }
 
         task_spaces = {
-            TaskType.TEXT_CLASSIFICATION: {
-                "batch_size": (8, 64),
-                "label_smoothing": (0.0, 0.1)
-            },
-            TaskType.SEQUENCE_LABELING: {
-                "batch_size": (4, 32),
-                "crf_dropout": (0.0, 0.2)
-            },
+            TaskType.TEXT_CLASSIFICATION: {"batch_size": (8, 64), "label_smoothing": (0.0, 0.1)},
+            TaskType.SEQUENCE_LABELING: {"batch_size": (4, 32), "crf_dropout": (0.0, 0.2)},
             TaskType.TEXT_GENERATION: {
                 "batch_size": (2, 16),
                 "beam_size": (1, 8),
-                "temperature": (0.5, 1.5)
-            }
+                "temperature": (0.5, 1.5),
+            },
         }
 
         space = {**base_space}
@@ -91,6 +67,7 @@ class HyperparameterSpace:
 
         return space
 
+
 class BayesianOptimizer:
     """Bayesian optimization for hyperparameter tuning."""
 
@@ -98,15 +75,13 @@ class BayesianOptimizer:
         self,
         hyperparameter_space: HyperparameterSpace,
         n_trials: int = 20,
-        n_initial_points: int = 5
+        n_initial_points: int = 5,
     ):
         self.space = hyperparameter_space
         self.n_trials = n_trials
         self.n_initial_points = n_initial_points
         self.gp = GaussianProcessRegressor(
-            kernel=Matern(nu=2.5),
-            normalize_y=True,
-            n_restarts_optimizer=10
+            kernel=Matern(nu=2.5), normalize_y=True, n_restarts_optimizer=10
         )
         self.X = []  # Hyperparameter configurations
         self.y = []  # Performance scores
@@ -165,10 +140,8 @@ class BayesianOptimizer:
 
     def _array_to_params(self, array: np.ndarray) -> Dict[str, Any]:
         """Convert array to hyperparameter dict."""
-        return {
-            name: array[i]
-            for i, name in enumerate(self.space.space_config.keys())
-        }
+        return {name: array[i] for i, name in enumerate(self.space.space_config.keys())}
+
 
 class KnowledgeDistillation:
     """Cross-task knowledge distillation for PEFT methods."""
@@ -177,7 +150,7 @@ class KnowledgeDistillation:
         self,
         teacher_model: nn.Module,
         student_model: nn.Module,
-        distillation_config: Optional[Dict[str, Any]] = None
+        distillation_config: Optional[Dict[str, Any]] = None,
     ):
         self.teacher_model = teacher_model
         self.student_model = student_model
@@ -185,7 +158,7 @@ class KnowledgeDistillation:
             "temperature": 2.0,
             "alpha": 0.5,  # Weight for distillation loss
             "distillation_strategy": "soft",  # or "hard"
-            "layer_matching": "auto"  # or "manual"
+            "layer_matching": "auto",  # or "manual"
         }
         self.layer_mappings = self._compute_layer_mappings()
 
@@ -224,10 +197,7 @@ class KnowledgeDistillation:
                     # Use cosine similarity of flattened shapes
                     t_flat = torch.tensor(t_shape).float()
                     s_flat = torch.tensor(s_shape).float()
-                    similarity = F.cosine_similarity(
-                        t_flat.view(1, -1),
-                        s_flat.view(1, -1)
-                    ).item()
+                    similarity = F.cosine_similarity(t_flat.view(1, -1), s_flat.view(1, -1)).item()
 
                 if similarity > best_similarity:
                     best_similarity = similarity
@@ -242,27 +212,19 @@ class KnowledgeDistillation:
         self,
         teacher_outputs: Dict[str, torch.Tensor],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute distillation loss between teacher and student."""
         if self.distillation_config["distillation_strategy"] == "soft":
-            return self._compute_soft_distillation_loss(
-                teacher_outputs,
-                student_outputs,
-                labels
-            )
+            return self._compute_soft_distillation_loss(teacher_outputs, student_outputs, labels)
         else:
-            return self._compute_hard_distillation_loss(
-                teacher_outputs,
-                student_outputs,
-                labels
-            )
+            return self._compute_hard_distillation_loss(teacher_outputs, student_outputs, labels)
 
     def _compute_soft_distillation_loss(
         self,
         teacher_outputs: Dict[str, torch.Tensor],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute soft distillation loss using KL divergence."""
         temperature = self.distillation_config["temperature"]
@@ -276,8 +238,8 @@ class KnowledgeDistillation:
         distillation_loss = F.kl_div(
             F.log_softmax(student_logits, dim=-1),
             F.softmax(teacher_logits, dim=-1),
-            reduction="batchmean"
-        ) * (temperature ** 2)
+            reduction="batchmean",
+        ) * (temperature**2)
 
         # Task-specific loss
         task_loss = F.cross_entropy(student_logits, labels)
@@ -289,7 +251,7 @@ class KnowledgeDistillation:
         self,
         teacher_outputs: Dict[str, torch.Tensor],
         student_outputs: Dict[str, torch.Tensor],
-        labels: torch.Tensor
+        labels: torch.Tensor,
     ) -> torch.Tensor:
         """Compute hard distillation loss using teacher predictions."""
         alpha = self.distillation_config["alpha"]
@@ -298,17 +260,12 @@ class KnowledgeDistillation:
         teacher_preds = torch.argmax(teacher_outputs["logits"], dim=-1)
 
         # Compute losses
-        distillation_loss = F.cross_entropy(
-            student_outputs["logits"],
-            teacher_preds
-        )
-        task_loss = F.cross_entropy(
-            student_outputs["logits"],
-            labels
-        )
+        distillation_loss = F.cross_entropy(student_outputs["logits"], teacher_preds)
+        task_loss = F.cross_entropy(student_outputs["logits"], labels)
 
         # Combined loss
         return alpha * distillation_loss + (1 - alpha) * task_loss
+
 
 class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
     """Multi-task tuner with task-specific hyperparameter optimization."""
@@ -325,7 +282,7 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         model_config: Optional[Dict[str, Any]] = None,
         resource_constraints: Optional[Dict[str, Any]] = None,
         optimization_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -336,24 +293,21 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
             method_configs=method_configs,
             training_args=training_args,
             model_config=model_config,
-            resource_constraints=resource_constraints
+            resource_constraints=resource_constraints,
         )
 
         self.optimization_config = optimization_config or {
             "n_trials": 20,
             "n_initial_points": 5,
-            "optimization_metric": "f1"
+            "optimization_metric": "f1",
         }
 
         # Initialize optimizers for each task
         self.task_optimizers = {
             task.task_name: BayesianOptimizer(
-                hyperparameter_space=HyperparameterSpace(
-                    method=method,
-                    task_type=task.task_type
-                ),
+                hyperparameter_space=HyperparameterSpace(method=method, task_type=task.task_type),
                 n_trials=self.optimization_config["n_trials"],
-                n_initial_points=self.optimization_config["n_initial_points"]
+                n_initial_points=self.optimization_config["n_initial_points"],
             )
             for task in tasks
             for method in available_methods
@@ -363,7 +317,7 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         self,
         train_datasets: Dict[str, Union[HFDataset, List[str]]],
         eval_datasets: Optional[Dict[str, Union[HFDataset, List[str]]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with task-specific hyperparameter optimization."""
         if self.model is None:
@@ -380,7 +334,7 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
                 state: TrainerState,
                 control: TrainerControl,
                 metrics: Dict[str, float],
-                **kwargs
+                **kwargs,
             ):
                 # Update optimizers with new observations
                 for task_name, task_metrics in metrics.items():
@@ -391,12 +345,10 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
                             )
                             if optimizer:
                                 score = task_metrics.get(
-                                    self.tuner.optimization_config["optimization_metric"],
-                                    0.0
+                                    self.tuner.optimization_config["optimization_metric"], 0.0
                                 )
                                 optimizer.update(
-                                    params=self.tuner.method_configs[method],
-                                    score=score
+                                    params=self.tuner.method_configs[method], score=score
                                 )
 
                                 # Get new hyperparameters
@@ -416,6 +368,7 @@ class OptimizedMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         # Train with base class method
         super().train(train_datasets, eval_datasets, **kwargs)
 
+
 class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
     """Multi-task tuner with cross-task knowledge distillation."""
 
@@ -431,7 +384,7 @@ class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
         distillation_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -441,7 +394,7 @@ class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
             model_type=model_type,
             method_configs=method_configs,
             training_args=training_args,
-            model_config=model_config
+            model_config=model_config,
         )
 
         # Load teacher model
@@ -451,7 +404,7 @@ class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         self.distillation = KnowledgeDistillation(
             teacher_model=self.teacher_model,
             student_model=self.model,
-            distillation_config=distillation_config
+            distillation_config=distillation_config,
         )
 
     def _load_teacher_model(self, model_path: str) -> nn.Module:
@@ -466,7 +419,7 @@ class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
         self,
         train_datasets: Dict[str, Union[HFDataset, List[str]]],
         eval_datasets: Optional[Dict[str, Union[HFDataset, List[str]]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train with cross-task knowledge distillation."""
         if self.model is None:
@@ -482,24 +435,20 @@ class DistilledMultiTaskTuner(MultiTaskUniPELTPlusTuner):
                 args: TrainingArguments,
                 state: TrainerState,
                 control: TrainerControl,
-                **kwargs
+                **kwargs,
             ):
                 # Get teacher outputs
                 with torch.no_grad():
-                    teacher_outputs = self.tuner.teacher_model(
-                        **self.tuner.current_batch
-                    )
+                    teacher_outputs = self.tuner.teacher_model(**self.tuner.current_batch)
 
                 # Get student outputs
-                student_outputs = self.tuner.model(
-                    **self.tuner.current_batch
-                )
+                student_outputs = self.tuner.model(**self.tuner.current_batch)
 
                 # Compute distillation loss
                 distillation_loss = self.tuner.distillation.compute_distillation_loss(
                     teacher_outputs=teacher_outputs,
                     student_outputs=student_outputs,
-                    labels=self.tuner.current_batch["labels"]
+                    labels=self.tuner.current_batch["labels"],
                 )
 
                 # Update model with combined loss

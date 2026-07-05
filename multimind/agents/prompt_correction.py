@@ -1,5 +1,5 @@
-from typing import Callable, Any, Dict, List
 import logging
+from typing import Callable, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -9,6 +9,7 @@ class PromptCorrectionLayer:
     Observability and self-healing layer for LLM/agent pipelines.
     Monitors for failures/hallucinations, allows live prompt/adapters edits, and supports trace-based correction.
     """
+
     def __init__(self):
         self.error_hooks: List[Callable[[str, Exception, Dict], None]] = []
         self.correction_hooks: List[Callable[[str, Dict], str]] = []
@@ -17,8 +18,10 @@ class PromptCorrectionLayer:
 
     def add_error_hook(self, hook: Callable[[str, Exception, Dict], None]):
         self.error_hooks.append(hook)
+
     def add_correction_hook(self, hook: Callable[[str, Dict], str]):
         self.correction_hooks.append(hook)
+
     def add_adapter_update_hook(self, hook: Callable[[str, str], None]):
         self.adapter_update_hooks.append(hook)
 
@@ -32,16 +35,23 @@ class PromptCorrectionLayer:
 
         # Strong indicators
         strong_markers = [
-            "[error]", "hallucination", "not based on real data",
-            "fabricated answer", "made this up"
+            "[error]",
+            "hallucination",
+            "not based on real data",
+            "fabricated answer",
+            "made this up",
         ]
         if any(marker in text for marker in strong_markers):
             score += 0.7
 
         # Weaker indicators based on uncertainty phrases
         weak_markers = [
-            "i am not sure", "i'm not sure", "i do not know",
-            "i don't know", "cannot verify", "not certain"
+            "i am not sure",
+            "i'm not sure",
+            "i do not know",
+            "i don't know",
+            "cannot verify",
+            "not certain",
         ]
         if any(marker in text for marker in weak_markers):
             score += 0.2
@@ -91,19 +101,26 @@ class PromptCorrectionLayer:
             hook(adapter_key, new_adapter_path)
         self.logger.info(f"Adapter {adapter_key} updated to {new_adapter_path}")
 
+
 # --- Example usage ---
 if __name__ == "__main__":
     pcl = PromptCorrectionLayer()
+
     def error_logger(prompt, exc, trace):
         logger.error("Error detected for prompt '%s': %s", prompt, exc)
+
     def simple_correction(prompt, trace):
         return prompt + " [CORRECTED]"
+
     def adapter_updater(adapter_key, new_path):
         logger.info("Adapter %s updated to %s", adapter_key, new_path)
+
     pcl.add_error_hook(error_logger)
     pcl.add_correction_hook(simple_correction)
     pcl.add_adapter_update_hook(adapter_updater)
     # Simulate monitoring
-    corrected_output = pcl.monitor("What is the capital of France?", "[error] hallucination detected", {"step": 1})
+    corrected_output = pcl.monitor(
+        "What is the capital of France?", "[error] hallucination detected", {"step": 1}
+    )
     logger.info("Corrected output after correction: %s", corrected_output)
-    pcl.update_adapter("user123", "lora_adapter_v2") 
+    pcl.update_adapter("user123", "lora_adapter_v2")

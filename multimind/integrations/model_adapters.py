@@ -2,31 +2,23 @@
 Integration adapters for fine-tuned models to work with various frameworks.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Sequence
+import logging
+from typing import Any, Dict, List, Optional
+
 import torch
-import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from langchain.llms.base import LLM
-from langchain.callbacks.manager import CallbackManagerForLLMRun
-from langchain.embeddings.base import Embeddings
-from langchain.schema import Document
-from lite_llm import LiteLLM
-from superagi.agent import Agent
-from superagi.tools import Tool
-from semantic_kernel import Kernel, KernelFunction
 from crewai import Agent as CrewAgent
 from crewai import Task
-import logging
-from ..fine_tuning import (
-    MultiTaskUniPELTPlusTuner,
-    OptimizedMultiTaskTuner,
-    DistilledMultiTaskTuner,
-    TaskConfig,
-    TaskType,
-    UniPELTPlusMethod
-)
+from langchain.callbacks.manager import CallbackManagerForLLMRun
+from langchain.embeddings.base import Embeddings
+from langchain.llms.base import LLM
+from lite_llm import LiteLLM
+from semantic_kernel import KernelFunction
+from superagi.agent import Agent
+from superagi.tools import Tool
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logger = logging.getLogger(__name__)
+
 
 class BaseModelAdapter:
     """Base class for model adapters."""
@@ -35,7 +27,7 @@ class BaseModelAdapter:
         self,
         model_path: str,
         model_type: str = "causal_lm",
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         self.model_path = model_path
         self.model_type = model_type
@@ -50,7 +42,7 @@ class BaseModelAdapter:
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_path,
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto" if self.device == "cuda" else None
+                device_map="auto" if self.device == "cuda" else None,
             )
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
             self.model.eval()
@@ -64,18 +56,14 @@ class BaseModelAdapter:
         max_length: int = 512,
         temperature: float = 0.7,
         top_p: float = 0.9,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate text from prompt."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
 
         with torch.no_grad():
             outputs = self.model.generate(
-                **inputs,
-                max_length=max_length,
-                temperature=temperature,
-                top_p=top_p,
-                **kwargs
+                **inputs, max_length=max_length, temperature=temperature, top_p=top_p, **kwargs
             )
 
         return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
@@ -91,6 +79,7 @@ class BaseModelAdapter:
 
         return embeddings
 
+
 class LangChainAdapter(LLM, BaseModelAdapter):
     """Adapter for LangChain integration."""
 
@@ -99,7 +88,7 @@ class LangChainAdapter(LLM, BaseModelAdapter):
         model_path: str,
         model_type: str = "causal_lm",
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
@@ -109,7 +98,7 @@ class LangChainAdapter(LLM, BaseModelAdapter):
         prompt: str,
         stop: Optional[List[str]] = None,
         run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs
+        **kwargs,
     ) -> str:
         """Generate text for LangChain."""
         # Update generation parameters
@@ -124,6 +113,7 @@ class LangChainAdapter(LLM, BaseModelAdapter):
         """Return LLM type."""
         return "peft_model"
 
+
 class LangChainEmbeddings(Embeddings, BaseModelAdapter):
     """Adapter for LangChain embeddings."""
 
@@ -131,7 +121,7 @@ class LangChainEmbeddings(Embeddings, BaseModelAdapter):
         self,
         model_path: str,
         model_type: str = "causal_lm",
-        device: str = "cuda" if torch.cuda.is_available() else "cpu"
+        device: str = "cuda" if torch.cuda.is_available() else "cpu",
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
 
@@ -148,6 +138,7 @@ class LangChainEmbeddings(Embeddings, BaseModelAdapter):
         emb = self.get_embeddings(text)
         return emb.cpu().numpy().tolist()
 
+
 class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
     """Adapter for LiteLLM integration."""
 
@@ -156,17 +147,13 @@ class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
         model_path: str,
         model_type: str = "causal_lm",
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
 
     def completion(
-        self,
-        prompt: str,
-        max_tokens: int = 512,
-        temperature: float = 0.7,
-        **kwargs
+        self, prompt: str, max_tokens: int = 512, temperature: float = 0.7, **kwargs
     ) -> Dict[str, Any]:
         """Generate completion for LiteLLM."""
         # Update generation parameters
@@ -178,16 +165,14 @@ class LiteLLMAdapter(LiteLLM, BaseModelAdapter):
 
         # Format response
         return {
-            "choices": [{
-                "text": generated_text,
-                "finish_reason": "stop"
-            }],
+            "choices": [{"text": generated_text, "finish_reason": "stop"}],
             "usage": {
                 "prompt_tokens": len(self.tokenizer.encode(prompt)),
                 "completion_tokens": len(self.tokenizer.encode(generated_text)),
-                "total_tokens": len(self.tokenizer.encode(prompt + generated_text))
-            }
+                "total_tokens": len(self.tokenizer.encode(prompt + generated_text)),
+            },
         }
+
 
 class SuperAGIAdapter(Agent, BaseModelAdapter):
     """Adapter for SuperAGI integration."""
@@ -198,7 +183,7 @@ class SuperAGIAdapter(Agent, BaseModelAdapter):
         model_type: str = "causal_lm",
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
         tools: Optional[List[Tool]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.tools = tools or []
@@ -207,10 +192,7 @@ class SuperAGIAdapter(Agent, BaseModelAdapter):
     def execute(self, task: str, **kwargs) -> str:
         """Execute task using SuperAGI agent."""
         # Format prompt with tools
-        tool_descriptions = "\n".join([
-            f"- {tool.name}: {tool.description}"
-            for tool in self.tools
-        ])
+        tool_descriptions = "\n".join([f"- {tool.name}: {tool.description}" for tool in self.tools])
 
         prompt = f"""Available tools:
 {tool_descriptions}
@@ -227,6 +209,7 @@ Think step by step and use the available tools to complete the task.
         # Implementation depends on SuperAGI's tool execution interface
         return response
 
+
 class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
     """Adapter for Semantic Kernel integration."""
 
@@ -235,16 +218,12 @@ class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
         model_path: str,
         model_type: str = "causal_lm",
         device: str = "cuda" if torch.cuda.is_available() else "cpu",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.kwargs = kwargs
 
-    def invoke(
-        self,
-        context: Dict[str, Any],
-        **kwargs
-    ) -> Dict[str, Any]:
+    def invoke(self, context: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """Invoke function for Semantic Kernel."""
         # Get prompt from contex
         prompt = context.get("prompt", "")
@@ -255,6 +234,7 @@ class SemanticKernelAdapter(KernelFunction, BaseModelAdapter):
         # Update context with response
         context["response"] = response
         return context
+
 
 class CrewAIAdapter(CrewAgent, BaseModelAdapter):
     """Adapter for CrewAI integration."""
@@ -267,7 +247,7 @@ class CrewAIAdapter(CrewAgent, BaseModelAdapter):
         role: str = "AI Assistant",
         goal: str = "Help users with their tasks",
         backstory: str = "I am an AI assistant trained to help users.",
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_path=model_path, model_type=model_type, device=device)
         self.role = role
@@ -294,11 +274,9 @@ Think step by step and complete the task.
         task.output = response
         return response
 
+
 def create_adapter(
-    framework: str,
-    model_path: str,
-    model_type: str = "causal_lm",
-    **kwargs
+    framework: str, model_path: str, model_type: str = "causal_lm", **kwargs
 ) -> BaseModelAdapter:
     """Factory function to create appropriate adapter."""
     adapters = {
@@ -307,14 +285,10 @@ def create_adapter(
         "litellm": LiteLLMAdapter,
         "superagi": SuperAGIAdapter,
         "semantic_kernel": SemanticKernelAdapter,
-        "crewai": CrewAIAdapter
+        "crewai": CrewAIAdapter,
     }
 
     if framework not in adapters:
         raise ValueError(f"Unsupported framework: {framework}")
 
-    return adapters[framework](
-        model_path=model_path,
-        model_type=model_type,
-        **kwargs
-    )
+    return adapters[framework](model_path=model_path, model_type=model_type, **kwargs)

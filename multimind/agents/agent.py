@@ -3,10 +3,12 @@ Base Agent class for Multimind SDK.
 """
 
 import re
-from typing import List, Dict, Any, Optional
-from multimind.models.base import BaseLLM
+from typing import Any, Dict, List, Optional
+
 from multimind.agents.memory import AgentMemory
 from multimind.agents.tools.base import BaseTool
+from multimind.models.base import BaseLLM
+
 
 class Agent:
     """Base agent class that provides core agent functionality."""
@@ -16,7 +18,7 @@ class Agent:
         model: BaseLLM,
         memory: Optional[AgentMemory] = None,
         tools: Optional[List[BaseTool]] = None,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
     ):
         self.model = model
         self.memory = memory or AgentMemory()
@@ -46,34 +48,24 @@ class Agent:
             if re.search(rf"\b{re.escape(tool_name)}\b", task_lower):
                 try:
                     # Extract parameters for the tool from kwargs
-                    params = {k: v for k, v in kwargs.items() if k in tool.get_parameters().get("required", [])}
+                    params = {
+                        k: v
+                        for k, v in kwargs.items()
+                        if k in tool.get_parameters().get("required", [])
+                    }
                     if not tool.validate_parameters(**params):
                         raise ValueError(f"Missing required parameters for tool '{tool.name}'")
                     result = await tool.run(**params)
-                    return {
-                        "type": "tool",
-                        "tool": tool.name,
-                        "result": result
-                    }
+                    return {"type": "tool", "tool": tool.name, "result": result}
                 except Exception as e:
-                    return {
-                        "type": "tool",
-                        "tool": tool.name,
-                        "error": str(e)
-                    }
+                    return {"type": "tool", "tool": tool.name, "error": str(e)}
         # If no tool matches, use the model
         try:
             prompt = task
             model_result = await self.model.generate(prompt, **kwargs)
-            return {
-                "type": "model",
-                "result": model_result
-            }
+            return {"type": "model", "result": model_result}
         except Exception as e:
-            return {
-                "type": "model",
-                "error": str(e)
-            }
+            return {"type": "model", "error": str(e)}
 
     def add_tool(self, tool: BaseTool) -> None:
         """Add a new tool to the agent."""

@@ -2,10 +2,19 @@
 Main router interface for model selection and request routing.
 """
 
-from typing import List, Dict, Any, Optional, Type, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
+
 from ..models.base import BaseLLM
-from .strategy import RoutingStrategy, CostAwareStrategy, LatencyAwareStrategy, HybridStrategy, ParetoFrontStrategy, LearningBasedStrategy
 from .fallback import FallbackHandler
+from .strategy import (
+    CostAwareStrategy,
+    HybridStrategy,
+    LatencyAwareStrategy,
+    LearningBasedStrategy,
+    ParetoFrontStrategy,
+    RoutingStrategy,
+)
+
 
 class ModelRouter:
     """
@@ -60,11 +69,9 @@ class ModelRouter:
 
     def add_feedback(self, model_name: str, success: bool, feedback: Optional[str] = None) -> None:
         """Add user/model feedback for routing adaptation."""
-        self.feedback_history.append({
-            "model": model_name,
-            "success": success,
-            "feedback": feedback
-        })
+        self.feedback_history.append(
+            {"model": model_name, "success": success, "feedback": feedback}
+        )
 
     def get_feedback_stats(self) -> Dict[str, Any]:
         """Aggregate feedback for each model."""
@@ -81,10 +88,7 @@ class ModelRouter:
         return stats
 
     async def get_model(
-        self,
-        model_name: Optional[str] = None,
-        explain: bool = False,
-        **kwargs
+        self, model_name: Optional[str] = None, explain: bool = False, **kwargs
     ) -> BaseLLM:
         """Get a model instance based on strategy and fallback. If explain=True, store rationale."""
         if model_name and model_name in self.models:
@@ -92,10 +96,7 @@ class ModelRouter:
             return self.models[model_name]
 
         # Use strategy to select model
-        selected_model = await self.strategy.select_model(
-            list(self.models.values()),
-            **kwargs
-        )
+        selected_model = await self.strategy.select_model(list(self.models.values()), **kwargs)
 
         if selected_model:
             self.last_explanation = f"Model '{getattr(selected_model, 'model_name', str(selected_model))}' selected by strategy {self.strategy.__class__.__name__}."
@@ -107,11 +108,7 @@ class ModelRouter:
         return fallback_model
 
     async def generate(
-        self,
-        prompt: str,
-        model_name: Optional[str] = None,
-        explain: bool = False,
-        **kwargs
+        self, prompt: str, model_name: Optional[str] = None, explain: bool = False, **kwargs
     ) -> Union[str, Tuple[Optional[str], Optional[str]]]:
         """Generate text using the appropriate model.
 
@@ -139,7 +136,7 @@ class ModelRouter:
         messages: List[Dict[str, str]],
         model_name: Optional[str] = None,
         explain: bool = False,
-        **kwargs
+        **kwargs,
     ) -> Union[str, Tuple[Optional[str], Optional[str]]]:
         """Generate chat completion using the appropriate model.
 
@@ -173,5 +170,5 @@ class ModelRouter:
             model_name: Name of the model selected
             reward: Numeric reward (e.g., 1.0 for success, 0.0 for fail, or any feedback)
         """
-        if hasattr(self.strategy, 'update_feedback'):
+        if hasattr(self.strategy, "update_feedback"):
             self.strategy.update_feedback(model_name, reward)

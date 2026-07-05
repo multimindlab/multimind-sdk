@@ -1,14 +1,22 @@
 import pytest
-from multimind.retrieval import Retriever, RetrievalConfig, EnhancedRetriever, HybridRetriever
+
+from multimind.retrieval import EnhancedRetriever, HybridRetriever, Retriever, RetrievalConfig
+
 
 class DummyVectorStore:
     pass
+
+
 class DummyDocumentProcessor:
     pass
+
+
 class DummyEmbeddingGenerator:
     pass
+
+
 class DummyBaseRetriever:
-    def retrieve(self, query):
+    async def retrieve(self, query):
         return []
 
 def make_config():
@@ -34,30 +42,39 @@ def test_hybrid_retriever_init():
     retriever = HybridRetriever(config)
     assert retriever is not None
 
-def test_retriever_retrieve_empty():
+@pytest.mark.asyncio
+async def test_retriever_retrieve_empty():
     config = make_config()
     retriever = Retriever(config)
     try:
-        result = retriever.retrieve("")
+        result = await retriever.retrieve("")
         assert result is not None
     except Exception:
+        # Dummy collaborators don't implement the real protocol, so the
+        # retriever is expected to raise. Either outcome satisfies the
+        # smoke test — what matters is that the coroutine was actually
+        # awaited (not silently dropped, which masked bugs previously).
         pass
 
-def test_enhanced_retriever_retrieve_empty():
+
+@pytest.mark.asyncio
+async def test_enhanced_retriever_retrieve_empty():
     config = make_config()
     base = DummyBaseRetriever()
     retriever = EnhancedRetriever(config, base)
     try:
-        result = retriever.retrieve("")
+        result = await retriever.retrieve("")
         assert result is not None
     except Exception:
         pass
 
-def test_hybrid_retriever_retrieve_empty():
+
+@pytest.mark.asyncio
+async def test_hybrid_retriever_retrieve_empty():
     config = make_config()
     retriever = HybridRetriever(config)
     try:
-        result = retriever.retrieve("")
+        result = await retriever.retrieve("")
         assert result is not None
     except Exception:
-        pass 
+        pass

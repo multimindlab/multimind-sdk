@@ -1,0 +1,288 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multimind-sdk"
+dynamic = ["version"]
+description = "The compliance-first AI agent framework. Multi-model AI, RAG, agents, and enterprise readiness."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "MultimindLAB Team", email = "contact@multimind.dev"},
+]
+keywords = [
+    "ai", "llm", "agents", "rag", "multi-model",
+    "compliance", "gdpr", "hipaa", "nis2",
+    "langchain-alternative", "ai-framework",
+    "vector-database", "fine-tuning", "enterprise-ai",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+# Minimal core dependencies — only what's needed for basic multi-model chat.
+# Heavy extras (torch, chromadb, fastapi, …) live in [project.optional-dependencies]
+# and are accessed via lazy imports (see multimind/_lazy.py).
+dependencies = [
+    "openai>=1.0.0",
+    "anthropic>=0.20.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.2.2",  # >=1.2.2 clears CVE-2026-28684
+    "click>=8.0.0",
+    "rich>=13.0.0",
+    "PyYAML>=6.0",
+    "aiohttp>=3.8.0",
+    "requests>=2.32.4",  # >=2.32.4 clears CVE-2024-47081 (.netrc credential leak)
+    "typing-extensions>=4.0.0",
+    "tenacity>=8.2.0",
+    "coloredlogs>=15.0.0",
+]
+
+[project.optional-dependencies]
+
+# RAG and basic vector store support
+rag = [
+    "faiss-cpu>=1.7.0",
+    "sentence-transformers>=2.2.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "numpy>=1.21.0",
+]
+
+# Additional vector databases
+vector-stores = [
+    "chromadb>=0.4.0",
+    "qdrant-client>=1.6.0",
+    "weaviate-client>=4.0.0",
+    "pinecone-client>=3.0.0",
+    "pymilvus>=2.0.0",
+    "elasticsearch>=8.0.0",
+]
+
+# Agent framework — relies on memory + tools, not faiss directly
+agents = [
+    "multimind-sdk[memory]",
+]
+
+# In-process memory backends
+memory = [
+    "redis>=5.0.0",
+    "numpy>=1.21.0",
+]
+
+# Document loaders / processors
+documents = [
+    "pdfplumber>=0.9.0",
+    "PyPDF2>=3.0.0",
+    "python-docx>=1.0.0",
+    "python-pptx>=0.6.0",
+    "pillow>=9.0.0",
+    "pytesseract>=0.3.0",
+    "unstructured>=0.10.0",
+]
+
+# Fine-tuning (CPU/general) — no GPU-only deps here so it installs on macOS/ARM
+finetune = [
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "datasets>=2.14.0",
+    "accelerate>=0.20.0",
+    "peft>=0.5.0",
+    "scikit-learn>=1.0.0",
+    "numpy>=1.21.0",
+    "pandas>=2.0.0",
+    # Hyperparameter / meta-learning search — used eagerly by
+    # multimind.fine_tuning.meta_learning, advanced_optimization,
+    # advanced_meta_learning. Without it, the whole fine_tuning package
+    # fails to import.
+    "optuna>=3.0.0",
+]
+
+# GPU-only fine-tuning extras (Linux + CUDA). Kept separate from `finetune`
+# because bitsandbytes does not install on macOS or ARM without GPU.
+finetune-gpu = [
+    "multimind-sdk[finetune]",
+    "bitsandbytes>=0.42.0; sys_platform == 'linux'",
+]
+
+# Compliance features
+compliance = [
+    "cryptography>=41.0.0",
+    "bcrypt>=4.0.0",
+    "pycryptodome>=3.18.0",
+    # multimind.compliance.visualization imports these eagerly to render
+    # interactive compliance dashboards. Anyone installing the `compliance`
+    # extra is expected to want the visualization layer.
+    "plotly>=5.18.0",
+    "dash>=2.14.0",
+    "pandas>=2.0.0",
+]
+
+# Gateway / API server
+gateway = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "redis>=5.0.0",
+    "python-jose>=3.3.0",
+    "python-multipart>=0.0.6",
+]
+
+# Development tools
+dev = [
+    # Test runners (pytest>=9.0.3 clears CVE-2025-71176; suite verified on 9.x)
+    "pytest>=9.0.3",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+    # Lint + format (single tool — ruff handles both `check` and `format`)
+    "ruff>=0.4.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.5.0",
+    # Security scanning (mirrors the CI `security` job)
+    "bandit>=1.7.0",
+    "pip-audit>=2.7.0",
+    # Packaging / release
+    "build>=1.0.0",
+    "twine>=4.0.0",
+    # Docs
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=1.3.0",
+    "myst-parser>=0.18.0",
+]
+
+# Everything (sans dev/finetune-gpu)
+all = [
+    "multimind-sdk[rag,vector-stores,agents,memory,documents,finetune,compliance,gateway]",
+]
+
+[project.urls]
+Homepage = "https://www.multimind.dev"
+Documentation = "https://github.com/multimindlab/multimind-sdk/tree/develop/docs"
+Repository = "https://github.com/multimindlab/multimind-sdk"
+Issues = "https://github.com/multimindlab/multimind-sdk/issues"
+Changelog = "https://github.com/multimindlab/multimind-sdk/releases"
+Discord = "https://discord.gg/K64U65je7h"
+
+[project.scripts]
+multimind = "multimind.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "multimind.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["multimind*"]
+exclude = ["tests*", "examples*", "docs*", "scripts*"]
+
+[tool.setuptools.package-data]
+multimind = ["py.typed"]
+
+# ── Linting & Formatting ─────────────────────────────────────────────
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+exclude = [".git", "__pycache__", "build", "dist", "venv", ".venv"]
+
+[tool.ruff.lint]
+# Currently enforced rule set. Kept conservative so CI is green out of the box.
+# Most cosmetic/style fixes (whitespace, isort, end-of-file newlines, unused
+# imports) were already auto-applied via `ruff check --fix` + black during
+# Phase 3.
+#
+# TODO(phase-3-followup): progressively enable the heavier rule groups below
+# after they've been cleaned up. They were left disabled because:
+#   N  : N805/N806 mass-rename `cls` -> `self` inside pydantic v1 @validator
+#        methods and silently break runtime semantics.
+#   UP : UP006/UP007 rewrite `List[X]` -> `list[X]` which trips pydantic v1
+#        field type resolution in several models.
+#   B  : ~74 raise-without-from cases and ~36 unused-loop-var cases need
+#        case-by-case review.
+#   SIM: stylistic simplifications; non-critical.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E501",  # line length — handled by black
+    "E402",  # module-level imports below top — used intentionally for guards
+    "E741",  # ambiguous variable name — common in math/ML code (l, I, O)
+    "F401",  # unused import — handled per-file-ignores for __init__.py
+    "F403",  # star imports — used intentionally in compliance legacy shims
+    "F405",  # star-import name resolution — ditto
+    "F811",  # redefined-while-unused — common in conditional imports
+    "F821",  # undefined-name — false positives on TYPE_CHECKING-only refs
+    "F841",  # unused-variable — many in debug/experimental code paths
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+"tests/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["multimind"]
+
+# Formatter — replaces black. Kept in sync with the line-length above and
+# pyupgrade target so re-formatting is idempotent across CI / pre-commit /
+# `make format`.
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = false
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Add the repo root to sys.path so tests/examples that do
+# `from examples.cli.basic_agent import main` work regardless of how
+# pytest is invoked (`pytest tests/` vs `python -m pytest tests/`).
+# This replaces the historical CI workaround `PYTHONPATH=$PWD`.
+pythonpath = ["."]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--strict-markers",
+    "--tb=short",
+    "--cov=multimind",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=20",
+]
+asyncio_mode = "auto"
+asyncio_default_test_loop_scope = "function"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests requiring external services",
+    "unit: marks tests as unit tests",
+    "requires_gpu: marks tests that require GPU",
+    "requires_api_key: marks tests requiring API keys",
+    "skip: marks tests as skipped (deselect with '-m \"not skip\"')",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::UserWarning:transformers",
+    "ignore::pydantic.warnings.PydanticDeprecatedSince20",
+]

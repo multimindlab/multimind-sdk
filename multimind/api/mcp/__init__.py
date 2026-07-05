@@ -8,6 +8,6 @@ from .base import MCPWorkflowAPI
 from .registry import WorkflowRegistry
 
 __all__ = [
-    'MCPWorkflowAPI',
-    'WorkflowRegistry',
-] 
+    "MCPWorkflowAPI",
+    "WorkflowRegistry",
+]

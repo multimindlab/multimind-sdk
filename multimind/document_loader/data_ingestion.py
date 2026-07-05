@@ -2,15 +2,15 @@
 Advanced data ingestion module supporting multiple document types and real-time ingestion.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Protocol, runtime_checkable
-from dataclasses import dataclass
-from enum import Enum
-import asyncio
-import json
-import csv
 import io
+import json
+from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
 import aiohttp
+
 try:
     import aiofiles
 except ImportError:
@@ -51,9 +51,11 @@ except ImportError:
     build = None
 from ..models.base import BaseLLM
 
+
 @dataclass
 class DocumentMetadata:
     """Metadata for ingested documents."""
+
     source: str
     source_type: str
     timestamp: float
@@ -65,17 +67,21 @@ class DocumentMetadata:
     modified_at: Optional[float]
     custom_metadata: Dict[str, Any]
 
+
 @dataclass
 class IngestedDocument:
     """Represents an ingested document."""
+
     content: str
     metadata: DocumentMetadata
     chunks: List[Dict[str, Any]]
     raw_content: Optional[Any]
     embeddings: Optional[List[float]]
 
+
 class SourceType(Enum):
     """Types of document sources."""
+
     FILE = "file"
     WEB = "web"
     API = "api"
@@ -84,8 +90,10 @@ class SourceType(Enum):
     NOTION = "notion"
     GOOGLE_DOCS = "google_docs"
 
+
 class DocumentType(Enum):
     """Types of documents."""
+
     PDF = "pdf"
     DOCX = "docx"
     HTML = "html"
@@ -94,6 +102,7 @@ class DocumentType(Enum):
     CSV = "csv"
     MARKDOWN = "markdown"
     UNKNOWN = "unknown"
+
 
 class DataIngestion:
     """Advanced data ingestion system."""
@@ -104,11 +113,11 @@ class DataIngestion:
         notion_token: Optional[str] = None,
         google_credentials: Optional[Dict[str, Any]] = None,
         kafka_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         Initialize data ingestion system.
-        
+
         Args:
             model: Language model for content analysis
             notion_token: Optional Notion API token
@@ -121,7 +130,7 @@ class DataIngestion:
         self.google_credentials = google_credentials
         self.kafka_config = kafka_config
         self.kwargs = kwargs
-        
+
         # Initialize HTML converter
         if html2text is not None:
             self.html_converter = html2text.HTML2Text()
@@ -129,31 +138,28 @@ class DataIngestion:
             self.html_converter.ignore_images = False
         else:
             self.html_converter = None
-        
+
         # Initialize session for web requests
         self.session = None
 
     async def ingest_document(
-        self,
-        source: str,
-        source_type: SourceType,
-        **kwargs
+        self, source: str, source_type: SourceType, **kwargs
     ) -> IngestedDocument:
         """
         Ingest document from source.
-        
+
         Args:
             source: Document source (file path, URL, etc.)
             source_type: Type of source
             **kwargs: Additional parameters
-            
+
         Returns:
             Ingested document
         """
         # Initialize session if needed
         if self.session is None:
             self.session = aiohttp.ClientSession()
-        
+
         try:
             # Get content based on source type
             if source_type == SourceType.FILE:
@@ -172,48 +178,37 @@ class DataIngestion:
                 content, doc_type = await self._read_google_docs(source)
             else:
                 raise ValueError(f"Unsupported source type: {source_type}")
-            
+
             # Extract metadata
             metadata = await self._extract_metadata(
-                content=content,
-                source=source,
-                source_type=source_type,
-                doc_type=doc_type,
-                **kwargs
+                content=content, source=source, source_type=source_type, doc_type=doc_type, **kwargs
             )
-            
+
             # Process content
             processed_content = await self._process_content(
-                content=content,
-                doc_type=doc_type,
-                **kwargs
+                content=content, doc_type=doc_type, **kwargs
             )
-            
+
             # Create chunks
             chunks = await self._create_chunks(
-                content=processed_content,
-                metadata=metadata,
-                **kwargs
+                content=processed_content, metadata=metadata, **kwargs
             )
-            
+
             return IngestedDocument(
                 content=processed_content,
                 metadata=metadata,
                 chunks=chunks,
                 raw_content=content,
-                embeddings=None
+                embeddings=None,
             )
-        
+
         finally:
             # Close session if it was created
             if self.session is not None:
                 await self.session.close()
                 self.session = None
 
-    async def _read_file(
-        self,
-        file_path: str
-    ) -> Tuple[Any, DocumentType]:
+    async def _read_file(self, file_path: str) -> Tuple[Any, DocumentType]:
         """Read content from file."""
         # Determine file type
         if file_path.endswith(".pdf"):
@@ -223,13 +218,13 @@ class DataIngestion:
             with pdfplumber.open(io.BytesIO(content)) as pdf:
                 text = "\n".join(page.extract_text() for page in pdf.pages)
             return text, doc_type
-        
+
         elif file_path.endswith(".docx"):
             doc_type = DocumentType.DOCX
             doc = Document(file_path)
             text = "\n".join(paragraph.text for paragraph in doc.paragraphs)
             return text, doc_type
-        
+
         elif file_path.endswith(".html"):
             doc_type = DocumentType.HTML
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
@@ -239,18 +234,18 @@ class DataIngestion:
             else:
                 # Fallback: use BeautifulSoup if available, otherwise return raw HTML
                 if BeautifulSoup is not None:
-                    soup = BeautifulSoup(content, 'html.parser')
+                    soup = BeautifulSoup(content, "html.parser")
                     text = soup.get_text()
                 else:
                     text = content
             return text, doc_type
-        
+
         elif file_path.endswith(".txt"):
             doc_type = DocumentType.TXT
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 content = await f.read()
             return content, doc_type
-        
+
         elif file_path.endswith(".json"):
             doc_type = DocumentType.JSON
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
@@ -258,103 +253,85 @@ class DataIngestion:
             data = json.loads(content)
             text = json.dumps(data, indent=2)
             return text, doc_type
-        
+
         elif file_path.endswith(".csv"):
             doc_type = DocumentType.CSV
             df = pd.read_csv(file_path)
             text = df.to_string()
             return text, doc_type
-        
+
         elif file_path.endswith(".md"):
             doc_type = DocumentType.MARKDOWN
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 content = await f.read()
             return content, doc_type
-        
+
         else:
             doc_type = DocumentType.UNKNOWN
             async with aiofiles.open(file_path, "r", encoding="utf-8") as f:
                 content = await f.read()
             return content, doc_type
 
-    async def _read_web_page(
-        self,
-        url: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_web_page(self, url: str) -> Tuple[str, DocumentType]:
         """Read content from web page."""
         async with self.session.get(url) as response:
             content = await response.text()
-        
+
         # Parse HTML
         soup = BeautifulSoup(content, "html.parser")
-        
+
         # Remove unwanted elements
         for element in soup(["script", "style", "nav", "footer"]):
             element.decompose()
-        
+
         # Extract text
         text = soup.get_text(separator="\n", strip=True)
-        
+
         return text, DocumentType.HTML
 
-    async def _read_api(
-        self,
-        url: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_api(self, url: str) -> Tuple[str, DocumentType]:
         """Read content from API."""
         async with self.session.get(url) as response:
             content = await response.json()
-        
+
         # Convert to text
         text = json.dumps(content, indent=2)
-        
+
         return text, DocumentType.JSON
 
-    async def _read_database(
-        self,
-        query: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_database(self, query: str) -> Tuple[str, DocumentType]:
         """Read content from database."""
         # This is a placeholder implementation
         # Implement database connection and query execution
         return "", DocumentType.UNKNOWN
 
-    async def _read_stream(
-        self,
-        topic: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_stream(self, topic: str) -> Tuple[str, DocumentType]:
         """Read content from stream."""
         if not self.kafka_config:
             raise ValueError("Kafka configuration required for stream reading")
-        
+
         # Initialize consumer
-        consumer = KafkaConsumer(
-            topic,
-            **self.kafka_config
-        )
-        
+        consumer = KafkaConsumer(topic, **self.kafka_config)
+
         # Read messages
         messages = []
         for message in consumer:
             messages.append(message.value.decode())
-        
+
         # Combine messages
         text = "\n".join(messages)
-        
+
         return text, DocumentType.TXT
 
-    async def _read_notion(
-        self,
-        page_id: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_notion(self, page_id: str) -> Tuple[str, DocumentType]:
         """Read content from Notion."""
         if not self.notion_client:
             raise ValueError("Notion client not initialized")
-        
+
         # Get page content
         page = self.notion_client.pages.retrieve(page_id=page_id)
         blocks = self.notion_client.blocks.children.list(block_id=page_id)
-        
+
         # Extract text from blocks
         text_blocks = []
         for block in blocks["results"]:
@@ -367,29 +344,30 @@ class DataIngestion:
             elif block["type"] == "heading_3":
                 text_blocks.append(f"### {block['heading_3']['rich_text'][0]['text']['content']}")
             elif block["type"] == "bulleted_list_item":
-                text_blocks.append(f"* {block['bulleted_list_item']['rich_text'][0]['text']['content']}")
+                text_blocks.append(
+                    f"* {block['bulleted_list_item']['rich_text'][0]['text']['content']}"
+                )
             elif block["type"] == "numbered_list_item":
-                text_blocks.append(f"1. {block['numbered_list_item']['rich_text'][0]['text']['content']}")
-        
+                text_blocks.append(
+                    f"1. {block['numbered_list_item']['rich_text'][0]['text']['content']}"
+                )
+
         text = "\n".join(text_blocks)
-        
+
         return text, DocumentType.MARKDOWN
 
-    async def _read_google_docs(
-        self,
-        doc_id: str
-    ) -> Tuple[str, DocumentType]:
+    async def _read_google_docs(self, doc_id: str) -> Tuple[str, DocumentType]:
         """Read content from Google Docs."""
         if not self.google_credentials:
             raise ValueError("Google credentials not provided")
-        
+
         # Build service
         creds = Credentials.from_authorized_user_info(self.google_credentials)
         service = build("docs", "v1", credentials=creds)
-        
+
         # Get document
         doc = service.documents().get(documentId=doc_id).execute()
-        
+
         # Extract text
         text_blocks = []
         for element in doc["body"]["content"]:
@@ -400,18 +378,13 @@ class DataIngestion:
                     if "textRun" in elem:
                         text += elem["textRun"]["content"]
                 text_blocks.append(text)
-        
+
         text = "\n".join(text_blocks)
-        
+
         return text, DocumentType.DOCX
 
     async def _extract_metadata(
-        self,
-        content: str,
-        source: str,
-        source_type: SourceType,
-        doc_type: DocumentType,
-        **kwargs
+        self, content: str, source: str, source_type: SourceType, doc_type: DocumentType, **kwargs
     ) -> DocumentMetadata:
         """Extract metadata from content."""
         # Get basic metadata
@@ -425,9 +398,9 @@ class DataIngestion:
             author=None,
             created_at=None,
             modified_at=None,
-            custom_metadata={}
+            custom_metadata={},
         )
-        
+
         # Extract additional metadata based on document type
         if doc_type == DocumentType.PDF:
             # Extract PDF metadata
@@ -436,7 +409,7 @@ class DataIngestion:
                 metadata.author = info.get("Author")
                 metadata.created_at = info.get("CreationDate")
                 metadata.modified_at = info.get("ModDate")
-        
+
         elif doc_type == DocumentType.DOCX:
             # Extract DOCX metadata
             doc = Document(io.BytesIO(content.encode()))
@@ -444,28 +417,23 @@ class DataIngestion:
             metadata.author = core_props.author
             metadata.created_at = core_props.created.timestamp() if core_props.created else None
             metadata.modified_at = core_props.modified.timestamp() if core_props.modified else None
-        
+
         elif doc_type == DocumentType.HTML:
             # Extract HTML metadata
             soup = BeautifulSoup(content, "html.parser")
             metadata.author = soup.find("meta", {"name": "author"})
             metadata.author = metadata.author["content"] if metadata.author else None
-        
+
         return metadata
 
-    async def _process_content(
-        self,
-        content: str,
-        doc_type: DocumentType,
-        **kwargs
-    ) -> str:
+    async def _process_content(self, content: str, doc_type: DocumentType, **kwargs) -> str:
         """Process content based on document type."""
         if doc_type == DocumentType.HTML:
             # Clean HTML content
             soup = BeautifulSoup(content, "html.parser")
             text = soup.get_text(separator="\n", strip=True)
             return text
-        
+
         elif doc_type == DocumentType.JSON:
             # Format JSON content
             try:
@@ -473,7 +441,7 @@ class DataIngestion:
                 return json.dumps(data, indent=2)
             except json.JSONDecodeError:
                 return content
-        
+
         elif doc_type == DocumentType.CSV:
             # Format CSV content
             try:
@@ -481,14 +449,11 @@ class DataIngestion:
                 return df.to_string()
             except pd.errors.EmptyDataError:
                 return content
-        
+
         return content
 
     async def _create_chunks(
-        self,
-        content: str,
-        metadata: DocumentMetadata,
-        **kwargs
+        self, content: str, metadata: DocumentMetadata, **kwargs
     ) -> List[Dict[str, Any]]:
         """Create chunks from content."""
         # Use LLM to create semantic chunks
@@ -499,55 +464,46 @@ class DataIngestion:
         2. Context preservation
         3. Chunk size (max 1000 tokens)
         4. Topic continuity
-        
+
         Content:
         {content}
         """
-        
+
         response = await self.model.generate(prompt=prompt, **kwargs)
-        
+
         # Parse chunks from response
         chunks = []
         current_chunk = {"content": "", "metadata": {}}
-        
+
         for line in response.split("\n"):
             if line.strip():
                 if len(current_chunk["content"]) + len(line) > 1000:
                     # Save current chunk
-                    current_chunk["metadata"] = {
-                        **metadata.__dict__,
-                        "chunk_index": len(chunks)
-                    }
+                    current_chunk["metadata"] = {**metadata.__dict__, "chunk_index": len(chunks)}
                     chunks.append(current_chunk)
-                    
+
                     # Start new chunk
                     current_chunk = {"content": line, "metadata": {}}
                 else:
                     current_chunk["content"] += "\n" + line
-        
+
         # Add last chunk
         if current_chunk["content"]:
-            current_chunk["metadata"] = {
-                **metadata.__dict__,
-                "chunk_index": len(chunks)
-            }
+            current_chunk["metadata"] = {**metadata.__dict__, "chunk_index": len(chunks)}
             chunks.append(current_chunk)
-        
+
         return chunks
 
-    async def _detect_language(
-        self,
-        text: str
-    ) -> str:
+    async def _detect_language(self, text: str) -> str:
         """Detect language of text."""
         # Use LLM to detect language
         prompt = f"""
         Detect the language of the following text.
         Return only the ISO 639-1 language code.
-        
+
         Text:
         {text[:1000]}  # Use first 1000 chars for detection
         """
-        
+
         response = await self.model.generate(prompt=prompt)
-        return response.strip().lower() 
+        return response.strip().lower()

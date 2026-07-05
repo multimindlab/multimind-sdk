@@ -2,14 +2,16 @@
 Buffer memory implementation for managing recent context.
 """
 
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from .base import BaseMemory
 
 logger = logging.getLogger(__name__)
+
 
 class BufferMemory(BaseMemory):
     """Memory that maintains a buffer of recent messages with token management."""
@@ -28,7 +30,7 @@ class BufferMemory(BaseMemory):
         compression_threshold: float = 0.8,
         enable_backup: bool = True,
         backup_interval: int = 3600,  # 1 hour
-        max_backups: int = 5
+        max_backups: int = 5,
     ):
         """Initialize buffer memory."""
         super().__init__(memory_key)
@@ -56,9 +58,7 @@ class BufferMemory(BaseMemory):
         # Load explicitly via await memory.load() when needed.
 
     async def add_message(
-        self,
-        message: Dict[str, str],
-        metadata: Optional[Dict[str, Any]] = None
+        self, message: Dict[str, str], metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a message to the buffer."""
         # Calculate tokens if tracking enabled
@@ -70,9 +70,8 @@ class BufferMemory(BaseMemory):
             tokens = len(message.get("content", "").split())
 
         # Check if we need to make space
-        while (
-            (self.max_tokens and self.total_tokens + tokens > self.max_tokens) or
-            (self.max_messages and len(self.messages) >= self.max_messages)
+        while (self.max_tokens and self.total_tokens + tokens > self.max_tokens) or (
+            self.max_messages and len(self.messages) >= self.max_messages
         ):
             if not self.messages:
                 break
@@ -88,11 +87,17 @@ class BufferMemory(BaseMemory):
             self.metadata[str(len(self.messages) - 1)] = metadata
 
         # Check if compression needed
-        if self.enable_compression and self.total_tokens > self.max_tokens * self.compression_threshold:
+        if (
+            self.enable_compression
+            and self.total_tokens > self.max_tokens * self.compression_threshold
+        ):
             await self._compress_messages()
 
         # Check if backup needed
-        if self.enable_backup and (datetime.now() - self.last_backup).total_seconds() >= self.backup_interval:
+        if (
+            self.enable_backup
+            and (datetime.now() - self.last_backup).total_seconds() >= self.backup_interval
+        ):
             await self._backup()
 
     async def get_messages(self) -> List[Dict[str, str]]:
@@ -102,10 +107,7 @@ class BufferMemory(BaseMemory):
     def get_messages_with_metadata(self) -> List[Dict[str, Any]]:
         """Get messages with their metadata."""
         return [
-            {
-                "message": msg,
-                "metadata": self.metadata.get(str(i), {})
-            }
+            {"message": msg, "metadata": self.metadata.get(str(i), {})}
             for i, msg in enumerate(self.messages)
         ]
 
@@ -129,7 +131,7 @@ class BufferMemory(BaseMemory):
             "total_tokens": self.total_tokens,
             "metadata": self.metadata,
             "last_backup": self.last_backup.isoformat(),
-            "backup_history": self.backup_history
+            "backup_history": self.backup_history,
         }
 
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
@@ -142,7 +144,7 @@ class BufferMemory(BaseMemory):
             return
 
         try:
-            with open(self.storage_path, "r") as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
 
             self.messages = data["messages"]
@@ -191,8 +193,8 @@ class BufferMemory(BaseMemory):
         else:  # sliding
             # Remove messages from start until we have space
             while self.messages and (
-                (self.max_tokens and self.total_tokens > self.max_tokens) or
-                (self.max_messages and len(self.messages) >= self.max_messages)
+                (self.max_tokens and self.total_tokens > self.max_tokens)
+                or (self.max_messages and len(self.messages) >= self.max_messages)
             ):
                 self.total_tokens -= self.message_tokens[0]
                 self.messages.pop(0)
@@ -220,23 +222,42 @@ class BufferMemory(BaseMemory):
         half = n // 2
         to_compress = self.messages[:half]
         summary_content = None
-        method_used = self.compression_strategy if hasattr(self, 'compression_strategy') else 'concat'
-        if hasattr(self, 'compression_strategy') and self.compression_strategy == 'llm' and hasattr(self, 'compression_llm') and self.compression_llm:
+        method_used = (
+            self.compression_strategy if hasattr(self, "compression_strategy") else "concat"
+        )
+        if (
+            hasattr(self, "compression_strategy")
+            and self.compression_strategy == "llm"
+            and hasattr(self, "compression_llm")
+            and self.compression_llm
+        ):
             # Use LLM to summarize
-            prompt = "Summarize the following conversation:\n" + "\n".join([msg.get("content", "") for msg in to_compress])
+            prompt = "Summarize the following conversation:\n" + "\n".join(
+                [msg.get("content", "") for msg in to_compress]
+            )
             try:
                 summary_content = await self.compression_llm.generate(prompt)
-                method_used = 'llm'
+                method_used = "llm"
             except Exception:
-                summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
-                method_used = 'concat_fallback'
-        elif hasattr(self, 'compression_strategy') and self.compression_strategy == 'truncate':
-            summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
-            method_used = 'truncate'
+                summary_content = (
+                    " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+                )
+                method_used = "concat_fallback"
+        elif hasattr(self, "compression_strategy") and self.compression_strategy == "truncate":
+            summary_content = (
+                " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+            )
+            method_used = "truncate"
         else:
-            summary_content = " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
-            method_used = 'concat'
-        summary_message = {"role": "system", "content": f"Summary: {summary_content}", "compression_method": method_used}
+            summary_content = (
+                " ".join([msg.get("content", "") for msg in to_compress])[:256] + "..."
+            )
+            method_used = "concat"
+        summary_message = {
+            "role": "system",
+            "content": f"Summary: {summary_content}",
+            "compression_method": method_used,
+        }
         # Remove the oldest half and insert the summary at the start
         self.messages = [summary_message] + self.messages[half:]
         self.message_tokens = [len(summary_content.split())] + self.message_tokens[half:]
@@ -252,7 +273,7 @@ class BufferMemory(BaseMemory):
             "messages": self.messages,
             "message_tokens": self.message_tokens,
             "total_tokens": self.total_tokens,
-            "metadata": self.metadata
+            "metadata": self.metadata,
         }
 
         self.backup_history.append(backup)
@@ -260,7 +281,7 @@ class BufferMemory(BaseMemory):
 
         # Trim backup history if needed
         if len(self.backup_history) > self.max_backups:
-            self.backup_history = self.backup_history[-self.max_backups:]
+            self.backup_history = self.backup_history[-self.max_backups :]
 
         # Save to disk if storage path exists
         if self.storage_path:
@@ -279,5 +300,5 @@ class BufferMemory(BaseMemory):
             "enable_compression": self.enable_compression,
             "enable_backup": self.enable_backup,
             "last_backup": self.last_backup.isoformat(),
-            "backup_count": len(self.backup_history)
-        } 
+            "backup_count": len(self.backup_history),
+        }

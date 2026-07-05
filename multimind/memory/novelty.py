@@ -2,12 +2,14 @@
 Novelty and salience filtering memory implementation.
 """
 
-from typing import List, Dict, Any, Optional, Set, Tuple
-from datetime import datetime, timedelta
 import json
 import logging
+from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Set
+
 import numpy as np
+
 from ..models.base import BaseLLM
 from .base import BaseMemory
 from .utils import MemoryUtils
@@ -47,7 +49,7 @@ class NoveltyMemory(BaseMemory):
         enable_relation_novelty: bool = True,
         relation_threshold: float = 0.5,
         enable_adaptive_thresholds: bool = True,
-        adaptation_interval: int = 3600  # 1 hour
+        adaptation_interval: int = 3600,  # 1 hour
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -77,7 +79,7 @@ class NoveltyMemory(BaseMemory):
         self.relation_threshold = relation_threshold
         self.enable_adaptive_thresholds = enable_adaptive_thresholds
         self.adaptation_interval = adaptation_interval
-        
+
         # Initialize storage
         self.items: List[Dict[str, Any]] = []
         self.novelty_scores: Dict[str, float] = {}  # item_id -> novelty score
@@ -115,63 +117,64 @@ class NoveltyMemory(BaseMemory):
                 "patterns": [],
                 "context": [],
                 "concepts": {},
-                "relations": {}
-            }
+                "relations": {},
+            },
         }
-        
+
         # Add to storage
         self.items.append(new_item)
-        
+
         # Calculate initial scores
         await self._calculate_novelty(item_id)
         await self._calculate_salience(item_id)
-        
+
         # Calculate semantic vector
         if self.enable_semantic_novelty:
             await self._calculate_semantic_vector(item_id)
-        
+
         # Analyze patterns
         if self.enable_pattern_novelty:
             await self._analyze_patterns(item_id)
-        
+
         # Update context
         if self.enable_context_novelty:
             await self._update_context(item_id)
-        
+
         # Analyze temporal novelty
         if self.enable_temporal_novelty:
             await self._analyze_temporal_novelty(item_id)
-        
+
         # Analyze concept novelty
         if self.enable_concept_novelty:
             await self._analyze_concept_novelty(item_id)
-        
+
         # Analyze relation novelty
         if self.enable_relation_novelty:
             await self._analyze_relation_novelty(item_id)
-        
+
         # Adapt thresholds if needed
-        if self.enable_adaptive_thresholds and (
-            datetime.now() - self.last_adaptation
-        ).total_seconds() >= self.adaptation_interval:
+        if (
+            self.enable_adaptive_thresholds
+            and (datetime.now() - self.last_adaptation).total_seconds() >= self.adaptation_interval
+        ):
             await self._adapt_thresholds()
-        
+
         # Maintain item limit
         await self._maintain_item_limit()
-        
+
         await self.save()
 
     async def _calculate_novelty(self, item_id: str) -> None:
         """Calculate novelty score for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate novelty analysis prompt
             prompt = f"""
             Analyze the novelty of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. novelty_score: float (0-1)
             2. novelty_factors: list of strings
@@ -179,25 +182,25 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             novelty = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["novelty_score"] = novelty["novelty_score"]
             self.novelty_scores[item_id] = novelty["novelty_score"]
-            
+
         except Exception as e:
             logger.error(f"Error calculating novelty: {e}")
 
     async def _calculate_salience(self, item_id: str) -> None:
         """Calculate salience score for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate salience analysis prompt
             prompt = f"""
             Analyze the salience of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. salience_score: float (0-1)
             2. salience_factors: list of strings
@@ -205,50 +208,50 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             salience = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["salience_score"] = salience["salience_score"]
             self.salience_scores[item_id] = salience["salience_score"]
-            
+
         except Exception as e:
             logger.error(f"Error calculating salience: {e}")
 
     async def _calculate_semantic_vector(self, item_id: str) -> None:
         """Calculate semantic vector for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate semantic vector prompt
             prompt = f"""
             Generate a semantic vector for this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. semantic_vector: list of floats
             2. vector_dimensions: list of strings
             """
             response = await self.llm.generate(prompt)
             semantic = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["semantic_vector"] = semantic["semantic_vector"]
             self.semantic_vectors[item_id] = semantic["semantic_vector"]
-            
+
         except Exception as e:
             logger.error(f"Error calculating semantic vector: {e}")
 
     async def _analyze_patterns(self, item_id: str) -> None:
         """Analyze patterns in an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate pattern analysis prompt
             prompt = f"""
             Analyze patterns in this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. patterns: list of strings
             2. pattern_types: list of strings
@@ -256,28 +259,24 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             patterns = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["patterns"] = patterns["patterns"]
             self.pattern_matches[item_id] = set(patterns["patterns"])
-            
+
         except Exception as e:
             logger.error(f"Error analyzing patterns: {e}")
 
     async def _update_context(self, item_id: str) -> None:
         """Update context for an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         # Get recent items
-        recent_items = self.items[-self.context_window:]
-        
+        recent_items = self.items[-self.context_window :]
+
         # Update context
         item["metadata"]["context"] = [
-            {
-                "id": i["id"],
-                "content": i["content"],
-                "timestamp": i["timestamp"]
-            }
+            {"id": i["id"], "content": i["content"], "timestamp": i["timestamp"]}
             for i in recent_items
             if i["id"] != item_id
         ]
@@ -285,14 +284,14 @@ class NoveltyMemory(BaseMemory):
     async def _analyze_temporal_novelty(self, item_id: str) -> None:
         """Analyze temporal novelty of an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate temporal analysis prompt
             prompt = f"""
             Analyze temporal novelty of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. temporal_novelty: float (0-1)
             2. temporal_factors: list of strings
@@ -300,33 +299,33 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             temporal = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["temporal_novelty"] = temporal["temporal_novelty"]
-            
+
             # Update temporal window
             self.temporal_windows[item_id] = [
                 {
                     "timestamp": item["timestamp"],
                     "novelty": temporal["temporal_novelty"],
-                    "factors": temporal["temporal_factors"]
+                    "factors": temporal["temporal_factors"],
                 }
             ]
-            
+
         except Exception as e:
             logger.error(f"Error analyzing temporal novelty: {e}")
 
     async def _analyze_concept_novelty(self, item_id: str) -> None:
         """Analyze concept novelty of an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate concept analysis prompt
             prompt = f"""
             Analyze concept novelty of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. concepts: dict of string -> float (concept -> novelty score)
             2. concept_types: list of strings
@@ -334,29 +333,29 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             concepts = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["concepts"] = concepts["concepts"]
             self.concept_maps[item_id] = concepts["concepts"]
-            
+
             # Calculate overall concept novelty
             concept_novelty = sum(concepts["concepts"].values()) / len(concepts["concepts"])
             item["metadata"]["concept_novelty"] = concept_novelty
-            
+
         except Exception as e:
             logger.error(f"Error analyzing concept novelty: {e}")
 
     async def _analyze_relation_novelty(self, item_id: str) -> None:
         """Analyze relation novelty of an item."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         try:
             # Generate relation analysis prompt
             prompt = f"""
             Analyze relation novelty of this item:
-            
-            {item['content']}
-            
+
+            {item["content"]}
+
             Return a JSON object with:
             1. relations: dict of string -> float (relation -> novelty score)
             2. relation_types: list of strings
@@ -364,15 +363,15 @@ class NoveltyMemory(BaseMemory):
             """
             response = await self.llm.generate(prompt)
             relations = MemoryUtils.safe_json_loads(response)
-            
+
             # Update item metadata
             item["metadata"]["relations"] = relations["relations"]
             self.relation_graphs[item_id] = relations["relations"]
-            
+
             # Calculate overall relation novelty
             relation_novelty = sum(relations["relations"].values()) / len(relations["relations"])
             item["metadata"]["relation_novelty"] = relation_novelty
-            
+
         except Exception as e:
             logger.error(f"Error analyzing relation novelty: {e}")
 
@@ -382,32 +381,32 @@ class NoveltyMemory(BaseMemory):
             # Calculate average scores
             avg_novelty = sum(self.novelty_scores.values()) / len(self.novelty_scores)
             avg_salience = sum(self.salience_scores.values()) / len(self.salience_scores)
-            
+
             # Adjust thresholds
             self.novelty_threshold = max(0.1, min(0.9, avg_novelty * 0.8))
             self.salience_threshold = max(0.1, min(0.9, avg_salience * 0.8))
-            
+
             # Update last adaptation time
             self.last_adaptation = datetime.now()
-            
+
         except Exception as e:
             logger.error(f"Error adapting thresholds: {e}")
 
     async def _update_scores(self, item_id: str) -> None:
         """Update novelty and salience scores over time."""
         item = next(i for i in self.items if i["id"] == item_id)
-        
+
         # Calculate time since last update
         last_update = datetime.fromisoformat(item["timestamp"])
         time_diff = (datetime.now() - last_update).total_seconds()
-        
+
         # Update novelty score
         current_novelty = self.novelty_scores[item_id]
         novelty_decay = np.exp(-self.novelty_decay_rate * time_diff)
         new_novelty = current_novelty * novelty_decay
         self.novelty_scores[item_id] = new_novelty
         item["metadata"]["novelty_score"] = new_novelty
-        
+
         # Update salience score
         current_salience = self.salience_scores[item_id]
         salience_decay = np.exp(-self.salience_decay_rate * time_diff)
@@ -421,20 +420,16 @@ class NoveltyMemory(BaseMemory):
             # Calculate combined scores
             scores = {
                 item["id"]: (
-                    self.novelty_scores[item["id"]] * 0.4 +
-                    self.salience_scores[item["id"]] * 0.6
+                    self.novelty_scores[item["id"]] * 0.4 + self.salience_scores[item["id"]] * 0.6
                 )
                 for item in self.items
             }
-            
+
             # Sort items by combined score
-            sorted_items = sorted(
-                self.items,
-                key=lambda x: scores[x["id"]]
-            )
-            
+            sorted_items = sorted(self.items, key=lambda x: scores[x["id"]])
+
             # Remove lowest scoring items
-            items_to_remove = sorted_items[:len(self.items) - self.max_items]
+            items_to_remove = sorted_items[: len(self.items) - self.max_items]
             for item in items_to_remove:
                 await self._remove_item(item["id"])
 
@@ -442,29 +437,29 @@ class NoveltyMemory(BaseMemory):
         """Remove an item and its associated data."""
         # Remove from items
         self.items = [i for i in self.items if i["id"] != item_id]
-        
+
         # Remove from scores
         if item_id in self.novelty_scores:
             del self.novelty_scores[item_id]
         if item_id in self.salience_scores:
             del self.salience_scores[item_id]
-        
+
         # Remove from semantic vectors
         if item_id in self.semantic_vectors:
             del self.semantic_vectors[item_id]
-        
+
         # Remove from pattern matches
         if item_id in self.pattern_matches:
             del self.pattern_matches[item_id]
-        
+
         # Remove from concept maps
         if item_id in self.concept_maps:
             del self.concept_maps[item_id]
-        
+
         # Remove from relation graphs
         if item_id in self.relation_graphs:
             del self.relation_graphs[item_id]
-        
+
         # Remove from temporal windows
         if item_id in self.temporal_windows:
             del self.temporal_windows[item_id]
@@ -473,11 +468,13 @@ class NoveltyMemory(BaseMemory):
         """Get all messages from all items."""
         messages = []
         for item in self.items:
-            messages.append({
-                "role": "novelty_memory",
-                "content": item["content"],
-                "timestamp": item["timestamp"]
-            })
+            messages.append(
+                {
+                    "role": "novelty_memory",
+                    "content": item["content"],
+                    "timestamp": item["timestamp"],
+                }
+            )
         return sorted(messages, key=lambda x: x["timestamp"])
 
     async def clear(self) -> None:
@@ -496,28 +493,29 @@ class NoveltyMemory(BaseMemory):
         """Save items to persistent storage."""
         if self.storage_path:
             self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.storage_path, 'w') as f:
-                json.dump({
-                    "items": self.items,
-                    "novelty_scores": self.novelty_scores,
-                    "salience_scores": self.salience_scores,
-                    "semantic_vectors": self.semantic_vectors,
-                    "pattern_matches": {
-                        k: list(v) for k, v in self.pattern_matches.items()
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "items": self.items,
+                        "novelty_scores": self.novelty_scores,
+                        "salience_scores": self.salience_scores,
+                        "semantic_vectors": self.semantic_vectors,
+                        "pattern_matches": {k: list(v) for k, v in self.pattern_matches.items()},
+                        "concept_maps": self.concept_maps,
+                        "relation_graphs": self.relation_graphs,
+                        "temporal_windows": self.temporal_windows,
+                        "last_semantic": self.last_semantic.isoformat(),
+                        "last_salience": self.last_salience.isoformat(),
+                        "last_optimization": self.last_optimization.isoformat(),
+                        "last_adaptation": self.last_adaptation.isoformat(),
                     },
-                    "concept_maps": self.concept_maps,
-                    "relation_graphs": self.relation_graphs,
-                    "temporal_windows": self.temporal_windows,
-                    "last_semantic": self.last_semantic.isoformat(),
-                    "last_salience": self.last_salience.isoformat(),
-                    "last_optimization": self.last_optimization.isoformat(),
-                    "last_adaptation": self.last_adaptation.isoformat()
-                }, f)
+                    f,
+                )
 
     async def load(self) -> None:
         """Load items from persistent storage."""
         if self.storage_path and self.storage_path.exists():
-            with open(self.storage_path, 'r') as f:
+            with open(self.storage_path) as f:
                 data = json.load(f)
                 self.items = data.get("items", [])
                 self.novelty_scores = data.get("novelty_scores", {})
@@ -547,112 +545,143 @@ class NoveltyMemory(BaseMemory):
         stats = {
             "total_items": len(self.items),
             "novelty_stats": {
-                "average_novelty": sum(self.novelty_scores.values()) / len(self.novelty_scores) if self.novelty_scores else 0,
+                "average_novelty": (
+                    sum(self.novelty_scores.values()) / len(self.novelty_scores)
+                    if self.novelty_scores
+                    else 0
+                ),
                 "high_novelty_items": sum(1 for s in self.novelty_scores.values() if s > 0.7),
-                "low_novelty_items": sum(1 for s in self.novelty_scores.values() if s < 0.3)
+                "low_novelty_items": sum(1 for s in self.novelty_scores.values() if s < 0.3),
             },
             "salience_stats": {
-                "average_salience": sum(self.salience_scores.values()) / len(self.salience_scores) if self.salience_scores else 0,
+                "average_salience": (
+                    sum(self.salience_scores.values()) / len(self.salience_scores)
+                    if self.salience_scores
+                    else 0
+                ),
                 "high_salience_items": sum(1 for s in self.salience_scores.values() if s > 0.7),
-                "low_salience_items": sum(1 for s in self.salience_scores.values() if s < 0.3)
+                "low_salience_items": sum(1 for s in self.salience_scores.values() if s < 0.3),
             },
             "pattern_stats": {
-                "total_patterns": sum(
-                    len(patterns) for patterns in self.pattern_matches.values()
+                "total_patterns": sum(len(patterns) for patterns in self.pattern_matches.values()),
+                "average_patterns": (
+                    sum(len(patterns) for patterns in self.pattern_matches.values())
+                    / len(self.pattern_matches)
+                    if self.pattern_matches
+                    else 0
                 ),
-                "average_patterns": sum(
-                    len(patterns) for patterns in self.pattern_matches.values()
-                ) / len(self.pattern_matches) if self.pattern_matches else 0
             },
             "semantic_stats": {
                 "total_vectors": len(self.semantic_vectors),
-                "vector_dimensions": len(next(iter(self.semantic_vectors.values()))) if self.semantic_vectors else 0
+                "vector_dimensions": (
+                    len(next(iter(self.semantic_vectors.values()))) if self.semantic_vectors else 0
+                ),
             },
             "concept_stats": {
-                "total_concepts": sum(
-                    len(concepts) for concepts in self.concept_maps.values()
+                "total_concepts": sum(len(concepts) for concepts in self.concept_maps.values()),
+                "average_concepts": (
+                    sum(len(concepts) for concepts in self.concept_maps.values())
+                    / len(self.concept_maps)
+                    if self.concept_maps
+                    else 0
                 ),
-                "average_concepts": sum(
-                    len(concepts) for concepts in self.concept_maps.values()
-                ) / len(self.concept_maps) if self.concept_maps else 0
             },
             "relation_stats": {
                 "total_relations": sum(
                     len(relations) for relations in self.relation_graphs.values()
                 ),
-                "average_relations": sum(
-                    len(relations) for relations in self.relation_graphs.values()
-                ) / len(self.relation_graphs) if self.relation_graphs else 0
+                "average_relations": (
+                    sum(len(relations) for relations in self.relation_graphs.values())
+                    / len(self.relation_graphs)
+                    if self.relation_graphs
+                    else 0
+                ),
             },
             "temporal_stats": {
                 "total_windows": len(self.temporal_windows),
-                "average_window_size": sum(
-                    len(window) for window in self.temporal_windows.values()
-                ) / len(self.temporal_windows) if self.temporal_windows else 0
-            }
+                "average_window_size": (
+                    sum(len(window) for window in self.temporal_windows.values())
+                    / len(self.temporal_windows)
+                    if self.temporal_windows
+                    else 0
+                ),
+            },
         }
-        
+
         return stats
 
     async def get_novelty_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for novelty optimization."""
         suggestions = []
-        
+
         # Check item count
         if len(self.items) > self.max_items * 0.8:
-            suggestions.append({
-                "type": "item_limit",
-                "suggestion": "Consider increasing max_items or removing less novel items"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "item_limit",
+                    "suggestion": "Consider increasing max_items or removing less novel items",
+                }
+            )
+
         # Check novelty distribution
         stats = await self.get_novelty_stats()
         if stats["novelty_stats"]["average_novelty"] < 0.5:
-            suggestions.append({
-                "type": "novelty_improvement",
-                "suggestion": "Consider adjusting novelty thresholds or decay rates"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "novelty_improvement",
+                    "suggestion": "Consider adjusting novelty thresholds or decay rates",
+                }
+            )
+
         # Check salience distribution
         if stats["salience_stats"]["average_salience"] < 0.5:
-            suggestions.append({
-                "type": "salience_improvement",
-                "suggestion": "Consider adjusting salience thresholds or decay rates"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "salience_improvement",
+                    "suggestion": "Consider adjusting salience thresholds or decay rates",
+                }
+            )
+
         # Check pattern coverage
         if stats["pattern_stats"]["average_patterns"] < 2:
-            suggestions.append({
-                "type": "pattern_enhancement",
-                "suggestion": "Consider enhancing pattern detection"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "pattern_enhancement",
+                    "suggestion": "Consider enhancing pattern detection",
+                }
+            )
+
         # Check semantic coverage
         if stats["semantic_stats"]["total_vectors"] < len(self.items) * 0.8:
-            suggestions.append({
-                "type": "semantic_enhancement",
-                "suggestion": "Consider improving semantic vector generation"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "semantic_enhancement",
+                    "suggestion": "Consider improving semantic vector generation",
+                }
+            )
+
         # Check concept coverage
         if stats["concept_stats"]["average_concepts"] < 2:
-            suggestions.append({
-                "type": "concept_enhancement",
-                "suggestion": "Consider improving concept analysis"
-            })
-        
+            suggestions.append(
+                {"type": "concept_enhancement", "suggestion": "Consider improving concept analysis"}
+            )
+
         # Check relation coverage
         if stats["relation_stats"]["average_relations"] < 2:
-            suggestions.append({
-                "type": "relation_enhancement",
-                "suggestion": "Consider improving relation analysis"
-            })
-        
+            suggestions.append(
+                {
+                    "type": "relation_enhancement",
+                    "suggestion": "Consider improving relation analysis",
+                }
+            )
+
         # Check temporal coverage
         if stats["temporal_stats"]["average_window_size"] < 2:
-            suggestions.append({
-                "type": "temporal_enhancement",
-                "suggestion": "Consider improving temporal analysis"
-            })
-        
-        return suggestions 
+            suggestions.append(
+                {
+                    "type": "temporal_enhancement",
+                    "suggestion": "Consider improving temporal analysis",
+                }
+            )
+
+        return suggestions

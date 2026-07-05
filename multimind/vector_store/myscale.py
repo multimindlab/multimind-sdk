@@ -1,10 +1,13 @@
-from .base import VectorStoreBackend, VectorStoreConfig, SearchResult
-from typing import List, Dict, Any, Optional, Callable
-import os
-import logging
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Dict, List, Optional
+
 import clickhouse_connect
 import numpy as np
+
+from .base import SearchResult, VectorStoreBackend
+
 
 class MyScaleBackend(VectorStoreBackend):
     def __init__(
@@ -19,7 +22,7 @@ class MyScaleBackend(VectorStoreBackend):
         metrics_enabled: bool = False,
         plugin_registry: Optional[Dict[str, Callable]] = None,
         retry_policy: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.host = host or os.environ.get("MYSCALE_HOST", "localhost")
         self.port = port or int(os.environ.get("MYSCALE_PORT", 9000))
@@ -37,7 +40,7 @@ class MyScaleBackend(VectorStoreBackend):
             port=self.port,
             username=self.user,
             password=self.password,
-            database=self.database
+            database=self.database,
         )
         # Ensure table exists
         create_table_sql = f"""
@@ -56,20 +59,35 @@ class MyScaleBackend(VectorStoreBackend):
         metadatas = metadatas or [{} for _ in range(n)]
         docs = documents or ["" for _ in range(n)]
         rows = [
-            [ids[i], list(map(float, vectors[i])), str(metadatas[i]), docs[i]]
-            for i in range(n)
+            [ids[i], list(map(float, vectors[i])), str(metadatas[i]), docs[i]] for i in range(n)
         ]
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(None, lambda: self._client.insert(self.table, rows, column_names=["id", "vector", "metadata", "document"]))
-        self.log_metrics('add_vectors', n)
+        await loop.run_in_executor(
+            None,
+            lambda: self._client.insert(
+                self.table, rows, column_names=["id", "vector", "metadata", "document"]
+            ),
+        )
+        self.log_metrics("add_vectors", n)
 
-    async def search(self, query_vector, k=5, query_text: Optional[str] = None, filter_criteria: Optional[Dict[str, Any]] = None, scoring_method: Optional[str] = None, metadata_fields: Optional[List[str]] = None, explain: Optional[bool] = None) -> List[SearchResult]:
+    async def search(
+        self,
+        query_vector,
+        k=5,
+        query_text: Optional[str] = None,
+        filter_criteria: Optional[Dict[str, Any]] = None,
+        scoring_method: Optional[str] = None,
+        metadata_fields: Optional[List[str]] = None,
+        explain: Optional[bool] = None,
+    ) -> List[SearchResult]:
         # MyScale supports vector search using cosineDistance or L2Distance
         # We'll use cosine similarity by default
         query_vec = np.array(query_vector, dtype=np.float32)
         filter_sql = ""
         if filter_criteria:
-            filter_clauses = [f"JSONExtractString(metadata, '{k}') = '{v}'" for k, v in filter_criteria.items()]
+            filter_clauses = [
+                f"JSONExtractString(metadata, '{k}') = '{v}'" for k, v in filter_criteria.items()
+            ]
             filter_sql = " AND ".join(filter_clauses)
         where_clause = f"WHERE {filter_sql}" if filter_sql else ""
         sql = f"""
@@ -83,32 +101,28 @@ class MyScaleBackend(VectorStoreBackend):
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(None, lambda: self._client.query(sql).result_rows)
         search_results = [
-            SearchResult(
-                id=row[0],
-                score=row[4],
-                metadata=row[2],
-                document=row[3]
-            ) for row in results
+            SearchResult(id=row[0], score=row[4], metadata=row[2], document=row[3])
+            for row in results
         ]
-        self.log_metrics('search', len(search_results))
+        self.log_metrics("search", len(search_results))
         return search_results
 
     async def delete_vectors(self, ids):
-        ids_list = ",".join([f"'" + str(i) + "'" for i in ids])
+        ids_list = ",".join(["'" + str(i) + "'" for i in ids])
         sql = f"DELETE FROM {self.table} WHERE id IN ({ids_list})"
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self._client.command(sql))
-        self.log_metrics('delete_vectors', len(ids))
+        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         sql = f"TRUNCATE TABLE {self.table}"
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self._client.command(sql))
-        self.log_metrics('clear', 1)
+        self.log_metrics("clear", 1)
 
     async def persist(self, path):
         # MyScale is persistent by default
-        self.log_metrics('persist', 1)
+        self.log_metrics("persist", 1)
 
     @classmethod
     async def load(cls, path, config):
@@ -130,11 +144,11 @@ class MyScaleBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def _with_retries(self, func, *args, **kwargs):
-        retries = self.retry_policy.get('retries', 3)
+        retries = self.retry_policy.get("retries", 3)
         for attempt in range(retries):
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
-                self.logger.error(f"Error: {e}, attempt {attempt+1}/{retries}")
+                self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
-                    raise 
+                    raise

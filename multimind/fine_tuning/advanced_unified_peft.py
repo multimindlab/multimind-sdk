@@ -2,65 +2,64 @@
 Advanced PEFT implementations including UniPELT++ and Enhanced MAM Adapters.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple, Set
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
 
 # Backward compatibility for transformers AutoModelForSeq2SeqLM/AutoModelForSeq2SeqGeneration
 try:
     from transformers import (
+        AutoModelForCausalLM,
+        AutoModelForSeq2SeqLM,
+        AutoModelForSequenceClassification,
+        AutoTokenizer,
+        DataCollatorForLanguageModeling,
+        DataCollatorForSeq2Seq,
         PreTrainedModel,
         PreTrainedTokenizer,
-        AutoModelForCausalLM,
-        AutoModelForSequenceClassification,
-        AutoModelForSeq2SeqLM,
-        AutoTokenizer,
-        TrainingArguments,
         Trainer,
-        DataCollatorForLanguageModeling,
-        DataCollatorForSeq2Seq
+        TrainingArguments,
     )
+
     _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqLM
 except ImportError:
     try:
         from transformers import (
+            AutoModelForCausalLM,
+            AutoModelForSeq2SeqGeneration,
+            AutoModelForSequenceClassification,
+            AutoTokenizer,
+            DataCollatorForLanguageModeling,
+            DataCollatorForSeq2Seq,
             PreTrainedModel,
             PreTrainedTokenizer,
-            AutoModelForCausalLM,
-            AutoModelForSequenceClassification,
-            AutoModelForSeq2SeqGeneration,
-            AutoTokenizer,
-            TrainingArguments,
             Trainer,
-            DataCollatorForLanguageModeling,
-            DataCollatorForSeq2Seq
+            TrainingArguments,
         )
+
         _AUTO_MODEL_FOR_SEQ2SEQ = AutoModelForSeq2SeqGeneration
     except ImportError:
         # Fallback for very old versions
         from transformers import (
-            PreTrainedModel,
-            PreTrainedTokenizer,
-            AutoModelForCausalLM,
-            AutoModelForSequenceClassification,
             AutoTokenizer,
-            TrainingArguments,
-            Trainer,
-            DataCollatorForLanguageModeling,
-            DataCollatorForSeq2Seq
         )
+
         _AUTO_MODEL_FOR_SEQ2SEQ = None
 
-from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
-from datasets import Dataset as HFDatase
 import logging
 from enum import Enum
-from .unified_peft import UniPELTMethod, UniPELTTuner, MAMAdapterTuner
+
+from peft import LoraConfig, PeftConfig, PeftType, get_peft_model
+
+from .unified_peft import MAMAdapterTuner, UniPELTMethod, UniPELTTuner
 
 logger = logging.getLogger(__name__)
 
+
 class UniPELTPlusMethod(Enum):
     """Available methods for UniPELT++."""
+
     LORA = "lora"
     ADAPTER = "adapter"
     PROMPT = "prompt"
@@ -71,6 +70,7 @@ class UniPELTPlusMethod(Enum):
     SPARSE_ADAPTER = "sparse_adapter"
     COMPACTER = "compacter"
     HYPERLORA = "hyperlora"
+
 
 class UniPELTPlusTuner(UniPELTTuner):
     """Enhanced UniPELT implementation with additional methods and features."""
@@ -84,11 +84,14 @@ class UniPELTPlusTuner(UniPELTTuner):
         method_configs: Optional[Dict[UniPELTPlusMethod, Dict[str, Any]]] = None,
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         # Convert UniPELTPlusMethod to UniPELTMethod for base class
-        base_methods = [UniPELTMethod(method.value) for method in methods
-                       if method.value in [m.value for m in UniPELTMethod]]
+        base_methods = [
+            UniPELTMethod(method.value)
+            for method in methods
+            if method.value in [m.value for m in UniPELTMethod]
+        ]
 
         super().__init__(
             base_model_name=base_model_name,
@@ -96,53 +99,49 @@ class UniPELTPlusTuner(UniPELTTuner):
             methods=base_methods,
             model_type=model_type,
             method_configs=method_configs,
-            training_args=training_args
+            training_args=training_args,
         )
 
         self.methods = methods  # Store original methods
         self.model_config = model_config or {}
 
         # Additional method configurations
-        self.method_configs.update({
-            UniPELTPlusMethod.DIFFPRUNING: {
-                "sparsity": 0.1,
-                "mask_init": "uniform",
-                "target_modules": ["q_proj", "v_proj"]
-            },
-            UniPELTPlusMethod.SPARSE_ADAPTER: {
-                "adapter_size": 64,
-                "sparsity": 0.1,
-                "non_linearity": "relu",
-                "target_modules": ["q_proj", "v_proj"]
-            },
-            UniPELTPlusMethod.COMPACTER: {
-                "reduction_factor": 4,
-                "phm_dim": 4,
-                "phm_rule": "random",
-                "target_modules": ["q_proj", "v_proj"]
-            },
-            UniPELTPlusMethod.HYPERLORA: {
-                "r": 8,
-                "hypernet_hidden_size": 256,
-                "hypernet_num_layers": 2,
-                "target_modules": ["q_proj", "v_proj"]
+        self.method_configs.update(
+            {
+                UniPELTPlusMethod.DIFFPRUNING: {
+                    "sparsity": 0.1,
+                    "mask_init": "uniform",
+                    "target_modules": ["q_proj", "v_proj"],
+                },
+                UniPELTPlusMethod.SPARSE_ADAPTER: {
+                    "adapter_size": 64,
+                    "sparsity": 0.1,
+                    "non_linearity": "relu",
+                    "target_modules": ["q_proj", "v_proj"],
+                },
+                UniPELTPlusMethod.COMPACTER: {
+                    "reduction_factor": 4,
+                    "phm_dim": 4,
+                    "phm_rule": "random",
+                    "target_modules": ["q_proj", "v_proj"],
+                },
+                UniPELTPlusMethod.HYPERLORA: {
+                    "r": 8,
+                    "hypernet_hidden_size": 256,
+                    "hypernet_num_layers": 2,
+                    "target_modules": ["q_proj", "v_proj"],
+                },
             }
-        })
+        )
 
     def _prepare_model(self) -> None:
         """Prepare the model for UniPELT++ fine-tuning."""
         # Load base model with custom config
         model_class = self._get_model_class()
         self.model = model_class.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            **self.model_config
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto", **self.model_config
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -150,13 +149,19 @@ class UniPELTPlusTuner(UniPELTTuner):
 
         # Update token dimension for prompt tuning
         if UniPELTPlusMethod.PROMPT in self.methods:
-            self.method_configs[UniPELTPlusMethod.PROMPT]["token_dim"] = self.model.config.hidden_size
+            self.method_configs[UniPELTPlusMethod.PROMPT]["token_dim"] = (
+                self.model.config.hidden_size
+            )
 
         # Configure each PEFT method
         for method in self.methods:
-            if method in [UniPELTMethod.LORA, UniPELTMethod.ADAPTER,
-                         UniPELTMethod.PROMPT, UniPELTMethod.PREFIX,
-                         UniPELTMethod.IA3]:
+            if method in [
+                UniPELTMethod.LORA,
+                UniPELTMethod.ADAPTER,
+                UniPELTMethod.PROMPT,
+                UniPELTMethod.PREFIX,
+                UniPELTMethod.IA3,
+            ]:
                 # Use base class method for standard PEFT methods
                 continue
 
@@ -177,8 +182,10 @@ class UniPELTPlusTuner(UniPELTTuner):
         from .peft_methods import DiffPruningLayer
 
         for name, module in self.model.named_modules():
-            if any(target in name for target in
-                  self.method_configs[UniPELTPlusMethod.DIFFPRUNING]["target_modules"]):
+            if any(
+                target in name
+                for target in self.method_configs[UniPELTPlusMethod.DIFFPRUNING]["target_modules"]
+            ):
                 if isinstance(module, nn.Linear):
                     parent_name = ".".join(name.split(".")[:-1])
                     parent = self.model.get_submodule(parent_name)
@@ -187,7 +194,7 @@ class UniPELTPlusTuner(UniPELTTuner):
                     new_module = DiffPruningLayer(
                         in_features=module.in_features,
                         out_features=module.out_features,
-                        **self.method_configs[UniPELTPlusMethod.DIFFPRUNING]
+                        **self.method_configs[UniPELTPlusMethod.DIFFPRUNING],
                     )
                     setattr(parent, child_name, new_module)
 
@@ -196,8 +203,12 @@ class UniPELTPlusTuner(UniPELTTuner):
         from .peft_methods import SparseAdapterLayer
 
         for name, module in self.model.named_modules():
-            if any(target in name for target in
-                  self.method_configs[UniPELTPlusMethod.SPARSE_ADAPTER]["target_modules"]):
+            if any(
+                target in name
+                for target in self.method_configs[UniPELTPlusMethod.SPARSE_ADAPTER][
+                    "target_modules"
+                ]
+            ):
                 if isinstance(module, nn.Linear):
                     parent_name = ".".join(name.split(".")[:-1])
                     parent = self.model.get_submodule(parent_name)
@@ -206,7 +217,7 @@ class UniPELTPlusTuner(UniPELTTuner):
                     new_module = SparseAdapterLayer(
                         in_features=module.in_features,
                         out_features=module.out_features,
-                        **self.method_configs[UniPELTPlusMethod.SPARSE_ADAPTER]
+                        **self.method_configs[UniPELTPlusMethod.SPARSE_ADAPTER],
                     )
                     setattr(parent, child_name, new_module)
 
@@ -215,8 +226,10 @@ class UniPELTPlusTuner(UniPELTTuner):
         from .advanced_tuning import CompacterLayer
 
         for name, module in self.model.named_modules():
-            if any(target in name for target in
-                  self.method_configs[UniPELTPlusMethod.COMPACTER]["target_modules"]):
+            if any(
+                target in name
+                for target in self.method_configs[UniPELTPlusMethod.COMPACTER]["target_modules"]
+            ):
                 if isinstance(module, nn.Linear):
                     parent_name = ".".join(name.split(".")[:-1])
                     parent = self.model.get_submodule(parent_name)
@@ -225,7 +238,7 @@ class UniPELTPlusTuner(UniPELTTuner):
                     new_module = CompacterLayer(
                         in_features=module.in_features,
                         out_features=module.out_features,
-                        **self.method_configs[UniPELTPlusMethod.COMPACTER]
+                        **self.method_configs[UniPELTPlusMethod.COMPACTER],
                     )
                     setattr(parent, child_name, new_module)
 
@@ -237,10 +250,11 @@ class UniPELTPlusTuner(UniPELTTuner):
             base_model_name=self.base_model_name,
             output_dir=self.output_dir,
             model_type=self.model_type,
-            hyperlora_config=self.method_configs[UniPELTPlusMethod.HYPERLORA]
+            hyperlora_config=self.method_configs[UniPELTPlusMethod.HYPERLORA],
         )
         hyperlora._prepare_model()
         self.model = hyperlora.model
+
 
 class EnhancedMAMAdapterTuner(MAMAdapterTuner):
     """Enhanced MAM implementation with additional components."""
@@ -257,7 +271,7 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
         ia3_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
         model_config: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             base_model_name=base_model_name,
@@ -265,7 +279,7 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
             model_type=model_type,
             adapter_config=adapter_config,
             lora_config=lora_config,
-            training_args=training_args
+            training_args=training_args,
         )
 
         self.model_config = model_config or {}
@@ -274,19 +288,19 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
         self.prompt_config = prompt_config or {
             "prompt_tuning_init": "RANDOM",
             "num_virtual_tokens": 20,
-            "token_dim": 768  # Will be set automatically
+            "token_dim": 768,  # Will be set automatically
         }
 
         self.prefix_config = prefix_config or {
             "num_virtual_tokens": 20,
             "encoder_hidden_size": 128,
             "encoder_num_layers": 2,
-            "encoder_dropout": 0.1
+            "encoder_dropout": 0.1,
         }
 
         self.ia3_config = ia3_config or {
             "target_modules": ["fc1", "fc2"],
-            "feedforward_modules": ["fc1", "fc2"]
+            "feedforward_modules": ["fc1", "fc2"],
         }
 
     def _prepare_model(self) -> None:
@@ -294,15 +308,9 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
         # Load base model with custom config
         model_class = self._get_model_class()
         self.model = model_class.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto",
-            **self.model_config
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto", **self.model_config
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -313,47 +321,38 @@ class EnhancedMAMAdapterTuner(MAMAdapterTuner):
 
         # Configure each componen
         # 1. Adapter
-        adapter_config = LoraConfig(**self.adapter_config,
-                                     task_type=PeftType.CAUSAL_LM)
+        adapter_config = LoraConfig(**self.adapter_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, adapter_config)
 
         # 2. LoRA
-        lora_config = LoraConfig(**self.lora_config,
-                                task_type=PeftType.CAUSAL_LM)
+        lora_config = LoraConfig(**self.lora_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, lora_config)
 
         # 3. Prompt Tuning
-        prompt_config = PeftConfig(**self.prompt_config,
-                                         task_type=PeftType.CAUSAL_LM)
+        prompt_config = PeftConfig(**self.prompt_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, prompt_config)
 
         # 4. Prefix Tuning
-        prefix_config = PeftConfig(**self.prefix_config,
-                                         task_type=PeftType.CAUSAL_LM)
+        prefix_config = PeftConfig(**self.prefix_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, prefix_config)
 
         # 5. IA³
-        ia3_config = PeftConfig(**self.ia3_config,
-                              task_type=PeftType.CAUSAL_LM)
+        ia3_config = PeftConfig(**self.ia3_config, task_type=PeftType.CAUSAL_LM)
         self.model = get_peft_model(self.model, ia3_config)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
+        )
 
     def get_component_weights(self) -> Dict[str, Dict[str, torch.Tensor]]:
         """Get weights from all components."""
         if self.model is None:
             raise ValueError("No model loaded. Load or train first.")
 
-        weights = {
-            "adapter": {},
-            "lora": {},
-            "prompt": {},
-            "prefix": {},
-            "ia3": {}
-        }
+        weights = {"adapter": {}, "lora": {}, "prompt": {}, "prefix": {}, "ia3": {}}
 
         for name, param in self.model.named_parameters():
             if param.requires_grad:

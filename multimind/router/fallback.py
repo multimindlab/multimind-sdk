@@ -2,8 +2,10 @@
 Fallback handler for managing model fallbacks and retries.
 """
 
-from typing import List, Dict, Any, Optional, Type
+from typing import Dict, List
+
 from ..models.base import BaseLLM
+
 
 class FallbackHandler:
     """Handles model fallbacks and retries."""
@@ -16,7 +18,7 @@ class FallbackHandler:
             "rate_limit_exceeded",
             "timeout",
             "service_unavailable",
-            "internal_server_error"
+            "internal_server_error",
         }
 
     def set_chain(self, model_names: List[str]) -> None:

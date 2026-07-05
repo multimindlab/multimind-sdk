@@ -2,10 +2,10 @@
 Base classes for Mixture of Experts (MoE) implementation.
 """
 
-from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional, Union
-from datetime import datetime
 import logging
+from abc import ABC, abstractmethod
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 try:
     import torch
     import torch.nn as nn
+
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
@@ -23,46 +24,43 @@ import numpy as np
 
 class Expert(ABC):
     """Abstract base class for experts in MoE."""
-    
+
     def __init__(self, expert_id: str, **kwargs):
         self.expert_id = expert_id
         self.kwargs = kwargs
         self.usage_count = 0
         self.performance_metrics = {}
-    
+
     @abstractmethod
     async def process(self, input_data: Any) -> Any:
         """Process input data and return output."""
         pass
-    
+
     def update_metrics(self, metrics: Dict[str, Any]):
         """Update performance metrics."""
         self.performance_metrics.update(metrics)
         self.usage_count += 1
-    
+
     def get_metrics(self) -> Dict[str, Any]:
         """Get current metrics."""
-        return {
-            "usage_count": self.usage_count,
-            "performance_metrics": self.performance_metrics
-        }
+        return {"usage_count": self.usage_count, "performance_metrics": self.performance_metrics}
 
 
 class ExpertRouter(ABC):
     """Abstract base class for expert routing."""
-    
+
     def __init__(self, experts: Dict[str, Expert], **kwargs):
         self.experts = experts
         self.kwargs = kwargs
         self.routing_history = []
         # Prevent unbounded growth in high-throughput systems.
         self.max_routing_history: int = int(kwargs.get("max_routing_history", 1000))
-    
+
     @abstractmethod
     async def route(self, input_data: Any) -> Dict[str, float]:
         """Route input to experts and return weights."""
         pass
-    
+
     def update_routing_history(self, input_data: Any, weights: Dict[str, float]):
         """Update routing history."""
         # Use a real wall-clock timestamp; CUDA timing events are not general timestamps.
@@ -75,60 +73,58 @@ class ExpertRouter(ABC):
         )
         if self.max_routing_history > 0 and len(self.routing_history) > self.max_routing_history:
             # Keep only the most recent entries.
-            self.routing_history = self.routing_history[-self.max_routing_history:]
-    
+            self.routing_history = self.routing_history[-self.max_routing_history :]
+
     def get_routing_stats(self) -> Dict[str, Any]:
         """Get routing statistics."""
         if not self.routing_history:
             return {}
-        
+
         # Calculate average weights for each expert
         avg_weights = {}
         for expert_id in self.experts.keys():
             weights = [entry["weights"].get(expert_id, 0.0) for entry in self.routing_history]
             avg_weights[expert_id] = np.mean(weights)
-        
-        return {
-            "total_routes": len(self.routing_history),
-            "average_weights": avg_weights
-        }
+
+        return {"total_routes": len(self.routing_history), "average_weights": avg_weights}
 
 
 if TORCH_AVAILABLE:
+
     class MoEBase(nn.Module):
         """Base class for Mixture of Experts models."""
-        
+
         def __init__(
             self,
             experts: Dict[str, Expert],
             hidden_size: int = 768,
             num_experts: Optional[int] = None,
-            **kwargs
+            **kwargs,
         ):
             super().__init__()
             self.experts = experts
             self.hidden_size = hidden_size
             self.num_experts = num_experts or len(experts)
             self.kwargs = kwargs
-            
+
             # Initialize a concrete router implementation (ExpertRouter is abstract).
             self.router = ModalityRouter(experts, **kwargs)
-            
+
             # Initialize metrics
             self.metrics = {
-                "expert_usage": {expert_id: 0 for expert_id in experts.keys()},
+                "expert_usage": {expert_id: 0 for expert_id in experts},
                 "routing_weights": {},
-                "performance_metrics": {}
+                "performance_metrics": {},
             }
-        
+
         async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
             """Process input through the MoE model."""
             # Route input to experts
             weights = await self.router.route(input_data)
-            
+
             # Update routing history
             self.router.update_routing_history(input_data, weights)
-            
+
             # Process with each expert
             expert_outputs = {}
             for expert_id, weight in weights.items():
@@ -139,7 +135,7 @@ if TORCH_AVAILABLE:
                     if isinstance(input_data, dict):
                         expert_type = expert.__class__.__name__.lower()
                         expert_key = expert_id.lower()
-                        for modality in input_data.keys():
+                        for modality in input_data:
                             m = str(modality).lower()
                             if m in expert_type or m in expert_key:
                                 # For non-text experts, include text prompt if available.
@@ -152,36 +148,32 @@ if TORCH_AVAILABLE:
                                     expert_input = input_data.get(modality)
                                 break
                     output = await expert.process(expert_input)
-                    expert_outputs[expert_id] = {
-                        "output": output,
-                        "weight": weight
-                    }
-                    
+                    expert_outputs[expert_id] = {"output": output, "weight": weight}
+
                     # Update metrics
                     self.metrics["expert_usage"][expert_id] += 1
-            
+
             # Combine expert outputs
             combined_output = self._combine_outputs(expert_outputs)
-            
+
             # Update metrics
             self.metrics["routing_weights"] = weights
             self.metrics["performance_metrics"] = {
-                expert_id: expert.get_metrics()
-                for expert_id, expert in self.experts.items()
+                expert_id: expert.get_metrics() for expert_id, expert in self.experts.items()
             }
-            
+
             return {
                 "output": combined_output,
                 "expert_outputs": expert_outputs,
                 "routing_weights": weights,
-                "metrics": self.metrics
+                "metrics": self.metrics,
             }
-        
+
         def _combine_outputs(self, expert_outputs: Dict[str, Dict[str, Any]]) -> Any:
             """Combine outputs from multiple experts."""
             if not expert_outputs:
                 return "No expert produced output."
-            
+
             total_weight = sum(output["weight"] for output in expert_outputs.values())
             normalized = []
             for expert_data in expert_outputs.values():
@@ -203,43 +195,44 @@ if TORCH_AVAILABLE:
 
             # For structured outputs, return highest-weight expert output.
             return max(normalized, key=lambda item: item[0])[1]
-        
+
         def get_metrics(self) -> Dict[str, Any]:
             """Get current metrics."""
             return self.metrics
-        
+
         def reset_metrics(self):
             """Reset all metrics."""
             self.metrics = {
                 "expert_usage": {expert_id: 0 for expert_id in self.experts.keys()},
                 "routing_weights": {},
-                "performance_metrics": {}
+                "performance_metrics": {},
             }
             for expert in self.experts.values():
                 expert.usage_count = 0
                 expert.performance_metrics = {}
 
 else:
+
     class MoEBase:
         """Base class for Mixture of Experts models."""
-        
+
         def __init__(
             self,
             experts: Dict[str, Expert],
             hidden_size: int = 768,
             num_experts: Optional[int] = None,
-            **kwargs
+            **kwargs,
         ):
             raise ImportError("PyTorch is required for MoEBase. Please install torch.")
 
 
 class TextExpert(Expert):
     """Text processing expert."""
-    
+
     def __init__(self, expert_id: str, model_name: str = "gpt2", **kwargs):
         super().__init__(expert_id, **kwargs)
         self.model_name = model_name
-    
+
     async def process(self, input_data: str) -> str:
         """Process text input."""
         # Placeholder implementation
@@ -248,11 +241,11 @@ class TextExpert(Expert):
 
 class ImageExpert(Expert):
     """Image processing expert."""
-    
+
     def __init__(self, expert_id: str, model_name: str = "resnet", **kwargs):
         super().__init__(expert_id, **kwargs)
         self.model_name = model_name
-    
+
     async def process(self, input_data: Any) -> Any:
         """Process image input."""
         # Placeholder implementation
@@ -261,11 +254,11 @@ class ImageExpert(Expert):
 
 class AudioExpert(Expert):
     """Audio processing expert."""
-    
+
     def __init__(self, expert_id: str, model_name: str = "wav2vec", **kwargs):
         super().__init__(expert_id, **kwargs)
         self.model_name = model_name
-    
+
     async def process(self, input_data: Any) -> Any:
         """Process audio input."""
         # Placeholder implementation
@@ -274,7 +267,7 @@ class AudioExpert(Expert):
 
 class SimpleRouter(ExpertRouter):
     """Simple expert router that distributes load evenly."""
-    
+
     async def route(self, input_data: Any) -> Dict[str, float]:
         """Route input to all experts with equal weights."""
         num_experts = len(self.experts)
@@ -284,7 +277,7 @@ class SimpleRouter(ExpertRouter):
 
 class ModalityRouter(ExpertRouter):
     """Router that routes based on input modality."""
-    
+
     async def route(self, input_data: Dict[str, Any]) -> Dict[str, float]:
         """Rule-based routing with equal weights among matched experts.
 
@@ -293,7 +286,7 @@ class ModalityRouter(ExpertRouter):
         - If 2 experts match -> 0.50 each
         - If 1 expert matches -> 1.00
         """
-        detected_modalities = [str(k).lower() for k in input_data.keys()]
+        detected_modalities = [str(k).lower() for k in input_data]
 
         weights: Dict[str, float] = {}
         for expert_id, expert in self.experts.items():
@@ -312,7 +305,7 @@ class ModalityRouter(ExpertRouter):
 
         # If nothing matches, return all zeros (explicitly "no route").
         return weights
-    
+
     def _detect_modality(self, input_data: Dict[str, Any]) -> str:
         """Detect the modality of input data."""
         if "text" in input_data:
@@ -323,14 +316,17 @@ class ModalityRouter(ExpertRouter):
             return "audio"
         else:
             return "unknown"
-    
+
     def _expert_matches_modality(self, expert: Expert, modality: str) -> bool:
         """Check if expert matches the detected modality."""
         expert_type = expert.__class__.__name__.lower()
-        if modality == "text" and "text" in expert_type:
+        if (
+            modality == "text"
+            and "text" in expert_type
+            or modality == "image"
+            and "image" in expert_type
+            or modality == "audio"
+            and "audio" in expert_type
+        ):
             return True
-        elif modality == "image" and "image" in expert_type:
-            return True
-        elif modality == "audio" and "audio" in expert_type:
-            return True
-        return False 
+        return False

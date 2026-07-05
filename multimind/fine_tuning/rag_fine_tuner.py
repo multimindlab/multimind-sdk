@@ -1,11 +1,13 @@
-from typing import Any, Callable, Dict, List
 import logging
+from typing import Callable, Dict, List
+
 
 class RAGFineTuner:
     """
     RAGFineTuner: Uses a RAG pipeline to generate synthetic data and launches fine-tuning for a model.
     Supports config-driven and programmatic usage.
     """
+
     def __init__(self, rag_pipeline: Callable, fine_tune_func: Callable, logger=None):
         self.rag_pipeline = rag_pipeline  # Should accept a query and return a context+answer
         self.fine_tune_func = fine_tune_func  # Should accept (train_data, **kwargs)
@@ -19,11 +21,13 @@ class RAGFineTuner:
         for q in queries:
             for _ in range(n_per_query):
                 rag_result = self.rag_pipeline(q)
-                data.append({
-                    "query": q,
-                    "context": rag_result.get("context", ""),
-                    "answer": rag_result.get("answer", "")
-                })
+                data.append(
+                    {
+                        "query": q,
+                        "context": rag_result.get("context", ""),
+                        "answer": rag_result.get("answer", ""),
+                    }
+                )
         self.logger.info(f"Generated {len(data)} synthetic examples.")
         return data
 
@@ -36,5 +40,6 @@ class RAGFineTuner:
         self.logger.info("Launching fine-tuning...")
         return self.fine_tune_func(train_data, **ft_kwargs)
 
+
 # --- Example usage ---
-# This block is for demonstration purposes only. 
+# This block is for demonstration purposes only.

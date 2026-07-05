@@ -9,15 +9,27 @@ from .adaptive import AdaptiveRouter
 from .fallback import FallbackHandler
 from .multi_modal_router import MultiModalRouter
 from .router import ModelRouter
-from .strategy import RoutingStrategy, CostAwareStrategy, LatencyAwareStrategy, HybridStrategy
+from .strategy import CostAwareStrategy, HybridStrategy, LatencyAwareStrategy, RoutingStrategy
+
+# Import Router from core (fix the circular import issue)
+try:
+    from ..core.router import Router, TaskConfig, TaskType
+except ImportError:
+    # Fallback if core router not available
+    Router = ModelRouter
+    TaskType = None
+    TaskConfig = None
 
 __all__ = [
     "AdaptiveRouter",
-    "FallbackHandler", 
+    "FallbackHandler",
     "MultiModalRouter",
     "ModelRouter",
+    "Router",
+    "TaskType",
+    "TaskConfig",
     "RoutingStrategy",
     "CostAwareStrategy",
-    "LatencyAwareStrategy", 
-    "HybridStrategy"
-] 
+    "LatencyAwareStrategy",
+    "HybridStrategy",
+]

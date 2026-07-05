@@ -7,8 +7,8 @@ stable surface used by examples (e.g. multi-modal cost optimization).
 
 from __future__ import annotations
 
-from typing import Any, Dict, DefaultDict
 from collections import defaultdict
+from typing import Any, DefaultDict, Dict
 
 
 class CostTracker:
@@ -54,10 +54,7 @@ class CostTracker:
         if isinstance(data, dict):
             metadata = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
             model_id = str(
-                data.get("model_id")
-                or data.get("model")
-                or metadata.get("model_id")
-                or "unknown"
+                data.get("model_id") or data.get("model") or metadata.get("model_id") or "unknown"
             )
             try:
                 cost = float(data.get("cost") or metadata.get("cost") or 0.0)
@@ -84,4 +81,3 @@ class CostTracker:
                 "count": count,
             }
         return metrics
-

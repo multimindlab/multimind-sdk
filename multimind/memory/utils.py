@@ -2,19 +2,21 @@
 Utility functions for memory management.
 """
 
-from typing import List, Dict, Any, Optional, Union, Type
-from datetime import datetime
 import json
 import re
-from pathlib import Path
-import pickle
 import threading
-from .base import BaseMemory
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Type, Union
+
 import numpy as np
+
+from .base import BaseMemory
 
 # Lazy singleton to avoid downloading/loading Sentence-BERT on every similarity call.
 _SENTENCE_BERT_MODEL = None
 _SENTENCE_BERT_MODEL_LOCK = threading.Lock()
+
 
 class AdaptiveThreshold:
     """
@@ -26,13 +28,17 @@ class AdaptiveThreshold:
             threshold.update(score, feedback=1.0)  # feedback=1.0 for good, 0.0 for bad
         current = threshold.value
     """
-    def __init__(self, initial: float = 0.8, window: int = 50, min_val: float = 0.5, max_val: float = 0.95):
+
+    def __init__(
+        self, initial: float = 0.8, window: int = 50, min_val: float = 0.5, max_val: float = 0.95
+    ):
         self.value = initial
         self.window = window
         self.scores = []
         self.feedback = []
         self.min_val = min_val
         self.max_val = max_val
+
     def update(self, score: float, feedback: float = None):
         self.scores.append(score)
         if feedback is not None:
@@ -44,16 +50,17 @@ class AdaptiveThreshold:
         # Adapt threshold: e.g., set to mean - std, or based on feedback
         if self.feedback:
             # If recent feedback is low, lower threshold; if high, raise
-            avg_feedback = np.mean(self.feedback[-self.window:])
+            avg_feedback = np.mean(self.feedback[-self.window :])
             if avg_feedback < 0.5:
                 self.value = max(self.min_val, self.value - 0.01)
             elif avg_feedback > 0.8:
                 self.value = min(self.max_val, self.value + 0.01)
         else:
             # Use score distribution
-            mean = np.mean(self.scores[-self.window:])
-            std = np.std(self.scores[-self.window:])
+            mean = np.mean(self.scores[-self.window :])
+            std = np.std(self.scores[-self.window :])
             self.value = np.clip(mean - std, self.min_val, self.max_val)
+
 
 class MemoryUtils:
     """Utility functions for memory management."""
@@ -79,14 +86,10 @@ class MemoryUtils:
             raise
 
     @staticmethod
-    async def save_memory(
-        memory: BaseMemory,
-        path: Union[str, Path],
-        format: str = "json"
-    ) -> None:
+    async def save_memory(memory: BaseMemory, path: Union[str, Path], format: str = "json") -> None:
         """
         Save memory to disk.
-        
+
         Args:
             memory: Memory instance to save
             path: Path to save to
@@ -94,62 +97,55 @@ class MemoryUtils:
         """
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Get memory state
         state = {
             "messages": memory.messages,
             "metadata": memory.metadata,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
-        
+
         # Save based on format (pickle intentionally disabled to prevent RCE).
         if format == "json":
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2, default=str)
         else:
-            raise ValueError(
-                "Pickle serialization is disabled for security. Use format='json'."
-            )
+            raise ValueError("Pickle serialization is disabled for security. Use format='json'.")
 
     @staticmethod
     async def load_memory(
-        memory_class: Type[BaseMemory],
-        path: Union[str, Path],
-        format: str = "json",
-        **kwargs
+        memory_class: Type[BaseMemory], path: Union[str, Path], format: str = "json", **kwargs
     ) -> BaseMemory:
         """
         Load memory from disk.
-        
+
         Args:
             memory_class: Memory class to instantiate
             path: Path to load from
             format: Load format (json only; pickle disabled for security)
             **kwargs: Additional arguments for memory class
-            
+
         Returns:
             Loaded memory instance
         """
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Memory file not found: {path}")
-            
+
         # Load based on format (pickle intentionally disabled to prevent RCE).
         if format == "json":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 state = json.load(f)
         else:
-            raise ValueError(
-                "Pickle deserialization is disabled for security. Use format='json'."
-            )
-                
+            raise ValueError("Pickle deserialization is disabled for security. Use format='json'.")
+
         # Create memory instance
         memory = memory_class(**kwargs)
-        
+
         # Restore state
         memory.messages = state["messages"]
         memory.metadata = state["metadata"]
-        
+
         return memory
 
     @staticmethod
@@ -157,8 +153,8 @@ class MemoryUtils:
         memories: List[BaseMemory],
         strategy: str = "append",  # append, interleave, smart
         similarity_func: callable = None,
-        adaptive_threshold: 'AdaptiveThreshold' = None,
-        llm: Any = None
+        adaptive_threshold: "AdaptiveThreshold" = None,
+        llm: Any = None,
     ) -> BaseMemory:
         """
         Merge multiple memories into one.
@@ -177,22 +173,14 @@ class MemoryUtils:
         if strategy == "append":
             for memory in memories:
                 for msg in memory.messages:
-                    await merged.add_message(
-                        msg["message"],
-                        msg["metadata"]
-                    )
+                    await merged.add_message(msg["message"], msg["metadata"])
         elif strategy == "interleave":
             all_messages = []
             for memory in memories:
                 all_messages.extend(memory.messages)
-            all_messages.sort(
-                key=lambda x: x["timestamp"]
-            )
+            all_messages.sort(key=lambda x: x["timestamp"])
             for msg in all_messages:
-                await merged.add_message(
-                    msg["message"],
-                    msg["metadata"]
-                )
+                await merged.add_message(msg["message"], msg["metadata"])
         else:  # smart
             seen_content = []
             if similarity_func is None:
@@ -215,10 +203,7 @@ class MemoryUtils:
                             add = False
                             break
                     if add:
-                        await merged.add_message(
-                            msg["message"],
-                            msg["metadata"]
-                        )
+                        await merged.add_message(msg["message"], msg["metadata"])
                         seen_content.append(content)
         return merged
 
@@ -227,8 +212,8 @@ class MemoryUtils:
         memory: BaseMemory,
         filter_func: callable = None,
         similarity_func: callable = None,
-        adaptive_threshold: 'AdaptiveThreshold' = None,
-        **kwargs
+        adaptive_threshold: "AdaptiveThreshold" = None,
+        **kwargs,
     ) -> BaseMemory:
         """
         Filter memory based on a function or similarity threshold.
@@ -250,153 +235,121 @@ class MemoryUtils:
                 # Compare to previous messages
                 for prev in filtered.messages:
                     sim = similarity_func(
-                        msg["message"].get("content", ""),
-                        prev["message"].get("content", "")
+                        msg["message"].get("content", ""), prev["message"].get("content", "")
                     )
                     adaptive_threshold.update(sim)
                     if sim > adaptive_threshold.value:
                         keep = False
                         break
             if keep:
-                await filtered.add_message(
-                    msg["message"],
-                    msg["metadata"]
-                )
+                await filtered.add_message(msg["message"], msg["metadata"])
         return filtered
 
     @staticmethod
     async def transform_memory(
-        memory: BaseMemory,
-        transform_func: callable,
-        **kwargs
+        memory: BaseMemory, transform_func: callable, **kwargs
     ) -> BaseMemory:
         """
         Transform memory using a function.
-        
+
         Args:
             memory: Memory to transform
             transform_func: Function to transform messages
             **kwargs: Additional arguments for transform function
-            
+
         Returns:
             Transformed memory instance
         """
         # Create new memory of same type
         transformed = type(memory)()
-        
+
         # Transform messages
         for msg in memory.messages:
             transformed_msg = transform_func(msg, **kwargs)
             if transformed_msg:
                 await transformed.add_message(
-                    transformed_msg["message"],
-                    transformed_msg["metadata"]
+                    transformed_msg["message"], transformed_msg["metadata"]
                 )
-                
+
         return transformed
 
     @staticmethod
-    async def analyze_memory(
-        memory: BaseMemory
-    ) -> Dict[str, Any]:
+    async def analyze_memory(memory: BaseMemory) -> Dict[str, Any]:
         """
         Analyze memory contents.
-        
+
         Args:
             memory: Memory to analyze
-            
+
         Returns:
             Analysis results
         """
         if not memory.messages:
-            return {
-                "message_count": 0,
-                "roles": {},
-                "average_length": 0,
-                "time_span": None
-            }
-            
+            return {"message_count": 0, "roles": {}, "average_length": 0, "time_span": None}
+
         # Calculate statistics
         roles = {}
         total_length = 0
         timestamps = []
-        
+
         for msg in memory.messages:
             # Count roles
             role = msg["message"].get("role", "unknown")
             roles[role] = roles.get(role, 0) + 1
-            
+
             # Calculate length
             content = msg["message"].get("content", "")
             total_length += len(content)
-            
+
             # Track timestamps
             timestamps.append(msg["timestamp"])
-            
+
         # Calculate time span
         if timestamps:
             time_span = max(timestamps) - min(timestamps)
         else:
             time_span = None
-            
+
         return {
             "message_count": len(memory.messages),
             "roles": roles,
             "average_length": total_length / len(memory.messages),
             "time_span": time_span,
-            "metadata_keys": list(memory.metadata.keys())
+            "metadata_keys": list(memory.metadata.keys()),
         }
 
     @staticmethod
-    async def compare_memories(
-        memory1: BaseMemory,
-        memory2: BaseMemory
-    ) -> Dict[str, Any]:
+    async def compare_memories(memory1: BaseMemory, memory2: BaseMemory) -> Dict[str, Any]:
         """
         Compare two memories.
-        
+
         Args:
             memory1: First memory
             memory2: Second memory
-            
+
         Returns:
             Comparison results
         """
         # Get basic stats
         stats1 = await MemoryUtils.analyze_memory(memory1)
         stats2 = await MemoryUtils.analyze_memory(memory2)
-        
+
         # Calculate overlap
-        content1 = {
-            msg["message"].get("content", "")
-            for msg in memory1.messages
-        }
-        content2 = {
-            msg["message"].get("content", "")
-            for msg in memory2.messages
-        }
-        
+        content1 = {msg["message"].get("content", "") for msg in memory1.messages}
+        content2 = {msg["message"].get("content", "") for msg in memory2.messages}
+
         overlap = len(content1.intersection(content2))
         total = len(content1.union(content2))
-        
+
         return {
             "memory1_stats": stats1,
             "memory2_stats": stats2,
             "content_overlap": overlap / total if total > 0 else 0.0,
-            "message_count_diff": abs(
-                stats1["message_count"] - stats2["message_count"]
-            ),
+            "message_count_diff": abs(stats1["message_count"] - stats2["message_count"]),
             "role_diff": {
-                role: abs(
-                    stats1["roles"].get(role, 0) -
-                    stats2["roles"].get(role, 0)
-                )
-                for role in set(
-                    stats1["roles"].keys()
-                ).union(
-                    stats2["roles"].keys()
-                )
-            }
+                role: abs(stats1["roles"].get(role, 0) - stats2["roles"].get(role, 0))
+                for role in set(stats1["roles"].keys()).union(stats2["roles"].keys())
+            },
         }
 
     @staticmethod
@@ -404,6 +357,7 @@ class MemoryUtils:
         """Compute BERTScore similarity between two texts (requires bert-score)."""
         try:
             from bert_score import score  # type: ignore[import-not-found]
+
             P, R, F1 = score([a], [b], lang="en", verbose=False)
             return float(F1[0])
         except ImportError:
@@ -414,6 +368,7 @@ class MemoryUtils:
         """Compute Sentence-BERT cosine similarity (requires sentence-transformers)."""
         try:
             from sentence_transformers import SentenceTransformer, util
+
             global _SENTENCE_BERT_MODEL
             if _SENTENCE_BERT_MODEL is None:
                 with _SENTENCE_BERT_MODEL_LOCK:
@@ -424,7 +379,9 @@ class MemoryUtils:
             emb2 = model.encode(b, convert_to_tensor=True)
             return float(util.pytorch_cos_sim(emb1, emb2).item())
         except ImportError:
-            raise ImportError("sentence-transformers is not installed. Run 'pip install sentence-transformers'.")
+            raise ImportError(
+                "sentence-transformers is not installed. Run 'pip install sentence-transformers'."
+            )
 
     @staticmethod
     async def llm_similarity(a: str, b: str, llm=None) -> float:
@@ -436,4 +393,4 @@ class MemoryUtils:
         try:
             return float(response.strip())
         except Exception:
-            return 0.0 
+            return 0.0

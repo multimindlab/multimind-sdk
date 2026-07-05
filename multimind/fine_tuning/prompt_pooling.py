@@ -2,28 +2,24 @@
 Prefix/Prompt Pooling implementation for efficient fine-tuning.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from datasets import Dataset as HFDataset
+from peft import PrefixTuningConfig, PromptTuningConfig, TaskType, get_peft_model
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-from peft import (
-    PromptTuningConfig,
-    PrefixTuningConfig,
-    get_peft_model,
-    TaskType
-)
-import logging
-from datasets import Dataset as HFDataset
-import numpy as np
 
 logger = logging.getLogger(__name__)
+
 
 class PromptPoolingLayer(nn.Module):
     """Prompt Pooling layer that uses a pool of prompts/prefixes."""
@@ -35,7 +31,7 @@ class PromptPoolingLayer(nn.Module):
         pool_size: int,
         method: str = "prompt",  # "prompt" or "prefix"
         attention_dropout: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.num_virtual_tokens = num_virtual_tokens
@@ -45,13 +41,9 @@ class PromptPoolingLayer(nn.Module):
 
         # Initialize prompt/prefix pool
         if method == "prompt":
-            self.pool = nn.Parameter(
-                torch.randn(pool_size, num_virtual_tokens, token_dim)
-            )
+            self.pool = nn.Parameter(torch.randn(pool_size, num_virtual_tokens, token_dim))
         else:  # prefix
-            self.pool = nn.Parameter(
-                torch.randn(pool_size, num_virtual_tokens, token_dim)
-            )
+            self.pool = nn.Parameter(torch.randn(pool_size, num_virtual_tokens, token_dim))
             self.prefix_projection = nn.Linear(token_dim, token_dim)
 
         # Attention for selecting from pool
@@ -77,7 +69,7 @@ class PromptPoolingLayer(nn.Module):
         # Compute attention scores
         attention_scores = torch.matmul(
             query.unsqueeze(1),  # [batch_size, 1, seq_len, token_dim]
-            keys.transpose(-2, -1)  # [pool_size, token_dim, num_virtual_tokens]
+            keys.transpose(-2, -1),  # [pool_size, token_dim, num_virtual_tokens]
         )  # [batch_size, pool_size, seq_len, num_virtual_tokens]
 
         # Apply softmax and dropout
@@ -87,7 +79,7 @@ class PromptPoolingLayer(nn.Module):
         # Compute weighted sum of values
         context = torch.matmul(
             attention_probs,  # [batch_size, pool_size, seq_len, num_virtual_tokens]
-            values  # [pool_size, num_virtual_tokens, token_dim]
+            values,  # [pool_size, num_virtual_tokens, token_dim]
         )  # [batch_size, pool_size, seq_len, token_dim]
 
         # Sum over pool
@@ -99,6 +91,7 @@ class PromptPoolingLayer(nn.Module):
 
         return context
 
+
 class PromptPoolingTuner:
     """Prompt/Prefix Pooling implementation for fine-tuning."""
 
@@ -109,7 +102,7 @@ class PromptPoolingTuner:
         method: str = "prompt",  # "prompt" or "prefix"
         pool_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
@@ -119,7 +112,7 @@ class PromptPoolingTuner:
         self.pool_config = pool_config or {
             "num_virtual_tokens": 20,
             "pool_size": 10,
-            "attention_dropout": 0.1
+            "attention_dropout": 0.1,
         }
 
         # Default training arguments
@@ -133,7 +126,7 @@ class PromptPoolingTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -144,14 +137,9 @@ class PromptPoolingTuner:
         """Prepare the model for Prompt/Prefix Pooling fine-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -161,12 +149,12 @@ class PromptPoolingTuner:
         if self.method == "prompt":
             config = PromptTuningConfig(
                 num_virtual_tokens=self.pool_config["num_virtual_tokens"],
-                task_type=TaskType.CAUSAL_LM
+                task_type=TaskType.CAUSAL_LM,
             )
         else:  # prefix
             config = PrefixTuningConfig(
                 num_virtual_tokens=self.pool_config["num_virtual_tokens"],
-                task_type=TaskType.CAUSAL_LM
+                task_type=TaskType.CAUSAL_LM,
             )
 
         # Get the model
@@ -184,36 +172,29 @@ class PromptPoolingTuner:
                     token_dim=self.model.config.hidden_size,
                     pool_size=self.pool_config["pool_size"],
                     method=self.method,
-                    **self.pool_config
+                    **self.pool_config,
                 )
                 setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -222,7 +203,7 @@ class PromptPoolingTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using Prompt/Prefix Pooling."""
         if self.model is None:
@@ -241,10 +222,7 @@ class PromptPoolingTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -269,9 +247,7 @@ class PromptPoolingTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -285,4 +261,4 @@ class PromptPoolingTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params 
+        return params

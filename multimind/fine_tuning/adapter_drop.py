@@ -2,23 +2,23 @@
 AdapterDrop implementation for dynamically dropping adapters during training.
 """
 
-from typing import List, Dict, Any, Optional, Union, Tuple
+import logging
+import random
+from typing import Any, Dict, List, Optional, Union
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+from datasets import Dataset as HFDataset
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    DataCollatorForLanguageModeling,
     Trainer,
     TrainingArguments,
-    DataCollatorForLanguageModeling
 )
-from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig, PeftType
-import logging
-from datasets import Dataset as HFDataset
-import random
 
 logger = logging.getLogger(__name__)
+
 
 class AdapterDropLayer(nn.Module):
     """AdapterDrop layer that dynamically drops adapters during training."""
@@ -30,7 +30,7 @@ class AdapterDropLayer(nn.Module):
         num_adapters: int,
         adapter_size: int = 64,
         dropout_prob: float = 0.1,
-        **kwargs
+        **kwargs,
     ):
         super().__init__()
         self.num_adapters = num_adapters
@@ -38,14 +38,16 @@ class AdapterDropLayer(nn.Module):
         self.dropout_prob = dropout_prob
 
         # Initialize adapters
-        self.adapters = nn.ModuleList([
-            nn.Sequential(
-                nn.Linear(in_features, adapter_size),
-                nn.ReLU(),
-                nn.Linear(adapter_size, out_features)
-            )
-            for _ in range(num_adapters)
-        ])
+        self.adapters = nn.ModuleList(
+            [
+                nn.Sequential(
+                    nn.Linear(in_features, adapter_size),
+                    nn.ReLU(),
+                    nn.Linear(adapter_size, out_features),
+                )
+                for _ in range(num_adapters)
+            ]
+        )
 
         # Layer normalization
         self.layer_norm = nn.LayerNorm(in_features)
@@ -71,6 +73,7 @@ class AdapterDropLayer(nn.Module):
 
         return output
 
+
 class AdapterDropTuner:
     """AdapterDrop implementation for fine-tuning."""
 
@@ -81,17 +84,14 @@ class AdapterDropTuner:
         num_adapters: int,
         adapter_config: Optional[Dict[str, Any]] = None,
         training_args: Optional[Dict[str, Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         self.base_model_name = base_model_name
         self.output_dir = output_dir
         self.num_adapters = num_adapters
 
         # Default adapter configuration
-        self.adapter_config = adapter_config or {
-            "adapter_size": 64,
-            "dropout_prob": 0.1
-        }
+        self.adapter_config = adapter_config or {"adapter_size": 64, "dropout_prob": 0.1}
 
         # Default training arguments
         self.training_args = training_args or {
@@ -104,7 +104,7 @@ class AdapterDropTuner:
             "logging_steps": 10,
             "save_strategy": "epoch",
             "warmup_ratio": 0.1,
-            "lr_scheduler_type": "cosine"
+            "lr_scheduler_type": "cosine",
         }
 
         self.model = None
@@ -115,14 +115,9 @@ class AdapterDropTuner:
         """Prepare the model for AdapterDrop fine-tuning."""
         # Load base model and tokenizer
         self.model = AutoModelForCausalLM.from_pretrained(
-            self.base_model_name,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            self.base_model_name, torch_dtype=torch.float16, device_map="auto"
         )
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.base_model_name,
-            padding_side="right"
-        )
+        self.tokenizer = AutoTokenizer.from_pretrained(self.base_model_name, padding_side="right")
 
         # Add pad token if missing
         if self.tokenizer.pad_token is None:
@@ -139,36 +134,29 @@ class AdapterDropTuner:
                     in_features=module.in_features,
                     out_features=module.out_features,
                     num_adapters=self.num_adapters,
-                    **self.adapter_config
+                    **self.adapter_config,
                 )
                 setattr(parent, child_name, new_module)
 
         # Print trainable parameters
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         total_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Trainable parameters: {trainable_params:,} ({trainable_params/total_params:.2%} of total)")
+        logger.info(
+            f"Trainable parameters: {trainable_params:,} ({trainable_params / total_params:.2%} of total)"
+        )
 
-    def prepare_dataset(
-        self,
-        texts: List[str],
-        max_length: int = 512,
-        **kwargs
-    ) -> HFDataset:
+    def prepare_dataset(self, texts: List[str], max_length: int = 512, **kwargs) -> HFDataset:
         """Prepare dataset for training."""
+
         def tokenize_function(examples):
             return self.tokenizer(
-                examples["text"],
-                truncation=True,
-                max_length=max_length,
-                padding="max_length"
+                examples["text"], truncation=True, max_length=max_length, padding="max_length"
             )
 
         # Create dataset
         dataset = HFDataset.from_dict({"text": texts})
         tokenized_dataset = dataset.map(
-            tokenize_function,
-            batched=True,
-            remove_columns=dataset.column_names
+            tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
         return tokenized_dataset
@@ -177,7 +165,7 @@ class AdapterDropTuner:
         self,
         train_dataset: Union[HFDataset, List[str]],
         eval_dataset: Optional[Union[HFDataset, List[str]]] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         """Train the model using AdapterDrop."""
         if self.model is None:
@@ -196,10 +184,7 @@ class AdapterDropTuner:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            data_collator=DataCollatorForLanguageModeling(tokenizer=self.tokenizer, mlm=False),
         )
 
         # Train
@@ -224,9 +209,7 @@ class AdapterDropTuner:
     def load_model(self, path: str) -> None:
         """Load a fine-tuned model."""
         self.model = AutoModelForCausalLM.from_pretrained(
-            path,
-            torch_dtype=torch.float16,
-            device_map="auto"
+            path, torch_dtype=torch.float16, device_map="auto"
         )
         self.tokenizer = AutoTokenizer.from_pretrained(path)
         logger.info(f"Model loaded from {path}")
@@ -240,4 +223,4 @@ class AdapterDropTuner:
         for name, param in self.model.named_parameters():
             if param.requires_grad:
                 params[name] = param.data.clone()
-        return params 
+        return params
