@@ -105,7 +105,7 @@ finetune = [
     "peft>=0.5.0",
     "scikit-learn>=1.0.0",
     "numpy>=1.21.0",
-    "pandas>=2.0.0",
+    "pandas>=2.3.3",
     # Hyperparameter / meta-learning search — used eagerly by
     # multimind.fine_tuning.meta_learning, advanced_optimization,
     # advanced_meta_learning. Without it, the whole fine_tuning package
@@ -130,7 +130,7 @@ compliance = [
     # extra is expected to want the visualization layer.
     "plotly>=5.18.0",
     "dash>=2.14.0",
-    "pandas>=2.0.0",
+    "pandas>=2.3.3",
 ]
 
 # Gateway / API server
