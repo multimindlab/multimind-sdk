@@ -1,0 +1,1087 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MultiMind RAG API",
+    "description": "RESTful API for the MultiMind RAG system: document ingestion, retrieval, and grounded generation. The RAG backend is initialized lazily on first use; provider API keys (OPENAI_API_KEY / ANTHROPIC_API_KEY) are read from the environment at request time. Requests fail with 503 when the backend cannot be initialized. Authentication uses `X-API-Key` (when `API_KEYS` is set) or a JWT bearer token (when `JWT_SECRET` is set).",
+    "version": "0.3.0"
+  },
+  "paths": {
+    "/token": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login",
+        "description": "Get JWT token for authentication.",
+        "operationId": "login_token_post",
+        "requestBody": {
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_login_token_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Add Documents",
+        "description": "Add documents to the RAG system.",
+        "operationId": "add_documents_documents_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add Documents Documents Post"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Clear Documents",
+        "description": "Clear all documents from the RAG system.",
+        "operationId": "clear_documents_documents_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/files": {
+      "post": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Add File",
+        "description": "Add a file to the RAG system.",
+        "operationId": "add_file_files_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_add_file_files_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Add File Files Post"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/query": {
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "summary": "Query Documents",
+        "description": "Query the RAG system for relevant documents.",
+        "operationId": "query_documents_query_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/generate": {
+      "post": {
+        "tags": [
+          "rag"
+        ],
+        "summary": "Generate Response",
+        "description": "Generate a response using the RAG system.",
+        "operationId": "generate_response_generate_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/documents/count": {
+      "get": {
+        "tags": [
+          "documents"
+        ],
+        "summary": "Get Document Count",
+        "description": "Get the number of documents in the RAG system.",
+        "operationId": "get_document_count_documents_count_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/models/switch": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Switch Model",
+        "description": "Switch the model used by the RAG system.",
+        "operationId": "switch_model_models_switch_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-API-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_switch_model_models_switch_post"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "RAG backend not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Health Check",
+        "description": "Liveness probe (no auth; does not initialize the RAG backend).",
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Readiness Check",
+        "description": "Readiness probe; 503 until the RAG backend has been initialized.",
+        "operationId": "readiness_check_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Body_add_file_files_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "metadata": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_add_file_files_post"
+      },
+      "Body_login_token_post": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "title": "Password"
+          }
+        },
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "Body_login_token_post"
+      },
+      "Body_switch_model_models_switch_post": {
+        "properties": {
+          "model_type": {
+            "type": "string",
+            "title": "Model Type"
+          },
+          "model_name": {
+            "type": "string",
+            "title": "Model Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model_type",
+          "model_name"
+        ],
+        "title": "Body_switch_model_models_switch_post"
+      },
+      "DocumentRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Document text content"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Document metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "DocumentRequest",
+        "description": "Request model for a single document."
+      },
+      "DocumentResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "metadata"
+        ],
+        "title": "DocumentResponse",
+        "description": "Response model for a document."
+      },
+      "DocumentsRequest": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentRequest"
+            },
+            "type": "array",
+            "title": "Documents",
+            "description": "List of documents to add"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "title": "DocumentsRequest",
+        "description": "Request model for adding multiple documents.",
+        "examples": [
+          {
+            "documents": [
+              {
+                "metadata": {
+                  "source": "docs"
+                },
+                "text": "MultiMind is an AI SDK."
+              }
+            ]
+          }
+        ]
+      },
+      "ErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail"
+        ],
+        "title": "ErrorResponse"
+      },
+      "GenerateRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Query string"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K",
+            "description": "Number of documents to use",
+            "default": 3
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature",
+            "description": "Generation temperature",
+            "default": 0.7
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens",
+            "description": "Maximum tokens to generate"
+          },
+          "filter_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter Metadata",
+            "description": "Metadata filter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "GenerateRequest",
+        "description": "Request model for generation.",
+        "examples": [
+          {
+            "query": "Summarize the indexed documents.",
+            "top_k": 3
+          }
+        ]
+      },
+      "GenerateResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentResponse"
+            },
+            "type": "array",
+            "title": "Documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "documents"
+        ],
+        "title": "GenerateResponse",
+        "description": "Response model for generation."
+      },
+      "QueryRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Query string"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K",
+            "description": "Number of results to return",
+            "default": 3
+          },
+          "filter_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Filter Metadata",
+            "description": "Metadata filter"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "QueryRequest",
+        "description": "Request model for querying.",
+        "examples": [
+          {
+            "query": "What is MultiMind?",
+            "top_k": 3
+          }
+        ]
+      },
+      "QueryResponse": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentResponse"
+            },
+            "type": "array",
+            "title": "Documents"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents",
+          "total"
+        ],
+        "title": "QueryResponse",
+        "description": "Response model for query results."
+      },
+      "TokenResponse": {
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "title": "Access Token"
+          },
+          "token_type": {
+            "type": "string",
+            "title": "Token Type",
+            "default": "bearer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "access_token"
+        ],
+        "title": "TokenResponse",
+        "description": "Response model for token."
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "JWT token issuance"
+    },
+    {
+      "name": "documents",
+      "description": "Document ingestion and management"
+    },
+    {
+      "name": "rag",
+      "description": "Retrieval and grounded generation"
+    },
+    {
+      "name": "models",
+      "description": "Model management"
+    },
+    {
+      "name": "system",
+      "description": "Health and readiness probes"
+    }
+  ]
+}

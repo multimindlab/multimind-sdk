@@ -8,8 +8,11 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
+from .. import __version__
 from ..models.base import BaseLLM
 from ..models.factory import ModelFactory
 from ..models.moe import Expert
@@ -17,20 +20,79 @@ from ..types import UnifiedRequest, UnifiedResponse
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Unified Multi-Modal API")
+app = FastAPI(
+    title="MultiMind Unified Multi-Modal API",
+    description=(
+        "Multi-modal processing (text, image, audio) via Mixture-of-Experts or the "
+        "multi-modal router. Provider API keys are read from the environment at "
+        "request time; optional client authentication uses the `X-API-Key` header "
+        "when the `API_KEYS` environment variable is set."
+    ),
+    version=__version__,
+    openapi_tags=[
+        {"name": "processing", "description": "Multi-modal MoE / router processing"},
+        {"name": "catalog", "description": "Model, workflow, and metrics discovery"},
+        {"name": "system", "description": "Health and readiness probes"},
+    ],
+)
 
-API_KEYS = os.getenv("API_KEYS", "").split(",") if os.getenv("API_KEYS") else []
+
+def _get_cors_origins() -> List[str]:
+    # CORS is off unless MULTIMIND_CORS_ORIGINS is set (comma-separated origins).
+    raw = os.getenv("MULTIMIND_CORS_ORIGINS", "")
+    return [o.strip() for o in raw.split(",") if o.strip()]
+
+
+if _get_cors_origins():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+def _get_api_keys() -> List[str]:
+    # Read at request time so the app can start without any keys configured.
+    raw = os.getenv("API_KEYS", "")
+    return [k.strip() for k in raw.split(",") if k.strip()]
 
 
 def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> bool:
     """Verify the API key from request header."""
-    if not API_KEYS:
+    api_keys = _get_api_keys()
+    if not api_keys:
         return True
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
-    if api_key not in API_KEYS:
+    if api_key not in api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+class HealthResponse(BaseModel):
+    status: str
+    version: str
+
+
+ERROR_RESPONSES = {
+    400: {"model": ErrorResponse, "description": "Invalid request (e.g. no experts available)"},
+    401: {"model": ErrorResponse, "description": "Missing or invalid API key"},
+    422: {"description": "Validation error"},
+    500: {"model": ErrorResponse, "description": "Internal server error"},
+}
+
+_PROCESS_EXAMPLE = {
+    "inputs": [{"content": "Summarize the benefits of RAG.", "modality": "text"}],
+    "use_moe": True,
+    "constraints": None,
+    "workflow": None,
+}
 
 
 # Reuse a single factory across requests to avoid re-creating model caches.
@@ -215,8 +277,16 @@ def _build_experts(modalities: List[str], router: Any) -> Dict[str, Expert]:
     return experts
 
 
-@app.post("/v1/process", response_model=UnifiedResponse)
-async def process_request(request: UnifiedRequest, authenticated: bool = Depends(verify_api_key)):
+@app.post(
+    "/v1/process",
+    response_model=UnifiedResponse,
+    tags=["processing"],
+    responses=ERROR_RESPONSES,
+)
+async def process_request(
+    request: UnifiedRequest = Body(..., examples=[_PROCESS_EXAMPLE]),
+    authenticated: bool = Depends(verify_api_key),
+):
     """Process multi-modal request using either MoE or router."""
     try:
         from ..router.multi_modal_router import MultiModalRequest
@@ -335,7 +405,7 @@ async def process_request(request: UnifiedRequest, authenticated: bool = Depends
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/v1/models")
+@app.get("/v1/models", tags=["catalog"], responses=ERROR_RESPONSES)
 async def list_models(authenticated: bool = Depends(verify_api_key)):
     """List available models and their capabilities."""
     router = _get_router()
@@ -346,16 +416,28 @@ async def list_models(authenticated: bool = Depends(verify_api_key)):
     return {"models": models}
 
 
-@app.get("/v1/workflows")
+@app.get("/v1/workflows", tags=["catalog"], responses=ERROR_RESPONSES)
 async def list_workflows(authenticated: bool = Depends(verify_api_key)):
     """List available MCP workflows."""
     workflow_registry = _get_workflow_registry()
     return {"workflows": workflow_registry.list_workflows()}
 
 
-@app.get("/v1/metrics")
+@app.get("/v1/metrics", tags=["catalog"], responses=ERROR_RESPONSES)
 async def get_metrics(authenticated: bool = Depends(verify_api_key)):
     """Get performance metrics for models."""
     router = _get_router()
 
     return {"costs": router.cost_tracker.costs, "performance": router.performance_metrics.metrics}
+
+
+@app.get("/health", response_model=HealthResponse, tags=["system"])
+async def health_check():
+    """Health check endpoint (no auth, no provider keys required)."""
+    return {"status": "healthy", "version": __version__}
+
+
+@app.get("/ready", response_model=HealthResponse, tags=["system"])
+async def readiness_check():
+    """Readiness probe; router and workflow registry are created lazily."""
+    return {"status": "ready", "version": __version__}

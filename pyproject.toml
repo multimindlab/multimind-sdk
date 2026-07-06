@@ -141,6 +141,8 @@ gateway = [
     "redis>=5.0.0",
     "python-jose>=3.3.0",
     "python-multipart>=0.0.6",
+    # gateway imports multimind.compliance, whose eager imports need numpy
+    "numpy>=1.21.0",
 ]
 
 # Development tools

@@ -2,6 +2,7 @@
 FastAPI-based API Gateway for MultiMind
 """
 
+import importlib.util
 import logging
 import os
 import time
@@ -13,7 +14,8 @@ from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from ..core.chat import ChatMessage, chat_manager
+from .. import __version__
+from ..core.chat import chat_manager
 from ..core.config import config
 from ..core.models import ModelResponse
 from ..core.monitoring import ModelHealth, monitor
@@ -26,34 +28,68 @@ logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
-    title="MultiMind API",
-    description="API Gateway for MultiMind Services",
-    version="1.0.0",
+    title="MultiMind API Gateway",
+    description=(
+        "Unified gateway for MultiMind services: chat, generation, model comparison, "
+        "chat sessions, monitoring, and compliance. Provider API keys are read from "
+        "the environment at request time; requests fail with 503 when no provider is "
+        "configured and 400 when the requested model is unavailable."
+    ),
+    version=__version__,
+    openapi_tags=[
+        {"name": "models", "description": "Model discovery and availability"},
+        {"name": "generation", "description": "Chat, generation, and model comparison"},
+        {"name": "sessions", "description": "Persistent chat sessions"},
+        {"name": "monitoring", "description": "Metrics and model health"},
+        {"name": "compliance", "description": "Compliance monitoring and reporting"},
+        {"name": "system", "description": "Health and readiness probes"},
+    ],
 )
 
 
-def _get_allowed_origins() -> List[str]:
-    """
-    Get allowed CORS origins from MULTIMIND_ALLOWED_ORIGINS (comma-separated).
-    Defaults to localhost-only when not set.
-    """
-    raw = os.getenv("MULTIMIND_ALLOWED_ORIGINS")
-    if not raw:
-        return ["http://localhost", "http://127.0.0.1", "http://localhost:3000"]
+def _get_cors_origins() -> List[str]:
+    # CORS is off unless MULTIMIND_CORS_ORIGINS (or legacy MULTIMIND_ALLOWED_ORIGINS)
+    # is set to a comma-separated list of origins.
+    raw = os.getenv("MULTIMIND_CORS_ORIGINS") or os.getenv("MULTIMIND_ALLOWED_ORIGINS") or ""
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
-# Add CORS middleware with restricted origins when using credentials
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if _get_cors_origins():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Initialize compliance routes
 init_compliance_app(app)
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+ERROR_RESPONSES = {
+    400: {"model": ErrorResponse, "description": "Requested model is not available"},
+    422: {"description": "Validation error"},
+    500: {"model": ErrorResponse, "description": "Internal server error"},
+    503: {"model": ErrorResponse, "description": "No models configured"},
+}
+
+
+def _model_status() -> Dict[str, bool]:
+    # Availability is evaluated per request so keys added to the environment
+    # after startup are picked up without a restart.
+    return {
+        "openai": bool(os.getenv("OPENAI_API_KEY") or config.openai.api_key),
+        "anthropic": bool(os.getenv("ANTHROPIC_API_KEY") or config.anthropic.api_key),
+        "ollama": bool(os.getenv("OLLAMA_API_BASE") or config.ollama.api_base),
+        "groq": bool(os.getenv("GROQ_API_KEY") or config.groq.api_key),
+        "huggingface": bool(os.getenv("HUGGINGFACE_API_KEY") or config.huggingface.api_key)
+        or importlib.util.find_spec("transformers") is not None,
+    }
 
 
 # Pydantic models for request/response
@@ -74,12 +110,30 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.7, description="Sampling temperature")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "messages": [{"role": "user", "content": "Hello!"}],
+                    "model": "openai",
+                    "temperature": 0.7,
+                }
+            ]
+        }
+    }
+
 
 class GenerateRequest(BaseModel):
     prompt: str = Field(..., description="Prompt to generate from")
     model: str = Field(default=config.default_model, description="Model to use")
     temperature: Optional[float] = Field(default=0.7, description="Sampling temperature")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"prompt": "Explain retrieval-augmented generation.", "model": "openai"}]
+        }
+    }
 
 
 class CompareRequest(BaseModel):
@@ -91,6 +145,12 @@ class CompareRequest(BaseModel):
     )
     temperature: Optional[float] = Field(default=0.7, description="Sampling temperature")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"prompt": "Write a limerick.", "models": ["openai", "anthropic"]}]
+        }
+    }
 
 
 class CompareResponse(BaseModel):
@@ -166,25 +226,38 @@ class TrainingRequest(BaseModel):
 
 # Dependency to validate model configuration
 async def validate_model_config():
-    status = config.validate(value={})
+    status = _model_status()
     if not any(status.values()):
         raise HTTPException(
-            status_code=500, detail="No models are properly configured. Please check your API keys."
+            status_code=503,
+            detail="No models are properly configured. Please check your API keys.",
         )
     return status
 
 
-@app.get("/")
+@app.get("/", tags=["system"])
 async def root():
     """Root endpoint with API information"""
     return {
-        "name": "MultiMind API",
-        "version": "1.0.0",
-        "models": list(config.validate(value={}).keys()),
+        "name": "MultiMind API Gateway",
+        "version": __version__,
+        "models": list(_model_status().keys()),
     }
 
 
-@app.get("/v1/models")
+@app.get("/health", tags=["system"])
+async def health_check():
+    """Health check endpoint (no auth, no provider keys required)."""
+    return {"status": "healthy", "version": __version__}
+
+
+@app.get("/ready", tags=["system"])
+async def readiness_check():
+    """Readiness probe; handlers are created lazily per request."""
+    return {"status": "ready", "version": __version__}
+
+
+@app.get("/v1/models", tags=["models"], responses=ERROR_RESPONSES)
 async def list_models(status: Dict = Depends(validate_model_config)):
     """List available models and their status"""
     return {
@@ -202,7 +275,7 @@ async def list_models(status: Dict = Depends(validate_model_config)):
     }
 
 
-@app.post("/v1/chat", response_model=ModelResponse)
+@app.post("/v1/chat", response_model=ModelResponse, tags=["generation"], responses=ERROR_RESPONSES)
 async def chat(request: ChatRequest, status: Dict = Depends(validate_model_config)):
     """Chat with a model"""
     try:
@@ -242,12 +315,16 @@ async def chat(request: ChatRequest, status: Dict = Depends(validate_model_confi
             )
             raise
 
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("Error in chat endpoint")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/v1/generate", response_model=ModelResponse)
+@app.post(
+    "/v1/generate", response_model=ModelResponse, tags=["generation"], responses=ERROR_RESPONSES
+)
 async def generate(request: GenerateRequest, status: Dict = Depends(validate_model_config)):
     """Generate text from a prompt"""
     try:
@@ -261,12 +338,16 @@ async def generate(request: GenerateRequest, status: Dict = Depends(validate_mod
 
         return response
 
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("Error in generate endpoint")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/v1/compare", response_model=CompareResponse)
+@app.post(
+    "/v1/compare", response_model=CompareResponse, tags=["generation"], responses=ERROR_RESPONSES
+)
 async def compare(request: CompareRequest, status: Dict = Depends(validate_model_config)):
     """Compare responses from multiple models"""
     try:
@@ -284,12 +365,16 @@ async def compare(request: CompareRequest, status: Dict = Depends(validate_model
 
         return CompareResponse(responses=responses)
 
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("Error in compare endpoint")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/v1/metrics", response_model=MetricsResponse)
+@app.get(
+    "/v1/metrics", response_model=MetricsResponse, tags=["monitoring"], responses=ERROR_RESPONSES
+)
 async def get_metrics(model: Optional[str] = None):
     """Get metrics for models"""
     try:
@@ -302,11 +387,13 @@ async def get_metrics(model: Optional[str] = None):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/v1/sessions", response_model=SessionResponse)
+@app.post(
+    "/v1/sessions", response_model=SessionResponse, tags=["sessions"], responses=ERROR_RESPONSES
+)
 async def create_session(request: SessionCreate):
     """Create a new chat session"""
     try:
-        session = await chat_manager.create_session(
+        session = chat_manager.create_session(
             model=request.model, system_prompt=request.system_prompt, metadata=request.metadata
         )
         return SessionResponse(
@@ -321,31 +408,34 @@ async def create_session(request: SessionCreate):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/v1/sessions", response_model=List[SessionResponse])
+@app.get(
+    "/v1/sessions",
+    response_model=List[SessionResponse],
+    tags=["sessions"],
+    responses=ERROR_RESPONSES,
+)
 async def list_sessions():
     """List all chat sessions"""
     try:
-        sessions = await chat_manager.list_sessions()
-        return [
-            SessionResponse(
-                session_id=session.session_id,
-                model=session.model,
-                created_at=session.created_at,
-                updated_at=session.updated_at,
-                message_count=len(session.messages),
-            )
-            for session in sessions
-        ]
+        sessions = chat_manager.list_sessions()
+        return [SessionResponse(**session) for session in sessions]
     except Exception:
         logger.exception("Error listing sessions")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.get("/v1/sessions/{session_id}")
+@app.get(
+    "/v1/sessions/{session_id}",
+    tags=["sessions"],
+    responses={
+        **ERROR_RESPONSES,
+        404: {"model": ErrorResponse, "description": "Session not found"},
+    },
+)
 async def get_session(session_id: str):
     """Get a specific chat session"""
     try:
-        session = await chat_manager.get_session(session_id)
+        session = chat_manager.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
         return {
@@ -371,19 +461,26 @@ async def get_session(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/v1/sessions/{session_id}/messages")
+@app.post(
+    "/v1/sessions/{session_id}/messages",
+    tags=["sessions"],
+    responses={
+        **ERROR_RESPONSES,
+        404: {"model": ErrorResponse, "description": "Session not found"},
+    },
+)
 async def add_message(session_id: str, message: ChatMessage, background_tasks: BackgroundTasks):
     """Add a message to a chat session"""
     try:
-        session = await chat_manager.get_session(session_id)
+        session = chat_manager.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
         # Add user message
-        await session.add_message(
+        session.add_message(
             role=message.role,
             content=message.content,
-            model=message.model,
+            model=message.model or session.model,
             metadata=message.metadata,
         )
 
@@ -395,7 +492,7 @@ async def add_message(session_id: str, message: ChatMessage, background_tasks: B
                     [{"role": msg.role, "content": msg.content} for msg in session.messages],
                     temperature=0.7,
                 )
-                await session.add_message(
+                session.add_message(
                     role="assistant",
                     content=response.content,
                     model=session.model,
@@ -403,7 +500,7 @@ async def add_message(session_id: str, message: ChatMessage, background_tasks: B
                 )
             except Exception:
                 logger.exception("Error getting model response")
-                await session.add_message(
+                session.add_message(
                     role="assistant",
                     content="Sorry, I encountered an error while processing your request.",
                     model=session.model,
@@ -420,11 +517,18 @@ async def add_message(session_id: str, message: ChatMessage, background_tasks: B
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.delete("/v1/sessions/{session_id}")
+@app.delete(
+    "/v1/sessions/{session_id}",
+    tags=["sessions"],
+    responses={
+        **ERROR_RESPONSES,
+        404: {"model": ErrorResponse, "description": "Session not found"},
+    },
+)
 async def delete_session(session_id: str):
     """Delete a chat session"""
     try:
-        success = await chat_manager.delete_session(session_id)
+        success = chat_manager.delete_session(session_id)
         if not success:
             raise HTTPException(status_code=404, detail="Session not found")
         return {"status": "session deleted"}
@@ -435,7 +539,7 @@ async def delete_session(session_id: str):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@app.post("/v1/health/check")
+@app.post("/v1/health/check", tags=["monitoring"], responses=ERROR_RESPONSES)
 async def check_health(model: Optional[str] = None):
     """Check health of models"""
     try:
@@ -445,8 +549,9 @@ async def check_health(model: Optional[str] = None):
             return {model: health}
         else:
             health_status = {}
-            for model_name in config.validate(value={}).keys():
-                if config.validate(value={})[model_name]:
+            status = _model_status()
+            for model_name, is_available in status.items():
+                if is_available:
                     handler = get_model_handler(model_name)
                     health = await monitor.check_health(model_name, handler)
                     health_status[model_name] = health
