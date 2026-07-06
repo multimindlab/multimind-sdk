@@ -18,7 +18,13 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 - ✅ **Ollama Integration** (`OllamaModel`) - Local model support
   - Example: `examples/cli/chat_ollama_cli.py`
 - ✅ **Mistral Integration** - `MistralAIModel` (direct Mistral API) and `MistralModel` (local via Ollama)
-- 📋 **100+ Model Support** - Many models are planned but not yet implemented
+- ✅ **OpenRouter Integration** (`OpenRouterModel`) - 300+ models from dozens of providers via one API key
+- ✅ **Together AI Integration** (`TogetherModel`) - Open-weight models with embeddings support
+- ✅ **xAI Integration** (`XAIModel`) - Grok models
+- ✅ **Perplexity Integration** (`PerplexityModel`) - Sonar online models
+- ✅ **Fireworks AI Integration** (`FireworksModel`) - Open-weight models with embeddings support
+- ✅ **Cerebras Integration** (`CerebrasModel`) - Fast inference on Cerebras hardware
+- ✅ **100+ Model Support** - 13 first-party providers (OpenAI, Claude, Gemini, Groq, Mistral, DeepSeek, Ollama, OpenRouter, Together, xAI, Perplexity, Fireworks, Cerebras) plus 300+ models via OpenRouter aggregation
 
 ### Model Features
 - ✅ **Multi-Model Wrapper** - Unified interface for multiple models
@@ -169,7 +175,7 @@ DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
   - Example: `examples/cli/prompt_chain.py`
 - ✅ **Task Runner** - Simple task execution
   - Example: `examples/cli/task_runner.py`
-- 🚧 **MCP (Model Composition Protocol)** - Basic executor and parser for MultiMind's internal workflow format. Note: this is not Anthropic's Model Context Protocol, which is not yet supported.
+- 🚧 **MCP (Model Composition Protocol)** - Basic executor and parser for MultiMind's internal workflow format. Note: this is not Anthropic's Model Context Protocol — that is supported via the `multimind-compliance` MCP server (`python -m multimind.mcp_server`, `[mcp]` extra, see `docs/mcp-server.md`).
   - Example: `examples/mcp/`
 - 🚧 **Pipeline Builder** - Basic pipeline construction
   - Example: `examples/pipeline/pipeline_example.py`

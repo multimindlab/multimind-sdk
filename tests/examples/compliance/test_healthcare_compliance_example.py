@@ -3,6 +3,10 @@ Tests for healthcare_compliance_example.py
 Comprehensive test suite for healthcare compliance monitoring and evaluation.
 """
 
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock, MagicMock

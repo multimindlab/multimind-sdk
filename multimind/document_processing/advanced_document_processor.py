@@ -411,10 +411,85 @@ class AdvancedDocumentProcessor:
         return chunks
 
     async def _extract_table_data(self, table: Dict[str, Any], **kwargs) -> TableData:
-        """Extract data from table."""
+        """
+        Extract data from a table dict. Supported input shapes:
+        - {"rows": [[...], ...], "header": [...]?} - pre-parsed rows (pandas required)
+        - {"pdf_path": str, "page": int?, "table_index": int?} - pdfplumber extraction
+        """
+        if not PANDAS_AVAILABLE:
+            raise NotImplementedError(
+                "Table extraction requires pandas. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
+        if "rows" in table:
+            df = self._dataframe_from_rows(table["rows"], table.get("header"))
+            return TableData(
+                content=df,
+                metadata=table.get("metadata", {}),
+                confidence=table.get("confidence", 1.0),
+                position=table.get("position", {}),
+                relationships=table.get("relationships", []),
+            )
+
+        if "pdf_path" in table:
+            return self._extract_pdf_table(table)
+
         raise NotImplementedError(
-            "Table extraction is not implemented yet; a table-transformer backend is required. "
-            "Subclass AdvancedDocumentProcessor and override _extract_table_data."
+            "Unsupported table input shape. Supported shapes: "
+            "{'rows': [...], 'header': [...]} for pre-parsed rows, or "
+            "{'pdf_path': str, 'page': int, 'table_index': int} for pdfplumber extraction."
+        )
+
+    def _dataframe_from_rows(self, rows: List[List[Any]], header: Optional[List[Any]] = None):
+        """Build a DataFrame from pre-parsed rows, optionally using the first row as header."""
+        if header is not None:
+            return pd.DataFrame(rows, columns=header)
+        if rows:
+            return pd.DataFrame(rows[1:], columns=rows[0])
+        return pd.DataFrame()
+
+    def _extract_pdf_table(self, table: Dict[str, Any]) -> TableData:
+        """Extract a table from a PDF page using pdfplumber."""
+        try:
+            import pdfplumber
+        except ImportError as e:
+            raise NotImplementedError(
+                "PDF table extraction requires pdfplumber. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            ) from e
+
+        page_number = table.get("page", 0)
+        table_index = table.get("table_index", 0)
+        with pdfplumber.open(table["pdf_path"]) as pdf:
+            if page_number >= len(pdf.pages):
+                raise ValueError(
+                    f"Page {page_number} out of range for {table['pdf_path']} "
+                    f"({len(pdf.pages)} pages)"
+                )
+            page = pdf.pages[page_number]
+            tables = page.extract_tables()
+
+        if not tables:
+            raise ValueError(f"No tables found on page {page_number} of {table['pdf_path']}")
+        if table_index >= len(tables):
+            raise ValueError(
+                f"Table index {table_index} out of range: page {page_number} has "
+                f"{len(tables)} table(s)"
+            )
+
+        df = self._dataframe_from_rows(tables[table_index])
+        return TableData(
+            content=df,
+            metadata={
+                "source": table["pdf_path"],
+                "page": page_number,
+                "table_index": table_index,
+                "tables_on_page": len(tables),
+            },
+            confidence=1.0,
+            position=table.get("position", {"page": page_number}),
+            relationships=[],
         )
 
     async def _extract_image_data(self, image: Dict[str, Any], **kwargs) -> ImageData:

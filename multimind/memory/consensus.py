@@ -1,24 +1,32 @@
 """
-Multi-Agent Consensus Memory implementation using RAFT protocol.
+Consensus Memory: local in-process replication with majority-vote reads.
+
+Networked RAFT consensus (leader election, vote/append RPCs, forwarding to a
+remote leader) is NOT implemented; those methods raise NotImplementedError
+instead of simulating agreement.
 """
 
-import asyncio
+import json
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import numpy as np
-
 from .base import BaseMemory
-from .vector_store import VectorStoreMemory
 
 logger = logging.getLogger(__name__)
 
+_NETWORK_RAFT_ERROR = (
+    "Networked RAFT consensus (leader election, RPCs) is not implemented. "
+    "ConsensusMemory supports local in-process replication only: call "
+    "attach_replicas([...]) to form a local cluster."
+)
+
 
 class NodeState(Enum):
-    """RAFT node states."""
+    """Consensus node states."""
 
     FOLLOWER = "follower"
     CANDIDATE = "candidate"
@@ -26,7 +34,7 @@ class NodeState(Enum):
 
 
 class LogEntry:
-    """RAFT log entry."""
+    """Replicated log entry."""
 
     def __init__(self, term: int, index: int, command: str, data: Dict[str, Any]):
         self.term = term
@@ -37,108 +45,101 @@ class LogEntry:
 
 
 class ConsensusMemory(BaseMemory):
-    """Memory implementation using RAFT consensus protocol."""
+    """
+    Memory replicated across in-process nodes with majority-vote reads.
+
+    A node standing alone (or after attach_replicas) acts as leader of its
+    local cluster and synchronously replicates every write to the attached
+    replicas. Reads can be checked across replicas with get_majority_memory,
+    which returns only values a strict majority of nodes agree on.
+    """
 
     def __init__(
         self,
         node_id: str,
-        nodes: List[str],
-        election_timeout: float = 0.15,
-        heartbeat_interval: float = 0.05,
+        nodes: Optional[List[str]] = None,
+        storage_path: Optional[str] = None,
         **kwargs,
     ):
         """Initialize consensus memory."""
         super().__init__(**kwargs)
 
-        # Node configuration
         self.node_id = node_id
-        self.nodes = nodes
-        self.election_timeout = election_timeout
-        self.heartbeat_interval = heartbeat_interval
+        self.nodes = nodes or [node_id]
+        self.storage_path = Path(storage_path) if storage_path else None
 
-        # RAFT state
-        self.state = NodeState.FOLLOWER
+        # Consensus state
+        self.state = NodeState.LEADER if len(self.nodes) <= 1 else NodeState.FOLLOWER
         self.current_term = 0
-        self.voted_for = None
+        self.voted_for: Optional[str] = None
         self.log: List[LogEntry] = []
-        self.commit_index = 0
-        self.last_applied = 0
+        self.commit_index = -1
+        self.last_applied = -1
 
-        # Leader state
+        # Local in-process replicas
+        self.replicas: List["ConsensusMemory"] = []
+
+        # Leader bookkeeping
         self.next_index = defaultdict(lambda: 0)
         self.match_index = defaultdict(lambda: 0)
 
-        # Component memories
-        self.vector_memory = VectorStoreMemory()
-
-        # Memory tracking
+        # Memory storage
         self.memories: Dict[str, Dict[str, Any]] = {}
-        self.consensus_state: Dict[str, Any] = defaultdict(dict)
 
         # Statistics
         self.total_entries = 0
         self.consensus_rounds = 0
         self.leader_changes = 0
-        self.last_heartbeat = datetime.now()
-        self._running = False
-        self._election_task: Optional[asyncio.Task] = None
-        self._heartbeat_task: Optional[asyncio.Task] = None
 
-    async def start_background_tasks(self) -> None:
-        """Start background RAFT tasks when an event loop is available."""
-        if self._running:
-            return
-        self._running = True
-        self._election_task = asyncio.create_task(self._run_election_timer())
-        self._heartbeat_task = asyncio.create_task(self._run_heartbeat())
+    # --- Local in-process cluster ---
 
-    async def stop_background_tasks(self) -> None:
-        """Stop background RAFT tasks gracefully."""
-        self._running = False
-        tasks = [t for t in [self._election_task, self._heartbeat_task] if t is not None]
-        for task in tasks:
-            task.cancel()
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
-        self._election_task = None
-        self._heartbeat_task = None
-
-    async def _ensure_background_tasks_started(self) -> None:
-        """Lazily start background tasks from async call sites."""
-        if not self._running:
-            await self.start_background_tasks()
+    def attach_replicas(self, replicas: List["ConsensusMemory"]) -> None:
+        """Form a local in-process cluster with this node as leader."""
+        self.replicas = [r for r in replicas if r is not self]
+        if self.state != NodeState.LEADER:
+            self.state = NodeState.LEADER
+            self.leader_changes += 1
+        self.nodes = [self.node_id] + [r.node_id for r in self.replicas]
+        for replica in self.replicas:
+            replica.state = NodeState.FOLLOWER
 
     async def add_memory(
         self, memory_id: str, content: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Add a new memory through consensus."""
-        await self._ensure_background_tasks_started()
-        if self.state == NodeState.LEADER:
-            # Create log entry
-            entry = LogEntry(
-                term=self.current_term,
-                index=len(self.log),
-                command="ADD_MEMORY",
-                data={"memory_id": memory_id, "content": content, "metadata": metadata},
-            )
+        """Add a new memory, replicated to all attached in-process replicas."""
+        await self._commit(
+            "ADD_MEMORY", {"memory_id": memory_id, "content": content, "metadata": metadata}
+        )
 
-            # Append to log
-            self.log.append(entry)
+    async def update_memory(self, memory_id: str, updates: Dict[str, Any]) -> None:
+        """Update a memory, replicated to all attached in-process replicas."""
+        await self._commit("UPDATE_MEMORY", {"memory_id": memory_id, "updates": updates})
 
-            # Replicate to followers
-            await self._replicate_log()
+    async def remove_memory(self, memory_id: str) -> None:
+        """Remove a memory, replicated to all attached in-process replicas."""
+        await self._commit("REMOVE_MEMORY", {"memory_id": memory_id})
 
-            # Apply if committed
-            if entry.index <= self.commit_index:
-                await self._apply_entry(entry)
-        else:
-            # Forward to leader
-            await self._forward_to_leader(
-                "ADD_MEMORY", {"memory_id": memory_id, "content": content, "metadata": metadata}
-            )
+    async def _commit(self, command: str, data: Dict[str, Any]) -> None:
+        """Append, replicate, and apply a log entry on the local cluster."""
+        if self.state != NodeState.LEADER:
+            raise NotImplementedError(_NETWORK_RAFT_ERROR)
+
+        entry = LogEntry(term=self.current_term, index=len(self.log), command=command, data=data)
+        self.log.append(entry)
+        acks = 1
+        for replica in self.replicas:
+            replica.log.append(entry)
+            await replica._apply_entry(entry)
+            replica.commit_index = entry.index
+            acks += 1
+        # In-process replication is synchronous, so majority always holds.
+        if acks > len(self.nodes) // 2:
+            self.commit_index = entry.index
+            await self._apply_entry(entry)
+        self.consensus_rounds += 1
 
     async def get_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
-        """Get a memory by ID."""
+        """Get a memory by ID from this node's local state."""
         if memory_id in self.memories:
             memory = self.memories[memory_id]
             memory["access_count"] += 1
@@ -146,57 +147,23 @@ class ConsensusMemory(BaseMemory):
             return memory
         return None
 
-    async def update_memory(self, memory_id: str, updates: Dict[str, Any]) -> None:
-        """Update a memory through consensus."""
-        await self._ensure_background_tasks_started()
-        if self.state == NodeState.LEADER:
-            # Create log entry
-            entry = LogEntry(
-                term=self.current_term,
-                index=len(self.log),
-                command="UPDATE_MEMORY",
-                data={"memory_id": memory_id, "updates": updates},
-            )
-
-            # Append to log
-            self.log.append(entry)
-
-            # Replicate to followers
-            await self._replicate_log()
-
-            # Apply if committed
-            if entry.index <= self.commit_index:
-                await self._apply_entry(entry)
-        else:
-            # Forward to leader
-            await self._forward_to_leader(
-                "UPDATE_MEMORY", {"memory_id": memory_id, "updates": updates}
-            )
-
-    async def remove_memory(self, memory_id: str) -> None:
-        """Remove a memory through consensus."""
-        await self._ensure_background_tasks_started()
-        if self.state == NodeState.LEADER:
-            # Create log entry
-            entry = LogEntry(
-                term=self.current_term,
-                index=len(self.log),
-                command="REMOVE_MEMORY",
-                data={"memory_id": memory_id},
-            )
-
-            # Append to log
-            self.log.append(entry)
-
-            # Replicate to followers
-            await self._replicate_log()
-
-            # Apply if committed
-            if entry.index <= self.commit_index:
-                await self._apply_entry(entry)
-        else:
-            # Forward to leader
-            await self._forward_to_leader("REMOVE_MEMORY", {"memory_id": memory_id})
+    async def get_majority_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Majority-vote read: return the content a strict majority of the local
+        cluster (this node + attached replicas) agrees on, or None.
+        """
+        nodes = [self] + self.replicas
+        votes = Counter()
+        for node in nodes:
+            memory = node.memories.get(memory_id)
+            if memory is not None:
+                votes[memory["content"]] += 1
+        if not votes:
+            return None
+        content, count = votes.most_common(1)[0]
+        if count > len(nodes) // 2:
+            return {"memory_id": memory_id, "content": content, "votes": count, "nodes": len(nodes)}
+        return None
 
     async def get_consensus_state(self) -> Dict[str, Any]:
         """Get current consensus state."""
@@ -208,6 +175,7 @@ class ConsensusMemory(BaseMemory):
             "commit_index": self.commit_index,
             "last_applied": self.last_applied,
             "log_length": len(self.log),
+            "replicas": [r.node_id for r in self.replicas],
         }
 
     async def get_stats(self) -> Dict[str, Any]:
@@ -222,83 +190,10 @@ class ConsensusMemory(BaseMemory):
             "commit_index": self.commit_index,
         }
 
-    async def _run_election_timer(self) -> None:
-        """Run election timer for leader election."""
-        try:
-            while self._running:
-                if self.state != NodeState.LEADER:
-                    # Check if election timeout
-                    if (
-                        datetime.now() - self.last_heartbeat
-                    ).total_seconds() > self.election_timeout:
-                        await self._start_election()
-                await asyncio.sleep(self.election_timeout)
-        except asyncio.CancelledError:
-            return
-
-    async def _run_heartbeat(self) -> None:
-        """Run heartbeat for leader."""
-        try:
-            while self._running:
-                if self.state == NodeState.LEADER:
-                    await self._send_heartbeat()
-                await asyncio.sleep(self.heartbeat_interval)
-        except asyncio.CancelledError:
-            return
-
-    async def _start_election(self) -> None:
-        """Start leader election."""
-        self.state = NodeState.CANDIDATE
-        self.current_term += 1
-        self.voted_for = self.node_id
-        self.leader_changes += 1
-
-        # Request votes
-        votes = 1  # Vote for self
-        for node in self.nodes:
-            if node != self.node_id:
-                # This would typically send a request_vote RPC
-                # For now, we'll simulate it
-                if await self._request_vote(node):
-                    votes += 1
-
-        # Check if won election
-        if votes > len(self.nodes) // 2:
-            self.state = NodeState.LEADER
-            self._initialize_leader_state()
-
-    async def _request_vote(self, node: str) -> bool:
-        """Request vote from a node."""
-        # This would typically be an RPC call
-        # For now, we'll simulate it
-        return np.random.random() > 0.5
-
-    async def _send_heartbeat(self) -> None:
-        """Send heartbeat to followers."""
-        for node in self.nodes:
-            if node != self.node_id:
-                # This would typically send an append_entries RPC
-                # For now, we'll simulate it
-                await self._append_entries(node)
-        self.last_heartbeat = datetime.now()
-
-    async def _append_entries(self, node: str) -> bool:
-        """Append entries to a follower."""
-        # This would typically be an RPC call
-        # For now, we'll simulate it
-        return True
-
-    async def _replicate_log(self) -> None:
-        """Replicate log to followers."""
-        for node in self.nodes:
-            if node != self.node_id:
-                await self._append_entries(node)
-        self.consensus_rounds += 1
-
     async def _apply_entry(self, entry: LogEntry) -> None:
-        """Apply a log entry."""
+        """Apply a log entry to local state."""
         if entry.command == "ADD_MEMORY":
-            memory = {
+            self.memories[entry.data["memory_id"]] = {
                 "id": entry.data["memory_id"],
                 "content": entry.data["content"],
                 "created_at": datetime.now(),
@@ -306,39 +201,99 @@ class ConsensusMemory(BaseMemory):
                 "access_count": 0,
                 "metadata": entry.data["metadata"],
             }
-            self.memories[entry.data["memory_id"]] = memory
-            await self.vector_memory.add(
-                entry.data["memory_id"], entry.data["content"], entry.data["metadata"]
-            )
             self.total_entries += 1
 
         elif entry.command == "UPDATE_MEMORY":
             if entry.data["memory_id"] in self.memories:
-                memory = self.memories[entry.data["memory_id"]]
-                memory.update(entry.data["updates"])
-                if "content" in entry.data["updates"]:
-                    await self.vector_memory.add(
-                        entry.data["memory_id"],
-                        entry.data["updates"]["content"],
-                        memory["metadata"],
-                    )
+                self.memories[entry.data["memory_id"]].update(entry.data["updates"])
 
         elif entry.command == "REMOVE_MEMORY":
-            if entry.data["memory_id"] in self.memories:
-                del self.memories[entry.data["memory_id"]]
-                await self.vector_memory.remove(entry.data["memory_id"])
+            self.memories.pop(entry.data["memory_id"], None)
 
         self.last_applied = entry.index
 
-    def _initialize_leader_state(self) -> None:
-        """Initialize leader state."""
-        for node in self.nodes:
-            if node != self.node_id:
-                self.next_index[node] = len(self.log)
-                self.match_index[node] = 0
+    # --- BaseMemory interface ---
+
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a message as a replicated memory."""
+        memory_id = f"message_{len(self.log)}"
+        await self.add_memory(
+            memory_id, message["content"], {"role": message.get("role", "user")}
+        )
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all stored memories as messages."""
+        messages = []
+        for memory in self.memories.values():
+            metadata = memory.get("metadata") or {}
+            messages.append(
+                {
+                    "role": metadata.get("role", "consensus_memory"),
+                    "content": memory["content"],
+                }
+            )
+        return messages
+
+    async def clear(self) -> None:
+        """Clear local state (does not touch replicas)."""
+        self.memories = {}
+        self.log = []
+        self.commit_index = -1
+        self.last_applied = -1
+        await self.save()
+
+    async def save(self) -> None:
+        """Save memories to persistent storage."""
+        if self.storage_path:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            serializable = {
+                memory_id: {
+                    "id": memory["id"],
+                    "content": memory["content"],
+                    "metadata": memory["metadata"],
+                    "access_count": memory["access_count"],
+                }
+                for memory_id, memory in self.memories.items()
+            }
+            with open(self.storage_path, "w") as f:
+                json.dump({"node_id": self.node_id, "memories": serializable}, f)
+
+    async def load(self) -> None:
+        """Load memories from persistent storage."""
+        if self.storage_path and self.storage_path.exists():
+            with open(self.storage_path) as f:
+                data = json.load(f)
+            for memory_id, memory in data.get("memories", {}).items():
+                self.memories[memory_id] = {
+                    "id": memory["id"],
+                    "content": memory["content"],
+                    "created_at": datetime.now(),
+                    "last_accessed": datetime.now(),
+                    "access_count": memory.get("access_count", 0),
+                    "metadata": memory.get("metadata"),
+                }
+
+    # --- Networked RAFT: not implemented, fail honest ---
+
+    async def start_background_tasks(self) -> None:
+        """Networked RAFT election/heartbeat loops are not implemented."""
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)
+
+    async def stop_background_tasks(self) -> None:
+        """No background tasks run; nothing to stop."""
+        return None
+
+    async def _start_election(self) -> None:
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)
+
+    async def _request_vote(self, node: str) -> bool:
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)
+
+    async def _send_heartbeat(self) -> None:
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)
+
+    async def _append_entries(self, node: str) -> bool:
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)
 
     async def _forward_to_leader(self, command: str, data: Dict[str, Any]) -> None:
-        """Forward request to leader."""
-        # This would typically forward to the current leader
-        # For now, we'll just log it
-        logger.debug("Forwarding %s to leader: %s", command, data)
+        raise NotImplementedError(_NETWORK_RAFT_ERROR)

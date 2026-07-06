@@ -68,11 +68,25 @@ pip install "multimind-sdk[gateway]"
 ```
 Adds: fastapi, uvicorn, redis, python-jose, python-multipart
 
+### MCP Server (Claude Desktop / Claude Code integration)
+```bash
+pip install "multimind-sdk[mcp]"
+```
+Adds: mcp (the Model Context Protocol SDK) — needed for `multimind serve-mcp` / the MCP server described in [docs/mcp-server.md](./docs/mcp-server.md)
+
+### Framework Integrations
+```bash
+pip install "multimind-sdk[langchain]"    # langchain-core
+pip install "multimind-sdk[llamaindex]"   # llama-index-core
+pip install "multimind-sdk[crewai]"       # crewai
+```
+Each adds only the corresponding framework's core package, for the adapters described in [docs/integrations.md](./docs/integrations.md).
+
 ### Everything
 ```bash
 pip install "multimind-sdk[all]"
 ```
-All of the above except `dev` and `finetune-gpu` (large download — includes torch and ML frameworks).
+All of the above except `dev`, `finetune-gpu`, and the framework extras (`langchain`, `llamaindex`, `crewai`) — large download; includes torch and ML frameworks.
 
 > Note: extras like `[router]`, `[llm]`, `[minimal]`, and `[fine-tuning]` documented in older versions of this guide do not exist. The router and LLM providers are part of the core install.
 
@@ -125,6 +139,10 @@ See the `Makefile` for shortcuts (`make lint`, `make format`, `make test`, ...).
 | `finetune-gpu` | multimind-sdk[finetune] + bitsandbytes (Linux only) |
 | `compliance` | cryptography, bcrypt, pycryptodome, plotly, dash, pandas |
 | `gateway` | fastapi, uvicorn, redis, python-jose, python-multipart |
+| `mcp` | mcp |
+| `langchain` | langchain-core |
+| `llamaindex` | llama-index-core |
+| `crewai` | crewai |
 | `dev` | pytest, ruff, mypy, pre-commit, bandit, pip-audit, build, twine, sphinx |
 
 ---

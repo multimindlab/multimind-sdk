@@ -2,6 +2,10 @@
 Tests for compliance_training_example.py
 """
 
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 import pytest
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock, MagicMock

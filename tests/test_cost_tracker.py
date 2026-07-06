@@ -14,6 +14,7 @@ from multimind.observability.cost_tracker import (
     cost_summary,
     estimate_tokens,
     get_default_tracker,
+    load_tracker,
     reset_default_tracker,
     track_costs,
 )
@@ -317,6 +318,79 @@ async def test_wrapper_persists_records(tmp_path):
     entry = json.loads(path.read_text().strip())
     assert entry["method"] == "generate"
     assert entry["estimated"] is True
+
+
+# --- chargeback ---------------------------------------------------------------
+
+
+def test_chargeback_math_and_untagged():
+    tracker = CostTracker()
+    tracker.record("openai", "gpt-4o", 100, 50, 0.003, tag="team-a")
+    tracker.record("openai", "gpt-4o", 10, 5, 0.001, tag="team-a", estimated=True)
+    tracker.record("claude", "claude-3", 20, 10, 0.006, tag="team-b")
+    tracker.record("mock", "m1", 1, 1, 0.0, unpriced=True)
+    data = tracker.chargeback()
+    assert data["calls"] == 4
+    assert data["total_cost"] == pytest.approx(0.01)
+    by_tag = data["by_tag"]
+    assert set(by_tag) == {"team-a", "team-b", "(untagged)"}
+    a = by_tag["team-a"]
+    assert a["calls"] == 2
+    assert a["cost"] == pytest.approx(0.004)
+    assert a["total_tokens"] == 165
+    assert a["estimated_calls"] == 1
+    assert a["share_pct"] == pytest.approx(40.0)
+    assert by_tag["team-b"]["share_pct"] == pytest.approx(60.0)
+    assert by_tag["(untagged)"]["unpriced_calls"] == 1
+    assert sum(g["share_pct"] for g in by_tag.values()) == pytest.approx(100.0)
+
+
+def test_chargeback_zero_cost_shares():
+    tracker = CostTracker()
+    tracker.record("mock", "m1", 1, 1, 0.0, unpriced=True)
+    data = tracker.chargeback()
+    assert data["total_cost"] == 0.0
+    assert data["by_tag"]["(untagged)"]["share_pct"] == 0.0
+
+
+def test_chargeback_period_filter():
+    tracker = CostTracker()
+    tracker.record("p", "m", 1, 1, 0.001, tag="june")
+    tracker.record("p", "m", 1, 1, 0.002, tag="july")
+    records = tracker.records
+    records[0].timestamp = "2026-06-15T00:00:00+00:00"
+    records[1].timestamp = "2026-07-01T00:00:00+00:00"
+    data = tracker.chargeback(period="2026-07")
+    assert data["calls"] == 1
+    assert set(data["by_tag"]) == {"july"}
+    assert data["by_tag"]["july"]["share_pct"] == pytest.approx(100.0)
+
+
+def test_report_chargeback_table():
+    tracker = CostTracker()
+    tracker.record("openai", "gpt-4o", 100, 50, 0.003, tag="team-a")
+    tracker.record("mock", "m1", 1, 1, 0.0, unpriced=True)
+    report = tracker.report_chargeback()
+    assert "Chargeback report" in report
+    assert "team-a" in report
+    assert "(untagged)" in report
+    assert "TOTAL" in report
+    assert "unpriced" in report
+
+
+def test_load_tracker_round_trip(tmp_path):
+    path = tmp_path / "costs.jsonl"
+    tracker = CostTracker(jsonl_path=path)
+    tracker.record(
+        "openai", "gpt-4o", 100, 50, 0.001, tag="job-1", method="generate", estimated=True
+    )
+    tracker.record("mock", "m1", 1, 2, 0.0, unpriced=True)
+    loaded = load_tracker(path)
+    assert [r.to_dict() for r in loaded.records] == [r.to_dict() for r in tracker.records]
+    assert loaded.chargeback() == tracker.chargeback()
+    # loaded tracker is detached from the file
+    loaded.record("p", "m", 1, 1, 0.001)
+    assert len(path.read_text().strip().splitlines()) == 2
 
 
 # --- thread safety ------------------------------------------------------------

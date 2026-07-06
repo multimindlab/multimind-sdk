@@ -23,8 +23,9 @@
 
 Most AI frameworks assume you'll handle compliance yourself. MultiMind doesn't.
 
-- **One API for all models** — OpenAI, Anthropic Claude, Google Gemini, Mistral, Groq, DeepSeek, and local models via Ollama (Mistral, Llama, and more) through a single async interface with streaming
+- **One API for all models** — OpenAI, Anthropic Claude, Google Gemini, Mistral, Groq, DeepSeek, xAI, Together, Perplexity, Fireworks, Cerebras, 300+ models via OpenRouter, and local models via Ollama through a single async interface with streaming
 - **Built-in compliance** — a drop-in PII guard that detects, redacts, and audits sensitive data on every model call, plus GDPR & HIPAA policy modeling and compliance dashboards as a first-class module, not an afterthought
+- **Govern the stack you already have** — don't migrate off LangChain, LlamaIndex, or CrewAI; wrap them. Run `multimind serve` and point any OpenAI-compatible app at it to add PII redaction, budgets, and audit with one line changed
 - **Governed by default** — cost budgets that stop overspending before the call, hallucination detection with sentence-level evidence, and audit trails — each a one-line wrapper around any model
 - **Switch models without losing knowledge** — move a live conversation from GPT to Claude to a local model; the context travels with you
 - **Adaptive routing** — route requests across providers by cost, latency, or fallback strategy
@@ -51,6 +52,7 @@ asyncio.run(main())
 ```
 
 > Requires `OPENAI_API_KEY` in your environment. The same pattern works for `ClaudeModel` (Anthropic, `ANTHROPIC_API_KEY`), `GeminiModel` (Google, `GEMINI_API_KEY`), `MistralAIModel` (`MISTRAL_API_KEY`), `GroqModel` (`GROQ_API_KEY`), `DeepSeekModel` (`DEEPSEEK_API_KEY`), and `OllamaModel` (local models — Mistral, Llama, and anything else Ollama serves).
+> Also: `OpenRouterModel` (`OPENROUTER_API_KEY` — 300+ models via one key), `TogetherModel` (`TOGETHER_API_KEY`), `XAIModel` (`XAI_API_KEY`), `PerplexityModel` (`PERPLEXITY_API_KEY`), `FireworksModel` (`FIREWORKS_API_KEY`), and `CerebrasModel` (`CEREBRAS_API_KEY`).
 
 ### Install what you need
 
@@ -77,6 +79,10 @@ pip install multimind-sdk[all]           # Everything
 | Cost tracking & budgets                              | Stable   | core               |
 | Hallucination detection (grounding checks)           | Stable   | core               |
 | Mid-conversation model switching (`ModelSession`)    | Stable   | core               |
+| Compliance proxy (`multimind serve`, OpenAI-compat)  | Stable   | `[gateway]`        |
+| Framework adapters (LangChain, LlamaIndex, CrewAI)   | Stable   | `[langchain]` etc. |
+| AI usage audit & cost chargeback (`multimind audit`) | Stable   | core               |
+| Anthropic MCP compliance server                      | Stable   | `[mcp]`            |
 | RAG pipeline (FAISS, Chroma)                         | Stable   | `[rag]`            |
 | Context transfer between models                      | Stable   | core               |
 | CLI interface                                        | Stable   | core               |
@@ -88,13 +94,30 @@ pip install multimind-sdk[all]           # Everything
 | Non-transformer models (Mamba, RWKV)                 | Beta     | `[finetune]`       |
 | Vector stores (40+ incl. Qdrant, Weaviate, Pinecone) | Beta     | `[vector-stores]`  |
 | Fine-tuning (LoRA)                                   | Beta     | `[finetune]`       |
-| Model Context Protocol (Anthropic MCP)               | Planned  | —                  |
 
-> Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. It is unrelated to Anthropic's Model Context Protocol, which is not yet supported.
+> Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. Anthropic's Model Context Protocol is supported separately via `multimind.mcp_server` (see [docs/mcp-server.md](docs/mcp-server.md)).
 
 Full status: [FEATURES.md](FEATURES.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
 
 ## Examples
+
+### Govern an app you already have — change one line
+
+Start the compliance proxy, then point any OpenAI-compatible client (LangChain, LlamaIndex, the raw `openai` SDK, anything) at it:
+
+```bash
+multimind serve --port 8400 --upstream openai --block-on ssn,credit_card --budget 25.00 --audit-log audit.jsonl
+```
+
+```python
+from openai import OpenAI
+
+# The ONLY change: base_url. Every call now gets PII redaction, budgets, and an audit trail.
+client = OpenAI(base_url="http://localhost:8400/v1", api_key="unused-upstream-key-is-server-side")
+client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": "..."}])
+```
+
+Prefer to stay in code? Wrap your existing framework objects instead — see [docs/integrations.md](docs/integrations.md) for LangChain, LlamaIndex, CrewAI, and OpenAI-SDK adapters.
 
 ### Guard any model against PII leaks
 

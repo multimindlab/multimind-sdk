@@ -14,6 +14,10 @@ Start here and pick the path that fits you.
 ## Guides
 
 - [Compliance](compliance.md) — GDPR/HIPAA compliance module ([quick version](compliance_quickstart.md))
+- [Guard proxy](guard-proxy.md) — `multimind serve`: govern any OpenAI-compatible app by changing one line
+- [Framework integrations](integrations.md) — add PII guard, budgets, and audit to LangChain, LlamaIndex, CrewAI, and the OpenAI SDK
+- [MCP server](mcp-server.md) — expose compliance tools to Claude Desktop / Claude Code and other MCP clients
+- [AI inventory & chargeback](ai-inventory.md) — `multimind audit`: find shadow AI usage and attribute costs
 - [Deployment](deployment.md) — Docker image, docker compose, fully local stack, production notes
 - [CLI](cli.md) — the `multimind` command-line interface
 - [RAG](rag.md) — retrieval-augmented generation pipeline

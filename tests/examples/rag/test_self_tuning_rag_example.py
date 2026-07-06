@@ -7,7 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from multimind.patterns.advanced_patterns import SelfImprovingRAG
+# The example builds a HybridRetriever whose default sparse retriever needs sklearn
+pytest.importorskip("sklearn", reason="HybridRetriever default sparse retriever needs sklearn")
+
+from multimind.patterns.advanced_patterns import SelfImprovingRAG  # noqa: E402
 
 # Ensure project root on sys.path for example imports
 project_root = Path(__file__).parent.parent.parent.parent

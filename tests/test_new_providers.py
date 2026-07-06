@@ -14,19 +14,31 @@ from pydantic import BaseModel
 
 from multimind.core.exceptions import ConfigurationError
 from multimind.models.base import BaseLLM
+from multimind.models.cerebras import CerebrasModel
 from multimind.models.claude import ClaudeModel
 from multimind.models.deepseek import DeepSeekModel
 from multimind.models.factory import ModelFactory
+from multimind.models.fireworks import FireworksModel
 from multimind.models.gemini import GeminiModel
 from multimind.models.groq import GroqModel
 from multimind.models.mistral import MistralAIModel
 from multimind.models.openai import OpenAIModel
+from multimind.models.openrouter import OpenRouterModel
+from multimind.models.perplexity import PerplexityModel
+from multimind.models.together import TogetherModel
+from multimind.models.xai import XAIModel
 
 PROVIDERS = [
     (GroqModel, "https://api.groq.com/openai/v1", "GROQ_API_KEY"),
     (MistralAIModel, "https://api.mistral.ai/v1", "MISTRAL_API_KEY"),
     (GeminiModel, "https://generativelanguage.googleapis.com/v1beta/openai/", "GEMINI_API_KEY"),
     (DeepSeekModel, "https://api.deepseek.com/v1", "DEEPSEEK_API_KEY"),
+    (OpenRouterModel, "https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    (TogetherModel, "https://api.together.xyz/v1", "TOGETHER_API_KEY"),
+    (XAIModel, "https://api.x.ai/v1", "XAI_API_KEY"),
+    (PerplexityModel, "https://api.perplexity.ai", "PERPLEXITY_API_KEY"),
+    (FireworksModel, "https://api.fireworks.ai/inference/v1", "FIREWORKS_API_KEY"),
+    (CerebrasModel, "https://api.cerebras.ai/v1", "CEREBRAS_API_KEY"),
 ]
 
 ALL_KEY_VARS = [
@@ -36,6 +48,12 @@ ALL_KEY_VARS = [
     "GEMINI_API_KEY",
     "GOOGLE_API_KEY",
     "DEEPSEEK_API_KEY",
+    "OPENROUTER_API_KEY",
+    "TOGETHER_API_KEY",
+    "XAI_API_KEY",
+    "PERPLEXITY_API_KEY",
+    "FIREWORKS_API_KEY",
+    "CEREBRAS_API_KEY",
 ]
 
 
@@ -96,7 +114,14 @@ class TestProviderConfig:
         assert await model.chat([{"role": "user", "content": "hi"}]) == "hello"
 
     async def test_embeddings_not_implemented(self, no_api_keys):
-        for model_cls in (GroqModel, DeepSeekModel):
+        for model_cls in (
+            GroqModel,
+            DeepSeekModel,
+            OpenRouterModel,
+            XAIModel,
+            PerplexityModel,
+            CerebrasModel,
+        ):
             model = model_cls(model_name="some-model", api_key="test-key")
             with pytest.raises(NotImplementedError):
                 await model.embeddings("hello")
@@ -105,6 +130,8 @@ class TestProviderConfig:
         for model_cls, expected_model in (
             (MistralAIModel, "mistral-embed"),
             (GeminiModel, "gemini-embedding-001"),
+            (TogetherModel, "BAAI/bge-large-en-v1.5"),
+            (FireworksModel, "nomic-ai/nomic-embed-text-v1.5"),
         ):
             model = model_cls(model_name="some-model", api_key="test-key")
             model.client = _mock_client()
@@ -122,6 +149,12 @@ class TestFactory:
             ("mistral", MistralAIModel),
             ("gemini", GeminiModel),
             ("deepseek", DeepSeekModel),
+            ("openrouter", OpenRouterModel),
+            ("together", TogetherModel),
+            ("xai", XAIModel),
+            ("perplexity", PerplexityModel),
+            ("fireworks", FireworksModel),
+            ("cerebras", CerebrasModel),
         ],
     )
     def test_factory_creates_provider(self, provider, model_cls, no_api_keys):

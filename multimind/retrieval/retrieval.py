@@ -51,9 +51,14 @@ class HybridRetriever:
         **kwargs,
     ):
         self.dense_retriever = dense_retriever
-        self.sparse_retriever = sparse_retriever or TfidfVectorizer(
-            max_features=10000, ngram_range=(1, 2)
-        )
+        if sparse_retriever is None:
+            if TfidfVectorizer is None:
+                raise ImportError(
+                    "HybridRetriever's default sparse retriever needs scikit-learn. "
+                    "Install with: pip install 'multimind-sdk[finetune]' or pass sparse_retriever="
+                )
+            sparse_retriever = TfidfVectorizer(max_features=10000, ngram_range=(1, 2))
+        self.sparse_retriever = sparse_retriever
         self.cross_encoder = cross_encoder
         self.alpha = alpha  # Weight for dense vs sparse scores
         self._fitted = False
