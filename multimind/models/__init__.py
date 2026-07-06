@@ -4,7 +4,11 @@ Models package for MultiMind SDK.
 
 from .base import BaseLLM
 from .claude import ClaudeModel
+from .deepseek import DeepSeekModel
 from .factory import ModelFactory
+from .gemini import GeminiModel
+from .groq import GroqModel
+from .mistral import MistralAIModel
 from .multi_model import MultiModelWrapper
 from .ollama import MistralModel, OllamaModel
 from .openai import OpenAIModel
@@ -25,6 +29,10 @@ __all__ = [
     "ClaudeModel",
     "OllamaModel",
     "MistralModel",
+    "GroqModel",
+    "MistralAIModel",
+    "GeminiModel",
+    "DeepSeekModel",
     "MultiModelWrapper",
 ]
 

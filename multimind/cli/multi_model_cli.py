@@ -141,19 +141,13 @@ def list_strategies():
 @click.option("--strategy", required=True, help="Strategy name to set")
 def set_strategy(strategy_type, strategy):
     """Set the active strategy for ensemble, fusion, or router."""
-    # This is a placeholder; in a real system, this would update config files or a running service
-    click.echo(f"Set {strategy_type} strategy to: {strategy}")
+    raise click.ClickException("set-strategy is not implemented yet")
 
 
 @cli.command()
 def show_config():
     """Show current configuration for ensemble, fusion, router, and memory."""
-    # Placeholder: In a real system, would load/display actual config
-    click.echo("Current configuration:")
-    click.echo("Ensemble: weighted_voting (adaptive)")
-    click.echo("Fusion: weighted_sum (dynamic)")
-    click.echo("Router: hybrid (feedback)")
-    click.echo("Memory: summary (LLM-based compression)")
+    raise click.ClickException("show-config is not implemented yet")
 
 
 @cli.command()
@@ -162,7 +156,7 @@ def show_config():
 @click.option("--value", required=True, help="Parameter value (JSON or string)")
 def set_param(strategy_type, param, value):
     """Set a parameter for a strategy (e.g., weight, threshold)."""
-    click.echo(f"Set {strategy_type} parameter {param} to {value}")
+    raise click.ClickException("set-param is not implemented yet")
 
 
 @cli.command()
@@ -170,16 +164,13 @@ def set_param(strategy_type, param, value):
 @click.option("--feedback", required=True, help="Feedback value (e.g., success, fail, numeric)")
 def submit_feedback(strategy_type, feedback):
     """Submit feedback for a strategy (e.g., after a request)."""
-    click.echo(f"Feedback for {strategy_type}: {feedback}")
+    raise click.ClickException("submit-feedback is not implemented yet")
 
 
 @cli.command()
 def visualize_feedback():
-    """Visualize feedback and adaptation stats (placeholder)."""
-    click.echo("Feedback stats: (placeholder)")
-    click.echo("Ensemble: success=10, fail=2, avg_weight=0.7")
-    click.echo("Fusion: avg_attention=0.5")
-    click.echo("Router: success=8, fail=1, avg_reward=0.8")
+    """Visualize feedback and adaptation stats."""
+    raise click.ClickException("visualize-feedback is not implemented yet")
 
 
 if __name__ == "__main__":

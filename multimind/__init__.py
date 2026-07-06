@@ -116,6 +116,10 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     # Models (extras live in their own families)
     "OllamaModel": ("multimind.models.ollama", None),
     "MistralModel": ("multimind.models.ollama", None),
+    "GroqModel": ("multimind.models.groq", None),
+    "MistralAIModel": ("multimind.models.mistral", None),
+    "GeminiModel": ("multimind.models.gemini", None),
+    "DeepSeekModel": ("multimind.models.deepseek", None),
     "ModelFactory": ("multimind.models.factory", None),
     "MultiModelWrapper": ("multimind.models.multi_model", None),
     "HuggingFaceModel": ("multimind.models.huggingface", "finetune"),
@@ -365,7 +369,11 @@ if TYPE_CHECKING:  # pragma: no cover
         SummaryMemory,
     )
     from multimind.models.base import BaseLLM  # noqa: F401
+    from multimind.models.deepseek import DeepSeekModel  # noqa: F401
     from multimind.models.factory import ModelFactory  # noqa: F401
+    from multimind.models.gemini import GeminiModel  # noqa: F401
+    from multimind.models.groq import GroqModel  # noqa: F401
+    from multimind.models.mistral import MistralAIModel  # noqa: F401
     from multimind.models.multi_model import MultiModelWrapper  # noqa: F401
     from multimind.models.ollama import MistralModel, OllamaModel  # noqa: F401
     from multimind.rag import (  # noqa: F401

@@ -41,18 +41,10 @@ def main():
         elif sys.argv[1] == "context-transfer":
             sys.argv.pop(1)  # Remove 'context-transfer' from arguments
             sys.exit(context_transfer_main())
-        else:
-            print("Usage: multimind [convert|context-transfer] [options]")
-            print(
-                "Run 'multimind convert --help' or 'multimind context-transfer --help' for more information"
-            )
-            sys.exit(1)
-    else:
-        print("Usage: multimind [convert|context-transfer] [options]")
-        print(
-            "Run 'multimind convert --help' or 'multimind context-transfer --help' for more information"
-        )
-        sys.exit(1)
+
+    # Everything else (chat, models, compliance, config, --help, ...) is
+    # handled by the Click group.
+    cli()
 
 
 # Export main CLI functions

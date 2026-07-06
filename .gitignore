@@ -114,3 +114,4 @@ site/
 multimind-docs/node_modules/
 multimind-docs/.next/
 multimind-docs/out/
+multimind-docs/build/

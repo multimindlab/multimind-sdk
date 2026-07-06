@@ -4,30 +4,34 @@ This roadmap outlines our development priorities and future features. For curren
 
 ---
 
-## 🎯 Current Status (Q1 2025)
+## 🎯 Current Status (July 2026)
 
 ### ✅ What Works Today
 - Core AI model integrations (OpenAI, Claude, Ollama)
-- Basic RAG pipelines with FAISS and Chroma
-- Basic AI agents with tools
+- RAG pipelines with FAISS and Chroma
+- Basic AI agents with tools (keyword-based tool routing)
+- Non-transformer inference: Mamba and RWKV (HuggingFace-backed)
 - CLI interface
 - Basic memory management
-- Basic compliance features
+- Compliance policy modeling (GDPR/HIPAA) with audit trails
 
 ### 🚧 In Active Development
-- Advanced vector database integrations
+- Additional LLM providers via OpenAI-compatible APIs
 - Enhanced RAG features
 - Advanced memory systems
 - Fine-tuning improvements
+
+### ⚠️ Honest Status Note
+The vector database expansion listed as "high priority" in earlier versions of this roadmap (early 2025) has not happened: only ~8-10 of the many listed backends are implemented today (see [FEATURES.md](FEATURES.md)). The list below remains aspirational, not committed.
 
 ---
 
 ## 📋 Planned Features
 
-### 🔴 High Priority (Next 3-6 Months)
+### 🔴 High Priority
 
 #### Vector Database Expansion
-- **Goal**: Implement 10-15 most popular vector databases
+- **Goal**: Implement the most popular vector databases; carried over from 2025, still unimplemented
 - **Priority Backends**:
   - [ ] MongoDB Atlas (vector search)
   - [ ] Neo4j Vector
@@ -66,7 +70,7 @@ This roadmap outlines our development priorities and future features. For curren
 
 ---
 
-### 🟡 Medium Priority (6-12 Months)
+### 🟡 Medium Priority
 
 #### Advanced Fine-Tuning
 - [ ] QLoRA implementation
@@ -77,8 +81,8 @@ This roadmap outlines our development priorities and future features. For curren
 
 #### Compliance & Security Enhancements
 - [ ] Differential privacy implementation
-- [ ] Homomorphic encryption improvements
-- [ ] Zero-knowledge proofs (when dependencies available)
+- [ ] Homomorphic encryption (current code is a placeholder; not working today)
+- [ ] Zero-knowledge proofs (current code is a placeholder; when dependencies available)
 - [ ] Regulatory change detection
 - [ ] Advanced audit logging
 - [ ] Self-healing compliance systems
@@ -99,7 +103,7 @@ This roadmap outlines our development priorities and future features. For curren
 
 ---
 
-### 🟢 Future Innovations (12+ Months)
+### 🟢 Future Innovations
 
 #### Experimental Features
 - [ ] **Quantum Memory** (real quantum hardware integration)
@@ -144,29 +148,31 @@ These features were claimed in the README but are not feasible or will not be im
 
 ## 📊 Development Priorities
 
-### Phase 1: Stability (Q1-Q2 2025)
-1. Complete core vector database implementations
-2. Stabilize RAG pipeline
+### Phase 1: Stability (current, H2 2026)
+1. Truthful docs and honest feature status
+2. Stabilize the core: providers, RAG pipeline, agents
 3. Improve test coverage
 4. Fix bugs and improve error handling
 
-### Phase 2: Expansion (Q2-Q3 2025)
-1. Add 10-15 vector database backends
+### Phase 2: Expansion (after Phase 1)
+1. Additional providers and vector database backends
 2. Enhance agent framework
 3. Improve memory systems
 4. Advanced fine-tuning features
 
-### Phase 3: Enterprise (Q3-Q4 2025)
+### Phase 3: Enterprise (later)
 1. Compliance enhancements
 2. Monitoring and observability
 3. Workflow automation
 4. Enterprise integrations
 
-### Phase 4: Innovation (2026+)
+### Phase 4: Innovation (future)
 1. Experimental features
 2. Research integrations
 3. Advanced capabilities
 4. Developer experience improvements
+
+> The Phase 2-4 items were originally scheduled for 2025 and did not ship on that timeline. Phases are now sequenced by dependency, not by calendar quarter.
 
 ---
 
@@ -190,6 +196,6 @@ We welcome contributions! If you'd like to work on any of these features:
 
 ---
 
-> **Last Updated**: January 2025  
+> **Last Updated**: July 2026  
 > **Next Review**: Quarterly
 

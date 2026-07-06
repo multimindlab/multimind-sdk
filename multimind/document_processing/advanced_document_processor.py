@@ -2,6 +2,8 @@
 Advanced document processing with multi-modal support, table extraction, and structure analysis.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from enum import Enum
@@ -410,14 +412,14 @@ class AdvancedDocumentProcessor:
 
     async def _extract_table_data(self, table: Dict[str, Any], **kwargs) -> TableData:
         """Extract data from table."""
-        # Use table transformer to extract structure
-        # This is a placeholder implementation
-        return TableData(
-            content=pd.DataFrame(), metadata={}, confidence=0.0, position={}, relationships=[]
+        raise NotImplementedError(
+            "Table extraction is not implemented yet; a table-transformer backend is required. "
+            "Subclass AdvancedDocumentProcessor and override _extract_table_data."
         )
 
     async def _extract_image_data(self, image: Dict[str, Any], **kwargs) -> ImageData:
         """Extract data from image."""
-        # Process image with vision model
-        # This is a placeholder implementation
-        return ImageData(content=np.array([]), text="", metadata={}, objects=[], captions=[])
+        raise NotImplementedError(
+            "Image extraction is not implemented yet; a vision-model backend is required. "
+            "Subclass AdvancedDocumentProcessor and override _extract_image_data."
+        )

@@ -14,11 +14,11 @@ from multimind.memory import (
     KnowledgeGraphMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class ProjectManagementCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "project_management.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize event-sourced memory for task tracking
         self.task_tracking = EventSourcedMemory(

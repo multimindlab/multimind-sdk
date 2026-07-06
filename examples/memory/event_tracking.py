@@ -9,11 +9,11 @@ from typing import Dict, Any, List
 from datetime import datetime
 from multimind import MultiMind
 from multimind.memory import EventSourcedMemory
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 async def main():
     # Initialize the LLM
-    llm = OllamaLLM(model="mistral")
+    llm = OllamaModel(model_name="mistral")
     
     # Initialize EventSourcedMemory
     memory = EventSourcedMemory(

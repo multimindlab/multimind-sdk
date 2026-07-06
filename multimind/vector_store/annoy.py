@@ -92,11 +92,11 @@ class AnnoyBackend(VectorStoreBackend):
             meta = self.metadata[id_str]
             doc = self.documents[id_str]
             score = 1 / (1 + dist)
-            bm25_score = None
+            keyword_score = None
             # Hybrid search
             if self.enable_hybrid_search and query_text:
-                bm25_score = self._bm25_score(query_text, doc.get("content", ""))
-                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
+                keyword_score = self._token_overlap_score(query_text, doc.get("content", ""))
+                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * keyword_score
             # Metadata filtering
             if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
                 continue
@@ -106,7 +106,7 @@ class AnnoyBackend(VectorStoreBackend):
             if explain:
                 result.explanation = {
                     "vector_score": 1 / (1 + dist),
-                    "bm25_score": bm25_score,
+                    "keyword_score": keyword_score,
                     "final_score": score,
                 }
             results.append(result)
@@ -116,8 +116,8 @@ class AnnoyBackend(VectorStoreBackend):
         self.log_metrics("search", len(results))
         return results
 
-    def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        # Simple BM25 placeholder (replace with real BM25 if needed)
+    def _token_overlap_score(self, query_text: str, doc_text: str) -> float:
+        # Naive token-overlap keyword score; not BM25
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
             len(doc_text.split()) + 1
         )

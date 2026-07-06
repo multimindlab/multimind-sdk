@@ -15,7 +15,6 @@ from multimind.llm.non_transformer_llm import (
     S4NDLLM,
     SSM_LLM,
     DiffusionTextLLM,
-    HyenaLLM,
     LiquidS4LLM,
     MambaLLM,
     MegaS4LLM,
@@ -37,7 +36,6 @@ BUILTIN_MODELS = {
     # SSMs and advanced non-transformers
     "mamba": MambaLLM,
     "ssm": SSM_LLM,
-    "hyena": HyenaLLM,
     "rwkv": RWKVLLM,
     "mega-s4": MegaS4LLM,
     "liquid-s4": LiquidS4LLM,
