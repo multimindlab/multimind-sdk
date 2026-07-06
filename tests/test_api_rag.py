@@ -1,6 +1,8 @@
 """API tests for multimind.gateway.rag_api using TestClient with a mocked RAG backend."""
 
 import pytest
+
+pytest.importorskip("fastapi", reason="requires multimind-sdk[gateway]")
 from fastapi.testclient import TestClient
 
 import multimind

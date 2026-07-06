@@ -3,6 +3,7 @@ Generative Memory implementation for periodic memory regeneration and reconstruc
 """
 
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -212,7 +213,7 @@ class GenerativeMemory(BaseMemory):
         }
 
     def _calculate_content_drift(self, original: str, current: str) -> float:
-        """Calculate the semantic drift between original and current content."""
-        # This is a placeholder for actual semantic drift calculation
-        # In practice, this would use embeddings or other semantic similarity metrics
-        return 0.0  # Placeholder
+        """Calculate the lexical drift between original and current content."""
+        if original == current:
+            return 0.0
+        return 1.0 - SequenceMatcher(None, original, current).ratio()

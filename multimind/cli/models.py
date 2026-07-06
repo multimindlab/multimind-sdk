@@ -13,8 +13,20 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.table import Table
 
-from ..gateway.models import get_model_handler
-from ..gateway.monitoring import monitor
+
+def _gateway():
+    # Gateway needs the [gateway] extras; import at command time so core
+    # installs can still run `multimind models list`
+    try:
+        from ..gateway.models import get_model_handler
+        from ..gateway.monitoring import monitor
+    except ImportError as exc:
+        raise click.ClickException(
+            "This command requires the gateway extras. "
+            "Install with: pip install 'multimind-sdk[gateway]'"
+        ) from exc
+    return get_model_handler, monitor
+
 
 console = Console()
 
@@ -72,6 +84,7 @@ def compare(prompt: str, models: List[str]):
 
     responses = {}
 
+    get_model_handler, _ = _gateway()
     with Progress() as progress:
         task = progress.add_task("[cyan]Comparing models...", total=len(models))
 
@@ -109,6 +122,7 @@ def compare(prompt: str, models: List[str]):
 def metrics(model: Optional[str]):
     """Show metrics and health status for models"""
     try:
+        _, monitor = _gateway()
         metrics = asyncio.run(monitor.get_metrics(model))
         if model:
             # get_metrics returns {"metrics": ..., "health": ...} for a single model
@@ -147,6 +161,7 @@ def metrics(model: Optional[str]):
         health_table.add_column("Latency", style="yellow")
         health_table.add_column("Last Check", style="blue")
 
+        _, monitor = _gateway()
         for model_name, health in monitor.health.items():
             status = "✅" if health.is_healthy else "❌"
             latency = f"{health.latency_ms:.0f}ms" if health.latency_ms else "N/A"
@@ -177,6 +192,7 @@ def health(model: Optional[str]):
                         f"[red]{missing} not set. Export it to check '{model}' health.[/red]"
                     )
                     sys.exit(1)
+                get_model_handler, monitor = _gateway()
                 handler = get_model_handler(model)
                 health = asyncio.run(monitor.check_health(model, handler))
                 status = {model: health}
@@ -188,6 +204,7 @@ def health(model: Optional[str]):
                     if not env_vars or not any(os.getenv(v) for v in env_vars):
                         continue
                     try:
+                        get_model_handler, monitor = _gateway()
                         handler = get_model_handler(model_name)
                         health = asyncio.run(monitor.check_health(model_name, handler))
                         status[model_name] = health

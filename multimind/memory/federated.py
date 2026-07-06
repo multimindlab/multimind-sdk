@@ -4,7 +4,7 @@ Differentially-Private Federated Memory implementation.
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
@@ -40,6 +40,7 @@ class FederatedMemory(BaseMemory):
         aggregation_rounds: int = 10,
         local_epochs: int = 3,
         batch_size: int = 32,
+        embedder: Optional[Callable[[str], np.ndarray]] = None,
         **kwargs,
     ):
         """Initialize federated memory."""
@@ -48,6 +49,9 @@ class FederatedMemory(BaseMemory):
         # Privacy parameters
         self.epsilon = epsilon
         self.delta = delta
+
+        # Embedding function for content without precomputed embeddings
+        self.embedder = embedder
 
         # Federated learning parameters
         self.num_clients = num_clients
@@ -95,8 +99,13 @@ class FederatedMemory(BaseMemory):
 
         # Get or create embedding
         if embedding is None:
-            # This would typically use an embedding model
-            embedding = np.random.randn(128)  # Placeholder
+            if self.embedder is None:
+                raise NotImplementedError(
+                    "No embedding provided and no embedder configured. "
+                    "Pass `embedding=` to add_memory or construct FederatedMemory "
+                    "with an `embedder` callable."
+                )
+            embedding = np.asarray(self.embedder(content))
 
         # Add noise to embedding for privacy
         noisy_embedding = self.noise_generator.add_noise(embedding)

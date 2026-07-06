@@ -4,8 +4,7 @@ import math
 
 import pytest
 
-# multimind.evaluation.__init__ pulls in advanced_evaluation/evaluation, which
-# need these heavy optional deps at import time.
+# AdvancedEvaluator needs the heavy eval stack; metrics.py itself is stdlib-only
 pytest.importorskip("transformers")
 pytest.importorskip("sentence_transformers")
 pytest.importorskip("sklearn")

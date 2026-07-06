@@ -22,7 +22,7 @@ This roadmap outlines our development priorities and future features. For curren
 - Fine-tuning improvements
 
 ### ⚠️ Honest Status Note
-The vector database expansion listed as "high priority" in earlier versions of this roadmap (early 2025) has not happened: only ~8-10 of the many listed backends are implemented today (see [FEATURES.md](FEATURES.md)). The list below remains aspirational, not committed.
+A July 2026 audit found ~44 of the ~60 vector-store backends are real client-library-backed implementations; the 11 remaining stubs now raise NotImplementedError instead of silently failing (see [FEATURES.md](FEATURES.md) for the full breakdown).
 
 ---
 
@@ -138,7 +138,7 @@ The vector database expansion listed as "high priority" in earlier versions of t
 
 These features were claimed in the README but are not feasible or will not be implemented:
 
-- ❌ **60+ Vector Databases** - Overly ambitious. Focusing on 15-20 most popular ones
+- ❌ **60+ Vector Databases** - Original claim retracted; a 2026 audit confirmed ~44 working client-backed backends, with the core ~18 recommended for production
 - ❌ **Quantum Memory (Hardware)** - Requires quantum hardware access. Keeping simulation only for educational purposes
 - ❌ **100+ AI Models** - Focusing on quality over quantity. Supporting major providers and popular models
 - ❌ **Self-Evolving Agents (Fully Autonomous)** - Research phase, not production-ready

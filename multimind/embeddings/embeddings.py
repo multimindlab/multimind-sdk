@@ -3,7 +3,7 @@ Embedding model implementations for RAG system.
 """
 
 import logging
-from collections.abc import AsyncGenerator, Coroutine
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
@@ -171,51 +171,26 @@ class OpenAIEmbedder(BaseLLM):
 
         return all_embeddings
 
-    def embeddings(
-        self, texts: List[str], reduce_dimensionality: bool = False
-    ) -> List[List[float]]:
-        """Generate embeddings with optional caching and dimensionality reduction."""
-        if self.cache_enabled:
-            uncached_texts = [text for text in texts if text not in self.cache]
-            uncached_embeddings = self._generate_embeddings(uncached_texts)
-            for text, embedding in zip(uncached_texts, uncached_embeddings):
-                self.cache[text] = embedding
-            embeddings = [self.cache[text] for text in texts]
-        else:
-            embeddings = self._generate_embeddings(texts)
-
-        if reduce_dimensionality:
-            from sklearn.decomposition import PCA
-
-            pca = PCA(n_components=50)  # Example: Reduce to 50 dimensions
-            embeddings = pca.fit_transform(embeddings).tolist()
-
-        return embeddings
-
-    def _generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        """Actual embedding generation logic."""
-        # Implement embedding generation logic here
-        pass
-
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
-        return None  # Placeholder implementation
+        return None
 
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the model."""
-        return "Generated text"  # Placeholder implementation
+        raise NotImplementedError(
+            "OpenAIEmbedder is an embedding-only model and does not support text generation."
+        )
 
     async def generate_stream(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Generated text stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "OpenAIEmbedder is an embedding-only model and does not support text generation."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def chat(
         self,
@@ -225,7 +200,9 @@ class OpenAIEmbedder(BaseLLM):
         **kwargs,
     ) -> str:
         """Generate chat completion from the model."""
-        return "Chat response"  # Placeholder implementation
+        raise NotImplementedError(
+            "OpenAIEmbedder is an embedding-only model and does not support chat."
+        )
 
     async def chat_stream(
         self,
@@ -233,19 +210,20 @@ class OpenAIEmbedder(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Chat response stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "OpenAIEmbedder is an embedding-only model and does not support chat."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def embeddings(
         self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
-        return [[0.0]]  # Placeholder implementation
+        if isinstance(text, str):
+            return (await self.embed([text], **kwargs))[0]
+        return await self.embed(text, **kwargs)
 
 
 class HuggingFaceEmbedder(BaseLLM):
@@ -316,23 +294,24 @@ class HuggingFaceEmbedder(BaseLLM):
 
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
-        return None  # Placeholder implementation
+        return None
 
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the model."""
-        return "Generated text"  # Placeholder implementation
+        raise NotImplementedError(
+            "HuggingFaceEmbedder is an embedding-only model and does not support text generation."
+        )
 
     async def generate_stream(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Generated text stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "HuggingFaceEmbedder is an embedding-only model and does not support text generation."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def chat(
         self,
@@ -342,7 +321,9 @@ class HuggingFaceEmbedder(BaseLLM):
         **kwargs,
     ) -> str:
         """Generate chat completion from the model."""
-        return "Chat response"  # Placeholder implementation
+        raise NotImplementedError(
+            "HuggingFaceEmbedder is an embedding-only model and does not support chat."
+        )
 
     async def chat_stream(
         self,
@@ -350,19 +331,20 @@ class HuggingFaceEmbedder(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Chat response stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "HuggingFaceEmbedder is an embedding-only model and does not support chat."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def embeddings(
         self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
-        return [[0.0]]  # Placeholder implementation
+        if isinstance(text, str):
+            return (await self.embed([text], **kwargs))[0]
+        return await self.embed(text, **kwargs)
 
 
 class SentenceT5Embedder(BaseLLM):
@@ -421,23 +403,24 @@ class SentenceT5Embedder(BaseLLM):
 
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
-        return None  # Placeholder implementation
+        return None
 
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the model."""
-        return "Generated text"  # Placeholder implementation
+        raise NotImplementedError(
+            "SentenceT5Embedder is an embedding-only model and does not support text generation."
+        )
 
     async def generate_stream(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate text stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Generated text stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "SentenceT5Embedder is an embedding-only model and does not support text generation."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def chat(
         self,
@@ -447,7 +430,9 @@ class SentenceT5Embedder(BaseLLM):
         **kwargs,
     ) -> str:
         """Generate chat completion from the model."""
-        return "Chat response"  # Placeholder implementation
+        raise NotImplementedError(
+            "SentenceT5Embedder is an embedding-only model and does not support chat."
+        )
 
     async def chat_stream(
         self,
@@ -455,19 +440,20 @@ class SentenceT5Embedder(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         **kwargs,
-    ) -> Coroutine[Any, Any, AsyncGenerator[str, None]]:
+    ) -> AsyncGenerator[str, None]:
         """Generate chat completion stream from the model."""
-
-        async def wrapper() -> AsyncGenerator[str, None]:
-            yield "Chat response stream"  # Placeholder implementation
-
-        return wrapper()
+        raise NotImplementedError(
+            "SentenceT5Embedder is an embedding-only model and does not support chat."
+        )
+        yield  # unreachable; makes this an async generator
 
     async def embeddings(
         self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
-        return [[0.0]]  # Placeholder implementation
+        if isinstance(text, str):
+            return (await self.embed([text], **kwargs))[0]
+        return await self.embed(text, **kwargs)
 
 
 from PIL import Image

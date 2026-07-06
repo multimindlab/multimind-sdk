@@ -10,14 +10,34 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from ..compliance.governance import GovernanceConfig, Regulation
-from ..gateway.compliance_api import (
-    generate_compliance_report,
-    get_compliance_alerts,
-    get_dashboard_metrics,
-    run_compliance_monitoring,
-    save_alert_rules,
-)
+
+def _compliance_backend():
+    # Needs [compliance] + [gateway] extras; imported at command time so
+    # core-install commands like scan-text keep working
+    try:
+        from ..compliance.governance import GovernanceConfig, Regulation
+        from ..gateway.compliance_api import (
+            generate_compliance_report,
+            get_compliance_alerts,
+            get_dashboard_metrics,
+            run_compliance_monitoring,
+            save_alert_rules,
+        )
+    except ImportError as exc:
+        raise click.ClickException(
+            "This command requires extras. Install with: "
+            "pip install 'multimind-sdk[compliance,gateway]'"
+        ) from exc
+    return {
+        "GovernanceConfig": GovernanceConfig,
+        "Regulation": Regulation,
+        "generate_compliance_report": generate_compliance_report,
+        "get_compliance_alerts": get_compliance_alerts,
+        "get_dashboard_metrics": get_dashboard_metrics,
+        "run_compliance_monitoring": run_compliance_monitoring,
+        "save_alert_rules": save_alert_rules,
+    }
+
 
 console = Console()
 
@@ -53,6 +73,9 @@ async def _run_compliance(config_path: str, output_path: str):
         config = json.load(f)
 
     # Initialize governance config
+    _b = _compliance_backend()
+    GovernanceConfig, Regulation = _b["GovernanceConfig"], _b["Regulation"]
+    run_compliance_monitoring = _b["run_compliance_monitoring"]
     governance_config = GovernanceConfig(
         organization_id=config["organization_id"],
         organization_name=config["organization_name"],
@@ -152,7 +175,7 @@ async def _generate_report(config_path: str, output_path: str):
         config = json.load(f)
 
     # Generate report
-    report = await generate_compliance_report(config)
+    report = await _compliance_backend()["generate_compliance_report"](config)
 
     # Save report
     if output_path:
@@ -181,7 +204,7 @@ def dashboard(organization_id: str, time_range: str, use_case: str, output: str)
 async def _show_dashboard(organization_id: str, time_range: str, use_case: str, output: str):
     """Show compliance dashboard."""
     # Get dashboard metrics
-    metrics = await get_dashboard_metrics(
+    metrics = await _compliance_backend()["get_dashboard_metrics"](
         organization_id=organization_id, time_range=time_range, use_case=use_case
     )
 
@@ -231,7 +254,7 @@ def alerts(organization_id: str, status: str, severity: str, output: str):
 async def _show_alerts(organization_id: str, status: str, severity: str, output: str):
     """Show compliance alerts."""
     # Get alerts
-    alerts = await get_compliance_alerts(
+    alerts = await _compliance_backend()["get_compliance_alerts"](
         organization_id=organization_id, status=status, severity=severity
     )
 
@@ -281,7 +304,7 @@ async def _configure_alerts(organization_id: str, config_path: str):
         alert_rules = json.load(f)
 
     # Configure alerts
-    await save_alert_rules(organization_id, alert_rules)
+    await _compliance_backend()["save_alert_rules"](organization_id, alert_rules)
     print("Alert rules configured successfully")
 
 

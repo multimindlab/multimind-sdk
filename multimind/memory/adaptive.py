@@ -149,11 +149,13 @@ class AdaptiveMemory(BaseMemory):
         }
 
     async def _probe_confidence(self, memory_id: str, query: str) -> float:
-        """Probe memory with a small context window to estimate confidence."""
-        # This is a placeholder for actual confidence estimation
-        # In practice, this would use the LLM to evaluate if the memory
-        # is sufficient to answer the query
-        return 0.8  # Placeholder
+        """Probe memory content to estimate confidence for the query."""
+        # Lexical proxy: fraction of query terms present in the memory content
+        query_terms = set(query.lower().split())
+        if not query_terms:
+            return 0.0
+        content_terms = set(self.memories[memory_id]["content"].lower().split())
+        return len(query_terms & content_terms) / len(query_terms)
 
     async def _adjust_context_size(self, memory_id: str, confidence: float) -> None:
         """Adjust context size based on confidence score."""

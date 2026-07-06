@@ -31,7 +31,7 @@ async def test_self_tuning_example_main_completes_without_errors():
 
 @pytest.mark.asyncio
 async def test_process_query_returns_response_and_metadata():
-    """SelfImprovingRAG should produce a placeholder response and metadata dict."""
+    """SelfImprovingRAG should produce the model's response and metadata dict."""
     rag = SelfImprovingRAG(
         model=MockLLM(),
         retriever=MockRetriever(),
@@ -44,7 +44,7 @@ async def test_process_query_returns_response_and_metadata():
 
     response, metadata = await rag.process_query("Explain self tuning RAG.")
 
-    assert response == "Response placeholder"
+    assert response == "mocked LLM response"
     assert isinstance(metadata, dict)
 
 
@@ -105,4 +105,3 @@ def test_negative_feedback_triggers_retraining_when_threshold_breached():
     assert tuner.trained_with is not None
     assert len(tuner.trained_with) == 3
     assert tuner.saved is True
-

@@ -17,7 +17,7 @@ This document provides an honest status of all features in MultiMind SDK. Each f
   - Example: `examples/api/model_wrapper.py`
 - ✅ **Ollama Integration** (`OllamaModel`) - Local model support
   - Example: `examples/cli/chat_ollama_cli.py`
-- 🚧 **Mistral Integration** - Mistral runs locally via Ollama (`MistralModel` wraps `OllamaModel`); there is no direct Mistral API client yet
+- ✅ **Mistral Integration** - `MistralAIModel` (direct Mistral API) and `MistralModel` (local via Ollama)
 - 📋 **100+ Model Support** - Many models are planned but not yet implemented
 
 ### Model Features

@@ -268,7 +268,7 @@ curl -X POST http://localhost:8000/v1/chat \
   -d '{"model": "openai", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
-Provider keys are read from the environment at request time; requests return 503 when no provider is configured.
+Provider keys are read from the environment at request time; a request naming an unconfigured model returns 400 with a clear error (503 if no provider at all is available).
 
 ## Fully local stack with docker compose
 

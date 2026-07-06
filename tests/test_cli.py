@@ -2,6 +2,7 @@
 
 import importlib
 import json
+from types import SimpleNamespace
 
 import pytest
 from click.testing import CliRunner
@@ -58,6 +59,29 @@ class FakeHandler:
         return FakeResponse()
 
 
+def _fake_monitor():
+    # The real gateway monitor works fine against FakeHandler in tests
+    from multimind.gateway.monitoring import monitor
+
+    return monitor
+
+
+def _fake_backend(**overrides):
+    from multimind.compliance.governance import GovernanceConfig, Regulation
+
+    backend = {
+        "GovernanceConfig": GovernanceConfig,
+        "Regulation": Regulation,
+        "generate_compliance_report": None,
+        "get_compliance_alerts": None,
+        "get_dashboard_metrics": None,
+        "run_compliance_monitoring": None,
+        "save_alert_rules": None,
+    }
+    backend.update(overrides)
+    return backend
+
+
 # ---------------------------------------------------------------- help tree
 
 
@@ -93,7 +117,7 @@ def test_chat_start_missing_key_fails_fast(runner, no_keys):
 
 def test_chat_start_single_prompt_mocked(runner, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(chat_module, "get_model_handler", lambda m: FakeHandler())
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (None, lambda m: FakeHandler()))
     result = runner.invoke(cli, ["chat", "start", "-m", "openai", "-p", "hi"])
     assert result.exit_code == 0
     assert "mocked response" in result.output
@@ -111,34 +135,38 @@ def test_chat_start_requires_model_option(runner):
 
 
 def test_chat_list_sessions_empty(runner, monkeypatch):
-    monkeypatch.setattr(chat_module.chat_manager, "list_sessions", lambda: [])
+    mgr = SimpleNamespace(list_sessions=lambda: [])
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (mgr, None))
     result = runner.invoke(cli, ["chat", "list-sessions"])
     assert result.exit_code == 0
     assert "No active sessions" in result.output
 
 
 def test_chat_load_missing_session(runner, monkeypatch):
-    monkeypatch.setattr(chat_module.chat_manager, "get_session", lambda s: None)
-    monkeypatch.setattr(chat_module.chat_manager, "load_session", lambda s: None)
+    mgr = SimpleNamespace(get_session=lambda s: None, load_session=lambda s: None)
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (mgr, None))
     result = runner.invoke(cli, ["chat", "load", "nosuch"])
     assert result.exit_code == 1
     assert "not found" in result.output
 
 
 def test_chat_save_missing_session(runner, monkeypatch):
-    monkeypatch.setattr(chat_module.chat_manager, "save_session", lambda s: False)
+    mgr = SimpleNamespace(save_session=lambda s: False)
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (mgr, None))
     result = runner.invoke(cli, ["chat", "save", "nosuch"])
     assert result.exit_code == 1
 
 
 def test_chat_delete_missing_session(runner, monkeypatch):
-    monkeypatch.setattr(chat_module.chat_manager, "delete_session", lambda s: False)
+    mgr = SimpleNamespace(delete_session=lambda s: False)
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (mgr, None))
     result = runner.invoke(cli, ["chat", "delete", "nosuch"])
     assert result.exit_code == 1
 
 
 def test_chat_delete_existing_session(runner, monkeypatch):
-    monkeypatch.setattr(chat_module.chat_manager, "delete_session", lambda s: True)
+    mgr = SimpleNamespace(delete_session=lambda s: True)
+    monkeypatch.setattr(chat_module, "_gateway", lambda: (mgr, None))
     result = runner.invoke(cli, ["chat", "delete", "sess1"])
     assert result.exit_code == 0
     assert "Deleted session" in result.output
@@ -184,7 +212,9 @@ def test_models_compare_no_keys_fails(runner, no_keys):
 
 def test_models_compare_mocked(runner, no_keys, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(models_module, "get_model_handler", lambda m: FakeHandler())
+    monkeypatch.setattr(
+        models_module, "_gateway", lambda: (lambda m: FakeHandler(), _fake_monitor())
+    )
     result = runner.invoke(cli, ["models", "compare", "hi", "-m", "openai"])
     assert result.exit_code == 0
     assert "mocked response" in result.output
@@ -210,7 +240,9 @@ def test_models_health_missing_key(runner, no_keys):
 
 def test_models_health_mocked(runner, no_keys, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setattr(models_module, "get_model_handler", lambda m: FakeHandler())
+    monkeypatch.setattr(
+        models_module, "_gateway", lambda: (lambda m: FakeHandler(), _fake_monitor())
+    )
     result = runner.invoke(cli, ["models", "health", "-m", "openai"])
     assert result.exit_code == 0
     assert "openai Health Check" in result.output
@@ -329,7 +361,11 @@ def test_compliance_run_compliance_mocked(runner, tmp_path, monkeypatch):
     async def fake_monitoring(cfg):
         return {"final_evaluation": {"score": 1.0, "recommendations": []}}
 
-    monkeypatch.setattr(compliance_module, "run_compliance_monitoring", fake_monitoring)
+    monkeypatch.setattr(
+        compliance_module,
+        "_compliance_backend",
+        lambda: _fake_backend(run_compliance_monitoring=fake_monitoring),
+    )
     result = runner.invoke(cli, ["compliance", "run-compliance", "-c", str(config_path)])
     assert result.exit_code == 0
     assert "Compliance Evaluation Results" in result.output
@@ -342,7 +378,9 @@ def test_compliance_configure_alerts_mocked(runner, tmp_path, monkeypatch):
     async def fake_save(org_id, rules):
         return None
 
-    monkeypatch.setattr(compliance_module, "save_alert_rules", fake_save)
+    monkeypatch.setattr(
+        compliance_module, "_compliance_backend", lambda: _fake_backend(save_alert_rules=fake_save)
+    )
     result = runner.invoke(
         cli, ["compliance", "configure-alerts", "-o", "org1", "-c", str(rules_path)]
     )
