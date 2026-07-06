@@ -228,11 +228,15 @@ class TokenResponse(BaseModel):
 
 
 # Authentication functions
+def _auth_configured() -> bool:
+    # Anonymous access is only acceptable when no auth mechanism is configured at all
+    return bool(_get_api_keys()) or bool(_get_jwt_secret())
+
+
 def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> bool:
     """Verify API key."""
     api_keys = _get_api_keys()
-    if not api_keys:
-        # If no API keys configured, allow access (for development)
+    if not _auth_configured():
         return True
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
@@ -279,8 +283,7 @@ def authenticate(
         except HTTPException:
             pass
 
-    # If no API keys configured, allow access (for development)
-    if not api_keys:
+    if not _auth_configured():
         return True
 
     raise HTTPException(status_code=401, detail="Authentication required")

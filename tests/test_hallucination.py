@@ -4,13 +4,7 @@ import logging
 
 import pytest
 
-# multimind.evaluation.__init__ pulls in advanced_evaluation/evaluation, which
-# need these heavy optional deps at import time.
-pytest.importorskip("transformers")
-pytest.importorskip("sentence_transformers")
-pytest.importorskip("sklearn")
-
-from multimind.evaluation.hallucination import (  # noqa: E402
+from multimind.evaluation.hallucination import (
     Claim,
     ClaimReport,
     GroundingReport,

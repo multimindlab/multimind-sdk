@@ -2,7 +2,9 @@
 Advanced RAG patterns including multi-hop retrieval, RAG-Fusion, Graph RAG, and self-improvement.
 """
 
+import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -14,6 +16,20 @@ from ..models.base import BaseLLM
 from .retrieval import HybridRetriever
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_json(text: str) -> Any:
+    """Extract and parse the first JSON object or array from model output."""
+    match = re.search(r"\{.*\}|\[.*\]", str(text), re.DOTALL)
+    if not match:
+        raise ValueError(f"No JSON found in model output: {text!r}")
+    return json.loads(match.group())
+
+
+def _format_docs(docs: List[Dict[str, Any]], max_chars: int = 500) -> str:
+    return "\n\n".join(
+        f"[{i + 1}] {str(doc.get('content', ''))[:max_chars]}" for i, doc in enumerate(docs)
+    )
 
 
 @dataclass
@@ -115,13 +131,24 @@ class MultiHopRetriever:
         self, query: str, docs: List[Dict[str, Any]], **kwargs
     ) -> Tuple[str, str, float]:
         """Generate reasoning and next query."""
-        # This is a placeholder implementation
-        # In practice, you would use an LLM to:
-        # 1. Analyze retrieved documents
-        # 2. Generate reasoning about relevance
-        # 3. Formulate next query
-        # 4. Assess confidence
-        return "Reasoning placeholder", "Next query placeholder", 0.8
+        prompt = (
+            "You are guiding a multi-hop retrieval process.\n"
+            f"Current query: {query}\n"
+            f"Retrieved documents:\n{_format_docs(docs)}\n\n"
+            "Respond with only a JSON object with keys:\n"
+            '"reasoning": why these documents do or do not answer the query,\n'
+            '"next_query": a follow-up query to retrieve missing information,\n'
+            '"confidence": a number between 0 and 1 for how fully the documents answer the query.'
+        )
+        response = await self.model.generate(prompt)
+        try:
+            parsed = _extract_json(response)
+            reasoning = str(parsed["reasoning"])
+            next_query = str(parsed["next_query"])
+            confidence = max(0.0, min(1.0, float(parsed["confidence"])))
+        except (ValueError, KeyError, TypeError) as e:
+            raise ValueError(f"Could not parse reasoning from model output: {response!r}") from e
+        return reasoning, next_query, confidence
 
 
 class RAGFusion:
@@ -147,24 +174,26 @@ class RAGFusion:
         # Generate query variations
         variations = await self._generate_query_variations(query, **kwargs)
 
-        # Retrieve for each variation
+        # Retrieve for each variation, keeping per-variation rankings
+        rankings = []
         all_results = []
         for variation in variations:
             results = await self.retriever.retrieve(query=variation, **kwargs)
+            rankings.append(results)
             all_results.extend(results)
 
         # Remove duplicates
         unique_results = self._remove_duplicates(all_results)
 
         # Calculate fusion scores
-        fusion_scores = await self._calculate_fusion_scores(
-            query=query, results=unique_results, **kwargs
-        )
+        fusion_scores = self._calculate_fusion_scores(rankings, unique_results)
 
         # Sort by fusion scores
-        sorted_results = [
-            result for _, result in sorted(zip(fusion_scores, unique_results), reverse=True)
-        ]
+        sorted_pairs = sorted(
+            zip(fusion_scores, unique_results), key=lambda pair: pair[0], reverse=True
+        )
+        sorted_scores = [score for score, _ in sorted_pairs]
+        sorted_results = [result for _, result in sorted_pairs]
 
         # Generate reasoning
         reasoning = await self._generate_fusion_reasoning(
@@ -175,15 +204,31 @@ class RAGFusion:
             query=query,
             original_results=all_results,
             fused_results=sorted_results,
-            fusion_scores=fusion_scores,
+            fusion_scores=sorted_scores,
             reasoning=reasoning,
         )
 
     async def _generate_query_variations(self, query: str, **kwargs) -> List[str]:
         """Generate query variations."""
-        # This is a placeholder implementation
-        # In practice, you would use an LLM to generate variations
-        return [query] + [f"{query} variation {i}" for i in range(self.num_queries - 1)]
+        num_variations = self.num_queries - 1
+        if num_variations <= 0:
+            return [query]
+
+        prompt = (
+            f"Generate {num_variations} alternative phrasings of the following search query. "
+            "Each variation should preserve the original intent but use different wording.\n"
+            f"Query: {query}\n\n"
+            "Respond with only the variations, one per line, without numbering."
+        )
+        response = await self.model.generate(prompt)
+        variations = []
+        for line in str(response).splitlines():
+            cleaned = re.sub(r"^\s*(?:\d+[.)]\s*|[-*]\s*)", "", line).strip()
+            if cleaned and cleaned != query:
+                variations.append(cleaned)
+        if not variations:
+            raise ValueError(f"Could not parse query variations from model output: {response!r}")
+        return [query] + variations[:num_variations]
 
     def _remove_duplicates(self, results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Remove duplicate results."""
@@ -195,23 +240,31 @@ class RAGFusion:
                 unique.append(result)
         return unique
 
-    async def _calculate_fusion_scores(
-        self, query: str, results: List[Dict[str, Any]], **kwargs
+    def _calculate_fusion_scores(
+        self,
+        rankings: List[List[Dict[str, Any]]],
+        unique_results: List[Dict[str, Any]],
+        rrf_k: int = 60,
     ) -> List[float]:
-        """Calculate fusion scores for results."""
-        # This is a placeholder implementation
-        # In practice, you would use:
-        # 1. Cross-encoder for relevance
-        # 2. Diversity scoring
-        # 3. Position-based scoring
-        return [0.5] * len(results)
+        """Calculate reciprocal rank fusion scores across per-variation rankings."""
+        scores: Dict[Any, float] = {}
+        for ranking in rankings:
+            for rank, result in enumerate(ranking):
+                scores[result["id"]] = scores.get(result["id"], 0.0) + 1.0 / (rrf_k + rank + 1)
+        return [scores.get(result["id"], 0.0) for result in unique_results]
 
     async def _generate_fusion_reasoning(
         self, query: str, results: List[Dict[str, Any]], **kwargs
     ) -> str:
         """Generate reasoning about fusion results."""
-        # This is a placeholder implementation
-        return "Fusion reasoning placeholder"
+        if not results:
+            return "No results were retrieved for the query or its variations."
+        prompt = (
+            f"Query: {query}\n"
+            f"Top fused retrieval results:\n{_format_docs(results[:5])}\n\n"
+            "Briefly explain why these results are relevant to the query."
+        )
+        return str(await self.model.generate(prompt))
 
 
 class GraphRAG:
@@ -287,17 +340,39 @@ class GraphRAG:
         self, doc: Dict[str, Any], **kwargs
     ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         """Extract entities and relationships from document."""
-        # This is a placeholder implementation
-        # In practice, you would use:
-        # 1. Named entity recognition
-        # 2. Relation extraction
-        # 3. Knowledge graph construction
-        return [], []
+        prompt = (
+            "Extract entities and relationships from the following document.\n"
+            f"Document:\n{str(doc.get('content', ''))[:2000]}\n\n"
+            "Respond with only a JSON object of the form:\n"
+            '{"entities": [{"id": "<unique-id>", "name": "<name>", "type": "<type>"}],\n'
+            ' "relationships": [{"source": "<entity-id>", "target": "<entity-id>", '
+            '"type": "<relation>"}]}'
+        )
+        response = await self.model.generate(prompt)
+        try:
+            parsed = _extract_json(response)
+            entities = list(parsed["entities"])
+            relationships = list(parsed["relationships"])
+        except (ValueError, KeyError, TypeError) as e:
+            raise ValueError(
+                f"Could not parse knowledge extraction from model output: {response!r}"
+            ) from e
+        return entities, relationships
 
     async def _extract_entities(self, query: str, **kwargs) -> List[Dict[str, Any]]:
         """Extract entities from query."""
-        # This is a placeholder implementation
-        return []
+        prompt = (
+            "Extract the entities mentioned in the following query.\n"
+            f"Query: {query}\n\n"
+            "Respond with only a JSON array of the form:\n"
+            '[{"id": "<unique-id>", "name": "<name>", "type": "<type>"}]'
+        )
+        response = await self.model.generate(prompt)
+        try:
+            entities = list(_extract_json(response))
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Could not parse entities from model output: {response!r}") from e
+        return entities
 
     def _find_documents_with_entity(self, entity: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Find documents containing entity."""
@@ -399,15 +474,45 @@ class SelfImprovingRAG:
         self, query: str, docs: List[Dict[str, Any]], memory: List[Dict[str, Any]], **kwargs
     ) -> Tuple[str, Dict[str, Any]]:
         """Generate response with context."""
-        # This is a placeholder implementation
-        return "Response placeholder", {}
+        sections = []
+        if memory:
+            sections.append(f"Conversation memory:\n{_format_docs(memory)}")
+        if docs:
+            sections.append(f"Retrieved documents:\n{_format_docs(docs)}")
+        context = "\n\n".join(sections) if sections else "No context available."
+
+        prompt = (
+            "Answer the question using the provided context. "
+            "If the context is insufficient, say so.\n\n"
+            f"{context}\n\n"
+            f"Question: {query}"
+        )
+        response = str(await self.model.generate(prompt))
+        return response, {"num_docs": len(docs), "num_memory_items": len(memory)}
 
     async def _evaluate_response(
         self, query: str, response: str, docs: List[Dict[str, Any]], **kwargs
     ) -> Dict[str, Any]:
         """Evaluate response quality."""
-        # This is a placeholder implementation
-        return {"relevance": 0.8, "faithfulness": 0.9, "coherence": 0.85}
+        prompt = (
+            "Evaluate the following response.\n"
+            f"Question: {query}\n"
+            f"Context documents:\n{_format_docs(docs)}\n"
+            f"Response: {response}\n\n"
+            "Rate each criterion between 0 and 1 and respond with only a JSON object:\n"
+            '{"relevance": <0-1>, "faithfulness": <0-1>, "coherence": <0-1>}'
+        )
+        raw = await self.model.generate(prompt)
+        try:
+            parsed = _extract_json(raw)
+            return {
+                key: max(0.0, min(1.0, float(parsed[key])))
+                for key in ("relevance", "faithfulness", "coherence")
+            }
+        except (ValueError, KeyError, TypeError):
+            # Unknown is reported as None rather than a fabricated score
+            logger.warning("Could not parse evaluation scores from model output: %r", raw)
+            return {"relevance": None, "faithfulness": None, "coherence": None}
 
     async def _learn_from_feedback(
         self, query: str, response: str, evaluation: Dict[str, Any], **kwargs

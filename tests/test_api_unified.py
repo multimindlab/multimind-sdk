@@ -1,6 +1,8 @@
 """API tests for multimind.api.unified_api using TestClient with a mocked router."""
 
 import pytest
+
+pytest.importorskip("fastapi", reason="requires multimind-sdk[gateway]")
 from fastapi.testclient import TestClient
 
 import multimind

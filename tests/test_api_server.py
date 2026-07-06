@@ -1,5 +1,8 @@
 """API tests for the MultiMindServer base app."""
 
+import pytest
+
+pytest.importorskip("fastapi", reason="requires multimind-sdk[gateway]")
 from fastapi.testclient import TestClient
 
 import multimind

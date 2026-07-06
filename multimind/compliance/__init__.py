@@ -51,11 +51,21 @@ try:
         NotificationType,
         PrivacyCompliance,
     )
+
+    _EXTRAS_IMPORT_ERROR = None
 except ImportError as exc:  # pragma: no cover - exercised on minimal installs
-    raise ImportError(
-        "Compliance features require additional dependencies. "
-        "Install with: pip install 'multimind-sdk[compliance]'"
-    ) from exc
+    # Degrade gracefully: the stdlib-only guard stays importable; gated names
+    # raise a helpful error at access time via __getattr__ below.
+    _EXTRAS_IMPORT_ERROR = exc
+
+
+def __getattr__(name: str):
+    if _EXTRAS_IMPORT_ERROR is not None and name in _EXTRAS_GATED_NAMES:
+        raise ImportError(
+            f"multimind.compliance.{name} requires additional dependencies. "
+            "Install with: pip install 'multimind-sdk[compliance]'"
+        ) from _EXTRAS_IMPORT_ERROR
+    raise AttributeError(f"module 'multimind.compliance' has no attribute {name!r}")
 
 
 def _log_legacy_warning(message: str) -> None:
@@ -104,6 +114,9 @@ __all__ = [
     # Training
     "ComplianceTrainer",
 ]
+
+_GUARD_NAMES = {"ComplianceGuard", "PIIDetector", "guard", "ComplianceViolationError", "AuditLog"}
+_EXTRAS_GATED_NAMES = set(__all__) - _GUARD_NAMES
 
 # Backward compatibility: import legacy CLI and API functions if available
 try:

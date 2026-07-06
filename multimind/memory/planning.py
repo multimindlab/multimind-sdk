@@ -243,9 +243,12 @@ class PlanningMemory(BaseMemory):
         self, state1: Dict[str, Any], state2: Dict[str, Any]
     ) -> float:
         """Calculate similarity between two states."""
-        # This is a placeholder for actual state similarity calculation
-        # In practice, this would use embeddings or other similarity metrics
-        return 0.8  # Placeholder
+        # Jaccard-style overlap: matching key/value pairs over the union of keys
+        keys = set(state1) | set(state2)
+        if not keys:
+            return 1.0
+        matches = sum(1 for key in keys if state1.get(key) == state2.get(key))
+        return matches / len(keys)
 
     async def _select_next_action(
         self,
@@ -255,9 +258,15 @@ class PlanningMemory(BaseMemory):
         constraints: Optional[Dict[str, Any]] = None,
     ) -> Optional[str]:
         """Select the best next action based on similar memories."""
-        # This is a placeholder for actual action selection
-        # In practice, this would use the LLM to select actions
-        return "action_placeholder"  # Placeholder
+        # Pick the most frequent action that previously succeeded in similar states
+        action_counts: Dict[str, int] = defaultdict(int)
+        for memory in similar_memories:
+            action = memory.get("action")
+            if action and memory.get("outcome", {}).get("success", False):
+                action_counts[action] += 1
+        if not action_counts:
+            return None
+        return max(action_counts, key=action_counts.get)
 
     async def _simulate_action(self, state: Dict[str, Any], action: str) -> Dict[str, Any]:
         """Simulate the outcome of an action."""

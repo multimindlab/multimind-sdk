@@ -38,7 +38,7 @@ try:
     PEFT_AVAILABLE = True
 except ImportError:
     PEFT_AVAILABLE = False
-    logger.warning("PEFT not available. Adapter features will be disabled.")
+    logger.debug("PEFT not available. Adapter features will be disabled.")
 
 
 def _scaffold_error(cls_name: str, method: str) -> NotImplementedError:
