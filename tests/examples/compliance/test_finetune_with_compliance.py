@@ -2,6 +2,10 @@
 Tests for finetune_with_compliance example.
 """
 
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 import pytest
 import asyncio
 import torch

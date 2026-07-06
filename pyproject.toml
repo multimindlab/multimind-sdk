@@ -145,6 +145,23 @@ gateway = [
     "numpy>=1.21.0",
 ]
 
+# Anthropic Model Context Protocol server (`python -m multimind.mcp_server`)
+mcp = [
+    "mcp>=1.0.0",
+]
+
+# Framework interop adapters (govern an existing stack instead of migrating).
+# Each adapter only needs its own framework; install the one(s) you use.
+langchain = [
+    "langchain-core>=0.3",
+]
+llamaindex = [
+    "llama-index-core>=0.11",
+]
+crewai = [
+    "crewai>=0.110",
+]
+
 # Development tools
 dev = [
     # Test runners (pytest>=9.0.3 clears CVE-2025-71176; suite verified on 9.x)
@@ -170,7 +187,7 @@ dev = [
 
 # Everything (sans dev/finetune-gpu)
 all = [
-    "multimind-sdk[rag,vector-stores,agents,memory,documents,finetune,compliance,gateway]",
+    "multimind-sdk[rag,vector-stores,agents,memory,documents,finetune,compliance,gateway,mcp]",
 ]
 
 [project.urls]

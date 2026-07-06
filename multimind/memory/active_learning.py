@@ -4,6 +4,7 @@ Active learning memory implementation.
 
 import json
 import logging
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -32,6 +33,10 @@ class ActiveLearningMemory(BaseMemory):
         reinforcement_threshold: float = 0.7,
         enable_optimization: bool = True,
         optimization_interval: int = 3600,  # 1 hour
+        learning_rate: float = 0.2,
+        initial_utility: float = 0.5,
+        eviction_utility: float = 0.05,
+        recency_half_life: float = 86400.0,  # seconds
     ):
         super().__init__(memory_key)
         self.llm = llm
@@ -45,6 +50,10 @@ class ActiveLearningMemory(BaseMemory):
         self.reinforcement_threshold = reinforcement_threshold
         self.enable_optimization = enable_optimization
         self.optimization_interval = optimization_interval
+        self.learning_rate = learning_rate
+        self.initial_utility = initial_utility
+        self.eviction_utility = eviction_utility
+        self.recency_half_life = recency_half_life
 
         # Initialize storage
         self.items: List[Dict[str, Any]] = []
@@ -67,6 +76,7 @@ class ActiveLearningMemory(BaseMemory):
                 "modified_at": datetime.now().isoformat(),
                 "feedback_count": 0,
                 "reinforcement_count": 0,
+                "utility": self.initial_utility,
             },
         }
 
@@ -136,6 +146,79 @@ class ActiveLearningMemory(BaseMemory):
 
         except Exception as e:
             logger.error(f"Error tracking feedback: {e}")
+
+    async def record_feedback(self, query: str, memory_ids: List[str], useful: bool) -> None:
+        """Record explicit usefulness feedback and adjust per-memory utility scores."""
+        timestamp = datetime.now().isoformat()
+        items_by_id = {item["id"]: item for item in self.items}
+        for memory_id in memory_ids:
+            item = items_by_id.get(memory_id)
+            if item is None:
+                continue
+            utility = item["metadata"].get("utility", self.initial_utility)
+            # Exponential move toward 1.0 (useful) or 0.0 (not useful)
+            if useful:
+                utility += self.learning_rate * (1.0 - utility)
+            else:
+                utility -= self.learning_rate * utility
+            item["metadata"]["utility"] = utility
+            item["metadata"]["feedback_count"] += 1
+            item["metadata"]["modified_at"] = timestamp
+
+            self.feedback.append(
+                {
+                    "id": f"feedback_{len(self.feedback)}",
+                    "item_id": memory_id,
+                    "type": "explicit",
+                    "useful": useful,
+                    "query": query,
+                    "confidence": 1.0,
+                    "timestamp": timestamp,
+                }
+            )
+
+        await self._evict_low_utility()
+        await self.save()
+
+    async def _evict_low_utility(self) -> None:
+        """Evict memories whose utility decayed below the eviction threshold."""
+        to_remove = [
+            item["id"]
+            for item in self.items
+            if item["metadata"].get("utility", self.initial_utility) < self.eviction_utility
+            and item["metadata"].get("feedback_count", 0) > 0
+        ]
+        for item_id in to_remove:
+            await self._remove_item(item_id)
+
+    def _recency_weight(self, item: Dict[str, Any], now: Optional[datetime] = None) -> float:
+        now = now or datetime.now()
+        age = (now - datetime.fromisoformat(item["timestamp"])).total_seconds()
+        return math.exp(-math.log(2) * max(age, 0.0) / self.recency_half_life)
+
+    @staticmethod
+    def _term_overlap(query: str, content: str) -> float:
+        query_terms = set(query.lower().split())
+        content_terms = set(content.lower().split())
+        if not query_terms or not content_terms:
+            return 0.0
+        return len(query_terms & content_terms) / len(query_terms)
+
+    async def retrieve(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Retrieve memories ranked by utility-weighted recency and term overlap."""
+        now = datetime.now()
+        scored = []
+        for item in self.items:
+            utility = item["metadata"].get("utility", self.initial_utility)
+            recency = self._recency_weight(item, now)
+            relevance = self._term_overlap(query, item["content"])
+            score = utility * recency * (0.5 + 0.5 * relevance)
+            scored.append((score, item))
+        scored.sort(key=lambda pair: pair[0], reverse=True)
+        return [
+            {**item, "retrieval_score": score}
+            for score, item in scored[:k]
+        ]
 
     async def _analyze_feedback(self) -> None:
         """Analyze feedback patterns and reinforcement."""

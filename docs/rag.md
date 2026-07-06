@@ -373,4 +373,4 @@ class RAG:
     ) -> "RAG"
 ```
 
-For more detailed API documentation, see the [API Reference](../api_reference/rag.md). 
+For more detailed API documentation, see the [API Reference](api_reference/rag.md). 

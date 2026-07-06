@@ -7,11 +7,13 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from .audit import audit
 from .chat import chat
 from .compliance import compliance
 from .config import config
 from .context_transfer import main as context_transfer_main
 from .models import models
+from .serve import serve
 
 console = Console()
 
@@ -27,6 +29,8 @@ cli.add_command(compliance)
 cli.add_command(chat)
 cli.add_command(models)
 cli.add_command(config)
+cli.add_command(serve)
+cli.add_command(audit)
 
 
 def _run_convert():
@@ -79,6 +83,8 @@ __all__ = [
     "chat",
     "models",
     "config",
+    "serve",
+    "audit",
     "convert_main",
     "context_transfer_main",
 ]

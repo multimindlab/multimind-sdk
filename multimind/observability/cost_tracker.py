@@ -267,9 +267,128 @@ class CostTracker:
             lines.append("note: " + "; ".join(notes))
         return "\n".join(lines)
 
+    def chargeback(self, period: Optional[str] = None) -> Dict[str, Any]:
+        """Per-tag cost attribution for chargeback reports.
+
+        ``period`` filters records by ISO-8601 timestamp prefix (e.g.
+        ``"2026-07"`` or ``"2026-07-06"``); ``None`` covers everything.
+        Untagged records are grouped under ``"(untagged)"``.
+        """
+        records = self.records
+        if period is not None:
+            records = [r for r in records if r.timestamp.startswith(period)]
+        by_tag: Dict[str, Dict[str, Any]] = {}
+        for r in records:
+            g = by_tag.setdefault(
+                r.tag if r.tag is not None else "(untagged)",
+                {
+                    "calls": 0,
+                    "input_tokens": 0,
+                    "output_tokens": 0,
+                    "total_tokens": 0,
+                    "cost": 0.0,
+                    "estimated_calls": 0,
+                    "unpriced_calls": 0,
+                },
+            )
+            g["calls"] += 1
+            g["input_tokens"] += r.input_tokens
+            g["output_tokens"] += r.output_tokens
+            g["total_tokens"] += r.total_tokens
+            g["cost"] += r.cost
+            g["estimated_calls"] += 1 if r.estimated else 0
+            g["unpriced_calls"] += 1 if r.unpriced else 0
+        total_cost = sum(g["cost"] for g in by_tag.values())
+        for g in by_tag.values():
+            g["share_pct"] = 100.0 * g["cost"] / total_cost if total_cost else 0.0
+        return {
+            "period": period,
+            "calls": len(records),
+            "total_cost": total_cost,
+            "by_tag": by_tag,
+        }
+
+    def report_chargeback(self, period: Optional[str] = None) -> str:
+        """Plain-text per-tag chargeback table (same style as :meth:`report`)."""
+        data = self.chargeback(period=period)
+        headers = ("tag", "calls", "tokens", "cost_usd", "share")
+        rows: List[Tuple[str, ...]] = []
+        by_tag = sorted(data["by_tag"].items(), key=lambda kv: kv[1]["cost"], reverse=True)
+        for tag, g in by_tag:
+            rows.append(
+                (
+                    tag,
+                    str(g["calls"]),
+                    str(g["total_tokens"]),
+                    f"{g['cost']:.6f}",
+                    f"{g['share_pct']:.1f}%",
+                )
+            )
+        total_tokens = sum(g["total_tokens"] for _, g in by_tag)
+        rows.append(
+            (
+                "TOTAL",
+                str(data["calls"]),
+                str(total_tokens),
+                f"{data['total_cost']:.6f}",
+                "100.0%" if data["total_cost"] else "0.0%",
+            )
+        )
+        widths = [max(len(h), *(len(row[i]) for row in rows)) for i, h in enumerate(headers)]
+        sep = "-+-".join("-" * w for w in widths)
+        title = "Chargeback report" + (f" (period {data['period']})" if data["period"] else "")
+        lines = [title, "=" * len(sep)]
+        lines.append(" | ".join(h.ljust(w) for h, w in zip(headers, widths)))
+        lines.append(sep)
+        for row in rows[:-1]:
+            lines.append(" | ".join(c.ljust(w) for c, w in zip(row, widths)))
+        lines.append(sep)
+        lines.append(" | ".join(c.ljust(w) for c, w in zip(rows[-1], widths)))
+        notes = []
+        estimated = sum(g["estimated_calls"] for _, g in by_tag)
+        unpriced = sum(g["unpriced_calls"] for _, g in by_tag)
+        if estimated:
+            notes.append(f"{estimated} call(s) with estimated token counts")
+        if unpriced:
+            notes.append(f"{unpriced} unpriced call(s) recorded at $0")
+        if notes:
+            lines.append("note: " + "; ".join(notes))
+        return "\n".join(lines)
+
     def reset(self) -> None:
         with self._lock:
             self._records.clear()
+
+
+def load_tracker(jsonl_path: Union[str, Path]) -> CostTracker:
+    """Rebuild a :class:`CostTracker` from a persisted JSONL cost log.
+
+    The returned tracker is detached from the file (reading it does not
+    re-append), so chargeback/cost reports can be run offline over
+    historical logs. Original timestamps are preserved.
+    """
+    tracker = CostTracker()
+    with open(jsonl_path, encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            entry = json.loads(line)
+            record = CostRecord(
+                provider=entry.get("provider", "unknown"),
+                model=entry.get("model", "unknown"),
+                input_tokens=int(entry.get("input_tokens", 0)),
+                output_tokens=int(entry.get("output_tokens", 0)),
+                cost=float(entry.get("cost", 0.0)),
+                tag=entry.get("tag"),
+                method=entry.get("method"),
+                estimated=bool(entry.get("estimated", False)),
+                unpriced=bool(entry.get("unpriced", False)),
+            )
+            if entry.get("timestamp"):
+                record.timestamp = str(entry["timestamp"])
+            tracker._records.append(record)
+    return tracker
 
 
 def _resolve_cost(model: Any, input_tokens: int, output_tokens: int) -> Tuple[float, bool]:

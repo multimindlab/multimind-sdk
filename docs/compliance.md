@@ -41,7 +41,7 @@ MultiMind provides a comprehensive compliance framework that includes:
 ## Installation
 
 ```bash
-pip install multimind[compliance]
+pip install "multimind-sdk[compliance]"
 ```
 
 ## Usage
@@ -51,14 +51,17 @@ pip install multimind[compliance]
 The compliance features can be accessed through the MultiMind CLI:
 
 ```bash
+# Scan text or a file for PII (offline, no config needed)
+multimind compliance scan-text "My email is jane.doe@corp.com"
+
 # Run compliance monitoring
-multimind compliance run --config config.json --output results.json
+multimind compliance run-compliance --config config.json --output results.json
 
 # Run example scenarios
-multimind compliance example --type healthcare --use-case medical_diagnosis --output results.json
+multimind compliance run-example --type healthcare --use-case medical_diagnosis --output results.json
 
 # Generate compliance report
-multimind compliance report --config config.json --output report.json
+multimind compliance generate-report --config config.json --output report.json
 
 # Show compliance dashboard
 multimind compliance dashboard --organization-id org_123 --time-range 7d --use-case medical_diagnosis
@@ -73,8 +76,9 @@ multimind compliance configure-alerts --organization-id org_123 --config alert_r
 The compliance API is available through the MultiMind Gateway:
 
 ```bash
-# Start the API server
-multimind gateway start
+# Start the API server (requires the gateway extra)
+pip install "multimind-sdk[gateway]"
+python -m multimind.gateway.api
 ```
 
 #### Available Endpoints
@@ -244,13 +248,6 @@ Example alert configuration:
 
 ```bash
 pytest tests/compliance/
-```
-
-### Building Documentation
-
-```bash
-cd docs
-make html
 ```
 
 ## Contributing

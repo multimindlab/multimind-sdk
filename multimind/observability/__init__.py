@@ -4,6 +4,13 @@ Observability module for MultiMind SDK.
 This module provides monitoring and observability capabilities.
 """
 
+from .ai_inventory import (
+    AI_ENV_KEYS,
+    AI_PACKAGE_REGISTRY,
+    Finding,
+    InventoryReport,
+    scan_project,
+)
 from .cost_tracker import (
     Budget,
     BudgetExceededError,
@@ -13,6 +20,7 @@ from .cost_tracker import (
     cost_summary,
     estimate_tokens,
     get_default_tracker,
+    load_tracker,
     reset_default_tracker,
     track_costs,
 )
@@ -33,6 +41,12 @@ __all__ = [
     "cost_summary",
     "estimate_tokens",
     "get_default_tracker",
+    "load_tracker",
     "reset_default_tracker",
     "track_costs",
+    "AI_ENV_KEYS",
+    "AI_PACKAGE_REGISTRY",
+    "Finding",
+    "InventoryReport",
+    "scan_project",
 ]

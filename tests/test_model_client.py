@@ -1,3 +1,7 @@
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 import pytest
 import torch
 import torch.nn as nn

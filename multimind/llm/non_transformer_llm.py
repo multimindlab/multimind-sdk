@@ -895,18 +895,101 @@ for _LLM in [MambaLLM, H3LLM, RWKVLLM, SSM_LLM, CustomRNNLLM]:
 
 
 class QLoRALLM(NonTransformerLLM):
-    """Scaffold for QLoRA quantized fine-tuning: implement generate in a subclass."""
+    """
+    QLoRA wrapper: reloads the base HuggingFace model in 4-bit (bitsandbytes NF4)
+    and attaches LoRA adapters via peft. Requires the [finetune-gpu] extra
+    (torch, transformers, peft, bitsandbytes); raises NotImplementedError without it.
+    """
 
-    def __init__(self, base_llm, *args, **kwargs):
+    def __init__(
+        self,
+        base_llm,
+        *args,
+        lora_r: int = 16,
+        lora_alpha: int = 32,
+        lora_dropout: float = 0.05,
+        target_modules: Optional[List[str]] = None,
+        **kwargs,
+    ):
         super().__init__(base_llm.model_name, *args, **kwargs)
         self.base_llm = base_llm
+        self.lora_r = lora_r
+        self.lora_alpha = lora_alpha
+        self.lora_dropout = lora_dropout
+        self.target_modules = target_modules
+        self.peft_model = None
 
-    async def generate(self, prompt: str, **kwargs) -> str:
-        raise _scaffold_error(self.__class__.__name__, "generate")
+    def _require_deps(self):
+        try:
+            import bitsandbytes  # noqa: F401
+            import peft
+            import torch
+            import transformers
+        except ImportError as e:
+            raise NotImplementedError(
+                "QLoRALLM requires torch, transformers, peft, and bitsandbytes. "
+                "Install with: pip install 'multimind-sdk[finetune-gpu]'"
+            ) from e
+        return torch, transformers, peft
+
+    def apply_qlora(self, **load_kwargs):
+        """Reload the base model 4-bit quantized and wrap it with LoRA adapters."""
+        torch, transformers, peft = self._require_deps()
+        bnb_config = transformers.BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            self.model_name,
+            quantization_config=bnb_config,
+            device_map=load_kwargs.pop("device_map", "auto"),
+            **load_kwargs,
+        )
+        model = peft.prepare_model_for_kbit_training(model)
+        lora_config = peft.LoraConfig(
+            r=self.lora_r,
+            lora_alpha=self.lora_alpha,
+            lora_dropout=self.lora_dropout,
+            target_modules=self.target_modules,
+            bias="none",
+            task_type="CAUSAL_LM",
+        )
+        self.peft_model = peft.get_peft_model(model, lora_config)
+        return self.peft_model
+
+    def _get_tokenizer(self):
+        tokenizer = getattr(self.base_llm, "tokenizer", None)
+        if tokenizer is None:
+            raise NotImplementedError(
+                "QLoRALLM requires a base LLM exposing a HuggingFace tokenizer "
+                "(e.g. MambaLLM or RWKVLLM)."
+            )
+        return tokenizer
+
+    async def generate(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> str:
+        torch, _, _ = self._require_deps()
+        if self.peft_model is None:
+            self.apply_qlora()
+        tokenizer = self._get_tokenizer()
+        inputs = tokenizer(prompt, return_tensors="pt").to(self.peft_model.device)
+        gen_kwargs = {"temperature": temperature}
+        if max_tokens:
+            gen_kwargs["max_new_tokens"] = max_tokens
+        with torch.no_grad():
+            output = self.peft_model.generate(**inputs, **gen_kwargs)
+        return tokenizer.decode(output[0], skip_special_tokens=True)
 
 
 class CompacterLLM(NonTransformerLLM):
-    """Scaffold for Compacter parameter-efficient tuning: implement generate in a subclass."""
+    """
+    Scaffold for Compacter parameter-efficient tuning: implement generate in a subclass.
+    Note: peft does not ship a Compacter config (Compacter lives in the separate
+    `adapters` library), so this stays a fail-honest scaffold.
+    """
 
     def __init__(self, base_llm, *args, **kwargs):
         super().__init__(base_llm.model_name, *args, **kwargs)
