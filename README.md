@@ -17,12 +17,16 @@
 
 ---
 
+> **New to AI?** Start with the [plain-language getting started guide](docs/getting-started-non-technical.md) — no coding required.
+
 ## Why MultiMind?
 
 Most AI frameworks assume you'll handle compliance yourself. MultiMind doesn't.
 
 - **One API for all models** — OpenAI, Anthropic Claude, Google Gemini, Mistral, Groq, DeepSeek, and local models via Ollama (Mistral, Llama, and more) through a single async interface with streaming
 - **Built-in compliance** — a drop-in PII guard that detects, redacts, and audits sensitive data on every model call, plus GDPR & HIPAA policy modeling and compliance dashboards as a first-class module, not an afterthought
+- **Governed by default** — cost budgets that stop overspending before the call, hallucination detection with sentence-level evidence, and audit trails — each a one-line wrapper around any model
+- **Switch models without losing knowledge** — move a live conversation from GPT to Claude to a local model; the context travels with you
 - **Adaptive routing** — route requests across providers by cost, latency, or fallback strategy
 - **RAG that works** — FAISS and Chroma with document processing out of the box; 40+ client-backed vector stores including Pinecone, Qdrant, Weaviate, Milvus, pgvector, and LanceDB
 - **Beyond transformers** — run Mamba and RWKV models through the same interface
@@ -70,10 +74,16 @@ pip install multimind-sdk[all]           # Everything
 | Multi-model chat (OpenAI, Claude, Gemini, Groq, ...) | Stable   | core               |
 | Streaming responses                                  | Stable   | core               |
 | Runtime PII guard (detect, redact, block, audit)     | Stable   | core               |
+| Cost tracking & budgets                              | Stable   | core               |
+| Hallucination detection (grounding checks)           | Stable   | core               |
+| Mid-conversation model switching (`ModelSession`)    | Stable   | core               |
 | RAG pipeline (FAISS, Chroma)                         | Stable   | `[rag]`            |
 | Context transfer between models                      | Stable   | core               |
 | CLI interface                                        | Stable   | core               |
+| REST gateway with Swagger UI (`/docs`)               | Stable   | `[gateway]`        |
+| Docker deployment (lean ~300 MB image)               | Stable   | —                  |
 | AI Agents with tools & memory                        | Beta     | `[agents]`         |
+| Self-orchestrating agents (bounded spawning)         | Beta     | `[agents]`         |
 | GDPR & HIPAA compliance (policy modeling, audits)    | Beta     | `[compliance]`     |
 | Non-transformer models (Mamba, RWKV)                 | Beta     | `[finetune]`       |
 | Vector stores (40+ incl. Qdrant, Weaviate, Pinecone) | Beta     | `[vector-stores]`  |
@@ -211,9 +221,13 @@ More examples: [`examples/`](examples/)
 
 ## Documentation
 
-- [Getting Started](docs/quickstart.md)
-- [API Reference](docs/api_reference/)
+- [Docs index](docs/README.md) — everything in one place
+- [Quickstart](docs/quickstart.md) — guarded, cost-tracked model calls in 5 minutes
+- [Cookbook](docs/cookbook.md) — task-oriented recipes (providers, structured output, budgets, hallucination checks, gateway, docker)
+- [Getting started without writing code](docs/getting-started-non-technical.md) — for analysts, compliance officers, and PMs
+- [Deployment Guide](docs/deployment.md) — Docker and docker compose, including a fully local stack
 - [Compliance Guide](docs/compliance.md)
+- [API Reference](docs/api_reference/)
 - [Architecture](docs/architecture.md)
 - [Contributing](CONTRIBUTING.md)
 

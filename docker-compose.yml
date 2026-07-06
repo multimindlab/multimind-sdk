@@ -1,92 +1,69 @@
 services:
-  multimind:
+  gateway:
     build:
       context: .
       dockerfile: Dockerfile
+    image: multimind-sdk:latest
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
-      - ~/.ollama:/root/.ollama  # Mount Ollama models
-      - multimind_logs:/app/logs
-      - multimind_data:/app/data
-      - multimind_cache:/app/cache
+    env_file:
+      - path: .env
+        required: false
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CLAUDE_API_KEY=${CLAUDE_API_KEY}
-      - HF_TOKEN=${HF_TOKEN}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - CHROMA_HOST=chroma
-      - CHROMA_PORT=8000
-      - APP_HOST=0.0.0.0
-      - APP_PORT=8000
-      - DEBUG=${DEBUG:-false}
+      # Provider API keys — all optional; configure only the ones you use
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      # Local models via the optional ollama service (profile: local)
+      - OLLAMA_API_BASE=${OLLAMA_API_BASE:-http://ollama:11434}
+      - OLLAMA_MODEL_NAME=${OLLAMA_MODEL_NAME:-mistral}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-openai}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
-    depends_on:
-      redis:
-        condition: service_healthy
-      chroma:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+      - multimind_sessions:/app
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  # Optional: local models, no API keys needed.
+  # Start with: docker compose --profile local up
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s
     restart: unless-stopped
 
+  # Optional: Chroma vector store for RAG workloads.
+  # Start with: docker compose --profile vector-store up
   chroma:
     image: chromadb/chroma:latest
+    profiles: ["vector-store"]
     ports:
       - "8001:8000"
     volumes:
       - chroma_data:/chroma/chroma
     environment:
-      - ALLOW_RESET=true
       - ANONYMIZED_TELEMETRY=false
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/api/v1/heartbeat\")' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    healthcheck:
-      test: ["CMD-SHELL", "python3 -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:11434/api/version\")' || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
 
 volumes:
-  redis_data:
+  multimind_sessions:
+  ollama_models:
   chroma_data:
-  ollama_data:
-  multimind_logs:
-  multimind_data:
-  multimind_cache:
-
-networks:
-  default:
-    name: multimind_network 

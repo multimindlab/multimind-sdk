@@ -1,0 +1,52 @@
+# VCS
+.git
+.github
+.gitignore
+
+# Docs, examples, tests — never ship in the image
+multimind-docs/
+docs/
+examples/
+tests/
+htmlcov/
+*.md
+!README.md
+
+# Local model weights and media
+models/
+assets/
+chat_sessions/
+logs/
+
+# Python build/runtime artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+
+# Secrets and local config — must never be baked into an image
+.env
+.env.*
+*.pem
+*.key
+
+# Docker files themselves (not needed inside the build context output)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Editor/OS scratch
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.tmp
+scratch*

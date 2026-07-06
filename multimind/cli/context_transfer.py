@@ -68,17 +68,21 @@ def validate_model_name(model_name: str, supported_models: list) -> str:
 
 def list_supported_models() -> None:
     """List all supported models with their capabilities."""
-    print("🤖 Supported Models and Capabilities:")
+    print("Supported Models and Capabilities:")
     print("=" * 60)
 
-    capabilities = AdapterFactory.list_all_capabilities()
-
-    for model_name, caps in capabilities.items():
-        print(f"\n📋 {model_name.upper()}")
+    for model_name in AdapterFactory.get_supported_models():
+        # Some registered aliases cannot be resolved back through get_adapter
+        # (hyphen/underscore normalization); skip them instead of crashing.
+        try:
+            caps = AdapterFactory.get_model_capabilities(model_name)
+        except ValueError:
+            continue
+        print(f"\n{model_name.upper()}")
         print(f"   Context Length: {caps.get('max_context_length', 'Unknown'):,} tokens")
-        print(f"   Code Support: {'✅' if caps.get('supports_code') else '❌'}")
-        print(f"   Image Support: {'✅' if caps.get('supports_images') else '❌'}")
-        print(f"   Tools Support: {'✅' if caps.get('supports_tools') else '❌'}")
+        print(f"   Code Support: {'yes' if caps.get('supports_code') else 'no'}")
+        print(f"   Image Support: {'yes' if caps.get('supports_images') else 'no'}")
+        print(f"   Tools Support: {'yes' if caps.get('supports_tools') else 'no'}")
         print(f"   Formats: {', '.join(caps.get('supported_formats', []))}")
 
 

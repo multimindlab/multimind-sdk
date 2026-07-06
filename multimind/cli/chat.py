@@ -3,6 +3,7 @@ Chat management commands for MultiMind CLI
 """
 
 import asyncio
+import sys
 from typing import Optional
 
 import click
@@ -13,6 +14,7 @@ from rich.table import Table
 
 from ..gateway.chat import chat_manager
 from ..gateway.models import get_model_handler
+from .models import _require_api_key
 
 console = Console()
 
@@ -28,12 +30,17 @@ def chat():
 @click.option("--prompt", "-p", help="Single prompt to send (optional)")
 def start(model: str, prompt: Optional[str]):
     """Start an interactive chat session with a model"""
+    _require_api_key(model)
     try:
         handler = get_model_handler(model)
 
         if prompt:
             # Single message mode
-            response = asyncio.run(handler.generate(prompt))
+            try:
+                response = asyncio.run(handler.generate(prompt))
+            except Exception as e:
+                console.print(f"[red]Error: {str(e)}[/red]")
+                sys.exit(1)
             console.print(Panel(response.content, title=f"{model} Response"))
             return
 
@@ -74,6 +81,7 @@ def start(model: str, prompt: Optional[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -106,6 +114,7 @@ def list_sessions():
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -118,7 +127,7 @@ def load(session_id: str):
             session = chat_manager.load_session(session_id)
         if not session:
             console.print(f"[red]Session {session_id} not found[/red]")
-            return
+            sys.exit(1)
 
         console.print(f"[green]Loaded session {session_id}[/green]")
         console.print(f"Model: {session.model}")
@@ -134,6 +143,7 @@ def load(session_id: str):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -145,9 +155,11 @@ def save(session_id: str):
             console.print(f"[green]Saved session {session_id}[/green]")
         else:
             console.print(f"[red]Failed to save session {session_id}[/red]")
+            sys.exit(1)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -159,6 +171,8 @@ def delete(session_id: str):
             console.print(f"[green]Deleted session {session_id}[/green]")
         else:
             console.print(f"[red]Session {session_id} not found[/red]")
+            sys.exit(1)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)

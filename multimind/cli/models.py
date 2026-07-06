@@ -4,6 +4,7 @@ Model management commands for MultiMind CLI
 
 import asyncio
 import os
+import sys
 from typing import List, Optional
 
 import click
@@ -12,11 +13,47 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.table import Table
 
-from ..gateway.config import config
 from ..gateway.models import get_model_handler
 from ..gateway.monitoring import monitor
 
 console = Console()
+
+# Env vars required per gateway model handler (empty tuple = local, no key needed)
+_ENV_KEYS = {
+    "openai": ("OPENAI_API_KEY",),
+    "anthropic": ("ANTHROPIC_API_KEY",),
+    "groq": ("GROQ_API_KEY",),
+    "ollama": (),
+    "huggingface": (),
+}
+
+# Env vars per ModelFactory provider (empty tuple = local, no key needed)
+_PROVIDER_ENV_KEYS = {
+    "openai": ("OPENAI_API_KEY",),
+    "claude": ("ANTHROPIC_API_KEY", "CLAUDE_API_KEY"),
+    "ollama": (),
+    "groq": ("GROQ_API_KEY",),
+    "mistral": ("MISTRAL_API_KEY",),
+    "gemini": ("GEMINI_API_KEY", "GOOGLE_API_KEY"),
+    "deepseek": ("DEEPSEEK_API_KEY",),
+}
+
+
+def _missing_api_key(model: str) -> Optional[str]:
+    """Return the missing env var name for a model, or None if configured."""
+    env_vars = _ENV_KEYS.get(model.lower())
+    if not env_vars:
+        return None
+    if any(os.getenv(v) for v in env_vars):
+        return None
+    return env_vars[0]
+
+
+def _require_api_key(model: str) -> None:
+    missing = _missing_api_key(model)
+    if missing:
+        console.print(f"[red]{missing} not set. Export it to use the '{model}' model.[/red]")
+        sys.exit(1)
 
 
 @click.group()
@@ -33,33 +70,38 @@ def compare(prompt: str, models: List[str]):
     if not models:
         models = ["openai", "anthropic", "ollama"]
 
-    try:
-        responses = {}
+    responses = {}
 
-        with Progress() as progress:
-            task = progress.add_task("[cyan]Comparing models...", total=len(models))
+    with Progress() as progress:
+        task = progress.add_task("[cyan]Comparing models...", total=len(models))
 
-            for model in models:
-                try:
-                    handler = get_model_handler(model)
-                    response = asyncio.run(handler.generate(prompt))
-                    responses[model] = response
-                except Exception as e:
-                    console.print(f"[red]Error with {model}: {str(e)}[/red]")
+        for model in models:
+            missing = _missing_api_key(model)
+            if missing:
+                console.print(f"[yellow]Skipping {model}: {missing} not set[/yellow]")
                 progress.update(task, advance=1)
+                continue
+            try:
+                handler = get_model_handler(model)
+                response = asyncio.run(handler.generate(prompt))
+                responses[model] = response
+            except Exception as e:
+                console.print(f"[red]Error with {model}: {str(e)}[/red]")
+            progress.update(task, advance=1)
 
-        # Display results
-        for model, response in responses.items():
-            console.print(Panel(response.content, title=f"{model} Response", border_style="green"))
+    if not responses:
+        console.print("[red]No model produced a response.[/red]")
+        sys.exit(1)
 
-            if response.usage:
-                usage_table = Table(title=f"{model} Usage")
-                for key, value in response.usage.items():
-                    usage_table.add_row(key, str(value))
-                console.print(usage_table)
+    # Display results
+    for model, response in responses.items():
+        console.print(Panel(response.content, title=f"{model} Response", border_style="green"))
 
-    except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        if response.usage:
+            usage_table = Table(title=f"{model} Usage")
+            for key, value in response.usage.items():
+                usage_table.add_row(key, str(value))
+            console.print(usage_table)
 
 
 @models.command()
@@ -68,6 +110,9 @@ def metrics(model: Optional[str]):
     """Show metrics and health status for models"""
     try:
         metrics = asyncio.run(monitor.get_metrics(model))
+        if model:
+            # get_metrics returns {"metrics": ..., "health": ...} for a single model
+            metrics = {model: metrics}
 
         # Create metrics table
         metrics_table = Table(title="Model Metrics")
@@ -114,6 +159,7 @@ def metrics(model: Optional[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @models.command()
@@ -125,19 +171,37 @@ def health(model: Optional[str]):
             task = progress.add_task("[cyan]Checking model health...", total=None)
 
             if model:
+                missing = _missing_api_key(model)
+                if missing:
+                    console.print(
+                        f"[red]{missing} not set. Export it to check '{model}' health.[/red]"
+                    )
+                    sys.exit(1)
                 handler = get_model_handler(model)
                 health = asyncio.run(monitor.check_health(model, handler))
                 status = {model: health}
             else:
-                # Check all configured models
+                # Check every gateway model whose API key is configured;
+                # local models (ollama, huggingface) must be checked explicitly with --model
                 status = {}
-                for model_name in config.validate().keys():
-                    if config.validate()[model_name]:
+                for model_name, env_vars in _ENV_KEYS.items():
+                    if not env_vars or not any(os.getenv(v) for v in env_vars):
+                        continue
+                    try:
                         handler = get_model_handler(model_name)
                         health = asyncio.run(monitor.check_health(model_name, handler))
                         status[model_name] = health
+                    except Exception as e:
+                        console.print(f"[red]Error checking {model_name}: {str(e)}[/red]")
 
             progress.update(task, completed=True)
+
+        if not status:
+            console.print(
+                "[yellow]No models with configured API keys to check. "
+                "Use --model to check a specific model.[/yellow]"
+            )
+            return
 
         # Display results
         for model_name, health in status.items():
@@ -157,27 +221,51 @@ def health(model: Optional[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @models.command()
 @click.option(
-    "--output-dir", type=click.Path(), default="./output", help="Directory where models are saved."
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="List local fine-tuned models in this directory instead of registered providers.",
 )
 def list(output_dir):
-    """List available or fine-tuned models"""
-    try:
+    """List registered model providers or local fine-tuned models"""
+    if output_dir:
         if not os.path.exists(output_dir):
             console.print(f"[yellow]No models found in {output_dir}[/yellow]")
             return
-        models = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
-        if not models:
+        local = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
+        if not local:
             console.print(f"[yellow]No models found in {output_dir}[/yellow]")
         else:
             console.print("[bold]Available models:[/bold]")
-            for m in models:
+            for m in local:
                 console.print(f"- {m}")
-    except Exception as e:
-        console.print(f"[red]Error: {str(e)}[/red]")
+        return
+
+    from ..models.factory import ModelFactory
+
+    factory = ModelFactory()
+    table = Table(title="Registered Providers")
+    table.add_column("Provider", style="cyan")
+    table.add_column("API Key", style="green")
+    table.add_column("Env Var", style="blue")
+
+    for provider in sorted(factory._model_classes):
+        env_vars = _PROVIDER_ENV_KEYS.get(provider, (f"{provider.upper()}_API_KEY",))
+        if not env_vars:
+            key_status = "not required (local)"
+            env_display = "-"
+        else:
+            configured = next((v for v in env_vars if os.getenv(v)), None)
+            key_status = "configured" if configured else "not set"
+            env_display = configured or " or ".join(env_vars)
+        table.add_row(provider, key_status, env_display)
+
+    console.print(table)
 
 
 @models.command()
@@ -193,6 +281,7 @@ def download(model):
         console.print(f"[green]Downloaded model: {model}[/green]")
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @models.command()
@@ -231,6 +320,7 @@ def export(model, format, output):
         console.print(f"[green]Exported {model} to {format} at {output}[/green]")
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @models.command()
@@ -250,5 +340,6 @@ def delete(model):
             console.print(f"[green]Deleted model: {model}[/green]")
         except Exception as e:
             console.print(f"[red]Error deleting model: {str(e)}[/red]")
+            sys.exit(1)
     else:
         console.print("[yellow]Aborted.[/yellow]")
