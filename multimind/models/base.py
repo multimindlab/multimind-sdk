@@ -2,9 +2,10 @@
 Base class for all LLM implementations.
 """
 
+import asyncio
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator
-from typing import Any, Dict, List, Optional, Union
+from collections.abc import AsyncGenerator, Coroutine
+from typing import Any, Dict, List, Optional, Union, final
 
 
 class BaseLLM(ABC):
@@ -58,6 +59,50 @@ class BaseLLM(ABC):
     ) -> Union[List[float], List[List[float]]]:
         """Generate embeddings for the input text."""
         pass
+
+    @final
+    def _run_sync(self, coro: Coroutine[Any, Any, Any], method_name: str) -> Any:
+        """Run an async method synchronously; error out inside a running loop."""
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+        coro.close()
+        raise RuntimeError(
+            f"{method_name}_sync() cannot be called from a running event loop; "
+            f"await the async {method_name}() method instead."
+        )
+
+    @final
+    def generate_sync(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> Any:
+        """Synchronous wrapper around generate()."""
+        return self._run_sync(
+            self.generate(prompt, temperature=temperature, max_tokens=max_tokens, **kwargs),
+            "generate",
+        )
+
+    @final
+    def chat_sync(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> Any:
+        """Synchronous wrapper around chat()."""
+        return self._run_sync(
+            self.chat(messages, temperature=temperature, max_tokens=max_tokens, **kwargs),
+            "chat",
+        )
+
+    @final
+    def embeddings_sync(
+        self, text: Union[str, List[str]], **kwargs
+    ) -> Union[List[float], List[List[float]]]:
+        """Synchronous wrapper around embeddings()."""
+        return self._run_sync(self.embeddings(text, **kwargs), "embeddings")
 
     async def get_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """Calculate the cost of a request based on token usage."""

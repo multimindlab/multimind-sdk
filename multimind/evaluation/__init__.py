@@ -3,6 +3,12 @@ Evaluation module for RAG system evaluation.
 """
 
 from .advanced_evaluation import AdvancedEvaluator, EvaluationMetrics
-from .evaluation import EvaluationConfig, Evaluator
+from .evaluation import EvaluationMetric, RAGEvaluation, RAGEvaluator
 
-__all__ = ["Evaluator", "EvaluationConfig", "AdvancedEvaluator", "EvaluationMetrics"]
+__all__ = [
+    "RAGEvaluator",
+    "RAGEvaluation",
+    "EvaluationMetric",
+    "AdvancedEvaluator",
+    "EvaluationMetrics",
+]

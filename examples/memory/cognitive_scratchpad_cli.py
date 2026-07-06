@@ -9,11 +9,11 @@ from typing import Dict, Any, List
 from datetime import datetime
 from multimind import MultiMind
 from multimind.memory import CognitiveScratchpadMemory
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class CognitiveScratchpadCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "cognitive_scratchpad.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         self.memory = CognitiveScratchpadMemory(
             llm=self.llm,
             max_steps=100,

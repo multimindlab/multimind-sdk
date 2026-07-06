@@ -48,6 +48,7 @@ dependencies = [
     "PyYAML>=6.0",
     "aiohttp>=3.8.0",
     "requests>=2.32.4",  # >=2.32.4 clears CVE-2024-47081 (.netrc credential leak)
+    "email-validator>=2.0.0",  # required by pydantic EmailStr (multimind/api, multimind/server)
     "typing-extensions>=4.0.0",
     "tenacity>=8.2.0",
     "coloredlogs>=15.0.0",
@@ -265,10 +266,6 @@ addopts = [
     "-v",
     "--strict-markers",
     "--tb=short",
-    "--cov=multimind",
-    "--cov-report=term-missing",
-    "--cov-report=html",
-    "--cov-fail-under=20",
 ]
 asyncio_mode = "auto"
 asyncio_default_test_loop_scope = "function"

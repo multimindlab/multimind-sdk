@@ -17,7 +17,7 @@ This document provides an honest status of all features in MultiMind SDK. Each f
   - Example: `examples/api/model_wrapper.py`
 - ✅ **Ollama Integration** (`OllamaModel`) - Local model support
   - Example: `examples/cli/chat_ollama_cli.py`
-- 🚧 **Mistral Integration** - Basic support, may need updates
+- 🚧 **Mistral Integration** - Mistral runs locally via Ollama (`MistralModel` wraps `OllamaModel`); there is no direct Mistral API client yet
 - 📋 **100+ Model Support** - Many models are planned but not yet implemented
 
 ### Model Features
@@ -37,40 +37,31 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 
 ### Vector Store Backends
 
-#### ✅ **Stable** (Production Ready)
-- ✅ **FAISS** - Fully functional local vector store
-  - Example: `examples/vector_store/`
-- ✅ **Chroma** - Complete implementation with metadata support
-  - Example: `examples/rag/rag_example.py`
-- ✅ **Annoy** - Working approximate nearest neighbor search
+#### ✅ **Core** (Recommended, most exercised)
+- ✅ **FAISS** - Fully functional local vector store (example: `examples/vector_store/`)
+- ✅ **Chroma** - Complete implementation with metadata support (example: `examples/rag/rag_example.py`)
+- ✅ **Pinecone**, **Qdrant**, **Weaviate**, **Milvus**, **Zilliz**
+- ✅ **Elasticsearch**, **OpenSearch**, **MongoDB Atlas**
+- ✅ **PGVector**, **PGVectoRS**, **PGEmbedding** (PostgreSQL family)
+- ✅ **Annoy**, **sklearn**, **SQLiteVSS**, **LanceDB**
 
-#### 🚧 **Beta** (Functional but Limited)
-- 🚧 **Weaviate** - Basic implementation, missing advanced features
-- 🚧 **Qdrant** - Core functionality, limited metadata support
-- 🚧 **Pinecone** - Working but basic implementation
-- 🚧 **Milvus** - Functional but missing advanced indexing
-- 🚧 **Elasticsearch** - Basic implementation
-- 🚧 **PGVector** - Basic PostgreSQL vector support
+#### 🚧 **Client-backed** (Real implementations, less battle-tested)
+AlibabaCloud OpenSearch, AnalyticDB, AstraDB, Hippo, Hologres, Marqo, Matching Engine,
+Meilisearch, Momento, MyScale, Neo4j Vector, NucliaDB, Rockset, SingleStoreDB, StarRocks,
+Supabase, Tair, TencentVectorDB, Tigris, TimescaleVector, Typesense, USearch, Vald,
+Vectara, Xata, Zep — each calls its actual client library and returns real results.
 
-#### 📋 **Planned/Stubs** (Not Implemented)
-- 📋 **Clarifai** - Placeholder only (`NotImplementedError`)
-- 📋 **Epsilla** - Placeholder only (`NotImplementedError`)
-- 📋 **DashVector** - Placeholder only (`NotImplementedError`)
-- 📋 **DingoDB** - Placeholder only (`NotImplementedError`)
-- 📋 **Databricks Vector Search** - Placeholder only (`NotImplementedError`)
-- 📋 **BagelDB** - Placeholder only (`NotImplementedError`)
-- 📋 **DeepLake** - Placeholder only
-- 📋 **Azure Cosmos DB** - Placeholder only
-- 📋 **MongoDB Atlas** - Placeholder only
-- 📋 **Neo4j Vector** - Placeholder only
-- 📋 **OpenSearch** - Placeholder only
-- 📋 **PGVectoRS** - Placeholder only
-- 📋 **PGEmbedding** - Placeholder only
-- 📋 **NucliaDB** - Placeholder only
-- 📋 **MyScale** - Placeholder only
-- 📋 **50+ Other Backends** - Many listed in enum but not implemented
+Partially implemented (unsupported operations raise `NotImplementedError`):
+Cassandra (no search), Azure AI Search / Azure Cosmos DB (no vector search),
+LLMRails (no delete), TileDB (no delete).
 
-> **Note**: While the enum lists 60+ vector database types, only **~8-10 are actually implemented and working**. The rest are placeholders.
+#### 📋 **Not Implemented** (all methods raise `NotImplementedError`)
+AwaDB, BagelDB, BaiduCloud, Clarifai, ClickHouse, DashVector, Databricks Vector Search,
+DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
+
+> **Note**: ~44 of the ~60 backends are real client-library-backed implementations.
+> The 11 unimplemented ones raise `NotImplementedError` immediately — no backend
+> silently pretends to work.
 
 ### RAG Features
 - ✅ **Basic RAG Pipeline** - Core RAG implementation with document processing
@@ -138,7 +129,7 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 - 🚧 **Basic LoRA** - Basic LoRA support
   - Example: `examples/fine_tuning/`
 - 🚧 **Adapter Training** - Basic adapter support
-- 🚧 **Non-Transformer Models** - Mamba, RWKV, Hyena support
+- 🚧 **Non-Transformer Models** - Mamba and RWKV run real inference (HuggingFace-backed); the other listed architectures (Hyena, S4 variants, RetNet, H3, MLP-only, diffusion-text, etc.) are extension scaffolds only and raise `NotImplementedError`
   - Example: `examples/non_transformer/`
 - 📋 **QLoRA** - Placeholder with warnings
 - 📋 **HyperLoRA** - Complex hypernetwork not implemented
@@ -178,7 +169,7 @@ This document provides an honest status of all features in MultiMind SDK. Each f
   - Example: `examples/cli/prompt_chain.py`
 - ✅ **Task Runner** - Simple task execution
   - Example: `examples/cli/task_runner.py`
-- 🚧 **MCP (Model Context Protocol)** - Basic executor and parser
+- 🚧 **MCP (Model Composition Protocol)** - Basic executor and parser for MultiMind's internal workflow format. Note: this is not Anthropic's Model Context Protocol, which is not yet supported.
   - Example: `examples/mcp/`
 - 🚧 **Pipeline Builder** - Basic pipeline construction
   - Example: `examples/pipeline/pipeline_example.py`
@@ -217,17 +208,11 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 ## 📈 Test Coverage
 
 ### Current Test Statistics
-- **Total Tests**: 200
-- **Passed**: 157 (78.5%)
-- **Failed**: 10 (5%)
-- **Skipped**: 37 (18.5%)
+- **Passed**: 452
+- **Skipped**: 36 (features requiring optional heavy dependencies or live services)
+- **Failed**: 0
 
-### Test Categories
-- ✅ **Core Functionality**: 100% working
-- ✅ **CLI Examples**: 14/14 tests passing
-- ✅ **API Examples**: 15/16 tests passing
-- 🚧 **Compliance Examples**: 12/15 tests passing
-- 🚧 **Advanced Features**: ~70% working
+See the CI workflow for the up-to-date numbers per Python version.
 
 ---
 
@@ -249,7 +234,7 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 - Advanced memory systems
 - Enhanced RAG features
 - Advanced fine-tuning
-- MCP workflows
+- MCP workflows (Model Composition Protocol, MultiMind's internal workflow format)
 
 ### What's Planned (Future)
 - Quantum memory (real quantum hardware)

@@ -170,17 +170,15 @@ class TestCompliantModelTrainer:
         
         # Mock the model's __call__ method
         trainer.model = mock_model
-        
-        await trainer.finetune(
-            train_data=sample_train_data,
-            num_epochs=1,
-            batch_size=2,
-            learning_rate=2e-5
-        )
-        
-        assert len(trainer.training_history) == 1
-        assert len(trainer.compliance_history) > 0
-        assert trainer.training_history[0]["epoch"] == 0
+
+        # Compliance verification fails closed without a real rule engine
+        with pytest.raises(NotImplementedError):
+            await trainer.finetune(
+                train_data=sample_train_data,
+                num_epochs=1,
+                batch_size=2,
+                learning_rate=2e-5
+            )
     
     @patch('finetune_with_compliance.AutoModelForSequenceClassification')
     @patch('finetune_with_compliance.AutoTokenizer')
@@ -215,16 +213,16 @@ class TestCompliantModelTrainer:
             compliance_config={"epsilon": 1.0, "rules": []}
         )
         trainer.model = mock_model
-        
-        await trainer.finetune(
-            train_data=sample_train_data,
-            val_data=sample_val_data,
-            num_epochs=1,
-            batch_size=2,
-            learning_rate=2e-5
-        )
-        
-        assert len(trainer.training_history) == 1
+
+        # Compliance verification fails closed without a real rule engine
+        with pytest.raises(NotImplementedError):
+            await trainer.finetune(
+                train_data=sample_train_data,
+                val_data=sample_val_data,
+                num_epochs=1,
+                batch_size=2,
+                learning_rate=2e-5
+            )
     
     @patch('finetune_with_compliance.AutoModelForSequenceClassification')
     @patch('finetune_with_compliance.AutoTokenizer')
@@ -303,12 +301,9 @@ class TestCompliantModelTrainer:
         outputs.loss = torch.tensor(0.5)
         outputs.logits = torch.randn(2, 2)
         
-        result = await trainer._check_compliance(batch, outputs)
-        
-        assert "is_compliant" in result
-        assert "compliance_score" in result
-        assert "proof" in result
-        assert "private_result" in result
+        # Compliance verification fails closed without a real rule engine
+        with pytest.raises(NotImplementedError):
+            await trainer._check_compliance(batch, outputs)
     
     @patch('finetune_with_compliance.AutoModelForSequenceClassification')
     @patch('finetune_with_compliance.AutoTokenizer')
@@ -333,11 +328,9 @@ class TestCompliantModelTrainer:
             compliance_config={"epsilon": 1.0, "rules": []}
         )
         
-        result = await trainer._check_epoch_compliance(0.5)
-        
-        assert "compliance_score" in result
-        assert "explanation" in result
-        assert "metrics" in result
+        # Explanation generation fails closed without a real explanation model
+        with pytest.raises(NotImplementedError):
+            await trainer._check_epoch_compliance(0.5)
     
     @patch('finetune_with_compliance.AutoModelForSequenceClassification')
     @patch('finetune_with_compliance.AutoTokenizer')
@@ -443,17 +436,9 @@ class TestCompliantModelTrainer:
         trainer.compliance_history = [{"is_compliant": True, "compliance_score": 0.9}]
         
         model_path = os.path.join(temp_dir, "test_model.pt")
-        await trainer.save_model(model_path)
-        
-        assert os.path.exists(model_path)
-        
-        # Verify saved content
-        saved_data = torch.load(model_path, map_location="cpu")
-        assert "model_state" in saved_data
-        assert "compliance_proof" in saved_data
-        assert "training_history" in saved_data
-        assert "compliance_history" in saved_data
-        assert "watermark_info" in saved_data
+        # Watermarking fails closed without a real watermarking backend
+        with pytest.raises(NotImplementedError):
+            await trainer.save_model(model_path)
     
     @patch('finetune_with_compliance.AutoModelForSequenceClassification')
     @patch('finetune_with_compliance.AutoTokenizer')
@@ -492,18 +477,15 @@ class TestCompliantModelTrainer:
             }
         )
         trainer.model = mock_model
-        
-        initial_epsilon = trainer.privacy.dp_mechanism.epsilon
-        
-        await trainer.finetune(
-            train_data=sample_train_data,
-            num_epochs=1,
-            batch_size=2,
-            learning_rate=2e-5
-        )
-        
-        # Privacy should have been adapted (feedback history should be updated)
-        assert len(trainer.privacy.feedback_history) > 0
+
+        # Compliance verification fails closed before privacy adaptation runs
+        with pytest.raises(NotImplementedError):
+            await trainer.finetune(
+                train_data=sample_train_data,
+                num_epochs=1,
+                batch_size=2,
+                learning_rate=2e-5
+            )
 
 
 @pytest.mark.skipif(CompliantModelTrainer is None, reason="CompliantModelTrainer not available")
@@ -547,16 +529,12 @@ async def test_integration_basic_training():
             {"text": "Negative example", "label": 0},
         ]
         
-        await trainer.finetune(
-            train_data=train_data,
-            num_epochs=1,
-            batch_size=2,
-            learning_rate=2e-5
-        )
-        
-        # Verify training completed
-        assert len(trainer.training_history) == 1
-        assert trainer.training_history[0]["epoch"] == 0
-        assert "loss" in trainer.training_history[0]
-        assert "compliance" in trainer.training_history[0]
+        # Compliance verification fails closed without a real rule engine
+        with pytest.raises(NotImplementedError):
+            await trainer.finetune(
+                train_data=train_data,
+                num_epochs=1,
+                batch_size=2,
+                learning_rate=2e-5
+            )
 

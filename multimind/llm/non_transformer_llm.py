@@ -41,11 +41,15 @@ except ImportError:
     logger.warning("PEFT not available. Adapter features will be disabled.")
 
 
+def _scaffold_error(cls_name: str, method: str) -> NotImplementedError:
+    return NotImplementedError(
+        f"{cls_name}.{method} is not implemented. {cls_name} is an extension scaffold: "
+        f"subclass it and implement {method}, or use MambaLLM/RWKVLLM which are fully implemented."
+    )
+
+
 class NonTransformerLLM(BaseLLM):
-    """
-    Generic template for integrating non-transformer models with the multimind LLM interface.
-    Implement the required methods for your specific model.
-    """
+    """Scaffold: implement generate/generate_stream/chat/chat_stream/embeddings in a subclass."""
 
     def __init__(self, model_name: str, model_instance: Any, **kwargs):
         super().__init__(model_name, **kwargs)
@@ -54,14 +58,15 @@ class NonTransformerLLM(BaseLLM):
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
-        """Generate text from the model."""
-        return "Generated text"  # Placeholder implementation
+        """Scaffold: implement generate in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
     async def generate_stream(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
-        """Generate text stream from the model."""
-        yield "Generated text stream"  # Placeholder implementation
+        """Scaffold: implement generate_stream in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "generate_stream")
+        yield  # unreachable; keeps this an async generator
 
     async def chat(
         self,
@@ -70,8 +75,8 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> str:
-        """Generate chat completion from the model."""
-        return "Chat response"  # Placeholder implementation
+        """Scaffold: implement chat in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "chat")
 
     async def chat_stream(
         self,
@@ -80,14 +85,15 @@ class NonTransformerLLM(BaseLLM):
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-        """Generate chat completion stream from the model."""
-        yield "Chat response stream"  # Placeholder implementation
+        """Scaffold: implement chat_stream in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "chat_stream")
+        yield  # unreachable; keeps this an async generator
 
     async def embeddings(
         self, text: Union[str, List[str]], **kwargs
     ) -> Union[List[float], List[List[float]]]:
-        """Generate embeddings for the input text."""
-        return [[0.0]]  # Placeholder implementation
+        """Scaffold: implement embeddings in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "embeddings")
 
     async def get_quality(self) -> Optional[float]:
         """Get the quality score for this model."""
@@ -98,10 +104,7 @@ class NonTransformerLLM(BaseLLM):
 
 
 class SSM_LLM(NonTransformerLLM):
-    """
-    Advanced wrapper for State-Space Models (SSMs) such as S4, Mamba, with all advanced features.
-    Plug in your S4/Mamba model and tokenizer as needed.
-    """
+    """Scaffold for State-Space Models (S4, Mamba): implement generate in a subclass."""
 
     def __init__(
         self,
@@ -173,8 +176,9 @@ class SSM_LLM(NonTransformerLLM):
     async def generate_stream(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> AsyncGenerator[str, None]:
-        # TODO: Plug in real streaming logic for this model
-        yield f"[{self.__class__.__name__} stream output for: {prompt}]"
+        """Scaffold: implement generate_stream in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "generate_stream")
+        yield  # unreachable; keeps this an async generator
 
     async def chat_stream(
         self,
@@ -183,9 +187,9 @@ class SSM_LLM(NonTransformerLLM):
         max_tokens: Optional[int] = None,
         **kwargs,
     ) -> AsyncGenerator[str, None]:
-        # TODO: Plug in real chat streaming logic for this model
-        prompt = "\n".join([m["content"] for m in messages])
-        yield f"[{self.__class__.__name__} chat stream output for: {prompt}]"
+        """Scaffold: implement chat_stream in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "chat_stream")
+        yield  # unreachable; keeps this an async generator
 
     def new_chat_session(self, persona: Optional[str] = None, max_history: int = 10) -> ChatSession:
         return ChatSession(persona=persona, max_history=max_history)
@@ -205,13 +209,8 @@ class SSM_LLM(NonTransformerLLM):
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
-        prompt = self.preprocess_prompt(prompt)
-        # User must implement actual SSM inference here
-        # Example: output = self.model.generate(self.tokenizer.encode(prompt), ...)
-        output = "[SSM output for: " + prompt + "]"
-        result = self.postprocess_output(output)
-        self.log_generation(prompt, result)
-        return result
+        """Scaffold: implement generate in a subclass."""
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
     async def chat(
         self,
@@ -231,114 +230,76 @@ class SSM_LLM(NonTransformerLLM):
 
 
 class MLPOnlyLLM(NonTransformerLLM):
-    """
-    Wrapper for MLP-Only models (HyperMixer, gMLP, MLP-Mixer).
-    Expects a model instance with a generate method or similar interface.
-    Plug in your MLP-based model and tokenizer as needed.
-    """
+    """Scaffold for MLP-Only models (HyperMixer, gMLP, MLP-Mixer): implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real MLP-Only model logic here
-        return f"[MLPOnlyLLM output for: {prompt}]"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class DiffusionTextLLM(NonTransformerLLM):
-    """
-    Wrapper for Diffusion Models for text generation.
-    Expects a diffusion model instance with a sample/generate method.
-    Plug in your diffusion model and tokenizer as needed.
-    """
+    """Scaffold for diffusion text models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real Diffusion Text model logic here
-        return f"[DiffusionTextLLM output for: {prompt}]"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class MoELLMMixin(NonTransformerLLM):
-    """
-    Wrapper for Mixture-of-Experts (MoE) models.
-    Expects a gating network and a list of expert models (can be SSMs, MLPs, RNNs, etc.).
-    Plug in your MoE model and tokenizer as needed.
-    """
+    """Scaffold for Mixture-of-Experts models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real MoE model logic here
-        return f"[MoELLMMixin output for: {prompt}]"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class PerceiverLLM(NonTransformerLLM):
-    """
-    Wrapper for Perceiver/Perceiver IO models.
-    Expects a model instance with a generate or forward method.
-    Plug in your Perceiver model and tokenizer as needed.
-    """
+    """Scaffold for Perceiver/Perceiver IO models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real Perceiver model logic here
-        return f"[PerceiverLLM output for: {prompt}]"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 # --- Advanced Sequence Model Wrappers ---
 
 
 class MegaS4LLM(NonTransformerLLM):
-    """
-    Wrapper for Mega-S4 (Efficient SSM for long-range dependencies).
-    Plug in your Mega-S4 model and tokenizer as needed.
-    """
+    """Scaffold for Mega-S4 models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[MegaS4LLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class LiquidS4LLM(NonTransformerLLM):
-    """
-    Wrapper for Liquid-S4 (continuous-time SSM variant).
-    Plug in your Liquid-S4 model and tokenizer as needed.
-    """
+    """Scaffold for Liquid-S4 models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[LiquidS4LLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class S4DLLM(NonTransformerLLM):
-    """
-    Wrapper for S4D (diagonal S4 variant).
-    Plug in your S4D model and tokenizer as needed.
-    """
+    """Scaffold for S4D (diagonal S4) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[S4DLLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class S4NDLLM(NonTransformerLLM):
-    """
-    Wrapper for S4ND (non-diagonal S4 variant).
-    Plug in your S4ND model and tokenizer as needed.
-    """
+    """Scaffold for S4ND (non-diagonal S4) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[S4NDLLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class DSSLLM(NonTransformerLLM):
-    """
-    Wrapper for DSS (Diagonal State Space) models.
-    Plug in your DSS model and tokenizer as needed.
-    """
+    """Scaffold for DSS (Diagonal State Space) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[DSSLLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class GSSLLM(NonTransformerLLM):
-    """
-    Wrapper for GSS (General State Space) models.
-    Plug in your GSS model and tokenizer as needed.
-    """
+    """Scaffold for GSS (General State Space) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your GSS model.")
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class ChatSession:
@@ -536,34 +497,24 @@ class MambaLLM(NonTransformerLLM):
 
 
 class MoEMambaLLM(NonTransformerLLM):
-    """
-    Wrapper for MoE-Mamba (Mamba with Mixture-of-Experts layers).
-    Plug in your MoE-Mamba model and tokenizer as needed.
-    """
+    """Scaffold for MoE-Mamba models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your MoE-Mamba model.")
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class H3LLM(NonTransformerLLM):
-    """
-    Wrapper for H3 (Hyena Hybrid) models.
-    Plug in your H3 model and tokenizer as needed.
-    """
+    """Scaffold for H3 (Hyena Hybrid) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        raise NotImplementedError("Implement generate for your H3 model.")
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class RetNetLLM(NonTransformerLLM):
-    """
-    Wrapper for RetNet (Retentive Network) models.
-    Plug in your RetNet model and tokenizer as needed.
-    """
+    """Scaffold for RetNet (Retentive Network) models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        # TODO: Plug in real RetNet model logic here
-        return f"[RetNetLLM output for: {prompt}]"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class RWKVLLM(NonTransformerLLM):
@@ -724,23 +675,17 @@ class RWKVLLM(NonTransformerLLM):
 
 
 class SE3HyenaLLM(NonTransformerLLM):
-    """
-    Wrapper for SE(3)-Hyena (equivariant Hyena for 3D/spatial tasks).
-    Plug in your SE(3)-Hyena model and tokenizer as needed.
-    """
+    """Scaffold for SE(3)-Hyena models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[SE3HyenaLLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class TopologicalNNLLM(NonTransformerLLM):
-    """
-    Wrapper for topological deep learning models (simplicial, hypergraph, cellular, etc.).
-    Plug in your topological NN model and tokenizer as needed.
-    """
+    """Scaffold for topological deep learning models: implement generate in a subclass."""
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        return f"[TopologicalNNLLM] Generated text for prompt: {prompt}"
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 class CustomRNNLLM(NonTransformerLLM):
@@ -949,26 +894,26 @@ for _LLM in [MambaLLM, H3LLM, RWKVLLM, SSM_LLM, CustomRNNLLM]:
 # --- Advanced/Optional Features (TODO Stubs) ---
 
 
-# TODO: Implement QLoRA support for efficient quantized fine-tuning
 class QLoRALLM(NonTransformerLLM):
+    """Scaffold for QLoRA quantized fine-tuning: implement generate in a subclass."""
+
     def __init__(self, base_llm, *args, **kwargs):
         super().__init__(base_llm.model_name, *args, **kwargs)
         self.base_llm = base_llm
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        warnings.warn("QLoRALLM is a placeholder. Using base LLM.")
-        return await self.base_llm.generate(prompt, **kwargs)
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
-# TODO: Implement Compacter adapter for parameter-efficient tuning
 class CompacterLLM(NonTransformerLLM):
+    """Scaffold for Compacter parameter-efficient tuning: implement generate in a subclass."""
+
     def __init__(self, base_llm, *args, **kwargs):
         super().__init__(base_llm.model_name, *args, **kwargs)
         self.base_llm = base_llm
 
     async def generate(self, prompt: str, **kwargs) -> str:
-        warnings.warn("CompacterLLM is a placeholder. Using base LLM.")
-        return await self.base_llm.generate(prompt, **kwargs)
+        raise _scaffold_error(self.__class__.__name__, "generate")
 
 
 # TODO: Model merging capabilities

@@ -309,7 +309,7 @@ class ForgettingCurveMemory(BaseMemory):
         if len(self.items) > self.max_items:
             # Sort items by strength and importance
             sorted_items = sorted(
-                self.items, key=lambda x: (self.strengths[x["id"]] * x["metadata"]["importance"])
+                self.items, key=lambda x: self.strengths[x["id"]] * x["metadata"]["importance"]
             )
 
             # Remove weakest items

@@ -10,7 +10,7 @@ from enum import Enum
 from dataclasses import dataclass
 from multimind.memory import (
     HybridMemory,
-    ConversationBufferMemory,
+    BufferMemory,
     VectorStoreMemory,
     FastWeightMemory
 )
@@ -52,7 +52,7 @@ class AdvancedMemoryManager:
     ):
         self.memory_system = HybridMemory(
             memories=[
-                ConversationBufferMemory(),
+                BufferMemory(),
                 VectorStoreMemory(),
                 FastWeightMemory(
                     input_size=768,

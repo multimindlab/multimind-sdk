@@ -43,10 +43,11 @@ class ClarifaiBackend(VectorStoreBackend):
         self._store = []
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
-        # Placeholder for batch add
-        if self.live_indexing:
-            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
-        self.log_metrics("add_vectors", len(vectors))
+        raise NotImplementedError(
+            "ClarifaiBackend.add_vectors is not implemented: the Clarifai backend is "
+            "a stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def search(
         self,
@@ -58,12 +59,11 @@ class ClarifaiBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
-        explain = explain if explain is not None else self.explain
-        # Placeholder for search logic
-        results = []
-        # Implement Clarifai vector search here
-        self.log_metrics("search", len(results))
-        return results
+        raise NotImplementedError(
+            "ClarifaiBackend.search is not implemented: the Clarifai backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
@@ -77,15 +77,25 @@ class ClarifaiBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
-        # Placeholder for batch delete
-        self.log_metrics("delete_vectors", len(ids))
+        raise NotImplementedError(
+            "ClarifaiBackend.delete_vectors is not implemented: the Clarifai backend "
+            "is a stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def clear(self):
-        # Placeholder for clear
-        self.log_metrics("clear", 1)
+        raise NotImplementedError(
+            "ClarifaiBackend.clear is not implemented: the Clarifai backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def persist(self, path):
-        self.log_metrics("persist", 1)
+        raise NotImplementedError(
+            "ClarifaiBackend.persist is not implemented: the Clarifai backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     @classmethod
     async def load(cls, path, config):
@@ -115,20 +125,6 @@ class ClarifaiBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise
-
-    def add(self, vector, metadata=None):
-        self._store.append((vector, metadata))
-        return True
-
-    def search(self, query_vector, top_k=3):
-        # Return top_k items (no real similarity, just for fallback)
-        return self._store[:top_k]
-
-    def delete(self, index):
-        if 0 <= index < len(self._store):
-            del self._store[index]
-            return True
-        return False
 
     def add(self, *args, **kwargs):
         raise NotImplementedError(

@@ -4,10 +4,11 @@ Anthropic Claude model implementation.
 
 import os
 from collections.abc import AsyncGenerator
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 
 import anthropic
 from anthropic import AsyncAnthropic
+from pydantic import BaseModel, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..core.exceptions import ConfigurationError
@@ -49,13 +50,77 @@ class ClaudeModel(BaseLLM):
         """Internal helper with retry for messages.create."""
         return await self.client.messages.create(**kwargs)
 
+    async def _structured_create(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float,
+        max_tokens: int,
+        response_format: Type[BaseModel],
+        **kwargs,
+    ) -> BaseModel:
+        """Force a tool-use call whose input schema is the Pydantic model."""
+        if not (isinstance(response_format, type) and issubclass(response_format, BaseModel)):
+            raise ValueError(
+                "response_format for ClaudeModel must be a Pydantic BaseModel subclass"
+            )
+        tool_name = "structured_output"
+        response = await self._messages_create(
+            model=self.model_name,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            tools=[
+                {
+                    "name": tool_name,
+                    "description": f"Record the answer as a {response_format.__name__} object.",
+                    "input_schema": response_format.model_json_schema(),
+                }
+            ],
+            tool_choice={"type": "tool", "name": tool_name},
+            **kwargs,
+        )
+        tool_input = next(
+            (
+                block.input
+                for block in response.content or []
+                if getattr(block, "type", None) == "tool_use"
+            ),
+            None,
+        )
+        if tool_input is None:
+            raw = "".join(getattr(block, "text", "") for block in response.content or [])
+            raise ValueError(
+                f"Claude did not return structured output for {response_format.__name__}. "
+                f"Raw response: {raw}"
+            )
+        try:
+            return response_format.model_validate(tool_input)
+        except ValidationError as exc:
+            raise ValueError(
+                f"Failed to parse response as {response_format.__name__}: {exc}. "
+                f"Raw response: {tool_input}"
+            ) from exc
+
     async def generate(
-        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
-    ) -> str:
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        response_format: Optional[Type[BaseModel]] = None,
+        **kwargs,
+    ) -> Union[str, BaseModel]:
         """Generate text using Claude's completion API."""
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
+        if response_format is not None:
+            return await self._structured_create(
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                response_format=response_format,
+                **kwargs,
+            )
         response = await self._messages_create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
@@ -89,12 +154,21 @@ class ClaudeModel(BaseLLM):
         messages: List[Dict[str, str]],
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
+        response_format: Optional[Type[BaseModel]] = None,
         **kwargs,
-    ) -> str:
+    ) -> Union[str, BaseModel]:
         """Generate chat completion using Claude's chat API."""
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
+        if response_format is not None:
+            return await self._structured_create(
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                response_format=response_format,
+                **kwargs,
+            )
         response = await self._messages_create(
             model=self.model_name,
             messages=messages,

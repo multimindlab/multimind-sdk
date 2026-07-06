@@ -13,11 +13,11 @@ from multimind.memory import (
     KnowledgeGraphMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class FinancialAdvisor:
     def __init__(self, model: str = "mistral"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize event-sourced memory for transaction tracking
         self.transaction_memory = EventSourcedMemory(

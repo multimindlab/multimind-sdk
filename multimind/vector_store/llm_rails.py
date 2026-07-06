@@ -76,11 +76,17 @@ class LLMRailsBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids):
         # LLMRails API does not support direct vector deletion; placeholder for future
-        self.log_metrics("delete_vectors", len(ids))
+        raise NotImplementedError(
+            "LLMRailsBackend.delete_vectors is not implemented: the LLMRails API does "
+            "not support deleting vectors."
+        )
 
     async def clear(self):
         # LLMRails API does not support clearing all vectors; placeholder for future
-        self.log_metrics("clear", 1)
+        raise NotImplementedError(
+            "LLMRailsBackend.clear is not implemented: the LLMRails API does not "
+            "support clearing a datastore."
+        )
 
     async def persist(self, path):
         # LLMRails is managed; no-op

@@ -1,26 +1,18 @@
-from multimind.llm.non_transformer_llm import HyenaLLM
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 import asyncio
 
 # --- Hyena Model Integration Stub ---
-# To use this stub:
-# 1. Install Hyena from official repo (see: https://github.com/HazyResearch/hyena)
+# There is no built-in HyenaLLM class: NonTransformerLLM is an extension scaffold.
+# To integrate Hyena:
+# 1. Install Hyena from the official repo (see: https://github.com/HazyResearch/hyena)
 # 2. Load your Hyena model and tokenizer as per their documentation.
-# 3. Implement the generate method in a subclass or pass a compatible model instance.
-
-# Example (pseudo-code):
-# from hyena_library import HyenaModel, HyenaTokenizer
-# model = HyenaModel.from_pretrained('...')
-# tokenizer = HyenaTokenizer.from_pretrained('...')
-# class MyHyenaLLM(HyenaLLM):
-#     async def generate(self, prompt: str, **kwargs) -> str:
-#         input_ids = tokenizer.encode(prompt)
-#         output = model.generate(input_ids, **kwargs)
-#         return tokenizer.decode(output)
+# 3. Subclass NonTransformerLLM and implement generate (as below) with real inference.
 
 # For demonstration, we use a dummy model
 class DummyHyenaModel:
     def generate(self, input_ids, **kwargs):
         return input_ids + [99]
+
 class DummyTokenizer:
     def encode(self, text): return [4, 5, 6]
     def decode(self, ids): return "hyena output"
@@ -28,10 +20,11 @@ class DummyTokenizer:
 dummy_model = DummyHyenaModel()
 dummy_tokenizer = DummyTokenizer()
 
-class DemoHyenaLLM(HyenaLLM):
+class DemoHyenaLLM(NonTransformerLLM):
     def __init__(self, model_name, model_instance, tokenizer, **kwargs):
         super().__init__(model_name, model_instance, **kwargs)
         self.tokenizer = tokenizer
+
     async def generate(self, prompt: str, **kwargs) -> str:
         input_ids = self.tokenizer.encode(prompt)
         output_ids = self.model.generate(input_ids, **kwargs)
@@ -45,4 +38,4 @@ async def main():
     print(f"Prompt: {prompt}\nGenerated: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

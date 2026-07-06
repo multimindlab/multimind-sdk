@@ -10,6 +10,15 @@ Requires the ``compliance`` extras (``cryptography``, ``bcrypt``, ``pycryptodome
 import os
 import warnings
 
+# Runtime guard is stdlib-only, so it is imported outside the extras gate.
+from .guard import (
+    AuditLog,
+    ComplianceGuard,
+    ComplianceViolationError,
+    PIIDetector,
+    guard,
+)
+
 try:
     from .advanced import (
         AdaptivePrivacy,
@@ -57,6 +66,12 @@ def _log_legacy_warning(message: str) -> None:
 
 
 __all__ = [
+    # Runtime Guard
+    "ComplianceGuard",
+    "PIIDetector",
+    "guard",
+    "ComplianceViolationError",
+    "AuditLog",
     # Advanced Features
     "ComplianceShard",
     "SelfHealingCompliance",

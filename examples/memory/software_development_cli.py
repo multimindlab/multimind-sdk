@@ -14,11 +14,11 @@ from multimind.memory import (
     EventSourcedMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class SoftwareDevelopmentCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "software_development.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize knowledge graph memory for code knowledge
         self.code_knowledge = KnowledgeGraphMemory(

@@ -3,7 +3,7 @@ Advanced memory system with episodic and semantic memory support.
 """
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -31,33 +31,34 @@ class MemoryItem:
 class EpisodicMemory(MemoryItem):
     """Represents an episodic memory item."""
 
-    event_type: str
-    context: Dict[str, Any]
-    emotions: List[str]
-    participants: List[str]
-    location: Optional[str]
-    duration: Optional[float]
+    # Defaults required: the base class has a defaulted field (embedding)
+    event_type: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    emotions: List[str] = field(default_factory=list)
+    participants: List[str] = field(default_factory=list)
+    location: Optional[str] = None
+    duration: Optional[float] = None
 
 
 @dataclass
 class SemanticMemory(MemoryItem):
     """Represents a semantic memory item."""
 
-    concept: str
-    relationships: List[Dict[str, Any]]
-    attributes: Dict[str, Any]
-    category: str
-    confidence: float
+    concept: str = ""
+    relationships: List[Dict[str, Any]] = field(default_factory=list)
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    category: str = ""
+    confidence: float = 0.0
 
 
 @dataclass
 class WorkingMemory(MemoryItem):
     """Represents a working memory item."""
 
-    priority: float
-    expiration: Optional[float]
-    dependencies: List[str]
-    state: str
+    priority: float = 0.0
+    expiration: Optional[float] = None
+    dependencies: List[str] = field(default_factory=list)
+    state: str = ""
 
 
 class MemoryType(Enum):

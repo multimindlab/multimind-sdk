@@ -10,6 +10,10 @@ from dotenv import load_dotenv
 from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
 from .claude import ClaudeModel
+from .deepseek import DeepSeekModel
+from .gemini import GeminiModel
+from .groq import GroqModel
+from .mistral import MistralAIModel
 from .ollama import OllamaModel
 from .openai import OpenAIModel
 
@@ -32,6 +36,10 @@ class ModelFactory:
             "openai": OpenAIModel,
             "claude": ClaudeModel,
             "ollama": OllamaModel,
+            "groq": GroqModel,
+            "mistral": MistralAIModel,
+            "gemini": GeminiModel,
+            "deepseek": DeepSeekModel,
         }
 
         # Initialize API keys
@@ -47,6 +55,14 @@ class ModelFactory:
             available.append("openai")
         if self.claude_key:
             available.append("claude")
+        if os.getenv("GROQ_API_KEY"):
+            available.append("groq")
+        if os.getenv("MISTRAL_API_KEY"):
+            available.append("mistral")
+        if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+            available.append("gemini")
+        if os.getenv("DEEPSEEK_API_KEY"):
+            available.append("deepseek")
 
         # Check Ollama availability (server + client libs)
         OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -96,6 +112,10 @@ class ModelFactory:
                 "openai": "gpt-4",
                 "claude": "claude-3-opus-20240229",
                 "ollama": "mistral",
+                "groq": "llama-3.3-70b-versatile",
+                "mistral": "mistral-small-latest",
+                "gemini": "gemini-2.0-flash",
+                "deepseek": "deepseek-chat",
             }.get(provider)
 
         # Create instance key

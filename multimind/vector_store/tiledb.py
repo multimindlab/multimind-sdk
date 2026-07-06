@@ -111,10 +111,10 @@ class TileDBVectorStore(VectorStoreBackend):
 
     async def delete_vectors(self, ids):
         # TileDB does not support deleting individual elements in dense arrays; recommend using sparse arrays for full support
-        self.logger.warning(
-            "TileDB DenseArray does not support deleting individual vectors. Consider using SparseArray for full support."
+        raise NotImplementedError(
+            "TileDBVectorStore.delete_vectors is not implemented: TileDB dense arrays "
+            "do not support deleting individual vectors."
         )
-        self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         loop = asyncio.get_event_loop()
