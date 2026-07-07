@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 from multimind.memory.active_learning import ActiveLearningMemory
 from multimind.memory.consensus import ConsensusMemory

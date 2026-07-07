@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 # Make the examples package importable
 project_root = Path(__file__).parent.parent.parent.parent

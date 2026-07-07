@@ -100,6 +100,41 @@ def _try_import(name: str) -> bool:
     return True
 
 
+def _preload_sqlite_vss_before_faiss() -> None:
+    """Avoid a native symbol collision between ``faiss`` and ``sqlite-vss``.
+
+    ``sqlite-vss`` vendors its own private build of libfaiss inside its
+    ``vss0``/``vector0`` extensions. If the ``faiss`` PyPI package's libfaiss
+    is loaded into the process *first*, sqlite-vss's virtual-table dispatch
+    gets corrupted by the collision and every insert fails with a
+    nonsensical ``"add_with_ids not implemented for this type of index"``
+    error. Loading sqlite-vss's extension pair into a throwaway connection
+    here — before ``HAS_FAISS`` below ever imports ``faiss`` — fixes the
+    load order for the whole test session regardless of which tests run.
+    """
+    try:
+        import sqlite3
+
+        import sqlite_vss
+    except ImportError:
+        return
+    try:
+        conn = sqlite3.connect(":memory:")
+        conn.enable_load_extension(True)
+        vss_path = sqlite_vss.vss_loadable_path()
+        vector0_path = os.path.join(os.path.dirname(vss_path), "vector0")
+        try:
+            conn.load_extension(vector0_path)
+        except sqlite3.OperationalError:
+            pass  # already registered, missing, or fused into vss0 on this build
+        conn.load_extension(vss_path)
+        conn.close()
+    except Exception:
+        pass  # best-effort; sqlite-vss tests self-skip if the ordering wasn't achieved
+
+
+_preload_sqlite_vss_before_faiss()
+
 HAS_TORCH = _try_import("torch")
 HAS_TRANSFORMERS = _try_import("transformers")
 HAS_FAISS = _try_import("faiss")

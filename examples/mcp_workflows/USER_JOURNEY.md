@@ -23,7 +23,7 @@ This document guides you through using the Multi-Context Processing (MCP) system
 This example demonstrates a simple workflow using Slack and Jira integrations.
 
 ```python
-from examples.mcp import mcp_workflow
+from examples.mcp_workflows import mcp_workflow
 
 # Run the workflow
 await mcp_workflow()
@@ -35,7 +35,7 @@ await mcp_workflow()
 Automates code review process with AI-powered analysis.
 
 ```python
-from examples.mcp import code_review_workflow
+from examples.mcp_workflows import code_review_workflow
 
 # Run the workflow
 await code_review_workflow()
@@ -51,7 +51,7 @@ await code_review_workflow()
 Handles automated testing and deployment.
 
 ```python
-from examples.mcp import ci_cd_workflow
+from examples.mcp_workflows import ci_cd_workflow
 
 # Run the workflow
 await ci_cd_workflow()
@@ -68,7 +68,7 @@ await ci_cd_workflow()
 Automates documentation generation.
 
 ```python
-from examples.mcp import documentation_workflow
+from examples.mcp_workflows import documentation_workflow
 
 # Run the workflow
 await documentation_workflow()
@@ -85,7 +85,7 @@ await documentation_workflow()
 Demonstrates complex workflows using multiple integrations.
 
 ```python
-from examples.mcp import multi_integration_workflow
+from examples.mcp_workflows import multi_integration_workflow
 
 # Run the workflow
 await multi_integration_workflow()
@@ -117,7 +117,7 @@ await multi_integration_workflow()
 
 2. **Initialize Executor**
    ```python
-   from examples.mcp import AdvancedMCPExecutor
+   from examples.mcp_workflows import AdvancedMCPExecutor
    
    executor = AdvancedMCPExecutor(
        model_registry=models,

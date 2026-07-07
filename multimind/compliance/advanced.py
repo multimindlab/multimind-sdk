@@ -622,6 +622,100 @@ class ModelWatermarking:
         }
 
 
+class BudgetExhaustedError(Exception):
+    """Raised when a :class:`PrivacyBudget`'s total epsilon has been spent."""
+
+
+class PrivacyBudget:
+    """Tracks a total epsilon budget spent across privatize() calls.
+
+    Composition is *simple sequential composition*: cumulative privacy loss
+    is the sum of each call's epsilon (Dwork & Roth, "The Algorithmic
+    Foundations of Differential Privacy", Theorem 3.16). This is a
+    conservative, easy-to-audit bound. It does NOT implement
+    (epsilon, delta)-advanced composition, which permits a tighter,
+    sub-linear bound on cumulative loss across many queries — that is not
+    implemented here.
+    """
+
+    def __init__(self, total_epsilon: float):
+        if total_epsilon <= 0:
+            raise ValueError("total_epsilon must be positive")
+        self.total_epsilon = total_epsilon
+        self.spent_epsilon = 0.0
+
+    @property
+    def remaining_epsilon(self) -> float:
+        return self.total_epsilon - self.spent_epsilon
+
+    def spend(self, epsilon: float) -> None:
+        """Deduct ``epsilon`` from the budget.
+
+        Raises:
+            BudgetExhaustedError: if ``epsilon`` exceeds what remains.
+        """
+        if epsilon <= 0:
+            raise ValueError("epsilon must be positive")
+        if epsilon > self.remaining_epsilon + 1e-9:
+            raise BudgetExhaustedError(
+                f"Privacy budget exhausted: requested epsilon={epsilon}, "
+                f"only {self.remaining_epsilon} remaining of {self.total_epsilon} total"
+            )
+        self.spent_epsilon += epsilon
+
+
+class DPMechanism:
+    """Laplace-mechanism differential privacy with optional epsilon-budget accounting.
+
+    When ``budget`` is provided, each :meth:`privatize` call spends
+    ``self.epsilon`` from it (simple sequential composition — see
+    :class:`PrivacyBudget`) and raises :class:`BudgetExhaustedError` once the
+    budget is spent. Without a budget, behavior is unchanged: unlimited calls.
+    """
+
+    def __init__(self, epsilon: float, sensitivity: float = 1.0, budget: Optional[Any] = None):
+        self.epsilon = epsilon
+        self.sensitivity = sensitivity
+        self.budget = budget
+
+    def _laplace_noise(self) -> float:
+        # Inverse-CDF sampling of Laplace(0, sensitivity/epsilon).
+        scale = self.sensitivity / self.epsilon
+        u = random.random() - 0.5
+        return -scale * math.copysign(1.0, u) * math.log(1 - 2 * abs(u))
+
+    def privatize(self, data: Any) -> Any:
+        """Apply Laplace-mechanism differential privacy to numeric data.
+
+        Spends ``self.epsilon`` from ``self.budget`` (if configured) once per
+        call, regardless of how deeply nested ``data`` is.
+        """
+        if self.budget is not None:
+            self.budget.spend(self.epsilon)
+        return self._apply_noise(data)
+
+    def _apply_noise(self, data: Any) -> Any:
+        if isinstance(data, bool):
+            raise NotImplementedError("Differential privacy for boolean values is not implemented")
+        if isinstance(data, (int, float)):
+            return float(data) + self._laplace_noise()
+        if torch is not None and isinstance(data, torch.Tensor):
+            scale = self.sensitivity / self.epsilon
+            tensor = data if data.is_floating_point() else data.float()
+            u = torch.rand_like(tensor) - 0.5
+            magnitude = u.abs().clamp(max=0.5 - 1e-7)
+            noise = -scale * torch.sign(u) * torch.log1p(-2.0 * magnitude)
+            return tensor + noise
+        if isinstance(data, dict):
+            return {key: self._apply_noise(value) for key, value in data.items()}
+        if isinstance(data, list):
+            return [self._apply_noise(value) for value in data]
+        raise NotImplementedError(
+            "Differential privacy is only implemented for numeric data; "
+            f"refusing to return {type(data).__name__} data unnoised."
+        )
+
+
 class AdaptivePrivacy:
     """Enhanced adaptive privacy with advanced feedback mechanisms."""
 
@@ -730,42 +824,6 @@ class AdaptivePrivacy:
 
     def _initialize_dp_mechanism(self):
         """Initialize the differential privacy mechanism."""
-
-        class DPMechanism:
-            def __init__(self, epsilon: float, sensitivity: float = 1.0):
-                self.epsilon = epsilon
-                self.sensitivity = sensitivity
-
-            def _laplace_noise(self) -> float:
-                # Inverse-CDF sampling of Laplace(0, sensitivity/epsilon).
-                scale = self.sensitivity / self.epsilon
-                u = random.random() - 0.5
-                return -scale * math.copysign(1.0, u) * math.log(1 - 2 * abs(u))
-
-            def privatize(self, data: Any) -> Any:
-                """Apply Laplace-mechanism differential privacy to numeric data."""
-                if isinstance(data, bool):
-                    raise NotImplementedError(
-                        "Differential privacy for boolean values is not implemented"
-                    )
-                if isinstance(data, (int, float)):
-                    return float(data) + self._laplace_noise()
-                if torch is not None and isinstance(data, torch.Tensor):
-                    scale = self.sensitivity / self.epsilon
-                    tensor = data if data.is_floating_point() else data.float()
-                    u = torch.rand_like(tensor) - 0.5
-                    magnitude = u.abs().clamp(max=0.5 - 1e-7)
-                    noise = -scale * torch.sign(u) * torch.log1p(-2.0 * magnitude)
-                    return tensor + noise
-                if isinstance(data, dict):
-                    return {key: self.privatize(value) for key, value in data.items()}
-                if isinstance(data, list):
-                    return [self.privatize(value) for value in data]
-                raise NotImplementedError(
-                    "Differential privacy is only implemented for numeric data; "
-                    f"refusing to return {type(data).__name__} data unnoised."
-                )
-
         initial_epsilon = self.config.get("initial_epsilon", 1.0)
         sensitivity = self.config.get("dp_sensitivity", 1.0)
         return DPMechanism(initial_epsilon, sensitivity)

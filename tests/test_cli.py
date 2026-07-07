@@ -16,6 +16,27 @@ chat_module = importlib.import_module("multimind.cli.chat")
 models_module = importlib.import_module("multimind.cli.models")
 compliance_module = importlib.import_module("multimind.cli.compliance")
 
+
+def _extras_available(module: str) -> bool:
+    try:
+        importlib.import_module(module)
+        return True
+    except ImportError:
+        return False
+
+
+# Gateway/compliance-backed commands exit 1 on core-only installs by design;
+# skip their tests when the extras are not installed (they run on the CI jobs
+# that install [gateway] / [compliance]).
+requires_gateway = pytest.mark.skipif(
+    not _extras_available("multimind.gateway.models"),
+    reason="requires the [gateway] extras",
+)
+requires_compliance_backend = pytest.mark.skipif(
+    not _extras_available("multimind.gateway.compliance_api"),
+    reason="requires the [compliance,gateway] extras",
+)
+
 ALL_KEY_VARS = [
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
@@ -123,6 +144,7 @@ def test_chat_start_single_prompt_mocked(runner, monkeypatch):
     assert "mocked response" in result.output
 
 
+@requires_gateway
 def test_chat_start_unsupported_model(runner):
     result = runner.invoke(cli, ["chat", "start", "-m", "notamodel", "-p", "hi"])
     assert result.exit_code == 1
@@ -203,6 +225,7 @@ def test_models_list_local_dir_missing(runner, tmp_path):
     assert "No models found" in result.output
 
 
+@requires_gateway
 def test_models_compare_no_keys_fails(runner, no_keys):
     result = runner.invoke(cli, ["models", "compare", "hi", "-m", "openai"])
     assert result.exit_code == 1
@@ -210,6 +233,7 @@ def test_models_compare_no_keys_fails(runner, no_keys):
     assert "No model produced a response" in result.output
 
 
+@requires_gateway
 def test_models_compare_mocked(runner, no_keys, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(
@@ -220,12 +244,14 @@ def test_models_compare_mocked(runner, no_keys, monkeypatch):
     assert "mocked response" in result.output
 
 
+@requires_gateway
 def test_models_metrics(runner):
     result = runner.invoke(cli, ["models", "metrics"])
     assert result.exit_code == 0
     assert "Model Metrics" in result.output
 
 
+@requires_gateway
 def test_models_metrics_single_model(runner):
     result = runner.invoke(cli, ["models", "metrics", "-m", "openai"])
     assert result.exit_code == 0
@@ -238,6 +264,7 @@ def test_models_health_missing_key(runner, no_keys):
     assert "OPENAI_API_KEY not set" in result.output
 
 
+@requires_gateway
 def test_models_health_mocked(runner, no_keys, monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.setattr(
@@ -336,12 +363,14 @@ def test_compliance_configure_alerts_requires_config(runner):
     assert result.exit_code == 2
 
 
+@requires_compliance_backend
 def test_compliance_dashboard_offline(runner):
     result = runner.invoke(cli, ["compliance", "dashboard", "-o", "org1"])
     assert result.exit_code == 0
     assert "Compliance Dashboard" in result.output
 
 
+@requires_compliance_backend
 def test_compliance_alerts_offline(runner):
     result = runner.invoke(cli, ["compliance", "alerts", "-o", "org1"])
     assert result.exit_code == 0

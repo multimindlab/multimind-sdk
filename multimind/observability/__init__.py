@@ -25,6 +25,14 @@ from .cost_tracker import (
     track_costs,
 )
 from .metrics import CostMetric, ErrorMetric, LatencyMetric, Metric, MetricsCollector, TokenMetric
+from .tracing import (
+    Run,
+    RunTracer,
+    TracedModel,
+    get_default_tracer,
+    reset_default_tracer,
+    trace_model,
+)
 
 __all__ = [
     "MetricsCollector",
@@ -44,6 +52,12 @@ __all__ = [
     "load_tracker",
     "reset_default_tracker",
     "track_costs",
+    "Run",
+    "RunTracer",
+    "TracedModel",
+    "get_default_tracer",
+    "reset_default_tracer",
+    "trace_model",
     "AI_ENV_KEYS",
     "AI_PACKAGE_REGISTRY",
     "Finding",

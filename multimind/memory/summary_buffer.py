@@ -9,6 +9,9 @@ Usage:
     buffer = SummaryBufferMemory(...)
     buffer.set_similarity_func(custom_similarity)
     buffer.set_adaptive_threshold(AdaptiveThreshold(...))
+
+Module consolidation review: intentionally subclasses ``summary.SummaryMemory``
+to add buffering on top of summarization — not a redundant duplicate.
 """
 
 from datetime import datetime, timedelta

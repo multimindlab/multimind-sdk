@@ -493,8 +493,71 @@ class AdvancedDocumentProcessor:
         )
 
     async def _extract_image_data(self, image: Dict[str, Any], **kwargs) -> ImageData:
-        """Extract data from image."""
+        """
+        Extract data from an image dict via OCR. Supported input shapes:
+        - {"path": str} or {"image_path": str} - image file loaded via PIL or cv2
+        - {"image": <PIL.Image.Image>} - in-memory PIL image
+        - {"array": np.ndarray} or {"content": np.ndarray} - raw pixel array
+
+        Only OCR text is extracted; objects/captions stay empty because no
+        vision model backend is configured.
+        """
+        if not PYTESSERACT_AVAILABLE:
+            raise NotImplementedError(
+                "Image extraction requires pytesseract for OCR. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
+        pixels, source, extractors = self._resolve_image_pixels(image)
+        text = pytesseract.image_to_string(pixels)
+        extractors.append("pytesseract")
+
+        return ImageData(
+            content=pixels,
+            text=text,
+            metadata={
+                **image.get("metadata", {}),
+                "source": source,
+                "extractors": extractors,
+                "objects_extracted": False,
+                "captions_extracted": False,
+            },
+            objects=[],
+            captions=[],
+        )
+
+    def _resolve_image_pixels(self, image: Dict[str, Any]) -> Tuple[np.ndarray, str, List[str]]:
+        """Resolve an image dict to (pixel array, source label, extractors used)."""
+        array = image.get("array", image.get("content"))
+        if isinstance(array, np.ndarray):
+            return array, "array", []
+
+        pil_image = image.get("image")
+        if pil_image is not None:
+            return np.asarray(pil_image), "pil_image", []
+
+        path = image.get("path", image.get("image_path"))
+        if path:
+            try:
+                from PIL import Image as PILImage
+            except ImportError:
+                PILImage = None
+            if PILImage is not None:
+                with PILImage.open(path) as img:
+                    return np.asarray(img), str(path), ["PIL"]
+            if OPENCV_AVAILABLE:
+                pixels = cv2.imread(str(path))
+                if pixels is None:
+                    raise ValueError(f"Could not read image file: {path}")
+                return pixels, str(path), ["cv2"]
+            raise NotImplementedError(
+                "Loading images from a path requires Pillow or opencv-python. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
         raise NotImplementedError(
-            "Image extraction is not implemented yet; a vision-model backend is required. "
-            "Subclass AdvancedDocumentProcessor and override _extract_image_data."
+            "Unsupported image input shape. Supported shapes: "
+            "{'path': str} or {'image_path': str} for image files, "
+            "{'image': PIL.Image} for in-memory images, or "
+            "{'array': np.ndarray} / {'content': np.ndarray} for pixel arrays."
         )

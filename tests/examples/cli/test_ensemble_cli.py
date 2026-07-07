@@ -3,6 +3,7 @@ Tests for ensemble_cli.py CLI example.
 """
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import os

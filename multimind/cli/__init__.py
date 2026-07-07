@@ -12,6 +12,7 @@ from .chat import chat
 from .compliance import compliance
 from .config import config
 from .context_transfer import main as context_transfer_main
+from .dashboard import dashboard
 from .models import models
 from .serve import serve
 
@@ -31,6 +32,7 @@ cli.add_command(models)
 cli.add_command(config)
 cli.add_command(serve)
 cli.add_command(audit)
+cli.add_command(dashboard)
 
 
 def _run_convert():
@@ -85,6 +87,7 @@ __all__ = [
     "config",
     "serve",
     "audit",
+    "dashboard",
     "convert_main",
     "context_transfer_main",
 ]

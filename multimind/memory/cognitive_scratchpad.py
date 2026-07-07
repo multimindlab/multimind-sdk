@@ -110,6 +110,10 @@ class CognitiveScratchpadMemory(BaseMemory):
             self.reasoning_chains[chain_id] = []
 
             for i, step in enumerate(steps["steps"]):
+                # Each step in a chain naturally depends on the one before it;
+                # additional cross-chain dependencies can be added later via
+                # add_step_dependency().
+                previous_step_id = self.reasoning_chains[chain_id][-1]["id"] if i > 0 else None
                 reasoning_step = {
                     "id": f"step_{len(self.reasoning_steps)}",
                     "item_id": item_id,
@@ -118,6 +122,8 @@ class CognitiveScratchpadMemory(BaseMemory):
                     "step_type": steps["step_types"][i],
                     "confidence": steps["confidence"][i],
                     "timestamp": datetime.now().isoformat(),
+                    "dependencies": [previous_step_id] if previous_step_id else [],
+                    "revision_history": [],
                 }
                 self.reasoning_steps.append(reasoning_step)
                 self.reasoning_chains[chain_id].append(reasoning_step)
@@ -206,6 +212,84 @@ class CognitiveScratchpadMemory(BaseMemory):
         # Remove from chains
         for chain_id, chain_data in self.reasoning_chains.items():
             self.reasoning_chains[chain_id] = [s for s in chain_data if s["item_id"] != item_id]
+
+    def _find_step(self, step_id: str) -> Optional[Dict[str, Any]]:
+        return next((s for s in self.reasoning_steps if s["id"] == step_id), None)
+
+    def _transitive_dependencies(self, step_id: str) -> List[str]:
+        """All step ids ``step_id`` depends on, directly or transitively."""
+        seen: List[str] = []
+        step = self._find_step(step_id)
+        stack = list(step.get("dependencies", [])) if step else []
+        while stack:
+            dep_id = stack.pop()
+            if dep_id in seen:
+                continue
+            seen.append(dep_id)
+            dep_step = self._find_step(dep_id)
+            if dep_step:
+                stack.extend(dep_step.get("dependencies", []))
+        return seen
+
+    async def add_step_dependency(self, step_id: str, depends_on: str) -> None:
+        """Record that ``step_id`` depends on ``depends_on``.
+
+        Both steps must already exist. Raises ``ValueError`` for a
+        self-dependency or a dependency that would create a cycle.
+        """
+        step = self._find_step(step_id)
+        dependency = self._find_step(depends_on)
+        if step is None:
+            raise ValueError(f"Unknown step id: {step_id}")
+        if dependency is None:
+            raise ValueError(f"Unknown step id: {depends_on}")
+        if step_id == depends_on:
+            raise ValueError("A step cannot depend on itself")
+        if step_id in self._transitive_dependencies(depends_on):
+            raise ValueError(f"Adding dependency {step_id} -> {depends_on} would create a cycle")
+        dependencies = step.setdefault("dependencies", [])
+        if depends_on not in dependencies:
+            dependencies.append(depends_on)
+        await self.save()
+
+    async def get_dependency_chain(self, step_id: str) -> List[str]:
+        """Ancestors of ``step_id``, ordered earliest-recorded first.
+
+        Raises ``ValueError`` if ``step_id`` is unknown.
+        """
+        if self._find_step(step_id) is None:
+            raise ValueError(f"Unknown step id: {step_id}")
+        deps = self._transitive_dependencies(step_id)
+        order = {s["id"]: i for i, s in enumerate(self.reasoning_steps)}
+        return sorted(deps, key=lambda sid: order.get(sid, 0))
+
+    async def revise_step(
+        self, step_id: str, new_content: str, reason: Optional[str] = None
+    ) -> None:
+        """Revise a reasoning step's content, archiving the prior version.
+
+        The previous content is appended to the step's ``revision_history``
+        (with a timestamp and optional ``reason``) before being overwritten.
+        """
+        step = self._find_step(step_id)
+        if step is None:
+            raise ValueError(f"Unknown step id: {step_id}")
+        step.setdefault("revision_history", []).append(
+            {
+                "content": step["content"],
+                "revised_at": datetime.now().isoformat(),
+                "reason": reason,
+            }
+        )
+        step["content"] = new_content
+        await self.save()
+
+    async def get_revision_history(self, step_id: str) -> List[Dict[str, Any]]:
+        """Return the archived prior versions of a reasoning step, oldest first."""
+        step = self._find_step(step_id)
+        if step is None:
+            raise ValueError(f"Unknown step id: {step_id}")
+        return list(step.get("revision_history", []))
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get all messages from all items."""

@@ -201,5 +201,7 @@ class VectorStore:
         """Load a vector store from disk."""
         instance = cls(config)
         backend = instance._get_backend()
-        await backend.load(path)
+        # Backend.load() is a classmethod that returns a *new* populated backend
+        # instance; it must be assigned back or the loaded data is discarded.
+        instance._backend_instance = await backend.load(path, config)
         return instance

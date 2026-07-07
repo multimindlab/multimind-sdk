@@ -1,5 +1,12 @@
 """
 Enhanced retrieval system with hierarchical, temporal-aware, and domain-specific capabilities.
+
+Canonical source (per ``multimind/retrieval/__init__.py``) for
+``EnhancedRetriever``, and re-exports the canonical ``HybridRetriever`` from
+``retrieval.py``. ``RetrievalType`` here (hierarchical/temporal/domain/
+multi_lingual/hybrid) is an internal, distinct concept from
+``retrieval.QueryType`` and the unused ``base.RetrieverType`` — not a
+duplicate despite the shared "hybrid" member.
 """
 
 from dataclasses import dataclass

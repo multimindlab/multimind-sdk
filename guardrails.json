@@ -1,0 +1,8 @@
+{
+  "strategy": "mask",
+  "block_on": [
+    "ssn"
+  ],
+  "budget_max_cost": 5.0,
+  "scan_output": true
+}

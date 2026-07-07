@@ -1,5 +1,10 @@
 """
 Summary memory implementation for storing summarized conversations.
+
+Module consolidation review: base summarization implementation.
+``summary_buffer.SummaryBufferMemory`` subclasses it to add a message
+buffer alongside the running summary — an intentional variant, not a
+redundant duplicate.
 """
 
 import json

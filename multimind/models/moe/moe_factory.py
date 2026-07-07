@@ -29,7 +29,9 @@ class MoEFactory:
             MoEModel instance
         """
         try:
-            model = MoEModel(config)
+            # MoEModel's constructor takes keyword arguments (input_dim, hidden_dim,
+            # num_experts, num_layers, ...), not a single config dict positionally.
+            model = MoEModel(**config)
             model_id = id(model)
             self._models[str(model_id)] = model
             logger.info(f"Created MoE model with ID: {model_id}")

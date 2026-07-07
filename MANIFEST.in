@@ -3,3 +3,4 @@ include LICENSE
 include pyproject.toml
 recursive-include multimind *.py
 recursive-include multimind *.typed
+recursive-include multimind/dashboard/static *

@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("fastapi")  # requires optional extras absent on core-only installs
 from multimind.server import MultiMindServer
 from multimind.api import multi_model_app, unified_app
 

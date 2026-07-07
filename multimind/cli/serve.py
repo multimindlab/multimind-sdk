@@ -55,6 +55,9 @@ def _proxy():
     default=None,
     help="Also redact PII in model output (default on)",
 )
+@click.option(
+    "--config", default=None, help="Guardrails JSON file authored via `multimind dashboard`"
+)
 def serve(
     host: Optional[str],
     port: Optional[int],
@@ -65,6 +68,7 @@ def serve(
     budget: Optional[float],
     audit_log: Optional[str],
     scan_output: Optional[bool],
+    config: Optional[str],
 ):
     """Start the OpenAI-compatible compliance proxy.
 
@@ -73,7 +77,7 @@ def serve(
     """
     uvicorn, ProxySettings, create_app = _proxy()
     try:
-        settings = ProxySettings.from_env(
+        kwargs = dict(
             host=host,
             port=port,
             upstream=upstream,
@@ -84,8 +88,12 @@ def serve(
             audit_log=audit_log,
             scan_output=scan_output,
         )
+        if config:
+            settings = ProxySettings.from_file(config, **kwargs)
+        else:
+            settings = ProxySettings.from_env(**kwargs)
         app = create_app(settings)
-    except ValueError as exc:
+    except (OSError, ValueError) as exc:
         raise click.ClickException(str(exc)) from exc
 
     state = app.state.proxy

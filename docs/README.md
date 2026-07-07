@@ -13,7 +13,8 @@ Start here and pick the path that fits you.
 
 ## Guides
 
-- [Compliance](compliance.md) — GDPR/HIPAA compliance module ([quick version](compliance_quickstart.md))
+- [Compliance](compliance.md) — GDPR/HIPAA compliance module, evidence reports ([quick version](compliance_quickstart.md))
+- [Governance dashboard](dashboard.md) — `multimind dashboard`: audit trail, costs, inventory, and no-code guardrails in a self-hosted UI
 - [Guard proxy](guard-proxy.md) — `multimind serve`: govern any OpenAI-compatible app by changing one line
 - [Framework integrations](integrations.md) — add PII guard, budgets, and audit to LangChain, LlamaIndex, CrewAI, and the OpenAI SDK
 - [MCP server](mcp-server.md) — expose compliance tools to Claude Desktop / Claude Code and other MCP clients

@@ -4,6 +4,7 @@ Tests edge cases, error handling, and advanced functionality.
 """
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any, List, Optional, AsyncGenerator, Coroutine

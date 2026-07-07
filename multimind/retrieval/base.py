@@ -1,5 +1,30 @@
 """
 Base classes and interfaces for retrieval implementations.
+
+DEPRECATION / DUPLICATION NOTE (module consolidation review): this module is
+not imported by ``multimind.retrieval.__init__`` and is not referenced
+anywhere else in the codebase. The package's public surface (``Retriever``,
+``RetrievalConfig``, ``RetrievalResult``) comes from ``retriever.py``
+instead. Every class here has a same-named counterpart elsewhere in the
+package that is NOT a drop-in match, so nothing below is aliased:
+
+- ``RetrievalConfig`` here (``retriever_type``/``vector_store_config``/
+  ``search_params``/``custom_params``) differs from the canonical
+  ``retriever.RetrievalConfig`` (``vector_store``/``document_processor``/
+  ``embedding_generator``/``top_k``/``similarity_threshold``).
+- ``RetrievalResult`` here (``id``/``content``/``metadata``/``score``/
+  ``source``) is a *third* distinct shape alongside ``retriever.RetrievalResult``
+  (the canonical one, exported in ``__all__``) and ``retrieval.RetrievalResult``
+  (``document``/``metadata``/``score``/``retrieval_type``/``reranking_score``,
+  used internally by ``HybridRetriever``).
+- ``RetrieverType`` (``DENSE``/``SPARSE``/``HYBRID``) is a different concept
+  from ``retrieval.QueryType`` and ``enhanced_retrieval.RetrievalType``.
+- ``Retriever`` here is a structural ``Protocol`` with a different
+  ``retrieve()`` signature (``k``, ``filter_criteria``) than the canonical
+  concrete ``retriever.Retriever`` class (``top_k``, ``**kwargs``).
+
+Kept only for any external code that may import
+``multimind.retrieval.base`` directly.
 """
 
 from dataclasses import dataclass

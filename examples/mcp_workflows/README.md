@@ -5,7 +5,7 @@ This directory contains example usage of the MultiMind Control Plane (MCP) workf
 ## Directory Structure
 
 ```
-examples/mcp/
+examples/mcp_workflows/
 ├── examples/                    # Example usage scripts
 │   ├── code_review_example.py   # Code review workflow example
 │   ├── ci_cd_example.py         # CI/CD workflow example

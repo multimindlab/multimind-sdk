@@ -25,8 +25,9 @@ TOOL_NAMES = {"scan_text", "redact_text", "check_grounding", "audit_log", "check
 
 @pytest.fixture(autouse=True)
 def _real_mcp_package():
-    """Force the installed MCP SDK to win over ``examples/mcp`` (a same-named
-    package that shadows it once example test dirs land on sys.path)."""
+    """Force the installed MCP SDK to win over any same-named example package
+    (historically ``examples/mcp``, renamed to ``examples/mcp_workflows``).
+    Kept as defense in depth in case a shadowing ``mcp`` dir reappears."""
     import importlib.util
     import site
 
@@ -42,7 +43,7 @@ def _real_mcp_package():
         for name in [n for n in list(sys.modules) if n == "mcp" or n.startswith("mcp.")]:
             del sys.modules[name]
         importlib.invalidate_caches()
-        # Prepend real site-packages so the installed `mcp` shadows examples/mcp
+        # Prepend real site-packages so the installed `mcp` wins over any shadow
         for sp in site.getsitepackages() + [site.getusersitepackages()]:
             if sp in sys.path:
                 sys.path.remove(sp)

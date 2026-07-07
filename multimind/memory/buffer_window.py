@@ -1,5 +1,8 @@
 """
 Sliding window buffer memory implementation that maintains a fixed-size window of recent messages.
+
+Module consolidation review: intentionally subclasses ``buffer.BufferMemory``
+to add windowing (count/time/token-based) — not a redundant duplicate of it.
 """
 
 from datetime import datetime, timedelta

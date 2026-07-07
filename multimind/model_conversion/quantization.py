@@ -44,7 +44,13 @@ class AdvancedQuantization:
         for layer_name, layer_config in layer_configs.items():
             layer = getattr(model, layer_name)
             if layer_config.get("quantization_type") == "dynamic":
-                torch.quantization.quantize_dynamic(layer, {torch.nn.Linear}, dtype=torch.qint8)
+                # quantize_dynamic() is not in-place by default; it returns a new
+                # module. The return value must be reassigned onto the model,
+                # otherwise the layer silently stays unquantized.
+                quantized_layer = torch.quantization.quantize_dynamic(
+                    layer, {torch.nn.Linear}, dtype=torch.qint8
+                )
+                setattr(model, layer_name, quantized_layer)
             elif layer_config.get("quantization_type") == "static":
                 layer.qconfig = torch.quantization.get_default_qconfig("fbgemm")
                 torch.quantization.prepare(layer, inplace=True)

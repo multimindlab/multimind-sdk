@@ -2,6 +2,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 import multimind.document_processing.advanced_document_processor as adp
 
@@ -113,7 +114,78 @@ async def test_extract_table_requires_pandas(monkeypatch):
         await processor._extract_table_data({"rows": [["a"]]})
 
 
+@pytest.fixture
+def ocr(monkeypatch):
+    calls = []
+
+    def image_to_string(pixels):
+        calls.append(pixels)
+        return "ocr text"
+
+    monkeypatch.setattr(adp, "PYTESSERACT_AVAILABLE", True)
+    monkeypatch.setattr(
+        adp, "pytesseract", SimpleNamespace(image_to_string=image_to_string), raising=False
+    )
+    return calls
+
+
 @pytest.mark.asyncio
-async def test_extract_image_data_still_not_implemented(processor):
-    with pytest.raises(NotImplementedError):
+async def test_extract_image_from_array(processor, ocr):
+    import numpy as np
+
+    pixels = np.zeros((2, 2), dtype=np.uint8)
+    result = await processor._extract_image_data({"array": pixels, "metadata": {"page": 1}})
+    assert result.text == "ocr text"
+    assert result.content is pixels
+    assert ocr == [pixels]
+    assert result.objects == []
+    assert result.captions == []
+    assert result.metadata["source"] == "array"
+    assert result.metadata["extractors"] == ["pytesseract"]
+    assert result.metadata["page"] == 1
+    assert result.metadata["objects_extracted"] is False
+
+
+@pytest.mark.asyncio
+async def test_extract_image_from_path_via_pil(processor, ocr, monkeypatch):
+    import numpy as np
+
+    pixels = np.ones((3, 3), dtype=np.uint8)
+
+    class FakePILImage:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def __array__(self, dtype=None, copy=None):
+            return pixels
+
+    opened = []
+
+    def fake_open(path):
+        opened.append(path)
+        return FakePILImage()
+
+    monkeypatch.setitem(sys.modules, "PIL", SimpleNamespace(Image=SimpleNamespace(open=fake_open)))
+
+    result = await processor._extract_image_data({"path": "/tmp/scan.png"})
+    assert opened == ["/tmp/scan.png"]
+    assert result.text == "ocr text"
+    assert (result.content == pixels).all()
+    assert result.metadata["source"] == "/tmp/scan.png"
+    assert result.metadata["extractors"] == ["PIL", "pytesseract"]
+
+
+@pytest.mark.asyncio
+async def test_extract_image_requires_pytesseract(processor, monkeypatch):
+    monkeypatch.setattr(adp, "PYTESSERACT_AVAILABLE", False)
+    with pytest.raises(NotImplementedError, match="pytesseract"):
+        await processor._extract_image_data({"array": object()})
+
+
+@pytest.mark.asyncio
+async def test_extract_image_unsupported_shape(processor, ocr):
+    with pytest.raises(NotImplementedError, match="Supported shapes"):
         await processor._extract_image_data({"content": b""})

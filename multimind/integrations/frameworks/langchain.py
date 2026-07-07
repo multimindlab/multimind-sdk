@@ -1,8 +1,10 @@
 """Governance adapters for LangChain.
 
-Three entry points, all additive to an existing LangChain app:
+Entry points, all additive to an existing LangChain app:
 
 * :func:`guard_runnable` — PII guard around any Runnable/chat model.
+* :func:`guard_tool` / :func:`guard_tools` — PII guard around agent tools, so
+  tool *inputs* (not just LLM prompts) are screened before the tool body runs.
 * :class:`MultiMindChatModel` — a ``BaseChatModel`` backed by any MultiMind
   BaseLLM-compatible model, so MultiMind providers slot into LCEL chains.
 * :class:`MultiMindCallbackHandler` — cost/audit/budget events from any
@@ -27,6 +29,7 @@ try:
     from langchain_core.outputs import ChatGeneration, ChatResult, LLMResult
     from langchain_core.prompt_values import ChatPromptValue, PromptValue, StringPromptValue
     from langchain_core.runnables import Runnable, RunnableConfig
+    from langchain_core.tools import BaseTool
 except ImportError as exc:  # pragma: no cover - exercised via import-safety test
     raise ImportError(_INSTALL_HINT) from exc
 
@@ -36,9 +39,12 @@ from ._base import GuardState
 
 __all__ = [
     "GuardedRunnable",
+    "GuardedTool",
     "MultiMindCallbackHandler",
     "MultiMindChatModel",
     "guard_runnable",
+    "guard_tool",
+    "guard_tools",
 ]
 
 _ROLE_MAP = {"human": "user", "ai": "assistant", "system": "system", "tool": "tool"}
@@ -158,6 +164,70 @@ def guard_runnable(runnable: Runnable, **guard_kwargs: Any) -> GuardedRunnable:
     return GuardedRunnable(runnable, GuardState("langchain", **guard_kwargs))
 
 
+class GuardedTool(BaseTool):
+    """PII guard around a LangChain ``Tool``/``BaseTool``; a ``BaseTool``
+    itself, so it drops into an agent's tool list unchanged and keeps the
+    wrapped tool's ``name``/``description``/``args_schema`` for LLM binding.
+
+    Only the tool's *input* — the string or dict argument an agent passes to
+    it — is screened/redacted before it reaches the wrapped tool's
+    ``_run``/``_arun``; the tool's return value is not screened here (route
+    the agent's LLM through :func:`guard_runnable` to catch PII flowing back
+    from tool output through the model).
+    """
+
+    def __init__(self, tool: BaseTool, state: GuardState, **kwargs: Any):
+        super().__init__(
+            name=tool.name,
+            description=tool.description,
+            args_schema=tool.args_schema,
+            return_direct=tool.return_direct,
+            **kwargs,
+        )
+        object.__setattr__(self, "_tool", tool)
+        object.__setattr__(self, "_state", state)
+
+    def __getattr__(self, name: str) -> Any:
+        try:
+            tool = object.__getattribute__(self, "_tool")
+        except AttributeError:
+            raise AttributeError(name)
+        return getattr(tool, name)
+
+    def _run(self, *args: Any, run_manager: Any = None, **kwargs: Any) -> Any:
+        tool_input = self._screen(args, kwargs, "invoke")
+        return self._tool.run(tool_input)
+
+    async def _arun(self, *args: Any, run_manager: Any = None, **kwargs: Any) -> Any:
+        tool_input = self._screen(args, kwargs, "ainvoke")
+        return await self._tool.arun(tool_input)
+
+    def _screen(self, args: Tuple[Any, ...], kwargs: Dict[str, Any], method: str) -> Any:
+        # Mirrors BaseTool._to_args_and_kwargs: a single positional string for
+        # string-input tools, or an all-keyword dict for structured tools.
+        if args:
+            value = args[0]
+            return self._state.screen_input(value, method) if isinstance(value, str) else value
+        return {
+            k: self._state.screen_input(v, method) if isinstance(v, str) else v
+            for k, v in kwargs.items()
+        }
+
+
+def guard_tool(tool: BaseTool, **guard_kwargs: Any) -> GuardedTool:
+    """Wrap one LangChain tool so its input is screened before the tool runs.
+
+    ``Agent(tools=[guard_tool(search_tool, block_on=("ssn",))])``. Accepts the
+    same governance kwargs as :func:`guard_runnable`.
+    """
+    return GuardedTool(tool, GuardState("langchain", **guard_kwargs))
+
+
+def guard_tools(tools: List[BaseTool], **guard_kwargs: Any) -> List[BaseTool]:
+    """Wrap every tool in a list: ``guard_tools([search_tool, calc_tool])``."""
+    return [guard_tool(t, **guard_kwargs) for t in tools]
+
+
 class MultiMindChatModel(BaseChatModel):
     """LangChain chat model backed by any MultiMind BaseLLM-compatible model.
 
@@ -226,6 +296,17 @@ class MultiMindCallbackHandler(BaseCallbackHandler):
     chars/4 estimate otherwise), enforces an optional :class:`Budget`
     (raising ``BudgetExceededError`` before the next call once exceeded),
     and writes lifecycle events to an optional :class:`AuditLog`.
+
+    This handler is observe-only by construction, not by omission: LangChain's
+    ``CallbackManager`` invokes every handler's ``on_llm_start``/
+    ``on_chat_model_start`` purely for its side effects and discards the
+    return value (see ``langchain_core.callbacks.manager.handle_event``), so
+    no callback — this one included — can rewrite the prompt actually sent to
+    the model. Since redaction is off the table here, ``on_llm_start`` instead
+    runs the same PII detector used by the guard wrappers over the outgoing
+    prompt and records a ``pii_detected`` audit event (types/counts only,
+    never raw text) *before* the call leaves the process — use
+    :func:`guard_runnable` alongside this handler when redaction is required.
     """
 
     raise_error = True  # budget violations must propagate, not be logged away
@@ -319,6 +400,17 @@ class MultiMindCallbackHandler(BaseCallbackHandler):
         model = _model_name(serialized, metadata, kwargs)
         self._runs[run_id] = {"input": input_text, "model": model}
         self._state.audit({"event": "llm_start", "model": model, "run_id": str(run_id)})
+        pii_types = self._state.detect_counts(input_text)
+        if pii_types:
+            self._state.audit(
+                {
+                    "event": "pii_detected",
+                    "model": model,
+                    "run_id": str(run_id),
+                    "pii_types": pii_types,
+                    "count": sum(pii_types.values()),
+                }
+            )
 
     @staticmethod
     def _usage(response: LLMResult) -> Optional[Tuple[int, int]]:

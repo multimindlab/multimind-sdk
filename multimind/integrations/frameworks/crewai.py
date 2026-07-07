@@ -5,6 +5,13 @@ CrewAI's ``call``/``acall`` interface) with MultiMind's PII guard, audit
 trail, cost tracking, and budget enforcement. Pass the wrapper anywhere
 CrewAI accepts an LLM instance (``Agent(llm=...)``, ``Crew(...)``).
 
+Verified against crewai 1.15.1 (installed and exercised directly, not just
+faked): ``crewai.BaseLLM`` is a Pydantic v2 model whose ``call``/``acall``
+take ``messages: str | list[LLMMessage]`` (``LLMMessage.content`` may be a
+plain string or a list of content parts) and whose ``__init__`` rebuilds the
+instance ``__dict__`` — see :class:`GuardedCrewLLM` for how that shapes
+initialization order.
+
 Budget enforcement is the headline here: agent crews are prone to runaway
 token consumption (delegation loops, retries, verbose tool chatter). With a
 ``Budget`` attached, the guard raises ``BudgetExceededError`` before the
@@ -40,11 +47,13 @@ class GuardedCrewLLM(_CrewBaseLLM):
     Subclasses ``crewai.BaseLLM`` so CrewAI's ``isinstance`` checks accept it
     as a first-class LLM. ``call``/``acall`` are guarded; every other
     attribute is proxied to the wrapped LLM.
+
+    Verified against crewai 1.15.1, where ``BaseLLM`` is a Pydantic model
+    whose ``__init__`` resets the instance ``__dict__`` — so the private
+    guard references are attached *after* base initialization.
     """
 
     def __init__(self, llm: Any, state: GuardState):
-        object.__setattr__(self, "_llm", llm)
-        object.__setattr__(self, "_state", state)
         try:
             _CrewBaseLLM.__init__(
                 self,
@@ -53,8 +62,14 @@ class GuardedCrewLLM(_CrewBaseLLM):
             )
         except TypeError:
             pass
-        if hasattr(llm, "stop"):
-            self.stop = llm.stop
+        object.__setattr__(self, "_llm", llm)
+        object.__setattr__(self, "_state", state)
+        stop = getattr(llm, "stop", None)
+        if stop is not None:
+            try:
+                self.stop = stop
+            except (TypeError, ValueError):  # pydantic field validation on 1.x
+                pass
 
     def __getattr__(self, name: str) -> Any:
         try:
@@ -85,6 +100,10 @@ class GuardedCrewLLM(_CrewBaseLLM):
         fn = getattr(self._llm, "supports_stop_words", None)
         return bool(fn()) if callable(fn) else False
 
+    def supports_multimodal(self) -> bool:
+        fn = getattr(self._llm, "supports_multimodal", None)
+        return bool(fn()) if callable(fn) else False
+
     def get_context_window_size(self) -> int:
         fn = getattr(self._llm, "get_context_window_size", None)
         return int(fn()) if callable(fn) else 4096
@@ -98,6 +117,15 @@ class GuardedCrewLLM(_CrewBaseLLM):
         for m in messages:
             if isinstance(m, dict) and isinstance(m.get("content"), str):
                 screened.append({**m, "content": self._state.screen_input(m["content"], method)})
+            elif isinstance(m, dict) and isinstance(m.get("content"), list):
+                # crewai 1.x LLMMessage content may be a list of parts
+                parts = [
+                    {**p, "text": self._state.screen_input(p["text"], method)}
+                    if isinstance(p, dict) and isinstance(p.get("text"), str)
+                    else p
+                    for p in m["content"]
+                ]
+                screened.append({**m, "content": parts})
             else:
                 screened.append(m)
         return screened
@@ -106,7 +134,11 @@ class GuardedCrewLLM(_CrewBaseLLM):
         if isinstance(screened, str):
             input_text = screened
         else:
-            input_text = "\n".join(m.get("content", "") for m in screened if isinstance(m, dict))
+            input_text = "\n".join(
+                m["content"]
+                for m in screened
+                if isinstance(m, dict) and isinstance(m.get("content"), str)
+            )
         output_text = ""
         if isinstance(result, str):
             result = self._state.screen_output(result, method)

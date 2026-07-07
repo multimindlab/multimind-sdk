@@ -1,46 +1,56 @@
 """
-Memory-Based Planning with Rollouts implementation.
+Planning memory: plan-step recording and success-weighted next-step suggestion.
+
+Honest core: given a current state, the next action is suggested purely from
+the observed success/failure frequency of actions previously taken in
+similar historical states (same style as
+:class:`multimind.memory.reinforcement.ReinforcementMemory` — real
+statistics over recorded history, no fabricated model of the environment).
+
+The previous version of this module simulated multi-step "rollouts" via a
+dummy ``_simulate_action`` that just echoed the action back as a fake
+"outcome", and a dummy ``_is_goal_reached`` that string-matched a "status"
+field. Without a real environment/simulator, predicting the outcome of a
+hypothetical future action can't be done honestly, so that code (and the two
+component-memory fields it wired in — one of which, ``VectorStoreMemory()``,
+would not even instantiate without a required ``llm`` argument) has been
+removed rather than kept as fabricated output. Multi-step planning reduces
+to repeated single-step suggestion: callers execute the suggested action,
+observe the real outcome, record it, and ask again.
 """
 
+import json
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-import numpy as np
+from pathlib import Path
+from statistics import fmean
+from typing import Any, Dict, List, Optional, Tuple
 
 from .base import BaseMemory
-from .episodic import EpisodicMemory
-from .vector_store import VectorStoreMemory
 
 
 class PlanningMemory(BaseMemory):
-    """Memory implementation with planning and rollouts."""
+    """Memory implementation with plan-step recording and next-step suggestion."""
 
     def __init__(
         self,
-        max_rollouts: int = 5,
-        rollout_depth: int = 3,
+        memory_key: str = "chat_history",
         similarity_threshold: float = 0.8,
+        storage_path: Optional[str] = None,
         **kwargs,
     ):
         """Initialize planning memory."""
-        super().__init__(**kwargs)
-        self.max_rollouts = max_rollouts
-        self.rollout_depth = rollout_depth
+        super().__init__(memory_key)
         self.similarity_threshold = similarity_threshold
-
-        # Component memories
-        self.vector_memory = VectorStoreMemory()
-        self.episodic_memory = EpisodicMemory()
+        self.storage_path = Path(storage_path) if storage_path else None
+        self.kwargs = kwargs
 
         # Memory tracking
         self.memories: Dict[str, Dict[str, Any]] = {}
         self.plans: Dict[str, Dict[str, Any]] = {}
-        self.rollouts: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
         # Performance tracking
         self.plan_success: Dict[str, List[bool]] = defaultdict(list)
-        self.rollout_scores: Dict[str, List[float]] = defaultdict(list)
 
     async def add_memory(
         self,
@@ -52,25 +62,19 @@ class PlanningMemory(BaseMemory):
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Add a new memory with planning context."""
-        # Create memory entry
         memory = {
             "id": memory_id,
             "content": content,
             "state": state or {},
             "action": action,
             "outcome": outcome or {},
-            "created_at": datetime.now(),
-            "last_accessed": datetime.now(),
+            "created_at": datetime.now().isoformat(),
+            "last_accessed": datetime.now().isoformat(),
             "access_count": 0,
             "metadata": metadata or {},
         }
 
-        # Store memory
         self.memories[memory_id] = memory
-
-        # Add to component memories
-        await self.vector_memory.add(memory_id, content, metadata)
-        await self.episodic_memory.add_memory(memory_id, content, metadata)
 
         # If this is a state-action-outcome memory, add to plans
         if state and action and outcome:
@@ -85,39 +89,44 @@ class PlanningMemory(BaseMemory):
         """Get a memory by ID."""
         if memory_id in self.memories:
             memory = self.memories[memory_id]
-
-            # Update access tracking
             memory["access_count"] += 1
-            memory["last_accessed"] = datetime.now()
-
+            memory["last_accessed"] = datetime.now().isoformat()
             return memory
         return None
 
-    async def plan_action(
-        self, current_state: Dict[str, Any], goal: str, constraints: Optional[Dict[str, Any]] = None
-    ) -> List[Dict[str, Any]]:
-        """Plan a sequence of actions using memory-based rollouts."""
-        # Find similar past states
-        similar_memories = await self._find_similar_states(current_state)
+    async def suggest_next_action(
+        self, current_state: Dict[str, Any], min_similarity: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Suggest the next action from success-weighted history of similar states.
 
-        # Generate rollouts
-        rollouts = []
-        for _ in range(self.max_rollouts):
-            rollout = await self._generate_rollout(
-                current_state, goal, similar_memories, constraints
-            )
-            if rollout:
-                rollouts.append(rollout)
+        Ranks actions previously taken in states similar to ``current_state``
+        by their observed success rate (ties broken by higher support).
+        Returns ``None`` when no similar historical state/action data exists.
+        """
+        similar_memories = await self._find_similar_states(current_state, min_similarity)
 
-        # Score rollouts
-        scored_rollouts = []
-        for rollout in rollouts:
-            score = await self._score_rollout(rollout, goal, constraints)
-            scored_rollouts.append({"actions": rollout, "score": score})
+        action_outcomes: Dict[str, List[bool]] = defaultdict(list)
+        for memory in similar_memories:
+            action = memory.get("action")
+            if action:
+                action_outcomes[action].append(
+                    bool(memory.get("outcome", {}).get("success", False))
+                )
 
-        # Sort by score and return best plan
-        scored_rollouts.sort(key=lambda x: x["score"], reverse=True)
-        return scored_rollouts[0]["actions"] if scored_rollouts else []
+        if not action_outcomes:
+            return None
+
+        def score(action: str) -> Tuple[float, int]:
+            outcomes = action_outcomes[action]
+            return (fmean(outcomes), len(outcomes))
+
+        best_action = max(action_outcomes, key=score)
+        outcomes = action_outcomes[best_action]
+        return {
+            "action": best_action,
+            "success_rate": fmean(outcomes),
+            "support": len(outcomes),
+        }
 
     async def record_plan_outcome(
         self, plan_id: str, success: bool, actual_outcome: Dict[str, Any]
@@ -125,7 +134,6 @@ class PlanningMemory(BaseMemory):
         """Record the outcome of a plan execution."""
         self.plan_success[plan_id].append(success)
 
-        # Update plan statistics
         if plan_id in self.plans:
             self.plans[plan_id]["outcome"] = actual_outcome
             self.plans[plan_id]["success"] = success
@@ -135,8 +143,8 @@ class PlanningMemory(BaseMemory):
     ) -> List[Dict[str, Any]]:
         """Get plans similar to the given state."""
         similar_plans = []
-        for plan_id, plan in self.plans.items():
-            similarity = await self._calculate_state_similarity(state, plan["state"])
+        for plan in self.plans.values():
+            similarity = self._calculate_state_similarity(state, plan["state"])
             if min_similarity is None or similarity >= min_similarity:
                 plan_copy = plan.copy()
                 plan_copy["similarity"] = similarity
@@ -148,134 +156,89 @@ class PlanningMemory(BaseMemory):
         if plan_id not in self.plans:
             return {}
 
+        successes = self.plan_success[plan_id]
         return {
-            "success_rate": (
-                np.mean(self.plan_success[plan_id]) if self.plan_success[plan_id] else 0.0
-            ),
-            "total_executions": len(self.plan_success[plan_id]),
-            "avg_rollout_score": (
-                np.mean(self.rollout_scores[plan_id]) if self.rollout_scores[plan_id] else 0.0
-            ),
+            "success_rate": fmean(successes) if successes else 0.0,
+            "total_executions": len(successes),
         }
 
     async def get_stats(self) -> Dict[str, Any]:
         """Get memory statistics."""
+        per_plan_rates = [fmean(s) for s in self.plan_success.values() if s]
         return {
             "total_memories": len(self.memories),
             "total_plans": len(self.plans),
-            "avg_success_rate": (
-                np.mean(
-                    [np.mean(successes) for successes in self.plan_success.values() if successes]
-                )
-                if self.plan_success
-                else 0.0
-            ),
-            "total_rollouts": sum(len(rollouts) for rollouts in self.rollouts.values()),
+            "avg_success_rate": fmean(per_plan_rates) if per_plan_rates else 0.0,
         }
 
-    async def _find_similar_states(self, state: Dict[str, Any]) -> List[Dict[str, Any]]:
+    async def _find_similar_states(
+        self, state: Dict[str, Any], min_similarity: Optional[float] = None
+    ) -> List[Dict[str, Any]]:
         """Find memories with similar states."""
+        threshold = min_similarity if min_similarity is not None else self.similarity_threshold
         similar_memories = []
-        for memory_id, memory in self.memories.items():
+        for memory in self.memories.values():
             if memory["state"]:
-                similarity = await self._calculate_state_similarity(state, memory["state"])
-                if similarity >= self.similarity_threshold:
+                similarity = self._calculate_state_similarity(state, memory["state"])
+                if similarity >= threshold:
                     similar_memories.append(memory)
         return similar_memories
 
-    async def _generate_rollout(
-        self,
-        current_state: Dict[str, Any],
-        goal: str,
-        similar_memories: List[Dict[str, Any]],
-        constraints: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
-        """Generate a rollout sequence of actions."""
-        rollout = []
-        state = current_state.copy()
-
-        for _ in range(self.rollout_depth):
-            # Find best next action
-            next_action = await self._select_next_action(state, goal, similar_memories, constraints)
-            if not next_action:
-                break
-
-            # Apply action
-            outcome = await self._simulate_action(state, next_action)
-            rollout.append({"action": next_action, "expected_outcome": outcome})
-
-            # Update state
-            state.update(outcome)
-
-            # Check if goal reached
-            if await self._is_goal_reached(state, goal):
-                break
-
-        return rollout
-
-    async def _score_rollout(
-        self, rollout: List[Dict[str, Any]], goal: str, constraints: Optional[Dict[str, Any]] = None
-    ) -> float:
-        """Score a rollout sequence."""
-        if not rollout:
-            return 0.0
-
-        # Calculate base score from plan success rates
-        plan_scores = []
-        for step in rollout:
-            similar_plans = await self.get_similar_plans(step["expected_outcome"])
-            if similar_plans:
-                plan_scores.append(np.mean([p["success"] for p in similar_plans]))
-
-        base_score = np.mean(plan_scores) if plan_scores else 0.0
-
-        # Apply constraint penalties
-        if constraints:
-            for step in rollout:
-                for constraint, value in constraints.items():
-                    if constraint in step["expected_outcome"]:
-                        if step["expected_outcome"][constraint] != value:
-                            base_score *= 0.5
-
-        return base_score
-
-    async def _calculate_state_similarity(
-        self, state1: Dict[str, Any], state2: Dict[str, Any]
-    ) -> float:
-        """Calculate similarity between two states."""
-        # Jaccard-style overlap: matching key/value pairs over the union of keys
+    @staticmethod
+    def _calculate_state_similarity(state1: Dict[str, Any], state2: Dict[str, Any]) -> float:
+        """Jaccard-style overlap: matching key/value pairs over the union of keys."""
         keys = set(state1) | set(state2)
         if not keys:
             return 1.0
         matches = sum(1 for key in keys if state1.get(key) == state2.get(key))
         return matches / len(keys)
 
-    async def _select_next_action(
-        self,
-        state: Dict[str, Any],
-        goal: str,
-        similar_memories: List[Dict[str, Any]],
-        constraints: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
-        """Select the best next action based on similar memories."""
-        # Pick the most frequent action that previously succeeded in similar states
-        action_counts: Dict[str, int] = defaultdict(int)
-        for memory in similar_memories:
-            action = memory.get("action")
-            if action and memory.get("outcome", {}).get("success", False):
-                action_counts[action] += 1
-        if not action_counts:
-            return None
-        return max(action_counts, key=action_counts.get)
+    # --- BaseMemory interface ---
 
-    async def _simulate_action(self, state: Dict[str, Any], action: str) -> Dict[str, Any]:
-        """Simulate the outcome of an action."""
-        # Dummy simulation: append action to state and mark as success
-        new_state = dict(state)
-        new_state["last_action"] = action
-        return {"success": True, "state": new_state, "message": f"Simulated action: {action}"}
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a message as a plain memory (no planning context)."""
+        memory_id = f"message_{len(self.memories)}"
+        await self.add_memory(
+            memory_id, message["content"], metadata={"role": message.get("role", "user")}
+        )
 
-    async def _is_goal_reached(self, state: Dict[str, Any], goal: str) -> bool:
-        """Check if the goal has been reached."""
-        # Dummy check: goal is reached if goal string is in state['status']
-        return goal in str(state.get("status", ""))
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all stored memories as messages, oldest first."""
+        ordered = sorted(self.memories.values(), key=lambda m: m["created_at"])
+        return [
+            {
+                "role": memory["metadata"].get("role", "planning_memory"),
+                "content": memory["content"],
+            }
+            for memory in ordered
+        ]
+
+    async def clear(self) -> None:
+        """Clear all memories and plans."""
+        self.memories.clear()
+        self.plans.clear()
+        self.plan_success.clear()
+        await self.save()
+
+    async def save(self) -> None:
+        """Save memories and plans to persistent storage."""
+        if self.storage_path:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "memories": self.memories,
+                        "plans": self.plans,
+                        "plan_success": dict(self.plan_success),
+                    },
+                    f,
+                )
+
+    async def load(self) -> None:
+        """Load memories and plans from persistent storage."""
+        if self.storage_path and self.storage_path.exists():
+            with open(self.storage_path) as f:
+                data = json.load(f)
+            self.memories = data.get("memories", {})
+            self.plans = data.get("plans", {})
+            self.plan_success = defaultdict(list, data.get("plan_success", {}))
