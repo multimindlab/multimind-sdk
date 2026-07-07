@@ -72,7 +72,7 @@ Adds: fastapi, uvicorn, redis, python-jose, python-multipart
 ```bash
 pip install "multimind-sdk[mcp]"
 ```
-Adds: mcp (the Model Context Protocol SDK) — needed for `multimind serve-mcp` / the MCP server described in [docs/mcp-server.md](./docs/mcp-server.md)
+Adds: mcp (the Model Context Protocol SDK) — needed to run the compliance MCP server (`python -m multimind.mcp_server`) described in [docs/mcp-server.md](./docs/mcp-server.md)
 
 ### Framework Integrations
 ```bash

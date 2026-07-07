@@ -202,18 +202,22 @@ Offline end-to-end demo: [examples/evaluation/hallucination_detection.py](../exa
 Start a conversation on one provider, move to another — the context travels with you.
 
 ```python
+import asyncio
 from multimind import OpenAIModel, ClaudeModel
 from multimind.client import ModelSession
 
-session = ModelSession(OpenAIModel(model_name="gpt-4o-mini"))
-await session.chat("My project is called Zephyr, written in Rust. Deadline is March 15.")
+async def main():
+    session = ModelSession(OpenAIModel(model_name="gpt-4o-mini"))
+    await session.chat("My project is called Zephyr, written in Rust. Deadline is March 15.")
 
-# Switch to Claude; "summary" compacts the history into a context message
-await session.switch(ClaudeModel(model_name="claude-3-5-sonnet-20241022"), strategy="summary")
+    # Switch to Claude; "summary" compacts the history into a context message
+    await session.switch(ClaudeModel(model_name="claude-3-5-sonnet-20241022"), strategy="summary")
 
-answer = await session.chat("What language is my project written in?")
-# Claude answers "Rust" — knowledge survived the switch
-print(session.transfers)  # audit log: who switched to whom, when, how
+    answer = await session.chat("What language is my project written in?")
+    # Claude answers "Rust" — knowledge survived the switch
+    print(session.transfers)  # audit log: who switched to whom, when, how
+
+asyncio.run(main())
 ```
 
 Strategies: `"full"` (replay raw history, zero loss), `"summary"` (compact — best for
@@ -228,19 +232,23 @@ The coordinator decides at runtime whether to answer, delegate, or create a new
 sub-agent for a subtask — inside hard safety bounds.
 
 ```python
+import asyncio
 from multimind import OpenAIModel
 from multimind.agents import AgentOrchestrator
 
-orchestrator = AgentOrchestrator(
-    OpenAIModel(model_name="gpt-4o-mini"),
-    max_agents=6,   # total sub-agents per run
-    max_depth=2,    # spawn depth limit
-)
+async def main():
+    orchestrator = AgentOrchestrator(
+        OpenAIModel(model_name="gpt-4o-mini"),
+        max_agents=6,   # total sub-agents per run
+        max_depth=2,    # spawn depth limit
+    )
 
-result = await orchestrator.run("Research solar panel efficiency and summarize it in one paragraph.")
-print(result.answer)
-print(result.agent_tree.to_dict())  # who spawned whom, each task and result
-print(result.bounds_hit)            # never silently truncated
+    result = await orchestrator.run("Research solar panel efficiency and summarize it in one paragraph.")
+    print(result.answer)
+    print(result.agent_tree.to_dict())  # who spawned whom, each task and result
+    print(result.bounds_hit)            # never silently truncated
+
+asyncio.run(main())
 ```
 
 Pass `budget_tracker=` (a `multimind.observability` Budget-backed tracker) to cap

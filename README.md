@@ -101,6 +101,8 @@ Full status: [FEATURES.md](FEATURES.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
 
 ## Examples
 
+> Snippets using `await` assume an async context — wrap them in `asyncio.run(main())` as shown in the Quick Start. Full runnable versions live in [`examples/`](examples/) and the [cookbook](docs/cookbook.md).
+
 ### Govern an app you already have — change one line
 
 Start the compliance proxy, then point any OpenAI-compatible client (LangChain, LlamaIndex, the raw `openai` SDK, anything) at it:

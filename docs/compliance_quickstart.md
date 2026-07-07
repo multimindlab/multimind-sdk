@@ -15,16 +15,12 @@ pip install multimind-sdk
 1. Import the required modules:
 
 ```python
-from multimind.compliance import (
-    GovernanceConfig,
-    Regulation,
-    PrivacyCompliance,
-    AIFrameworkCompliance,
-    DataTransferCompliance,
-    AccessibilityCompliance,
-    SupplyChainCompliance,
-    CorporateCompliance
-)
+from multimind.compliance import GovernanceConfig, Regulation, PrivacyCompliance
+from multimind.compliance.ai_frameworks import AIFrameworkCompliance
+from multimind.compliance.data_transfer import DataTransferCompliance
+from multimind.compliance.accessibility import AccessibilityCompliance
+from multimind.compliance.supply_chain import SupplyChainCompliance
+from multimind.compliance.corporate import CorporateCompliance
 ```
 
 2. Configure the governance settings:
@@ -48,24 +44,28 @@ config = GovernanceConfig(
 
 ```python
 # Initialize privacy compliance
-privacy = PrivacyCompliance(config)
+privacy = PrivacyCompliance(config=config)
 
 # Process a data subject access request
 async def handle_dsar(user_id: str):
-    result = await privacy.process_dsar(user_id)
+    result = await privacy.process_data_subject_request(
+        request_type="access",
+        user_id=user_id,
+        data_ids=["data_123"]
+    )
     return result
 
-# Validate data processing
-async def validate_processing(data_category: str, purpose: str):
-    result = await privacy.validate_processing(data_category, purpose)
-    return result
+# Check retention compliance
+async def check_retention():
+    issues = await privacy.check_retention_compliance()
+    return issues
 ```
 
 ### 2. AI System Compliance
 
 ```python
 # Initialize AI compliance
-ai_compliance = AIFrameworkCompliance(config)
+ai_compliance = AIFrameworkCompliance(config=config)
 
 # Assess AI system compliance
 async def assess_ai_system(system_id: str):
@@ -80,7 +80,7 @@ async def assess_ai_system(system_id: str):
 
 ```python
 # Initialize data transfer compliance
-transfer = DataTransferCompliance(config)
+transfer = DataTransferCompliance(config=config)
 
 # Validate international data transfer
 async def validate_transfer(source_country: str, destination_country: str):
@@ -98,7 +98,7 @@ async def validate_transfer(source_country: str, destination_country: str):
 
 ```python
 # Initialize accessibility compliance
-accessibility = AccessibilityCompliance(config)
+accessibility = AccessibilityCompliance(config=config)
 
 # Validate WCAG compliance
 async def validate_accessibility(system_id: str):
@@ -114,7 +114,7 @@ async def validate_accessibility(system_id: str):
 
 ```python
 # Initialize supply chain compliance
-supply_chain = SupplyChainCompliance(config)
+supply_chain = SupplyChainCompliance(config=config)
 
 # Assess vendor security
 async def assess_vendor(vendor_id: str):
@@ -130,7 +130,7 @@ async def assess_vendor(vendor_id: str):
 
 ```python
 # Initialize corporate compliance
-corporate = CorporateCompliance(config)
+corporate = CorporateCompliance(config=config)
 
 # Assess SOX compliance
 async def assess_sox(system_id: str):
@@ -146,80 +146,79 @@ async def assess_sox(system_id: str):
 
 The MultiMind SDK includes cutting-edge compliance features that set it apart from other frameworks. Here's how to use them:
 
+These classes live in `multimind.compliance` and each takes a plain `dict` configuration.
+
 ### 1. Federated Compliance
 
 ```python
-from multimind.compliance import AdvancedCompliance
+from multimind.compliance import FederatedCompliance
 
-# Initialize advanced compliance
-advanced = AdvancedCompliance(config)
-await advanced.initialize_policy_shards()
-
-# Enforce jurisdiction-specific rules
-result = await advanced.enforce_federated_compliance(
-    user_locale="en-GB",
-    data_categories=["personal_data", "health_data"],
-    operation="process"
+# Verify compliance across jurisdiction-specific shards
+federated = FederatedCompliance(config={"jurisdictions": ["EU", "US"]})
+result = await federated.verify_global_compliance(
+    data={"data_categories": ["personal_data", "health_data"], "operation": "process"}
 )
 ```
 
 ### 2. Regulatory Change Detection
 
 ```python
-# Start monitoring regulatory changes
-async def monitor_changes():
-    await advanced.monitor_regulatory_changes()
+from multimind.compliance import RegulatoryChangeDetector
+
+detector = RegulatoryChangeDetector(config={})
+changes = await detector.detect_changes()
+patches = await detector.generate_patches(changes)
 ```
 
 ### 3. Zero-Knowledge Compliance Proofs
 
-```python
-# Generate ZKP for compliance verification
-proof = await advanced.generate_zero_knowledge_proof(
-    operation="data_processing",
-    data_hash="hash_of_processed_data"
-)
-```
+`multimind.compliance.advanced.ZeroKnowledgeProof` is currently a fail-closed stub: without a real ZKP backend installed, `prove` and `verify` raise `NotImplementedError` rather than fabricating a proof. Treat this feature as unavailable until a backend integration ships.
 
 ### 4. Differential Privacy
 
 ```python
-# Apply differential privacy to usage metrics
-private_metrics = await advanced.apply_differential_privacy(
-    metrics={"document_views": 100, "search_queries": 50},
-    epsilon=1.0
+from multimind.compliance import AdaptivePrivacy
+
+# Adapt privacy parameters from usage feedback
+privacy_loop = AdaptivePrivacy(config={"epsilon": 1.0})
+await privacy_loop.adapt_privacy(
+    feedback={"document_views": 100, "search_queries": 50}
 )
 ```
 
-### 5. Model Fingerprinting
+### 5. Model Watermarking and Fingerprinting
 
 ```python
-# Generate unique fingerprint for model outputs
-fingerprint = advanced.generate_model_fingerprint(
-    model_version="v2.1",
-    policy_bundle="2024-05-01",
-    session_id="session_123"
-)
+from multimind.compliance import ModelWatermarking
+
+watermarking = ModelWatermarking(config={})
+model = await watermarking.watermark_model(model)
+fingerprint = await watermarking.track_fingerprint(model)
+verification = await watermarking.verify_watermark(model)
 ```
 
 ### 6. Self-Healing Policies
 
 ```python
-# Enforce self-healing policy
-await advanced.enforce_self_healing_policy(
-    policy_id="policy_123",
-    violation_data={"type": "data_leak", "severity": "high"}
+from multimind.compliance import SelfHealingCompliance
+
+healer = SelfHealingCompliance(config={})
+result = await healer.check_and_heal(
+    compliance_state={"type": "data_leak", "severity": "high"}
 )
 ```
 
 ### 7. Explainable Compliance
 
 ```python
-# Generate compliance DTO
-dto = await advanced.generate_compliance_dto(
-    response_id="resp_123",
-    rules_applied=["gdpr.data_minimization", "eu_ai_act.transparency"],
-    metadata={"model_version": "v2.1", "session_id": "session_123"}
+from multimind.compliance import ExplainableDTO
+
+explainer = ExplainableDTO(config={})
+dto = await explainer.explain_decision(
+    decision={
+        "response_id": "resp_123",
+        "rules_applied": ["gdpr.data_minimization", "eu_ai_act.transparency"],
+    }
 )
 ```
 
@@ -237,14 +236,15 @@ from multimind.compliance.model_training import (
 )
 
 # Initialize compliance trainer
+compliance_rules = {
+    "bias_threshold": 0.1,
+    "privacy_threshold": 0.8,
+    "transparency_threshold": 0.8,
+    "fairness_threshold": 0.8
+}
 trainer = ComplianceTrainer(
     model=your_model,
-    compliance_rules={
-        "bias_threshold": 0.1,
-        "privacy_threshold": 0.8,
-        "transparency_threshold": 0.8,
-        "fairness_threshold": 0.8
-    },
+    compliance_rules=compliance_rules,
     training_config={
         "epochs": 10,
         "thresholds": compliance_rules,

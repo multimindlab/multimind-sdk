@@ -88,7 +88,7 @@ class MCPParser:
             if not all(field in conn for field in required):
                 raise ValueError(f"Connection must contain: {required}")
 
-            # Check if connected steps exis
+            # Check if connected steps exist
             if conn["from"] not in step_ids or conn["to"] not in step_ids:
                 raise ValueError(
                     f"Invalid connection: step {conn['from']} or {conn['to']} does not exist"

@@ -51,7 +51,7 @@ Lines of progress text will scroll by for a minute; that is normal. When the pro
 multimind --help
 ```
 
-You should see a short list of available commands (`chat`, `compliance`, `config`, `models`). If `multimind` is reported as "command not found", close and reopen the terminal and try again.
+You should see a short list of available commands (`audit`, `chat`, `compliance`, `config`, `models`, `serve`). If `multimind` is reported as "command not found", close and reopen the terminal and try again.
 
 ## Step 3: Scan a file for sensitive data
 
