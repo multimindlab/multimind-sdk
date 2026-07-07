@@ -1,5 +1,12 @@
 """
 Buffer memory implementation for managing recent context.
+
+Module consolidation review: this is the base buffer implementation.
+``buffer_window.BufferWindowMemory`` subclasses it to add a fixed-size
+sliding window on top; ``token_buffer.TokenBufferMemory`` is a separate,
+LangChain-token-buffer-style implementation with its own tokenizer handling.
+These are distinct, intentional variants (not redundant duplicates) — see
+each module's docstring.
 """
 
 import json

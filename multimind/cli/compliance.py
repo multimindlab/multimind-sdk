@@ -366,6 +366,71 @@ def scan_text(text: str, file_path: str, redact: str):
     sys.exit(1)
 
 
+@compliance.command("report-evidence")
+@click.option(
+    "--audit-log",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="JSONL audit trail written by ComplianceGuard's AuditLog",
+)
+@click.option(
+    "--costs-log",
+    type=click.Path(exists=True, dir_okay=False),
+    help="JSONL cost log written by CostTracker",
+)
+@click.option(
+    "--project",
+    type=click.Path(exists=True, file_okay=False),
+    help="Run an AI inventory scan over this directory and include it",
+)
+@click.option("--period", help="Filter records by ISO timestamp prefix, e.g. 2026-07")
+@click.option("--organization", help="Organization name shown on the report")
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["md", "html"]),
+    default="md",
+    help="Output format",
+)
+@click.option("--output", "-o", type=click.Path(), help="Write the report to this file")
+def report_evidence(
+    audit_log: str,
+    costs_log: str,
+    project: str,
+    period: str,
+    organization: str,
+    fmt: str,
+    output: str,
+):
+    """Generate a compliance evidence report from SDK JSONL artifacts.
+
+    Documents what the audit/cost/inventory artifacts actually evidence;
+    it is technical evidence, not a legal compliance determination.
+    """
+    from ..compliance.reporting import build_evidence_report
+
+    inventory = None
+    if project:
+        from ..observability.ai_inventory import scan_project
+
+        inventory = scan_project(project)
+
+    report = build_evidence_report(
+        audit_log=audit_log,
+        costs_log=costs_log,
+        inventory=inventory,
+        period=period,
+        organization=organization,
+    )
+    rendered = report.to_html() if fmt == "html" else report.to_markdown()
+    if output:
+        with open(output, "w", encoding="utf-8") as f:
+            f.write(rendered)
+        console.print(f"Evidence report written to {output}")
+    else:
+        click.echo(rendered)
+
+
 def main():
     """Main entry point for CLI."""
     compliance()

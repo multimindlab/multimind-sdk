@@ -63,6 +63,9 @@ rag = [
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
     "numpy>=1.21.0",
+    # multimind.rag eagerly imports GraphRetriever, which needs networkx
+    # (via multimind.patterns.advanced_patterns.GraphRAG).
+    "networkx>=3.0",
 ]
 
 # Additional vector databases
@@ -161,6 +164,18 @@ llamaindex = [
 crewai = [
     "crewai>=0.110",
 ]
+# guard_autogen_client targets autogen-core's ChatCompletionClient ABC
+# directly; it does not need autogen-agentchat or the legacy pyautogen/AG2
+# package installed.
+autogen = [
+    "autogen-core>=0.4",
+]
+# guard_haystack_generator is duck-typed and never imports haystack, so this
+# extra exists only to document the version the adapter targets — nothing
+# to install for the adapter itself to work.
+haystack = [
+    "haystack-ai>=2.0",
+]
 
 # Development tools
 dev = [
@@ -210,6 +225,7 @@ exclude = ["tests*", "examples*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]
 multimind = ["py.typed"]
+"multimind.dashboard" = ["static/*"]
 
 # ── Linting & Formatting ─────────────────────────────────────────────
 

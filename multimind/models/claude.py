@@ -12,7 +12,24 @@ from pydantic import BaseModel, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..core.exceptions import ConfigurationError
-from .base import BaseLLM
+from .base import BaseLLM, resolve_images
+
+
+def _image_content_block(resolved: Dict[str, str]) -> Dict[str, Any]:
+    """Build an Anthropic-format image content block from a resolved image."""
+    if resolved["kind"] == "url":
+        source: Dict[str, str] = {"type": "url", "url": resolved["url"]}
+    else:
+        source = {
+            "type": "base64",
+            "media_type": resolved["media_type"],
+            "data": resolved["data"],
+        }
+    return {"type": "image", "source": source}
+
+
+def _image_blocks(images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [_image_content_block(resolved) for resolved in resolve_images(images)]
 
 
 class ClaudeModel(BaseLLM):
@@ -107,15 +124,24 @@ class ClaudeModel(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         response_format: Optional[Type[BaseModel]] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Union[str, BaseModel]:
-        """Generate text using Claude's completion API."""
+        """Generate text using Claude's completion API.
+
+        ``images`` is an optional list of dicts, each with one of the keys
+        ``path``, ``bytes`` or ``url`` (plus optional ``media_type``).
+        """
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
+        content: Any = prompt
+        if images is not None:
+            content = _image_blocks(images) + [{"type": "text", "text": prompt}]
+        messages = [{"role": "user", "content": content}]
         if response_format is not None:
             return await self._structured_create(
-                messages=[{"role": "user", "content": prompt}],
+                messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 response_format=response_format,
@@ -123,7 +149,7 @@ class ClaudeModel(BaseLLM):
             )
         response = await self._messages_create(
             model=self.model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
             **kwargs,
@@ -155,12 +181,26 @@ class ClaudeModel(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         response_format: Optional[Type[BaseModel]] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Union[str, BaseModel]:
-        """Generate chat completion using Claude's chat API."""
+        """Generate chat completion using Claude's chat API.
+
+        ``images`` (optional) are attached to the last user message; see
+        ``generate`` for the accepted item shapes.
+        """
         # Anthropic API requires max_tokens to be set
         if max_tokens is None:
             max_tokens = 1024  # Default value
+        if images is not None:
+            blocks = _image_blocks(images)
+            messages = [dict(msg) for msg in messages]
+            for msg in reversed(messages):
+                if msg.get("role") == "user":
+                    msg["content"] = blocks + [{"type": "text", "text": msg["content"]}]
+                    break
+            else:
+                raise ValueError("images require at least one user message")
         if response_format is not None:
             return await self._structured_create(
                 messages=messages,

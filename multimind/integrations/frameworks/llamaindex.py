@@ -189,6 +189,15 @@ class MultiMindLlamaIndexHandler(BaseCallbackHandler):
     enforces an optional :class:`Budget` (raising ``BudgetExceededError``
     before the next LLM call once exceeded), and writes lifecycle events to
     an optional :class:`AuditLog`.
+
+    Observe-only by construction, not by omission:
+    ``CallbackManager.on_event_start`` discards each handler's return value,
+    so no callback can rewrite the prompt actually sent to the LLM. Since
+    redaction is off the table here, ``on_event_start`` instead runs the same
+    PII detector used by :func:`guard_llm` over the outgoing prompt and
+    records a ``pii_detected`` audit event (types/counts only, never raw
+    text) — use :func:`guard_llm` alongside this handler when redaction is
+    required.
     """
 
     def __init__(
@@ -223,8 +232,20 @@ class MultiMindLlamaIndexHandler(BaseCallbackHandler):
         self._state.check_budget()
         payload = payload or {}
         model = self._model_name(payload)
-        self._events[event_id] = {"input": self._input_text(payload), "model": model}
+        input_text = self._input_text(payload)
+        self._events[event_id] = {"input": input_text, "model": model}
         self._state.audit({"event": "llm_start", "model": model, "event_id": event_id})
+        pii_types = self._state.detect_counts(input_text)
+        if pii_types:
+            self._state.audit(
+                {
+                    "event": "pii_detected",
+                    "model": model,
+                    "event_id": event_id,
+                    "pii_types": pii_types,
+                    "count": sum(pii_types.values()),
+                }
+            )
         return event_id
 
     def on_event_end(

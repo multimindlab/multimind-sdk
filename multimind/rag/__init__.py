@@ -5,6 +5,7 @@ Requires the ``rag`` extras: ``pip install 'multimind-sdk[rag]'``.
 
 try:
     from .base import BaseRAG, RAGError
+    from .graph_retrieval import GraphRetriever
     from .postprocessing import PostProcessingConfig, PostProcessor
     from .rag import RAG, RAGConfig
 except ImportError as exc:  # pragma: no cover - exercised on minimal installs
@@ -18,6 +19,7 @@ __all__ = [
     "RAGConfig",
     "BaseRAG",
     "RAGError",
+    "GraphRetriever",
     "PostProcessor",
     "PostProcessingConfig",
 ]

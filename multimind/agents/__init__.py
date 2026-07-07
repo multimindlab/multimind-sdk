@@ -11,6 +11,7 @@ from multimind.agents.orchestrator import (
     AgentSpec,
     OrchestrationResult,
 )
+from multimind.agents.self_evolving import Exemplar, SelfEvolvingAgent
 
 __all__ = [
     "Agent",
@@ -20,4 +21,6 @@ __all__ = [
     "AgentOrchestrator",
     "AgentSpec",
     "OrchestrationResult",
+    "Exemplar",
+    "SelfEvolvingAgent",
 ]

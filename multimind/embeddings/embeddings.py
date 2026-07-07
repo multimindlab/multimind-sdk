@@ -1,5 +1,12 @@
 """
 Embedding model implementations for RAG system.
+
+Canonical source (per ``multimind/embeddings/__init__.py``) for
+``EmbeddingConfig`` and ``EmbeddingGenerator`` — the concrete generator used
+by ``multimind.retrieval`` / ``multimind.rag``. See ``embedding.py``
+(singular) for the canonical ``Embedding`` / ``EmbeddingType``, and
+``base.py`` for a note on the unused, non-canonical classes of the same name
+kept there for backward compatibility.
 """
 
 import logging
@@ -456,7 +463,14 @@ class SentenceT5Embedder(BaseLLM):
         return await self.embed(text, **kwargs)
 
 
-from PIL import Image
+# Optional PIL import for image embedding features
+try:
+    from PIL import Image
+
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    logger.warning("Pillow not available. Image embedding features will be disabled.")
 
 # Optional transformers import for image embedding features
 try:
@@ -485,7 +499,7 @@ class ImageEmbedder(BaseLLM):
             self.model = None
             self.processor = None
 
-    def embed(self, images: List[Image.Image]) -> List[List[float]]:
+    def embed(self, images: "List[Image.Image]") -> List[List[float]]:
         """Generate embeddings for a list of images.
 
         Args:
@@ -494,6 +508,8 @@ class ImageEmbedder(BaseLLM):
         Returns:
             List of embedding vectors.
         """
+        if not PIL_AVAILABLE:
+            raise ImportError("Pillow is required for ImageEmbedder. Please install pillow.")
         if not TRANSFORMERS_AVAILABLE or self.model is None or self.processor is None:
             raise ImportError(
                 "Transformers is required for ImageEmbedder. Please install transformers."

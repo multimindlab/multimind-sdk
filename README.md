@@ -80,6 +80,8 @@ pip install multimind-sdk[all]           # Everything
 | Hallucination detection (grounding checks)           | Stable   | core               |
 | Mid-conversation model switching (`ModelSession`)    | Stable   | core               |
 | Compliance proxy (`multimind serve`, OpenAI-compat)  | Stable   | `[gateway]`        |
+| Governance dashboard UI (`multimind dashboard`)      | Stable   | `[gateway]`        |
+| Compliance evidence reports (md/HTML)                | Stable   | core               |
 | Framework adapters (LangChain, LlamaIndex, CrewAI)   | Stable   | `[langchain]` etc. |
 | AI usage audit & cost chargeback (`multimind audit`) | Stable   | core               |
 | Anthropic MCP compliance server                      | Stable   | `[mcp]`            |
@@ -88,12 +90,15 @@ pip install multimind-sdk[all]           # Everything
 | CLI interface                                        | Stable   | core               |
 | REST gateway with Swagger UI (`/docs`)               | Stable   | `[gateway]`        |
 | Docker deployment (lean ~300 MB image)               | Stable   | —                  |
-| AI Agents with tools & memory                        | Beta     | `[agents]`         |
+| Vision/multimodal input (`images=`)                  | Stable   | core               |
+| AI Agents with native function-calling & memory      | Stable   | `[agents]`         |
+| Self-evolving agents (bounded exemplar learning)     | Stable   | `[agents]`         |
+| GDPR & HIPAA compliance (runtime enforcement)        | Stable   | `[compliance]`     |
+| Vector stores, core set (FAISS, Chroma, Pinecone, Qdrant, Weaviate, Milvus, ...) | Stable | `[rag]`/`[vector-stores]` |
 | Self-orchestrating agents (bounded spawning)         | Beta     | `[agents]`         |
-| GDPR & HIPAA compliance (policy modeling, audits)    | Beta     | `[compliance]`     |
 | Non-transformer models (Mamba, RWKV)                 | Beta     | `[finetune]`       |
-| Vector stores (40+ incl. Qdrant, Weaviate, Pinecone) | Beta     | `[vector-stores]`  |
-| Fine-tuning (LoRA)                                   | Beta     | `[finetune]`       |
+| Vector stores, extended set (26 client-backed, less battle-tested) | Beta | `[vector-stores]` |
+| Fine-tuning (LoRA, real QLoRA)                       | Beta     | `[finetune]`       |
 
 > Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. Anthropic's Model Context Protocol is supported separately via `multimind.mcp_server` (see [docs/mcp-server.md](docs/mcp-server.md)).
 

@@ -3,9 +3,75 @@ Base class for all LLM implementations.
 """
 
 import asyncio
+import base64
+import mimetypes
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator, Coroutine
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, final
+
+_IMAGE_SOURCE_KEYS = ("path", "bytes", "url")
+
+
+def _sniff_image_media_type(data: bytes) -> Optional[str]:
+    """Detect the media type of raw image bytes from magic numbers."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return "image/png"
+    if data.startswith(b"\xff\xd8\xff"):
+        return "image/jpeg"
+    if data.startswith((b"GIF87a", b"GIF89a")):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def resolve_image(image: Dict[str, Any]) -> Dict[str, str]:
+    """Normalize one image input to a provider-agnostic form.
+
+    ``image`` must be a dict with exactly one of the keys ``path``, ``bytes``
+    or ``url`` (plus an optional ``media_type``). Returns either
+    ``{"kind": "url", "url": ...}`` or
+    ``{"kind": "base64", "media_type": ..., "data": <base64 str>}``.
+    """
+    if not isinstance(image, dict):
+        raise ValueError(
+            f"Each image must be a dict with one of {_IMAGE_SOURCE_KEYS}, got {type(image).__name__}"
+        )
+    present = [key for key in _IMAGE_SOURCE_KEYS if key in image]
+    if len(present) != 1:
+        raise ValueError(f"Each image must have exactly one of {_IMAGE_SOURCE_KEYS}, got {present}")
+    source_key = present[0]
+    media_type = image.get("media_type")
+
+    if source_key == "url":
+        return {"kind": "url", "url": str(image["url"])}
+
+    if source_key == "path":
+        path = Path(image["path"])
+        data = path.read_bytes()
+        media_type = media_type or mimetypes.guess_type(str(path))[0]
+    else:
+        data = image["bytes"]
+        if not isinstance(data, (bytes, bytearray)):
+            raise ValueError(f"'bytes' image source must be bytes, got {type(data).__name__}")
+        data = bytes(data)
+
+    media_type = media_type or _sniff_image_media_type(data)
+    if not media_type:
+        raise ValueError(
+            "Could not determine image media type; pass an explicit 'media_type' (e.g. 'image/png')"
+        )
+    return {
+        "kind": "base64",
+        "media_type": media_type,
+        "data": base64.b64encode(data).decode("ascii"),
+    }
+
+
+def resolve_images(images: List[Dict[str, Any]]) -> List[Dict[str, str]]:
+    """Normalize a list of image inputs via :func:`resolve_image`."""
+    return [resolve_image(image) for image in images]
 
 
 class BaseLLM(ABC):

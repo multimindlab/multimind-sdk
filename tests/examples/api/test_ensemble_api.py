@@ -425,6 +425,7 @@ def test_ensemble_api_structure():
 @pytest.mark.asyncio
 async def test_environment_variables():
     """Test that environment variables are properly handled in ensemble examples."""
+    pytest.importorskip("fastapi")  # example app needs the [gateway] extras
     # Test that the module can be imported without load_dotenv
     import examples.api.ensemble_api
     

@@ -242,6 +242,47 @@ Example alert configuration:
 - Cross-jurisdictional compliance mapping
 - Real-time compliance adaptation
 
+## Evidence reports
+
+`multimind compliance report-evidence` turns the SDK's JSONL artifacts — the
+`ComplianceGuard` audit trail, the `CostTracker` cost log, and an optional AI
+inventory scan — into a single auditor-shaped evidence document (Markdown or
+self-contained HTML). It works on core installs (stdlib-only, no extras) and
+is deterministic given the same inputs.
+
+```bash
+multimind compliance report-evidence \
+  --audit-log audit.jsonl \
+  --costs-log costs.jsonl \
+  --project . \
+  --period 2026-07 \
+  --format html -o evidence.html
+```
+
+Report sections:
+
+1. Sources (which artifacts were provided; absent sources are stated, never inferred)
+2. Data protection (PII events by type, redaction strategy distribution, blocked requests, scanned-call share)
+3. Oversight and audit-trail continuity (first/last record, gaps over a configurable threshold, records by direction/method)
+4. Cost governance (spend by tag and model, budget-block events, estimated/unpriced call counts)
+5. AI asset inventory (providers in use, external data-flow providers, hardcoded-key findings)
+6. Framework control-theme mapping (EU AI Act Art. 12 record-keeping / Art. 50 transparency, SOC 2 monitoring / logical access, HIPAA 164.312(b) audit controls — phrased as "supports", never "satisfies")
+7. Disclaimer
+
+What it is NOT: the report is technical evidence generated from runtime
+artifacts, not legal advice, a certification, or a compliance determination.
+It documents only what the artifacts record; an absent artifact means absent
+evidence, not absent risk. Every report carries this disclaimer.
+
+The same report is available programmatically:
+
+```python
+from multimind.compliance import build_evidence_report
+
+report = build_evidence_report(audit_log="audit.jsonl", costs_log="costs.jsonl", period="2026-07")
+print(report.to_markdown())  # or report.to_html(), report.to_dict()
+```
+
 ## Development
 
 ### Running Tests

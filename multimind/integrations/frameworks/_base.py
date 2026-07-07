@@ -94,6 +94,10 @@ class GuardState:
         self._audit("output", method, matches)
         return matches
 
+    def detect_counts(self, text: str) -> Dict[str, int]:
+        """Count detected PII types without redacting; for observe-only callback hooks."""
+        return dict(Counter(m.type for m in self.detector.detect(text)))
+
     def check_budget(self) -> None:
         if self.budget is not None:
             self.budget.check()

@@ -270,7 +270,7 @@ class RAGFusion:
 class GraphRAG:
     """Implements Graph RAG for structured knowledge retrieval."""
 
-    def __init__(self, model: BaseLLM, retriever: HybridRetriever, **kwargs):
+    def __init__(self, model: BaseLLM, retriever: Optional[HybridRetriever] = None, **kwargs):
         self.model = model
         self.retriever = retriever
         self.graph = nx.DiGraph()
@@ -293,7 +293,13 @@ class GraphRAG:
         )
 
         for entity in entities:
-            self.graph.add_node(entity["id"], type="entity", **entity)
+            # Node "type" marks the graph category ("entity"); the entity's own
+            # semantic type (e.g. "person", "concept") is kept as "entity_type"
+            # to avoid clobbering the reserved networkx kwarg.
+            attrs = {k: v for k, v in entity.items() if k not in ("id", "type")}
+            self.graph.add_node(
+                entity["id"], type="entity", entity_type=entity.get("type"), **attrs
+            )
             self.graph.add_edge(doc["id"], entity["id"], type="contains")
 
         for rel in relationships:
@@ -374,20 +380,39 @@ class GraphRAG:
             raise ValueError(f"Could not parse entities from model output: {response!r}") from e
         return entities
 
+    def _match_entity_nodes(self, entity: Dict[str, Any]) -> List[Any]:
+        """Resolve an extracted entity to graph nodes by normalized name.
+
+        Entity ids differ between extraction calls, so query entities are
+        matched against graph entities by case-insensitive name.
+        """
+        name = str(entity.get("name") or entity.get("id") or "").strip().lower()
+        if not name:
+            return []
+        return [
+            node
+            for node, attrs in self.graph.nodes(data=True)
+            if attrs.get("type") == "entity" and str(attrs.get("name", "")).strip().lower() == name
+        ]
+
     def _find_documents_with_entity(self, entity: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Find documents containing entity."""
         docs = []
-        for _, doc_id in self.graph.edges(entity["id"]):
-            if self.graph.nodes[doc_id]["type"] == "document":
-                docs.append({"id": doc_id, **self.graph.nodes[doc_id]})
+        for node in self._match_entity_nodes(entity):
+            # Documents link to their entities via doc -> entity "contains" edges.
+            for doc_id, _ in self.graph.in_edges(node):
+                if self.graph.nodes[doc_id].get("type") == "document":
+                    docs.append({"id": doc_id, **self.graph.nodes[doc_id]})
         return docs
 
     def _find_related_entities(self, entity: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Find entities related to given entity."""
+        """Find entities related to given entity (one hop, either direction)."""
         entities = []
-        for _, target in self.graph.edges(entity["id"]):
-            if self.graph.nodes[target]["type"] == "entity":
-                entities.append({"id": target, **self.graph.nodes[target]})
+        for node in self._match_entity_nodes(entity):
+            neighbors = set(self.graph.successors(node)) | set(self.graph.predecessors(node))
+            for target in sorted(neighbors - {node}):
+                if self.graph.nodes[target].get("type") == "entity":
+                    entities.append({"id": target, **self.graph.nodes[target]})
         return entities
 
     def _remove_duplicates(self, items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:

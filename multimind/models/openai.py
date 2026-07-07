@@ -12,11 +12,20 @@ from pydantic import BaseModel, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from ..core.exceptions import ConfigurationError
-from .base import BaseLLM
+from .base import BaseLLM, resolve_images
 
 
 def _is_pydantic_model(response_format: Any) -> bool:
     return isinstance(response_format, type) and issubclass(response_format, BaseModel)
+
+
+def _image_content_part(resolved: Dict[str, str]) -> Dict[str, Any]:
+    """Build an OpenAI-format image_url content part from a resolved image."""
+    if resolved["kind"] == "url":
+        url = resolved["url"]
+    else:
+        url = f"data:{resolved['media_type']};base64,{resolved['data']}"
+    return {"type": "image_url", "image_url": {"url": url}}
 
 
 class OpenAIModel(BaseLLM):
@@ -26,6 +35,8 @@ class OpenAIModel(BaseLLM):
     API_KEY_ENV_VARS: Tuple[str, ...] = ("OPENAI_API_KEY",)
     BASE_URL: Optional[str] = None
     DEFAULT_EMBEDDING_MODEL: Optional[str] = "text-embedding-ada-002"
+    # Set to False in subclasses whose endpoint rejects image content parts.
+    SUPPORTS_VISION: bool = True
 
     # Approximate blended per-token USD prices; prices drift, override via cost_per_token arg.
     MODEL_PRICING: Dict[str, float] = {
@@ -154,17 +165,34 @@ class OpenAIModel(BaseLLM):
             return self._parse_structured(cast(Type[BaseModel], response_format), content)
         return content
 
+    def _resolve_vision_parts(self, images: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Resolve image inputs to content parts, guarding vision support."""
+        if not self.SUPPORTS_VISION:
+            raise NotImplementedError(
+                f"{self.PROVIDER_NAME} does not support image inputs on its "
+                "OpenAI-compatible endpoint"
+            )
+        return [_image_content_part(resolved) for resolved in resolve_images(images)]
+
     async def generate(
         self,
         prompt: str,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         response_format: Optional[Union[Type[BaseModel], Dict[str, Any]]] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Union[str, BaseModel]:
-        """Generate text using OpenAI's completion API."""
+        """Generate text using OpenAI's completion API.
+
+        ``images`` is an optional list of dicts, each with one of the keys
+        ``path``, ``bytes`` or ``url`` (plus optional ``media_type``).
+        """
+        content: Any = prompt
+        if images is not None:
+            content = [{"type": "text", "text": prompt}] + self._resolve_vision_parts(images)
         return await self._create_completion(
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": content}],
             temperature=temperature,
             max_tokens=max_tokens,
             response_format=response_format,
@@ -208,10 +236,23 @@ class OpenAIModel(BaseLLM):
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
         response_format: Optional[Union[Type[BaseModel], Dict[str, Any]]] = None,
+        images: Optional[List[Dict[str, Any]]] = None,
         **kwargs,
     ) -> Union[str, BaseModel]:
-        """Generate chat completion using OpenAI's chat API."""
+        """Generate chat completion using OpenAI's chat API.
+
+        ``images`` (optional) are attached to the last user message; see
+        ``generate`` for the accepted item shapes.
+        """
         valid_messages = self._validate_messages(messages)
+        if images is not None:
+            parts = self._resolve_vision_parts(images)
+            for msg in reversed(valid_messages):
+                if msg["role"] == "user":
+                    msg["content"] = [{"type": "text", "text": msg["content"]}] + parts
+                    break
+            else:
+                raise ValueError("images require at least one user message")
         return await self._create_completion(
             messages=valid_messages,
             temperature=temperature,

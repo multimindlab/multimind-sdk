@@ -1,5 +1,13 @@
 """
 Advanced retrieval mechanisms for RAG systems.
+
+Canonical source (per ``multimind/retrieval/__init__.py``, via
+``enhanced_retrieval.py``'s re-export) for ``HybridRetriever``. Note that the
+``RetrievalResult`` and ``QueryType`` defined in this module are internal to
+``HybridRetriever`` / ``QueryDecomposer`` and are a *different* shape than
+the package's canonical, publicly-exported ``RetrievalResult`` (see
+``retriever.py``) — same name, deliberately not aliased, see
+``base.py`` for the full duplication note.
 """
 
 from dataclasses import dataclass
@@ -95,7 +103,9 @@ class HybridRetriever:
 
         # Get dense embeddings
         dense_embeddings = await self.dense_retriever.embeddings(documents)
-        query_embedding = await self.dense_retriever.embeddings([query])[0]
+        # Parens matter: `[0]` binds tighter than `await`, so without them this
+        # indexed a not-yet-awaited coroutine object and always raised TypeError.
+        query_embedding = (await self.dense_retriever.embeddings([query]))[0]
 
         # Calculate dense scores
         dense_scores = np.array(

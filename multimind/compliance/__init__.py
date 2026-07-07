@@ -10,7 +10,9 @@ Requires the ``compliance`` extras (``cryptography``, ``bcrypt``, ``pycryptodome
 import os
 import warnings
 
-# Runtime guard is stdlib-only, so it is imported outside the extras gate.
+# Runtime guard and evidence reporting are stdlib-only, and regulatory
+# watching only needs httpx (a core dep), so these are imported outside the
+# extras gate.
 from .guard import (
     AuditLog,
     ComplianceGuard,
@@ -18,6 +20,8 @@ from .guard import (
     PIIDetector,
     guard,
 )
+from .regulatory_watch import ChangeEvent, RegulatoryWatcher
+from .reporting import EvidenceReport, build_evidence_report
 
 try:
     from .advanced import (
@@ -41,6 +45,13 @@ try:
         SelfHealingConfig,
         load_advanced_config,
         save_advanced_config,
+    )
+    from .gdpr import (
+        GDPRCompliance,
+        GDPRPolicy,
+        ProcessingDecision,
+        PurposeRule,
+        gdpr_enforce,
     )
     from .governance import GovernanceConfig, Regulation
     from .model_training import ComplianceTrainer
@@ -82,6 +93,12 @@ __all__ = [
     "guard",
     "ComplianceViolationError",
     "AuditLog",
+    # Evidence Reporting
+    "EvidenceReport",
+    "build_evidence_report",
+    # Regulatory Watch
+    "ChangeEvent",
+    "RegulatoryWatcher",
     # Advanced Features
     "ComplianceShard",
     "SelfHealingCompliance",
@@ -105,6 +122,12 @@ __all__ = [
     # Governance
     "GovernanceConfig",
     "Regulation",
+    # GDPR
+    "GDPRCompliance",
+    "GDPRPolicy",
+    "ProcessingDecision",
+    "PurposeRule",
+    "gdpr_enforce",
     # Privacy
     "PrivacyCompliance",
     "DataCategory",
@@ -115,7 +138,17 @@ __all__ = [
     "ComplianceTrainer",
 ]
 
-_GUARD_NAMES = {"ComplianceGuard", "PIIDetector", "guard", "ComplianceViolationError", "AuditLog"}
+_GUARD_NAMES = {
+    "ComplianceGuard",
+    "PIIDetector",
+    "guard",
+    "ComplianceViolationError",
+    "AuditLog",
+    "EvidenceReport",
+    "build_evidence_report",
+    "ChangeEvent",
+    "RegulatoryWatcher",
+}
 _EXTRAS_GATED_NAMES = set(__all__) - _GUARD_NAMES
 
 # Backward compatibility: import legacy CLI and API functions if available

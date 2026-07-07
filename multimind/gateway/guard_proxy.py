@@ -113,6 +113,17 @@ class ProxySettings(BaseModel):
         values.update({k: v for k, v in overrides.items() if v is not None})
         return cls(**values)
 
+    @classmethod
+    def from_file(cls, path: str, **overrides: Any) -> "ProxySettings":
+        """Load a dashboard-authored guardrails JSON file; file overrides env, kwargs win."""
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+        if "budget_max_cost" in data:
+            data["budget"] = data.pop("budget_max_cost")
+        values = {k: v for k, v in data.items() if k in cls.model_fields and v is not None}
+        values.update({k: v for k, v in overrides.items() if v is not None})
+        return cls.from_env(**values)
+
 
 def _provider_table() -> Dict[str, Tuple[str, Tuple[str, ...]]]:
     try:
