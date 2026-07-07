@@ -79,7 +79,7 @@ DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
   - Example: `examples/rag/rag_advanced_example.py`
 - 📋 **Hybrid RAG Architecture** - Knowledge graph integration not functional
 - 📋 **Quantum-Enhanced Search** - Quantum algorithms not implemented
-- 📋 **Multi-Modal Document Processing** - Limited format support
+- 🚧 **Multi-Modal Document Processing** - Table extraction implemented (pdfplumber for PDFs, pandas for pre-parsed rows); image extraction and LLM-based structure analysis remain placeholders
 
 ---
 
@@ -119,13 +119,13 @@ DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
 - 📋 **Quantum Memory** - Simulation code only (not real quantum computing)
   - Note: This is a classical simulation, not actual quantum hardware
   - Example: `examples/memory/quantum_memory.py` (for educational purposes)
-- 📋 **Consensus Memory** - RAFT protocol stubs
+- 🚧 **Consensus Memory** - Local in-process replication with majority-vote reads; networked RAFT (elections, RPCs) not implemented and raises `NotImplementedError`
 - 📋 **Planning Memory** - Basic rollouts, missing core logic
 - 📋 **Declarative Memory** - Complex features not implemented
-- 📋 **Implicit Memory** - Skill tracking stubs
-- 📋 **Reinforcement Memory** - RL components not functional
-- 📋 **Generative Memory** - Regeneration logic missing
-- 📋 **Active Learning Memory** - Feedback loops not implemented
+- 🚧 **Implicit Memory** - Skill tracking with prerequisite graph and practice-based proficiency
+- 🚧 **Reinforcement Memory** - Pure-python tabular Q-learning for budget management (keep/evict/compress)
+- 🚧 **Generative Memory** - Regeneration bookkeeping, drift tracking, and due-memory regeneration via a caller-supplied generator
+- 🚧 **Active Learning Memory** - Explicit feedback loop: per-memory utility scores, utility-weighted recency retrieval, low-utility eviction
 
 ---
 
@@ -137,7 +137,7 @@ DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
 - 🚧 **Adapter Training** - Basic adapter support
 - 🚧 **Non-Transformer Models** - Mamba and RWKV run real inference (HuggingFace-backed); the other listed architectures (Hyena, S4 variants, RetNet, H3, MLP-only, diffusion-text, etc.) are extension scaffolds only and raise `NotImplementedError`
   - Example: `examples/non_transformer/`
-- 📋 **QLoRA** - Placeholder with warnings
+- 🚧 **QLoRA** - Real 4-bit NF4 quantization + LoRA adapters via transformers/peft/bitsandbytes (`[finetune-gpu]` extra); raises `NotImplementedError` when those deps are absent. Compacter remains a scaffold (peft ships no Compacter config)
 - 📋 **HyperLoRA** - Complex hypernetwork not implemented
 - 📋 **RAG Fine-tuning** - Synthetic data generation missing
 - 📋 **Advanced Optimization** - Many techniques not implemented

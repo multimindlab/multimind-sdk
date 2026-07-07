@@ -1,17 +1,21 @@
 """
 Reinforcement-Based Memory Budgeting implementation.
+
+Uses pure-python tabular Q-learning (no torch) over a discretized budget state
+to decide between keeping, evicting, or compressing memories when the budget
+runs low.
 """
 
+import json
+import math
+import random
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-import numpy as np
-import torch
-from torch import nn
+from pathlib import Path
+from statistics import fmean
+from typing import Any, Dict, List, Optional, Tuple
 
 from .base import BaseMemory
-from .vector_store import VectorStoreMemory
 
 
 class MemoryBudget:
@@ -29,11 +33,8 @@ class MemoryBudget:
 
     def update(self, reward: float) -> None:
         """Update budget based on reward."""
-        # Calculate time decay
         time_diff = (datetime.now() - self.last_update).total_seconds()
-        decay = np.exp(-self.decay_rate * time_diff)
-
-        # Update budget
+        decay = math.exp(-self.decay_rate * time_diff)
         self.current_budget = min(
             self.max_budget, max(self.min_budget, self.current_budget * decay + reward)
         )
@@ -53,8 +54,15 @@ class MemoryBudget:
         self.current_budget = min(self.max_budget, self.current_budget + size)
 
 
+# Actions for the Q-learning policy
+ACTION_KEEP = 0
+ACTION_REMOVE = 1
+ACTION_COMPRESS = 2
+_ACTIONS = (ACTION_KEEP, ACTION_REMOVE, ACTION_COMPRESS)
+
+
 class ReinforcementMemory(BaseMemory):
-    """Memory implementation with reinforcement-based budgeting."""
+    """Memory implementation with reinforcement-based budgeting (tabular Q-learning)."""
 
     def __init__(
         self,
@@ -62,8 +70,11 @@ class ReinforcementMemory(BaseMemory):
         min_budget: int = 100,
         max_budget: int = 10000,
         decay_rate: float = 0.1,
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.1,
         discount_factor: float = 0.99,
+        epsilon: float = 0.1,
+        storage_path: Optional[str] = None,
+        seed: Optional[int] = None,
         **kwargs,
     ):
         """Initialize reinforcement memory."""
@@ -77,26 +88,22 @@ class ReinforcementMemory(BaseMemory):
             decay_rate=decay_rate,
         )
 
-        # RL parameters
+        # Q-learning parameters
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
+        self.epsilon = epsilon
+        self._rng = random.Random(seed)
+        self.q_table: Dict[Tuple[int, int, int], List[float]] = defaultdict(
+            lambda: [0.0] * len(_ACTIONS)
+        )
 
-        # Component memories
-        self.vector_memory = VectorStoreMemory()
+        self.storage_path = Path(storage_path) if storage_path else None
 
         # Memory tracking
         self.memories: Dict[str, Dict[str, Any]] = {}
         self.memory_sizes: Dict[str, int] = {}
         self.access_history: Dict[str, List[datetime]] = defaultdict(list)
         self.reward_history: List[float] = []
-
-        # Q-learning components
-        self.state_size = 128  # Size of state representation
-        self.action_size = 3  # Keep, Remove, Compress
-        self.q_network = nn.Sequential(
-            nn.Linear(self.state_size, 64), nn.ReLU(), nn.Linear(64, self.action_size)
-        )
-        self.optimizer = torch.optim.Adam(self.q_network.parameters(), lr=learning_rate)
 
         # Statistics
         self.total_memories = 0
@@ -107,19 +114,13 @@ class ReinforcementMemory(BaseMemory):
         self, memory_id: str, content: str, metadata: Optional[Dict[str, Any]] = None
     ) -> None:
         """Add a new memory with budget consideration."""
-        # Calculate memory size
         memory_size = len(content.encode("utf-8"))
 
-        # Check if can allocate
         if not self.budget.can_allocate(memory_size):
-            # Try to free space
             await self._optimize_memory()
-
-            # Check again
             if not self.budget.can_allocate(memory_size):
                 raise MemoryError("Insufficient memory budget")
 
-        # Create memory entry
         memory = {
             "id": memory_id,
             "content": content,
@@ -129,14 +130,9 @@ class ReinforcementMemory(BaseMemory):
             "metadata": metadata or {},
         }
 
-        # Store memory
         self.memories[memory_id] = memory
         self.memory_sizes[memory_id] = memory_size
         self.budget.allocate(memory_size)
-
-        # Add to vector memory
-        await self.vector_memory.add(memory_id, content, metadata)
-
         self.total_memories += 1
 
     async def get_memory(self, memory_id: str) -> Optional[Dict[str, Any]]:
@@ -144,12 +140,10 @@ class ReinforcementMemory(BaseMemory):
         if memory_id in self.memories:
             memory = self.memories[memory_id]
 
-            # Update access tracking
             memory["access_count"] += 1
             memory["last_accessed"] = datetime.now()
             self.access_history[memory_id].append(datetime.now())
 
-            # Update reward
             reward = self._calculate_reward(memory_id)
             self.budget.update(reward)
             self.reward_history.append(reward)
@@ -164,49 +158,31 @@ class ReinforcementMemory(BaseMemory):
             old_size = self.memory_sizes[memory_id]
             memory = self.memories[memory_id]
 
-            # Update memory
             memory.update(updates)
 
-            # Calculate new size
             new_size = len(memory["content"].encode("utf-8"))
             size_diff = new_size - old_size
 
-            # Check if can allocate
             if size_diff > 0 and not self.budget.can_allocate(size_diff):
-                # Try to free space
                 await self._optimize_memory()
-
-                # Check again
                 if not self.budget.can_allocate(size_diff):
                     raise MemoryError("Insufficient memory budget")
 
-            # Update budget
             if size_diff > 0:
                 self.budget.allocate(size_diff)
             elif size_diff < 0:
                 self.budget.deallocate(-size_diff)
 
-            # Update size tracking
             self.memory_sizes[memory_id] = new_size
-
-            # Update vector memory
-            if "content" in updates:
-                await self.vector_memory.add(memory_id, updates["content"], memory["metadata"])
 
     async def remove_memory(self, memory_id: str) -> None:
         """Remove a memory."""
         if memory_id in self.memories:
-            # Deallocate budget
             self.budget.deallocate(self.memory_sizes[memory_id])
-
-            # Remove from tracking
             del self.memories[memory_id]
             del self.memory_sizes[memory_id]
             if memory_id in self.access_history:
                 del self.access_history[memory_id]
-
-            # Remove from vector memory
-            await self.vector_memory.remove(memory_id)
 
     async def get_stats(self) -> Dict[str, Any]:
         """Get memory statistics."""
@@ -215,7 +191,8 @@ class ReinforcementMemory(BaseMemory):
             "current_budget": self.budget.current_budget,
             "total_rewards": self.total_rewards,
             "optimization_rounds": self.optimization_rounds,
-            "avg_reward": np.mean(self.reward_history) if self.reward_history else 0.0,
+            "avg_reward": fmean(self.reward_history) if self.reward_history else 0.0,
+            "q_table_size": len(self.q_table),
         }
 
     def _calculate_reward(self, memory_id: str) -> float:
@@ -224,75 +201,150 @@ class ReinforcementMemory(BaseMemory):
         access_count = memory["access_count"]
         time_since_creation = (datetime.now() - memory["created_at"]).total_seconds()
 
-        # Reward based on access frequency and recency
-        frequency_reward = np.log1p(access_count)
-        recency_reward = np.exp(-time_since_creation / 86400)  # 24-hour decay
+        frequency_reward = math.log1p(access_count)
+        recency_reward = math.exp(-time_since_creation / 86400)  # 24-hour decay
 
         return frequency_reward * recency_reward
 
     async def _optimize_memory(self) -> None:
-        """Optimize memory usage using reinforcement learning."""
+        """Optimize memory usage with one tabular Q-learning step."""
         self.optimization_rounds += 1
 
-        # Get state representation
-        state = self._get_state_representation()
+        state = self._get_state()
+        action = self._select_action(state)
 
-        # Get Q-values
-        with torch.no_grad():
-            q_values = self.q_network(torch.FloatTensor(state))
+        freed = 0
+        if action == ACTION_REMOVE and self.memories:
+            memory_id = min(self.memories.keys(), key=lambda x: self._calculate_reward(x))
+            freed = self.memory_sizes[memory_id]
+            await self.remove_memory(memory_id)
+        elif action == ACTION_COMPRESS and self.memories:
+            memory_id = max(self.memories.keys(), key=lambda x: self.memory_sizes[x])
+            before = self.memory_sizes[memory_id]
+            await self._compress_memory(memory_id)
+            freed = before - self.memory_sizes[memory_id]
 
-        # Select action
-        action = torch.argmax(q_values).item()
+        # Reward: fraction of max budget freed; keeping frees nothing and is
+        # penalized when the budget is under pressure.
+        reward = freed / self.budget.max_budget
+        if action == ACTION_KEEP and self.budget.current_budget < self.budget.min_budget * 2:
+            reward = -0.1
 
-        # Apply action
-        if action == 1:  # Remove
-            # Remove least valuable memory
-            if self.memories:
-                memory_id = min(self.memories.keys(), key=lambda x: self._calculate_reward(x))
-                await self.remove_memory(memory_id)
-        elif action == 2:  # Compress
-            # Compress largest memory
-            if self.memories:
-                memory_id = max(self.memories.keys(), key=lambda x: self.memory_sizes[x])
-                await self._compress_memory(memory_id)
+        next_state = self._get_state()
+        self._update_q(state, action, reward, next_state)
 
-    def _get_state_representation(self) -> np.ndarray:
-        """Get state representation for RL."""
-        # Combine various metrics into state vector
-        state = np.zeros(self.state_size)
-
-        # Budget utilization
-        state[0] = self.budget.current_budget / self.budget.max_budget
-
-        # Memory count
-        state[1] = len(self.memories) / self.budget.max_budget
-
-        # Average access frequency
-        if self.memories:
-            avg_freq = np.mean([len(history) for history in self.access_history.values()])
-            state[2] = avg_freq / 100  # Normalize
-
-        # Average memory size
+    def _get_state(self) -> Tuple[int, int, int]:
+        """Discretize budget/memory metrics into a Q-table state."""
+        utilization_bucket = min(
+            9, int(10 * (1 - self.budget.current_budget / self.budget.max_budget))
+        )
+        count_bucket = min(9, len(self.memories) // 10)
         if self.memory_sizes:
-            avg_size = np.mean(list(self.memory_sizes.values()))
-            state[3] = avg_size / self.budget.max_budget
+            avg_size = fmean(self.memory_sizes.values())
+            size_bucket = min(9, int(10 * avg_size / self.budget.max_budget))
+        else:
+            size_bucket = 0
+        return (utilization_bucket, count_bucket, size_bucket)
 
-        return state
+    def _select_action(self, state: Tuple[int, int, int]) -> int:
+        """Epsilon-greedy action selection."""
+        if self._rng.random() < self.epsilon:
+            return self._rng.choice(_ACTIONS)
+        q_values = self.q_table[state]
+        return max(_ACTIONS, key=lambda a: q_values[a])
+
+    def _update_q(
+        self,
+        state: Tuple[int, int, int],
+        action: int,
+        reward: float,
+        next_state: Tuple[int, int, int],
+    ) -> None:
+        """Standard Q-learning update."""
+        q_values = self.q_table[state]
+        best_next = max(self.q_table[next_state])
+        q_values[action] += self.learning_rate * (
+            reward + self.discount_factor * best_next - q_values[action]
+        )
 
     async def _compress_memory(self, memory_id: str) -> None:
         """Compress a memory to save space."""
         if memory_id in self.memories:
             memory = self.memories[memory_id]
 
-            # Simple compression: truncate content
             if len(memory["content"]) > 100:
                 memory["content"] = memory["content"][:100] + "..."
 
-                # Update size tracking
                 new_size = len(memory["content"].encode("utf-8"))
                 size_diff = self.memory_sizes[memory_id] - new_size
                 self.memory_sizes[memory_id] = new_size
                 self.budget.deallocate(size_diff)
 
-                # Update vector memory
-                await self.vector_memory.add(memory_id, memory["content"], memory["metadata"])
+    # --- BaseMemory interface ---
+
+    async def add_message(self, message: Dict[str, str]) -> None:
+        """Add a message as a budgeted memory."""
+        memory_id = f"message_{self.total_memories}"
+        await self.add_memory(memory_id, message["content"], {"role": message.get("role", "user")})
+
+    async def get_messages(self) -> List[Dict[str, str]]:
+        """Get all stored memories as messages."""
+        return [
+            {
+                "role": memory["metadata"].get("role", "reinforcement_memory"),
+                "content": memory["content"],
+            }
+            for memory in self.memories.values()
+        ]
+
+    async def clear(self) -> None:
+        """Clear all memories and learning state."""
+        for memory_id in list(self.memories):
+            await self.remove_memory(memory_id)
+        self.q_table.clear()
+        self.reward_history = []
+        await self.save()
+
+    async def save(self) -> None:
+        """Save memories and Q-table to persistent storage."""
+        if self.storage_path:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.storage_path, "w") as f:
+                json.dump(
+                    {
+                        "memories": {
+                            memory_id: {
+                                "id": memory["id"],
+                                "content": memory["content"],
+                                "metadata": memory["metadata"],
+                                "access_count": memory["access_count"],
+                            }
+                            for memory_id, memory in self.memories.items()
+                        },
+                        "q_table": {
+                            ",".join(map(str, state)): q_values
+                            for state, q_values in self.q_table.items()
+                        },
+                    },
+                    f,
+                )
+
+    async def load(self) -> None:
+        """Load memories and Q-table from persistent storage."""
+        if self.storage_path and self.storage_path.exists():
+            with open(self.storage_path) as f:
+                data = json.load(f)
+            for memory_id, memory in data.get("memories", {}).items():
+                content = memory["content"]
+                self.memories[memory_id] = {
+                    "id": memory["id"],
+                    "content": content,
+                    "created_at": datetime.now(),
+                    "last_accessed": datetime.now(),
+                    "access_count": memory.get("access_count", 0),
+                    "metadata": memory.get("metadata", {}),
+                }
+                self.memory_sizes[memory_id] = len(content.encode("utf-8"))
+            for state_key, q_values in data.get("q_table", {}).items():
+                state = tuple(int(part) for part in state_key.split(","))
+                self.q_table[state] = q_values

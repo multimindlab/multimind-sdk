@@ -217,9 +217,7 @@ class ConsensusMemory(BaseMemory):
     async def add_message(self, message: Dict[str, str]) -> None:
         """Add a message as a replicated memory."""
         memory_id = f"message_{len(self.log)}"
-        await self.add_memory(
-            memory_id, message["content"], {"role": message.get("role", "user")}
-        )
+        await self.add_memory(memory_id, message["content"], {"role": message.get("role", "user")})
 
     async def get_messages(self) -> List[Dict[str, str]]:
         """Get all stored memories as messages."""

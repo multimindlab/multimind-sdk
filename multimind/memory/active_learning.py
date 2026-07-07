@@ -215,10 +215,7 @@ class ActiveLearningMemory(BaseMemory):
             score = utility * recency * (0.5 + 0.5 * relevance)
             scored.append((score, item))
         scored.sort(key=lambda pair: pair[0], reverse=True)
-        return [
-            {**item, "retrieval_score": score}
-            for score, item in scored[:k]
-        ]
+        return [{**item, "retrieval_score": score} for score, item in scored[:k]]
 
     async def _analyze_feedback(self) -> None:
         """Analyze feedback patterns and reinforcement."""
