@@ -101,10 +101,14 @@ class AdvancedMemory:
         self.tokenizer = None
         self.embedding_model = None
         self._device: Optional[str] = None
-        self._models_lock = asyncio.Lock()
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._models_lock: Optional[asyncio.Lock] = None
         # Cache computed embeddings to avoid recomputation on repeated texts.
         self._embedding_cache: Dict[str, List[float]] = {}
-        self._embedding_cache_lock = asyncio.Lock()
+        self._embedding_cache_lock: Optional[asyncio.Lock] = None
 
         # Initialize memory stores
         self.episodic_memory: List[EpisodicMemory] = []
@@ -120,12 +124,22 @@ class AdvancedMemory:
 
         self.kwargs = kwargs
 
+    def _get_models_lock(self) -> asyncio.Lock:
+        if self._models_lock is None:
+            self._models_lock = asyncio.Lock()
+        return self._models_lock
+
+    def _get_embedding_cache_lock(self) -> asyncio.Lock:
+        if self._embedding_cache_lock is None:
+            self._embedding_cache_lock = asyncio.Lock()
+        return self._embedding_cache_lock
+
     async def _ensure_embedding_models_loaded(self) -> None:
         """Lazily load tokenizer + embedding model on first real use."""
         if self.tokenizer is not None and self.embedding_model is not None:
             return
 
-        async with self._models_lock:
+        async with self._get_models_lock():
             if self.tokenizer is not None and self.embedding_model is not None:
                 return
 
@@ -460,7 +474,7 @@ class AdvancedMemory:
         if cached is not None:
             return cached
 
-        async with self._embedding_cache_lock:
+        async with self._get_embedding_cache_lock():
             cached = self._embedding_cache.get(text)
             if cached is not None:
                 return cached
