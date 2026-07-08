@@ -42,7 +42,12 @@ dependencies = [
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    "python-dotenv>=1.2.2",  # >=1.2.2 clears CVE-2026-28684
+    # CVE-2026-28684 is a symlink-following path traversal in set_key()/unset_key();
+    # multimind only ever calls the read-only load_dotenv(), so it's unaffected either
+    # way. >=1.2.2 has the fix but dropped Python 3.9 support, so 3.9 stays on the
+    # last compatible pre-fix release.
+    "python-dotenv>=1.2.2; python_version >= '3.10'",
+    "python-dotenv>=1.0.0,<1.2.2; python_version < '3.10'",
     "click>=8.0.0",
     "rich>=13.0.0",
     "PyYAML>=6.0",
@@ -87,6 +92,8 @@ agents = [
 memory = [
     "redis>=5.0.0",
     "numpy>=1.21.0",
+    # KnowledgeGraphMemory needs networkx.
+    "networkx>=3.0",
 ]
 
 # Document loaders / processors
@@ -142,7 +149,8 @@ gateway = [
     "fastapi>=0.100.0",
     "uvicorn>=0.23.0",
     "redis>=5.0.0",
-    "python-jose>=3.3.0",
+    # rag_api.py uses PyJWT's API directly (jwt.decode/.encode/.ExpiredSignatureError)
+    "PyJWT>=2.8.0",
     "python-multipart>=0.0.6",
     # gateway imports multimind.compliance, whose eager imports need numpy
     "numpy>=1.21.0",

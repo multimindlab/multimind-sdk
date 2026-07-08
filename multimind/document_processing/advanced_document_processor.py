@@ -4,6 +4,7 @@ Advanced document processing with multi-modal support, table extraction, and str
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
@@ -128,18 +129,57 @@ class AdvancedDocumentProcessor:
         """
         self.model = model
         self.kwargs = kwargs
+        self._vision_model_name = vision_model
+        self._table_model_name = table_model
 
-        # Initialize vision models if transformers is available
-        if TRANSFORMERS_AVAILABLE:
-            self.vision_processor = AutoProcessor.from_pretrained(vision_model)
-            self.vision_model = AutoModel.from_pretrained(vision_model)
-            self.table_processor = AutoProcessor.from_pretrained(table_model)
-            self.table_model = AutoModel.from_pretrained(table_model)
-        else:
-            self.vision_processor = None
-            self.vision_model = None
-            self.table_processor = None
-            self.table_model = None
+        # Vision/table transformer models are lazy-loaded on first use (see
+        # _ensure_vision_models_loaded/_ensure_table_models_loaded) so
+        # constructing a processor never triggers a network download.
+        self.vision_processor = None
+        self.vision_model = None
+        self.table_processor = None
+        self.table_model = None
+        self._models_lock = asyncio.Lock()
+
+    async def _ensure_vision_models_loaded(self) -> None:
+        """Lazily download/load the vision transformer on first real use."""
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "Vision model features require transformers. "
+                "Install with: pip install 'multimind-sdk[finetune]'"
+            )
+        if self.vision_processor is not None and self.vision_model is not None:
+            return
+        async with self._models_lock:
+            if self.vision_processor is not None and self.vision_model is not None:
+                return
+
+            def _load():
+                processor = AutoProcessor.from_pretrained(self._vision_model_name)
+                model = AutoModel.from_pretrained(self._vision_model_name)
+                return processor, model
+
+            self.vision_processor, self.vision_model = await asyncio.to_thread(_load)
+
+    async def _ensure_table_models_loaded(self) -> None:
+        """Lazily download/load the table transformer on first real use."""
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "Table detection model features require transformers. "
+                "Install with: pip install 'multimind-sdk[finetune]'"
+            )
+        if self.table_processor is not None and self.table_model is not None:
+            return
+        async with self._models_lock:
+            if self.table_processor is not None and self.table_model is not None:
+                return
+
+            def _load():
+                processor = AutoProcessor.from_pretrained(self._table_model_name)
+                model = AutoModel.from_pretrained(self._table_model_name)
+                return processor, model
+
+            self.table_processor, self.table_model = await asyncio.to_thread(_load)
 
     async def process_document(
         self, document: Dict[str, Any], **kwargs
@@ -229,6 +269,9 @@ class AdvancedDocumentProcessor:
     async def _detect_tables(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Detect and extract tables."""
         tables = []
+        if not document.get("images"):
+            return tables
+        await self._ensure_table_models_loaded()
 
         # Process document with table transformer
         inputs = self.table_processor(images=document.get("images", []), return_tensors="pt")
@@ -243,6 +286,8 @@ class AdvancedDocumentProcessor:
     async def _extract_images(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Extract and process images."""
         images = []
+        if document.get("images"):
+            await self._ensure_vision_models_loaded()
 
         for image in document.get("images", []):
             # Process image with vision model

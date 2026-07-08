@@ -12,14 +12,19 @@ import json
 
 import pytest
 
-from multimind.memory.episodic import EpisodicMemory
-from multimind.memory.hybrid import HybridMemory
-from multimind.memory.knowledge_graph import KnowledgeGraphMemory
-from multimind.memory.procedural import ProceduralMemory
-from multimind.memory.semantic import SemanticMemory
-from multimind.memory.time_weighted import TimeWeightedMemory
-from multimind.memory.vector_store import VectorStoreMemory
-from multimind.vector_store.base import VectorStoreConfig, VectorStoreType
+# HybridMemory/KnowledgeGraphMemory/VectorStoreMemory need numpy/networkx
+# (the [memory] extras), which test-core doesn't install.
+pytest.importorskip("numpy", reason="requires multimind-sdk[memory]")
+pytest.importorskip("networkx", reason="requires multimind-sdk[memory]")
+
+from multimind.memory.episodic import EpisodicMemory  # noqa: E402
+from multimind.memory.hybrid import HybridMemory  # noqa: E402
+from multimind.memory.knowledge_graph import KnowledgeGraphMemory  # noqa: E402
+from multimind.memory.procedural import ProceduralMemory  # noqa: E402
+from multimind.memory.semantic import SemanticMemory  # noqa: E402
+from multimind.memory.time_weighted import TimeWeightedMemory  # noqa: E402
+from multimind.memory.vector_store import VectorStoreMemory  # noqa: E402
+from multimind.vector_store.base import VectorStoreConfig, VectorStoreType  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Fake LLMs: deterministic, format-matching responses per memory type.

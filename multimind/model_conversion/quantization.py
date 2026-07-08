@@ -5,6 +5,23 @@ import torch.nn as nn
 
 from .base import BaseModelConverter
 
+# Preferred order: fbgemm/x86 give the best accuracy on server CPUs; qnnpack
+# is the only engine available on ARM (e.g. Apple Silicon). torch defaults
+# torch.backends.quantized.engine to "none", so quantize_dynamic() silently
+# no-ops unless an engine is selected first.
+_ENGINE_PREFERENCE = ("fbgemm", "x86", "qnnpack")
+
+
+def _select_quantized_engine() -> str:
+    supported = set(torch.backends.quantized.supported_engines)
+    for engine in _ENGINE_PREFERENCE:
+        if engine in supported:
+            torch.backends.quantized.engine = engine
+            return engine
+    raise RuntimeError(
+        f"No supported torch quantized engine available (supported: {sorted(supported)})"
+    )
+
 
 class AdvancedQuantization:
     """Advanced quantization techniques for model conversion."""
@@ -20,9 +37,10 @@ class AdvancedQuantization:
     ) -> nn.Module:
         """Quantization-aware training implementation."""
         config = config or {}
+        engine = _select_quantized_engine()
 
         # Prepare model for quantization
-        model.qconfig = torch.quantization.get_default_qat_qconfig("fbgemm")
+        model.qconfig = torch.quantization.get_default_qat_qconfig(engine)
         torch.quantization.prepare_qat(model, inplace=True)
 
         # Training loop for quantization
@@ -41,6 +59,7 @@ class AdvancedQuantization:
         self, model: nn.Module, layer_configs: Dict[str, Dict[str, Any]]
     ) -> nn.Module:
         """Apply different quantization schemes to different layers."""
+        engine = _select_quantized_engine()
         for layer_name, layer_config in layer_configs.items():
             layer = getattr(model, layer_name)
             if layer_config.get("quantization_type") == "dynamic":
@@ -52,7 +71,7 @@ class AdvancedQuantization:
                 )
                 setattr(model, layer_name, quantized_layer)
             elif layer_config.get("quantization_type") == "static":
-                layer.qconfig = torch.quantization.get_default_qconfig("fbgemm")
+                layer.qconfig = torch.quantization.get_default_qconfig(engine)
                 torch.quantization.prepare(layer, inplace=True)
                 torch.quantization.convert(layer, inplace=True)
 

@@ -7,9 +7,8 @@ import re
 import threading
 from datetime import datetime
 from pathlib import Path
+from statistics import fmean, pstdev
 from typing import Any, Dict, List, Type, Union
-
-import numpy as np
 
 from .base import BaseMemory
 
@@ -50,16 +49,17 @@ class AdaptiveThreshold:
         # Adapt threshold: e.g., set to mean - std, or based on feedback
         if self.feedback:
             # If recent feedback is low, lower threshold; if high, raise
-            avg_feedback = np.mean(self.feedback[-self.window :])
+            avg_feedback = fmean(self.feedback[-self.window :])
             if avg_feedback < 0.5:
                 self.value = max(self.min_val, self.value - 0.01)
             elif avg_feedback > 0.8:
                 self.value = min(self.max_val, self.value + 0.01)
         else:
             # Use score distribution
-            mean = np.mean(self.scores[-self.window :])
-            std = np.std(self.scores[-self.window :])
-            self.value = np.clip(mean - std, self.min_val, self.max_val)
+            recent = self.scores[-self.window :]
+            mean = fmean(recent)
+            std = pstdev(recent) if len(recent) > 1 else 0.0
+            self.value = max(self.min_val, min(mean - std, self.max_val))
 
 
 class MemoryUtils:
