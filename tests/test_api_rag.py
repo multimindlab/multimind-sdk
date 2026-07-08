@@ -3,6 +3,9 @@
 import pytest
 
 pytest.importorskip("fastapi", reason="requires multimind-sdk[gateway]")
+# rag_api.py imports multimind.rag, which needs the [rag] extras (faiss et al.)
+# on top of [gateway].
+pytest.importorskip("faiss", reason="requires multimind-sdk[gateway,rag]")
 from fastapi.testclient import TestClient
 
 import multimind

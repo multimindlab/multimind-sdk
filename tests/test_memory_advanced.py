@@ -2,6 +2,7 @@ from datetime import timedelta
 
 import pytest
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
+pytest.importorskip("networkx")  # ImplicitMemory needs networkx (multimind-sdk[memory])
 
 from multimind.memory.active_learning import ActiveLearningMemory
 from multimind.memory.consensus import ConsensusMemory

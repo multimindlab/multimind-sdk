@@ -66,7 +66,7 @@ Adds: cryptography, bcrypt, pycryptodome, plotly, dash, pandas (dashboard visual
 ```bash
 pip install "multimind-sdk[gateway]"
 ```
-Adds: fastapi, uvicorn, redis, python-jose, python-multipart
+Adds: fastapi, uvicorn, redis, PyJWT, python-multipart
 
 ### MCP Server (Claude Desktop / Claude Code integration)
 ```bash
@@ -138,7 +138,7 @@ See the `Makefile` for shortcuts (`make lint`, `make format`, `make test`, ...).
 | `finetune` | torch, transformers, datasets, accelerate, peft, scikit-learn, optuna |
 | `finetune-gpu` | multimind-sdk[finetune] + bitsandbytes (Linux only) |
 | `compliance` | cryptography, bcrypt, pycryptodome, plotly, dash, pandas |
-| `gateway` | fastapi, uvicorn, redis, python-jose, python-multipart |
+| `gateway` | fastapi, uvicorn, redis, PyJWT, python-multipart |
 | `mcp` | mcp |
 | `langchain` | langchain-core |
 | `llamaindex` | llama-index-core |

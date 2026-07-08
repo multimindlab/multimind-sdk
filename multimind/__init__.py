@@ -98,8 +98,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     "PromptChain": ("multimind.orchestration.prompt_chain", None),
     "TaskRunner": ("multimind.orchestration.task_runner", None),
     # Ensemble
-    "AdvancedEnsemble": ("multimind.ensemble", None),
-    "EnsembleMethod": ("multimind.ensemble.advanced", None),
+    "AdvancedEnsemble": ("multimind.ensemble", "finetune"),
+    "EnsembleMethod": ("multimind.ensemble.advanced", "finetune"),
     # MCP
     "MCPExecutor": ("multimind.mcp.executor", None),
     "MCPParser": ("multimind.mcp.parser", None),
@@ -257,8 +257,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     "PipelineConverter": ("multimind.model_conversion", "finetune"),
     "ModelConversionManager": ("multimind.model_conversion", "finetune"),
     # Context window
-    "ContextManager": ("multimind.context_window", None),
-    "ContextOptimizer": ("multimind.context_window", None),
+    "ContextManager": ("multimind.context_window", "rag"),
+    "ContextOptimizer": ("multimind.context_window", "rag"),
     # Patterns (RAG-flavoured)
     "RetrievalStep": ("multimind.patterns", "rag"),
     "FusionResult": ("multimind.patterns", "rag"),
