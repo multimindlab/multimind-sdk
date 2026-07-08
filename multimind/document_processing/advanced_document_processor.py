@@ -139,7 +139,16 @@ class AdvancedDocumentProcessor:
         self.vision_model = None
         self.table_processor = None
         self.table_model = None
-        self._models_lock = asyncio.Lock()
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._models_lock = None
+
+    def _get_models_lock(self) -> asyncio.Lock:
+        if self._models_lock is None:
+            self._models_lock = asyncio.Lock()
+        return self._models_lock
 
     async def _ensure_vision_models_loaded(self) -> None:
         """Lazily download/load the vision transformer on first real use."""
@@ -150,7 +159,7 @@ class AdvancedDocumentProcessor:
             )
         if self.vision_processor is not None and self.vision_model is not None:
             return
-        async with self._models_lock:
+        async with self._get_models_lock():
             if self.vision_processor is not None and self.vision_model is not None:
                 return
 
@@ -170,7 +179,7 @@ class AdvancedDocumentProcessor:
             )
         if self.table_processor is not None and self.table_model is not None:
             return
-        async with self._models_lock:
+        async with self._get_models_lock():
             if self.table_processor is not None and self.table_model is not None:
                 return
 
