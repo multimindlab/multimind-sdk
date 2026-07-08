@@ -100,7 +100,7 @@ jobs:
             -m "not integration and not slow and not requires_api_key"
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-core-py${{ matrix.python-version }}
           path: test-results-core.xml
@@ -262,13 +262,13 @@ jobs:
           PY
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-xml
           path: coverage.xml
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-full
           path: test-results-full.xml
