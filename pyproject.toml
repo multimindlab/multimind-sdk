@@ -140,7 +140,7 @@ compliance = [
     # interactive compliance dashboards. Anyone installing the `compliance`
     # extra is expected to want the visualization layer.
     "plotly>=5.18.0",
-    "dash>=2.14.0",
+    "dash>=4.4.0",
     "pandas>=2.0.0",
 ]
 
