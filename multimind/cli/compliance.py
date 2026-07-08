@@ -4,17 +4,42 @@ Command-line interface for MultiMind compliance features.
 
 import asyncio
 import json
+import sys
 
 import click
+from rich.console import Console
+from rich.table import Table
 
-from ..compliance.governance import GovernanceConfig, Regulation
-from ..gateway.compliance_api import (
-    generate_compliance_report,
-    get_compliance_alerts,
-    get_dashboard_metrics,
-    run_compliance_monitoring,
-    save_alert_rules,
-)
+
+def _compliance_backend():
+    # Needs [compliance] + [gateway] extras; imported at command time so
+    # core-install commands like scan-text keep working
+    try:
+        from ..compliance.governance import GovernanceConfig, Regulation
+        from ..gateway.compliance_api import (
+            generate_compliance_report,
+            get_compliance_alerts,
+            get_dashboard_metrics,
+            run_compliance_monitoring,
+            save_alert_rules,
+        )
+    except ImportError as exc:
+        raise click.ClickException(
+            "This command requires extras. Install with: "
+            "pip install 'multimind-sdk[compliance,gateway]'"
+        ) from exc
+    return {
+        "GovernanceConfig": GovernanceConfig,
+        "Regulation": Regulation,
+        "generate_compliance_report": generate_compliance_report,
+        "get_compliance_alerts": get_compliance_alerts,
+        "get_dashboard_metrics": get_dashboard_metrics,
+        "run_compliance_monitoring": run_compliance_monitoring,
+        "save_alert_rules": save_alert_rules,
+    }
+
+
+console = Console()
 
 
 @click.group()
@@ -25,12 +50,20 @@ def compliance():
 
 @compliance.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), help="Path to compliance configuration file"
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to compliance configuration file",
 )
 @click.option("--output", "-o", type=click.Path(), help="Path to save results")
 def run_compliance(config: str, output: str):
     """Run compliance monitoring."""
-    asyncio.run(_run_compliance(config, output))
+    try:
+        asyncio.run(_run_compliance(config, output))
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _run_compliance(config_path: str, output_path: str):
@@ -40,6 +73,9 @@ async def _run_compliance(config_path: str, output_path: str):
         config = json.load(f)
 
     # Initialize governance config
+    _b = _compliance_backend()
+    GovernanceConfig, Regulation = _b["GovernanceConfig"], _b["Regulation"]
+    run_compliance_monitoring = _b["run_compliance_monitoring"]
     governance_config = GovernanceConfig(
         organization_id=config["organization_id"],
         organization_name=config["organization_name"],
@@ -76,7 +112,17 @@ async def _run_compliance(config_path: str, output_path: str):
 @click.option("--output", "-o", type=click.Path(), help="Path to save results")
 def run_example(type: str, use_case: str, output: str):
     """Run compliance example."""
-    asyncio.run(_run_example(type, use_case, output))
+    try:
+        asyncio.run(_run_example(type, use_case, output))
+    except ImportError:
+        console.print(
+            "[red]Compliance examples are not available in this installation. "
+            "Run from a checkout of the multimind-sdk repository.[/red]"
+        )
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _run_example(type: str, use_case: str, output: str):
@@ -106,12 +152,20 @@ async def _run_example(type: str, use_case: str, output: str):
 
 @compliance.command()
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), help="Path to compliance configuration file"
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to compliance configuration file",
 )
 @click.option("--output", "-o", type=click.Path(), help="Path to save report")
 def generate_report(config: str, output: str):
     """Generate compliance report."""
-    asyncio.run(_generate_report(config, output))
+    try:
+        asyncio.run(_generate_report(config, output))
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _generate_report(config_path: str, output_path: str):
@@ -121,7 +175,7 @@ async def _generate_report(config_path: str, output_path: str):
         config = json.load(f)
 
     # Generate report
-    report = await generate_compliance_report(config)
+    report = await _compliance_backend()["generate_compliance_report"](config)
 
     # Save report
     if output_path:
@@ -137,23 +191,28 @@ async def _generate_report(config_path: str, output_path: str):
 @click.option("--organization-id", "-o", required=True, help="Organization ID")
 @click.option("--time-range", "-t", default="7d", help="Time range (e.g., 7d, 24h)")
 @click.option("--use-case", "-u", help="Specific use case")
-@click.option("--output", "-o", type=click.Path(), help="Path to save dashboard data")
+@click.option("--output", type=click.Path(), help="Path to save dashboard data")
 def dashboard(organization_id: str, time_range: str, use_case: str, output: str):
     """Show compliance dashboard."""
-    asyncio.run(_show_dashboard(organization_id, time_range, use_case, output))
+    try:
+        asyncio.run(_show_dashboard(organization_id, time_range, use_case, output))
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _show_dashboard(organization_id: str, time_range: str, use_case: str, output: str):
     """Show compliance dashboard."""
     # Get dashboard metrics
-    metrics = await get_dashboard_metrics(
+    metrics = await _compliance_backend()["get_dashboard_metrics"](
         organization_id=organization_id, time_range=time_range, use_case=use_case
     )
 
     # Save metrics if output path provided
     if output:
+        data = metrics.model_dump() if hasattr(metrics, "model_dump") else metrics.dict()
         with open(output, "w") as f:
-            json.dump(metrics.dict(), f, indent=2)
+            json.dump(data, f, indent=2)
 
     # Print dashboard
     print("\nCompliance Dashboard")
@@ -182,16 +241,20 @@ async def _show_dashboard(organization_id: str, time_range: str, use_case: str, 
 @click.option("--organization-id", "-o", required=True, help="Organization ID")
 @click.option("--status", "-s", default="active", help="Alert status (active/resolved)")
 @click.option("--severity", "-v", help="Alert severity (high/medium/low)")
-@click.option("--output", "-o", type=click.Path(), help="Path to save alerts")
+@click.option("--output", type=click.Path(), help="Path to save alerts")
 def alerts(organization_id: str, status: str, severity: str, output: str):
     """Show compliance alerts."""
-    asyncio.run(_show_alerts(organization_id, status, severity, output))
+    try:
+        asyncio.run(_show_alerts(organization_id, status, severity, output))
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _show_alerts(organization_id: str, status: str, severity: str, output: str):
     """Show compliance alerts."""
     # Get alerts
-    alerts = await get_compliance_alerts(
+    alerts = await _compliance_backend()["get_compliance_alerts"](
         organization_id=organization_id, status=status, severity=severity
     )
 
@@ -219,11 +282,19 @@ async def _show_alerts(organization_id: str, status: str, severity: str, output:
 @compliance.command()
 @click.option("--organization-id", "-o", required=True, help="Organization ID")
 @click.option(
-    "--config", "-c", type=click.Path(exists=True), help="Path to alert rules configuration"
+    "--config",
+    "-c",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to alert rules configuration",
 )
 def configure_alerts(organization_id: str, config: str):
     """Configure compliance alert rules."""
-    asyncio.run(_configure_alerts(organization_id, config))
+    try:
+        asyncio.run(_configure_alerts(organization_id, config))
+    except Exception as e:
+        console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 async def _configure_alerts(organization_id: str, config_path: str):
@@ -233,8 +304,131 @@ async def _configure_alerts(organization_id: str, config_path: str):
         alert_rules = json.load(f)
 
     # Configure alerts
-    await save_alert_rules(organization_id, alert_rules)
+    await _compliance_backend()["save_alert_rules"](organization_id, alert_rules)
     print("Alert rules configured successfully")
+
+
+@compliance.command()
+@click.argument("text", required=False)
+@click.option(
+    "--file",
+    "-f",
+    "file_path",
+    type=click.Path(exists=True),
+    help="Scan a file instead of inline text",
+)
+@click.option(
+    "--redact",
+    "-r",
+    type=click.Choice(["mask", "hash", "remove"]),
+    default=None,
+    help="Also print the text redacted with this strategy",
+)
+def scan_text(text: str, file_path: str, redact: str):
+    """Scan text or a file for PII using the ComplianceGuard detector.
+
+    Exits with code 1 if any PII is found.
+    """
+    from ..compliance.guard import PIIDetector
+
+    if text is None and not file_path:
+        raise click.UsageError("Provide TEXT or --file to scan.")
+    if text is not None and file_path:
+        raise click.UsageError("Provide either TEXT or --file, not both.")
+
+    if file_path:
+        with open(file_path, encoding="utf-8", errors="replace") as f:
+            text = f.read()
+
+    detector = PIIDetector()
+    matches = detector.detect(text)
+
+    if not matches:
+        console.print("[green]No PII found.[/green]")
+        return
+
+    table = Table(title=f"PII Findings ({len(matches)})")
+    table.add_column("Type", style="cyan")
+    table.add_column("Start", justify="right")
+    table.add_column("End", justify="right")
+    table.add_column("Match", style="red")
+
+    for m in matches:
+        table.add_row(m.type, str(m.start), str(m.end), m.text)
+
+    console.print(table)
+
+    if redact:
+        redacted, _ = detector.redact(text, strategy=redact)
+        console.print("\n[bold]Redacted text:[/bold]")
+        console.print(redacted)
+
+    sys.exit(1)
+
+
+@compliance.command("report-evidence")
+@click.option(
+    "--audit-log",
+    type=click.Path(exists=True, dir_okay=False),
+    required=True,
+    help="JSONL audit trail written by ComplianceGuard's AuditLog",
+)
+@click.option(
+    "--costs-log",
+    type=click.Path(exists=True, dir_okay=False),
+    help="JSONL cost log written by CostTracker",
+)
+@click.option(
+    "--project",
+    type=click.Path(exists=True, file_okay=False),
+    help="Run an AI inventory scan over this directory and include it",
+)
+@click.option("--period", help="Filter records by ISO timestamp prefix, e.g. 2026-07")
+@click.option("--organization", help="Organization name shown on the report")
+@click.option(
+    "--format",
+    "fmt",
+    type=click.Choice(["md", "html"]),
+    default="md",
+    help="Output format",
+)
+@click.option("--output", "-o", type=click.Path(), help="Write the report to this file")
+def report_evidence(
+    audit_log: str,
+    costs_log: str,
+    project: str,
+    period: str,
+    organization: str,
+    fmt: str,
+    output: str,
+):
+    """Generate a compliance evidence report from SDK JSONL artifacts.
+
+    Documents what the audit/cost/inventory artifacts actually evidence;
+    it is technical evidence, not a legal compliance determination.
+    """
+    from ..compliance.reporting import build_evidence_report
+
+    inventory = None
+    if project:
+        from ..observability.ai_inventory import scan_project
+
+        inventory = scan_project(project)
+
+    report = build_evidence_report(
+        audit_log=audit_log,
+        costs_log=costs_log,
+        inventory=inventory,
+        period=period,
+        organization=organization,
+    )
+    rendered = report.to_html() if fmt == "html" else report.to_markdown()
+    if output:
+        with open(output, "w", encoding="utf-8") as f:
+            f.write(rendered)
+        console.print(f"Evidence report written to {output}")
+    else:
+        click.echo(rendered)
 
 
 def main():

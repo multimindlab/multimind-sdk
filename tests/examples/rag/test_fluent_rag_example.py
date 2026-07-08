@@ -3,6 +3,7 @@ Tests for fluent_rag_example.py RAG example.
 """
 
 import pytest
+pytest.importorskip("multimind.rag", exc_type=ImportError)  # requires optional extras absent on core-only installs
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import os

@@ -4,6 +4,7 @@ Tests edge cases, error handling, and advanced functionality.
 """
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 import asyncio
 from unittest.mock import Mock, patch, AsyncMock
 from typing import Dict, Any, List, Optional, AsyncGenerator, Coroutine
@@ -484,42 +485,44 @@ class TestAdvancedComplianceFeatures:
     """Test advanced compliance features."""
     
     @pytest.mark.asyncio
-    async def test_compliance_shard_verification(self):
-        """Test compliance shard verification."""
+    async def test_compliance_shard_verification_fails_closed(self):
+        """Compliance verification fails closed without a real rule engine."""
         config = {"level": "standard"}
         shard = ComplianceShard("test_shard", "test_jurisdiction", config)
-        
-        # Test compliance verification
+
         data = {"test": "data"}
-        compliant, result = await shard.verify_compliance(data)
-        
-        assert isinstance(compliant, bool)
-        assert "proof" in result
-        assert "metrics" in result
-    
+        with pytest.raises(NotImplementedError):
+            await shard.verify_compliance(data)
+
     @pytest.mark.asyncio
-    async def test_self_healing_compliance(self):
-        """Test self-healing compliance."""
+    async def test_self_healing_compliance_fails_closed(self):
+        """Self-healing refuses to fake patch application."""
         config = {}
         healing = SelfHealingCompliance(config)
-        
-        # Test self-healing process
+
+        # A state needing healing produces patches, which cannot be auto-applied
         compliance_state = {"status": "needs_healing"}
-        healed_state = await healing.check_and_heal(compliance_state)
-        
-        assert isinstance(healed_state, dict)
-        assert len(healing.patch_history) >= 0
-    
+        with pytest.raises(NotImplementedError):
+            await healing.check_and_heal(compliance_state)
+
+        # A healthy state passes through without fabricated healing
+        healthy_state = {"status": "ok"}
+        result = await healing.check_and_heal(healthy_state)
+        assert isinstance(result, dict)
+        assert result.get("status") == "ok"
+        assert result.get("patches_applied") == []
+
     @pytest.mark.asyncio
-    async def test_model_watermarking(self):
-        """Test model watermarking."""
+    async def test_model_watermarking_fails_closed(self):
+        """Watermarking fails closed without a real watermarking backend."""
         config = {}
         watermarking = ModelWatermarking(config)
-        
-        # Test watermarking process
+
         model = Mock()
-        watermarked_model = await watermarking.watermark_model(model)
-        assert watermarked_model is not None
+        with pytest.raises(NotImplementedError):
+            await watermarking.watermark_model(model)
+        with pytest.raises(NotImplementedError):
+            await watermarking.verify_watermark(model)
 
 
 @pytest.mark.skipif(AdvancedEvaluator is None, reason="AdvancedEvaluator not available")

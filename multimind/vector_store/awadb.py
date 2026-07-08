@@ -61,10 +61,11 @@ class AwaDBBackend(VectorStoreBackend):
         documents: List[Dict[str, Any]],
         ids: Optional[List[str]] = None,
     ) -> None:
-        """Add vectors with metadata and documents (batch supported)."""
-        if self.live_indexing:
-            await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
-        self.log_metrics("add_vectors", len(vectors))
+        raise NotImplementedError(
+            "AwaDBBackend.add_vectors is not implemented: the AwaDB backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def search(
         self,
@@ -76,12 +77,11 @@ class AwaDBBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
-        """Hybrid search: vector + keyword + metadata + custom scoring."""
-        explain = explain if explain is not None else self.explain
-        results = []
-        # Implement AwaDB vector search here
-        self.log_metrics("search", len(results))
-        return results
+        raise NotImplementedError(
+            "AwaDBBackend.search is not implemented: the AwaDB backend is a stub. Use "
+            "an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, Milvus, "
+            "or Weaviate."
+        )
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
@@ -95,16 +95,25 @@ class AwaDBBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids: List[str]) -> None:
-        """Delete vectors by ID (batch supported)."""
-        self.log_metrics("delete_vectors", len(ids))
+        raise NotImplementedError(
+            "AwaDBBackend.delete_vectors is not implemented: the AwaDB backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def clear(self) -> None:
-        """Clear all vectors from the index."""
-        self.log_metrics("clear", 1)
+        raise NotImplementedError(
+            "AwaDBBackend.clear is not implemented: the AwaDB backend is a stub. Use "
+            "an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, Milvus, "
+            "or Weaviate."
+        )
 
     async def persist(self, path: str) -> None:
-        """Persist index/config to disk/cloud if supported."""
-        self.log_metrics("persist", 1)
+        raise NotImplementedError(
+            "AwaDBBackend.persist is not implemented: the AwaDB backend is a stub. "
+            "Use an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, "
+            "Milvus, or Weaviate."
+        )
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "AwaDBBackend":

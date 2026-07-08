@@ -3,7 +3,7 @@ Advanced memory system with episodic and semantic memory support.
 """
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
@@ -31,33 +31,34 @@ class MemoryItem:
 class EpisodicMemory(MemoryItem):
     """Represents an episodic memory item."""
 
-    event_type: str
-    context: Dict[str, Any]
-    emotions: List[str]
-    participants: List[str]
-    location: Optional[str]
-    duration: Optional[float]
+    # Defaults required: the base class has a defaulted field (embedding)
+    event_type: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    emotions: List[str] = field(default_factory=list)
+    participants: List[str] = field(default_factory=list)
+    location: Optional[str] = None
+    duration: Optional[float] = None
 
 
 @dataclass
 class SemanticMemory(MemoryItem):
     """Represents a semantic memory item."""
 
-    concept: str
-    relationships: List[Dict[str, Any]]
-    attributes: Dict[str, Any]
-    category: str
-    confidence: float
+    concept: str = ""
+    relationships: List[Dict[str, Any]] = field(default_factory=list)
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    category: str = ""
+    confidence: float = 0.0
 
 
 @dataclass
 class WorkingMemory(MemoryItem):
     """Represents a working memory item."""
 
-    priority: float
-    expiration: Optional[float]
-    dependencies: List[str]
-    state: str
+    priority: float = 0.0
+    expiration: Optional[float] = None
+    dependencies: List[str] = field(default_factory=list)
+    state: str = ""
 
 
 class MemoryType(Enum):
@@ -100,10 +101,14 @@ class AdvancedMemory:
         self.tokenizer = None
         self.embedding_model = None
         self._device: Optional[str] = None
-        self._models_lock = asyncio.Lock()
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._models_lock: Optional[asyncio.Lock] = None
         # Cache computed embeddings to avoid recomputation on repeated texts.
         self._embedding_cache: Dict[str, List[float]] = {}
-        self._embedding_cache_lock = asyncio.Lock()
+        self._embedding_cache_lock: Optional[asyncio.Lock] = None
 
         # Initialize memory stores
         self.episodic_memory: List[EpisodicMemory] = []
@@ -119,12 +124,22 @@ class AdvancedMemory:
 
         self.kwargs = kwargs
 
+    def _get_models_lock(self) -> asyncio.Lock:
+        if self._models_lock is None:
+            self._models_lock = asyncio.Lock()
+        return self._models_lock
+
+    def _get_embedding_cache_lock(self) -> asyncio.Lock:
+        if self._embedding_cache_lock is None:
+            self._embedding_cache_lock = asyncio.Lock()
+        return self._embedding_cache_lock
+
     async def _ensure_embedding_models_loaded(self) -> None:
         """Lazily load tokenizer + embedding model on first real use."""
         if self.tokenizer is not None and self.embedding_model is not None:
             return
 
-        async with self._models_lock:
+        async with self._get_models_lock():
             if self.tokenizer is not None and self.embedding_model is not None:
                 return
 
@@ -459,7 +474,7 @@ class AdvancedMemory:
         if cached is not None:
             return cached
 
-        async with self._embedding_cache_lock:
+        async with self._get_embedding_cache_lock():
             cached = self._embedding_cache.get(text)
             if cached is not None:
                 return cached

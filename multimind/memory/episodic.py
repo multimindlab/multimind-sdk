@@ -215,8 +215,9 @@ class EpisodicMemory(BaseMemory):
         related_episode = await self._find_most_related_episode(episode)
 
         if related_episode:
-            # Add to existing chain
-            chain = self.episode_chains.get(related_episode["id"], [])
+            # Add to existing chain (copy so we don't mutate the predecessor's
+            # own stored chain list in place).
+            chain = list(self.episode_chains.get(related_episode["id"], []))
             if len(chain) < self.chain_depth:
                 chain.append(episode["id"])
                 self.episode_chains[episode["id"]] = chain
@@ -233,9 +234,11 @@ class EpisodicMemory(BaseMemory):
         # Get episode embedding
         episode_embedding = await self.llm.embeddings(episode["content"])
 
-        # Calculate similarities
+        # Calculate similarities, excluding the episode itself.
         similarities = []
         for i, existing_embedding in enumerate(self.episode_embeddings):
+            if self.episodes[i]["id"] == episode["id"]:
+                continue
             similarity = self._cosine_similarity(episode_embedding, existing_embedding)
             if similarity >= self.spatial_threshold:
                 similarities.append({"episode": self.episodes[i], "similarity": similarity})
@@ -430,6 +433,7 @@ class EpisodicMemory(BaseMemory):
                         "last_consolidation": self.last_consolidation.isoformat(),
                     },
                     f,
+                    default=lambda o: list(o) if isinstance(o, set) else o,
                 )
 
     async def load(self) -> None:
@@ -438,6 +442,10 @@ class EpisodicMemory(BaseMemory):
             with open(self.storage_path) as f:
                 data = json.load(f)
                 self.episodes = data.get("episodes", [])
+                for episode in self.episodes:
+                    metadata = episode.get("metadata", {})
+                    metadata["emotions"] = set(metadata.get("emotions", []))
+                    metadata["participants"] = set(metadata.get("participants", []))
                 self.spatial_index = {k: set(v) for k, v in data.get("spatial_index", {}).items()}
                 self.temporal_index = data.get("temporal_index", {})
                 self.emotional_index = {
@@ -646,7 +654,7 @@ class EpisodicMemory(BaseMemory):
             )
 
         # Check emotional analysis
-        if len(stats["emotional_stats"]["total_emotional_profiles"]) < len(self.episodes) * 0.5:
+        if stats["emotional_stats"]["total_emotional_profiles"] < len(self.episodes) * 0.5:
             suggestions.append(
                 {
                     "type": "emotional_analysis",

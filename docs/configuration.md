@@ -5,171 +5,209 @@ This guide covers all configuration options available in the MultiMind SDK.
 ## Environment Variables
 
 ### API Keys
+
 ```bash
 # Required for OpenAI models
 OPENAI_API_KEY=your_openai_api_key
 
-# Required for Anthropic models
+# Required for Anthropic models (CLAUDE_API_KEY is also accepted)
 ANTHROPIC_API_KEY=your_anthropic_api_key
 
-# Required for Mistral models
+# Required for Mistral AI (hosted) models
 MISTRAL_API_KEY=your_mistral_api_key
+
+# Required for Groq models
+GROQ_API_KEY=your_groq_api_key
+
+# Required for Gemini models (GOOGLE_API_KEY is also accepted)
+GEMINI_API_KEY=your_gemini_api_key
+
+# Required for DeepSeek models
+DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# Optional for Hugging Face models (falls back to local transformers)
+HUGGINGFACE_API_KEY=your_huggingface_api_key
 ```
 
 ### Default Settings
+
 ```bash
-# Default model to use
-DEFAULT_MODEL=gpt-3.5-turbo
+# Default model provider for the gateway (default: openai)
+DEFAULT_MODEL=openai
 
-# Default temperature
-DEFAULT_TEMPERATURE=0.7
-
-# Default max tokens
-DEFAULT_MAX_TOKENS=2000
-
-# Logging level
+# Logging level for the gateway
 LOG_LEVEL=INFO  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+
+# Log level for optional-dependency warnings at import time (default: WARNING)
+MULTIMIND_LOG_LEVEL=WARNING
+
+# Path to a YAML config file loaded by multimind.Config
+MULTIMIND_CONFIG=config.yaml
+
+# Ollama server URL (default: http://localhost:11434)
+OLLAMA_HOST=http://localhost:11434
+```
+
+### Compliance Proxy (`multimind serve`)
+
+Every `multimind serve` flag can also be set through an environment variable
+(CLI flags win):
+
+```bash
+MULTIMIND_PROXY_UPSTREAM=openai        # openai, groq, mistral, gemini, deepseek, ollama
+MULTIMIND_UPSTREAM_BASE_URL=           # custom OpenAI-compatible upstream URL
+MULTIMIND_UPSTREAM_API_KEY=            # explicit upstream key (else provider env var is used)
+MULTIMIND_PROXY_STRATEGY=mask          # mask, hash, remove
+MULTIMIND_PROXY_BLOCK_ON=ssn,credit_card
+MULTIMIND_PROXY_AUDIT_LOG=audit.jsonl
+MULTIMIND_PROXY_BUDGET=10.0
+MULTIMIND_PROXY_COST_PER_TOKEN=
+MULTIMIND_PROXY_SCAN_OUTPUT=true
+MULTIMIND_PROXY_HOST=127.0.0.1
+MULTIMIND_PROXY_PORT=8400
+```
+
+See the [Guard Proxy guide](guard-proxy.md) for details.
+
+### API Servers and Misc
+
+```bash
+# Comma-separated API keys; enables X-API-Key auth on the REST APIs when set
+API_KEYS=key1,key2
+
+# Enables JWT bearer auth on the RAG gateway when set
+JWT_SECRET=your_jwt_secret
+JWT_USERS_JSON='{"user": "password_hash"}'
+
+# CORS is off unless this is set (comma-separated origins)
+MULTIMIND_CORS_ORIGINS=https://app.example.com
+
+# Audit log path for the MCP server
+MULTIMIND_AUDIT_LOG=audit_log.jsonl
+
+# Opt-in warnings for missing optional backends / legacy compliance imports
+MULTIMIND_SHOW_BACKEND_WARNINGS=false
+MULTIMIND_SHOW_LEGACY_WARNINGS=false
 ```
 
 ## Model Configuration
 
+Generation parameters such as `temperature` and `max_tokens` are passed per
+call (e.g. to `generate()`), not to the model constructor.
+
 ### OpenAI Models
+
 ```python
 from multimind import OpenAIModel
 
 model = OpenAIModel(
-    model="gpt-3.5-turbo",  # or "gpt-4"
-    temperature=0.7,
-    max_tokens=2000,
-    top_p=1.0,
-    frequency_penalty=0.0,
-    presence_penalty=0.0,
-    stop=None,  # List of stop sequences
-    timeout=30,  # Request timeout in seconds
-    retry_attempts=3,  # Number of retry attempts
-    retry_delay=1.0  # Delay between retries in seconds
+    model_name="gpt-4o-mini",
+    api_key=None,  # falls back to OPENAI_API_KEY
+    base_url=None,  # custom OpenAI-compatible endpoint
+    cost_per_token=None,  # override for cost tracking
 )
 ```
 
 ### Claude Models
+
 ```python
 from multimind import ClaudeModel
 
 model = ClaudeModel(
-    model="claude-3-sonnet",  # or "claude-3-opus"
-    temperature=0.7,
-    max_tokens=2000,
-    top_p=1.0,
-    top_k=40,
-    stop_sequences=None,
-    timeout=30,
-    retry_attempts=3,
-    retry_delay=1.0
+    model_name="claude-3-opus-20240229",
+    api_key=None,  # falls back to ANTHROPIC_API_KEY or CLAUDE_API_KEY
 )
 ```
 
 ### Mistral Models
+
+`MistralModel` runs Mistral models locally through Ollama; `MistralAIModel`
+uses the hosted Mistral AI (La Plateforme) API via `MISTRAL_API_KEY`.
+
 ```python
 from multimind import MistralModel
+from multimind.models.mistral import MistralAIModel
 
-model = MistralModel(
-    model="mistral-medium",  # or "mistral-small"
-    temperature=0.7,
-    max_tokens=2000,
-    top_p=1.0,
-    timeout=30,
-    retry_attempts=3,
-    retry_delay=1.0
+local_model = MistralModel(
+    model="mistral",
+    base_url="http://localhost:11434",  # Ollama server
+)
+
+hosted_model = MistralAIModel(
+    model_name="mistral-small-latest",
+    api_key=None,  # falls back to MISTRAL_API_KEY
 )
 ```
 
 ## Agent Configuration
 
 ### Memory Settings
+
 ```python
 from multimind import AgentMemory
 
 memory = AgentMemory(
-    max_history=50,  # Maximum number of interactions to store
-    max_tokens=2000,  # Maximum tokens per memory entry
-    include_metadata=True,  # Whether to store metadata
-    metadata_fields=["user_id", "session_id"],  # Custom metadata fields
-    storage_backend="memory",  # or "redis", "database"
-    storage_config={  # Backend-specific configuration
-        "redis_url": "redis://localhost:6379",
-        "database_url": "postgresql://user:pass@localhost/db"
-    }
+    max_history=100,  # Maximum number of interactions to store
 )
 ```
 
 ### Tool Configuration
+
 ```python
-from multimind import CalculatorTool, WebSearchTool
+from multimind import CalculatorTool
 
 tools = [
-    CalculatorTool(
-        max_digits=10,  # Maximum decimal places
-        timeout=5.0  # Tool execution timeout
-    ),
-    WebSearchTool(
-        max_results=5,  # Maximum search results
-        timeout=10.0,  # Search timeout
-        api_key="your_search_api_key"  # Optional API key
-    )
+    CalculatorTool(),
 ]
 ```
 
 ## Task Runner Configuration
 
 ```python
-from multimind import TaskRunner
+from multimind import OpenAIModel, TaskRunner
 
 runner = TaskRunner(
-    max_concurrent_tasks=5,  # Maximum concurrent tasks
-    timeout=300,  # Global timeout in seconds
-    retry_attempts=3,  # Number of retry attempts
-    retry_delay=1.0,  # Delay between retries
-    error_handler=None,  # Custom error handler
-    progress_callback=None  # Progress tracking callback
+    model=OpenAIModel(model_name="gpt-4o-mini"),
+    tasks=None,  # optional list of task dicts
+    max_retries=3,  # Number of retry attempts per task
 )
 ```
 
 ## MCP Configuration
 
 ### Workflow Definition
+
+An MCP spec must contain `version`, `models` (a list of `{name, type, config}`
+entries; types: `openai`, `claude`, `mistral`, `huggingface`, `ollama`) and a
+`workflow` with `steps` (`{id, type, config}`; types: `model`, `transform`,
+`condition`) and `connections` (`{from, to}` between existing step ids):
+
 ```python
 workflow = {
     "version": "1.0.0",
-    "models": {
-        "gpt-3.5": {
-            "temperature": 0.7,
-            "max_tokens": 2000
-        },
-        "claude-3": {
-            "temperature": 0.7,
-            "max_tokens": 2000
-        }
-    },
-    "steps": [
+    "models": [
         {
-            "name": "analysis",
-            "model": "gpt-3.5",
-            "prompt": "Analyze: {input}",
-            "timeout": 30,
-            "retry_attempts": 3
+            "name": "gpt",
+            "type": "openai",
+            "config": {"model": "gpt-4o-mini", "temperature": 0.7}
         }
     ],
-    "connections": [
-        {
-            "from": "analysis",
-            "to": "review",
-            "condition": "success"  # or "error", "always"
-        }
-    ],
-    "error_handling": {
-        "strategy": "retry",  # or "skip", "fail"
-        "max_retries": 3,
-        "retry_delay": 1.0
+    "workflow": {
+        "steps": [
+            {
+                "id": "analysis",
+                "type": "model",
+                "config": {"model": "gpt", "prompt": "Analyze: {input}"}
+            },
+            {
+                "id": "review",
+                "type": "model",
+                "config": {"model": "gpt", "prompt": "Review: {analysis}"}
+            }
+        ],
+        "connections": [
+            {"from": "analysis", "to": "review"}
+        ]
     }
 }
 ```
@@ -177,85 +215,69 @@ workflow = {
 ## Logging Configuration
 
 ### Usage Tracking
+
 ```python
 from multimind import UsageTracker
 
 tracker = UsageTracker(
-    enabled=True,
-    log_file="usage.log",
-    log_format="json",  # or "csv", "text"
-    export_interval=3600,  # Export interval in seconds
-    export_path="usage_reports/",
-    cost_tracking=True,
-    token_tracking=True
+    db_path=None,  # SQLite database path (default location if None)
 )
 ```
 
 ### Trace Logging
+
 ```python
+import logging
+
 from multimind import TraceLogger
 
 logger = TraceLogger(
-    enabled=True,
-    log_file="traces.log",
-    log_level="INFO",
-    include_metadata=True,
-    max_trace_duration=3600,  # Maximum trace duration in seconds
-    export_format="json"  # or "csv", "text"
+    log_dir=None,  # Directory for trace logs (default location if None)
+    log_level=logging.INFO,
 )
 ```
 
 ## CLI Configuration
 
 ### Command Line Options
+
 ```bash
-# Set default model
-multimind --model gpt-3.5-turbo
+# Show environment and configuration info
+multimind config info
 
-# Set temperature
-multimind --temperature 0.7
-
-# Set max tokens
-multimind --max-tokens 2000
-
-# Enable verbose logging
-multimind --verbose
-
-# Set config file
-multimind --config config.yaml
+# View or set global CLI configuration
+multimind config manage
+multimind config manage --set default_model openai
+multimind config manage --get default_model
 ```
 
+Global CLI configuration is stored as JSON in `~/.multimind_cli_config`.
+
 ### Configuration File (config.yaml)
+
+The SDK-level `multimind.Config` loads a YAML file from the path given by the
+`MULTIMIND_CONFIG` environment variable (or an explicit `config_path`).
+Environment variables override file values for API keys and the Ollama host:
+
 ```yaml
-# Model settings
-model:
-  name: gpt-3.5-turbo
-  temperature: 0.7
-  max_tokens: 2000
+# Provider settings (api_key is overridden by the matching env var)
+openai:
+  api_key: your_openai_api_key
+anthropic:
+  api_key: your_anthropic_api_key
+mistral:
+  api_key: your_mistral_api_key
+huggingface:
+  api_key: your_huggingface_api_key
+ollama:
+  host: http://localhost:11434
 
-# Agent settings
-agent:
-  memory:
-    max_history: 50
-    max_tokens: 2000
-  tools:
-    - name: calculator
-      enabled: true
-    - name: web_search
-      enabled: true
-      api_key: ${SEARCH_API_KEY}
-
-# Task runner settings
-task_runner:
-  max_concurrent_tasks: 5
-  timeout: 300
-  retry_attempts: 3
-
-# Logging settings
-logging:
-  level: INFO
-  file: multimind.log
-  format: json
+# Per-model parameters, read via Config.get_model_params(model_type, model_name)
+models:
+  openai:
+    gpt-4o-mini:
+      temperature: 0.7
+      max_tokens: 2000
 ```
 
 ## Best Practices
@@ -306,6 +328,6 @@ logging:
 
 ### Getting Help
 
-- Check the [FAQ](../docs/faq.md)
-- Open an issue on [GitHub](https://github.com/multimind-dev/multimind-sdk/issues)
-- Contact support at [support@multimind.dev](mailto:support@multimind.dev) 
+- Check the [FAQ](multimind-sdk-faq.md)
+- Open an issue on [GitHub](https://github.com/multimindlab/multimind-sdk/issues)
+- Contact support at [contact@multimind.dev](mailto:contact@multimind.dev)

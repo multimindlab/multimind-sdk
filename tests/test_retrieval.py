@@ -1,4 +1,6 @@
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
+pytest.importorskip("networkx")  # requires optional extras absent on core-only installs
 
 from multimind.retrieval import EnhancedRetriever, HybridRetriever, Retriever, RetrievalConfig
 
@@ -38,6 +40,7 @@ def test_enhanced_retriever_init():
     assert retriever is not None
 
 def test_hybrid_retriever_init():
+    pytest.importorskip("sklearn", reason="needs sklearn")
     config = make_config()
     retriever = HybridRetriever(config)
     assert retriever is not None
@@ -71,6 +74,7 @@ async def test_enhanced_retriever_retrieve_empty():
 
 @pytest.mark.asyncio
 async def test_hybrid_retriever_retrieve_empty():
+    pytest.importorskip("sklearn", reason="needs sklearn")
     config = make_config()
     retriever = HybridRetriever(config)
     try:

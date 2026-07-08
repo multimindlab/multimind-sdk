@@ -14,11 +14,11 @@ from multimind.memory import (
     CognitiveScratchpadMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class DataAnalysisCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "data_analysis.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize knowledge graph memory for analysis knowledge
         self.analysis_knowledge = KnowledgeGraphMemory(

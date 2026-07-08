@@ -19,7 +19,7 @@ from ..compliance.advanced import (
     RegulatoryChangeDetector,
     SelfHealingCompliance,
 )
-from ..compliance.governance import GovernanceConfig, Regulation
+from ..compliance.governance import Regulation
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -43,6 +43,21 @@ class ComplianceConfig(BaseModel):
     compliance_rules: Dict[str, Any] = Field(..., description="Compliance rules configuration")
     metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "organization_id": "org-123",
+                    "organization_name": "Acme Corp",
+                    "dpo_email": "dpo@acme.example",
+                    "enabled_regulations": ["GDPR"],
+                    "compliance_rules": {"data_retention_days": 90},
+                    "metadata": {},
+                }
+            ]
+        }
+    }
+
 
 class ComplianceResult(BaseModel):
     """Compliance result model."""
@@ -64,24 +79,33 @@ class DashboardMetrics(BaseModel):
     alerts: List[Dict[str, Any]] = Field(..., description="Active compliance alerts")
 
 
-@router.post("/monitor", response_model=ComplianceResult)
-async def monitor_compliance(config: ComplianceConfig):
-    """Run compliance monitoring."""
+def _parse_regulations(names: List[str]) -> List[Regulation]:
     try:
-        # Initialize governance config
-        governance_config = GovernanceConfig(
-            organization_id=config.organization_id,
-            organization_name=config.organization_name,
-            dpo_email=config.dpo_email,
-            enabled_regulations=[Regulation[r] for r in config.enabled_regulations],
+        return [Regulation[r] for r in names]
+    except KeyError as e:
+        valid = ", ".join(r.name for r in Regulation)
+        raise HTTPException(
+            status_code=400, detail=f"Unknown regulation {e}. Valid regulations: {valid}"
         )
 
+
+@router.post(
+    "/monitor",
+    response_model=ComplianceResult,
+    responses={400: {"description": "Unknown regulation"}, 500: {"description": "Internal error"}},
+)
+async def monitor_compliance(config: ComplianceConfig):
+    """Run compliance monitoring."""
+    _parse_regulations(config.enabled_regulations)
+    try:
         # Run compliance monitoring
-        results = await run_compliance_monitoring(config.dict())
+        results = await run_compliance_monitoring(config.model_dump())
         return ComplianceResult(**results)
-    except Exception as e:
-        logger.error(f"Error in compliance monitoring: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error in compliance monitoring")
+        raise HTTPException(status_code=500, detail="Compliance monitoring failed")
 
 
 @router.post("/example/{type}", response_model=ComplianceResult)
@@ -106,12 +130,15 @@ async def run_example(type: str, use_case: Optional[str] = None):
 @router.post("/report", response_model=Dict[str, Any])
 async def generate_report(config: ComplianceConfig):
     """Generate compliance report."""
+    _parse_regulations(config.enabled_regulations)
     try:
-        report = await generate_compliance_report(config.dict())
+        report = await generate_compliance_report(config.model_dump())
         return report
-    except Exception as e:
-        logger.error(f"Error generating compliance report: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error generating compliance report")
+        raise HTTPException(status_code=500, detail="Report generation failed")
 
 
 @router.get("/regulations", response_model=List[str])

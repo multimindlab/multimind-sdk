@@ -1,3 +1,7 @@
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 from multimind.client.model_client import ImageModelClient, AudioModelClient, CodeModelClient
 
 def test_image_model_client():

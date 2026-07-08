@@ -4,7 +4,7 @@ Nonparametric Bayesian Memory implementation using Dirichlet Process Gaussian Mi
 
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 from sklearn.mixture import BayesianGaussianMixture
@@ -22,10 +22,14 @@ class BayesianMemory(BaseMemory):
         weight_concentration_prior: float = 1.0,
         mean_precision_prior: float = 1.0,
         covariance_prior: float = 1.0,
+        embedder: Optional[Callable[[str], np.ndarray]] = None,
         **kwargs,
     ):
         """Initialize Bayesian memory."""
         super().__init__(**kwargs)
+
+        # Embedding function for content without precomputed embeddings
+        self.embedder = embedder
 
         # Clustering parameters
         self.max_components = max_components
@@ -82,8 +86,13 @@ class BayesianMemory(BaseMemory):
 
         # Get or create embedding
         if embedding is None:
-            # This would typically use an embedding model
-            embedding = np.random.randn(128)  # Placeholder
+            if self.embedder is None:
+                raise NotImplementedError(
+                    "No embedding provided and no embedder configured. "
+                    "Pass `embedding=` to add_memory or construct BayesianMemory "
+                    "with an `embedder` callable."
+                )
+            embedding = np.asarray(self.embedder(content))
         self.embeddings[memory_id] = embedding
 
         # Add to vector memory

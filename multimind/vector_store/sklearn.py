@@ -30,6 +30,10 @@ class SklearnBackend(VectorStoreBackend):
         self._documents = []
         self._nn = None
 
+    async def initialize(self) -> None:
+        """No-op: state is set up eagerly in __init__."""
+        pass
+
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         n = len(vectors)
         ids = ids or [str(i) for i in range(len(self._vectors), len(self._vectors) + n)]
@@ -62,6 +66,8 @@ class SklearnBackend(VectorStoreBackend):
         if not self._nn:
             return []
         query_vec = np.array(query_vector, dtype=np.float32).reshape(1, -1)
+        # sklearn raises if n_neighbors exceeds the number of fitted samples.
+        k = min(k, len(self._vectors))
         loop = asyncio.get_event_loop()
         dists, indices = await loop.run_in_executor(
             None, lambda: self._nn.kneighbors(query_vec, n_neighbors=k)
@@ -78,6 +84,7 @@ class SklearnBackend(VectorStoreBackend):
             results.append(
                 SearchResult(
                     id=self._ids[idx],
+                    vector=self._vectors[idx],
                     score=-dists[0][rank],  # negative distance for similarity
                     metadata=meta,
                     document=doc,

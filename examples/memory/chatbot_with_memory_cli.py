@@ -16,11 +16,11 @@ from multimind.memory import (
     TokenBufferMemory,
     DNCMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class ChatbotCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "chatbot_memory.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         self.memory = HybridMemory(
             llm=self.llm,
             memory_types=[

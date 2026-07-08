@@ -4,6 +4,7 @@ Configuration management commands for MultiMind CLI
 
 import json
 import os
+import sys
 
 import click
 from rich.console import Console
@@ -18,6 +19,15 @@ def config():
     pass
 
 
+def _load_cfg(config_path):
+    try:
+        with open(config_path) as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        console.print(f"[red]Config file {config_path} is not valid JSON.[/red]")
+        sys.exit(1)
+
+
 @config.command()
 @click.option("--set", "set_", nargs=2, type=str, help="Set a config key and value.")
 @click.option("--get", "get_", type=str, help="Get a config value by key.")
@@ -29,8 +39,7 @@ def manage(set_, get_):
         with open(config_path, "w") as f:
             json.dump({}, f)
 
-    with open(config_path) as f:
-        cfg = json.load(f)
+    cfg = _load_cfg(config_path)
 
     if set_:
         key, value = set_
@@ -81,16 +90,15 @@ def info():
     console.print(f"Config file: {config_path}")
 
     if os.path.exists(config_path):
-        with open(config_path) as f:
-            cfg = json.load(f)
-            table = Table(title="Current Configuration")
-            table.add_column("Key", style="cyan")
-            table.add_column("Value", style="green")
+        cfg = _load_cfg(config_path)
+        table = Table(title="Current Configuration")
+        table.add_column("Key", style="cyan")
+        table.add_column("Value", style="green")
 
-            for key, value in cfg.items():
-                table.add_row(key, str(value))
+        for key, value in cfg.items():
+            table.add_row(key, str(value))
 
-            console.print(table)
+        console.print(table)
     else:
         console.print("[yellow]No configuration file found[/yellow]")
 
@@ -99,34 +107,29 @@ def info():
 @click.argument(
     "shell",
     required=False,
-    type=click.Choice(["bash", "zsh", "fish", "powershell"], case_sensitive=False),
+    type=click.Choice(["bash", "zsh", "fish"], case_sensitive=False),
 )
 def completion(shell):
     """Generate shell completion script"""
-    import importlib
-    import sys
+    from click.shell_completion import get_completion_class
 
     if not shell:
         shell = click.prompt(
-            "Shell type (bash/zsh/fish/powershell)",
-            type=click.Choice(["bash", "zsh", "fish", "powershell"]),
+            "Shell type (bash/zsh/fish)",
+            type=click.Choice(["bash", "zsh", "fish"]),
         )
-    console.print(f"[bold]Shell Completion for {shell}[/bold]")
-    console.print("To enable completion, run:")
-    console.print(f'[cyan]eval "$(multimind completion {shell})"[/cyan]')
+    shell = shell.lower()
+    completion_cls = get_completion_class(shell)
+    if completion_cls is None:
+        console.print(f"[red]Shell '{shell}' is not supported for completion.[/red]")
+        sys.exit(1)
 
-    # Output the actual completion script for the shell
-    # Find the main multimind CLI group
-    multimind_cli = None
-    try:
-        multimind_cli = importlib.import_module("multimind.cli.__main__").cli
-    except Exception:
-        try:
-            multimind_cli = importlib.import_module("multimind.cli").cli
-        except Exception:
-            console.print("[red]Could not import multimind CLI main group for completion.[/red]")
-            sys.exit(1)
-    script = click.shell_completion._get_completion_script(
-        cli=multimind_cli, prog_name="multimind", shell=shell
-    )
+    from multimind.cli import cli as multimind_cli
+
+    script = completion_cls(
+        cli=multimind_cli, ctx_args={}, prog_name="multimind", complete_var="_MULTIMIND_COMPLETE"
+    ).source()
+    console.print(f"[bold]Shell Completion for {shell}[/bold]")
+    console.print("Add this to your shell config, e.g.:")
+    console.print(f'[cyan]eval "$(multimind config completion {shell})"[/cyan]')
     click.echo(script)

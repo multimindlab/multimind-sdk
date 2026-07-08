@@ -11,6 +11,7 @@ from sentence_transformers import CrossEncoder
 from sklearn.metrics.pairwise import cosine_similarity
 
 from ..models.base import BaseLLM
+from .metrics import parse_judge_score
 
 
 @dataclass
@@ -322,10 +323,15 @@ class RAGEvaluator:
         return float(np.mean(similarities))
 
     async def _calculate_fluency(self, response: str) -> float:
-        """Calculate fluency of response."""
-        # This is a placeholder implementation
-        # In practice, you might want to use a language model or other metrics
-        return 1.0
+        """Calculate fluency of response using the model as a judge."""
+        prompt = (
+            "Rate the fluency of the following text, considering grammar, "
+            "readability and natural phrasing. "
+            "Respond with only a single number between 0 and 1, where 1 means fully fluent.\n\n"
+            f"Text:\n{response}"
+        )
+        judgement = await self.model.generate(prompt=prompt)
+        return parse_judge_score(judgement)
 
     def _calculate_component_score(
         self, metrics: Union[RetrievalMetrics, GenerationMetrics]

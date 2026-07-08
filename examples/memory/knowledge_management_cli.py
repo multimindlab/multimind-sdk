@@ -9,11 +9,11 @@ from typing import Dict, Any, List
 from datetime import datetime
 from multimind import MultiMind
 from multimind.memory import KnowledgeGraphMemory
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class KnowledgeManagementCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "knowledge_graph.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         self.memory = KnowledgeGraphMemory(
             llm=self.llm,
             max_nodes=1000,

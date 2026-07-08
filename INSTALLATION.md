@@ -1,4 +1,4 @@
-# 📦 MultiMind SDK Installation Guide
+# MultiMind SDK Installation Guide
 
 ## Quick Start
 
@@ -6,83 +6,103 @@
 ```bash
 pip install multimind-sdk
 ```
-This installs only the core dependencies and popular LLM providers.
+This installs the core: multi-model chat (OpenAI, Claude, Ollama), routing, CLI, and context transfer. Ollama needs no extra — the client talks to a running Ollama instance over HTTP.
 
 ---
 
-## 🎯 Optional Features (Install What You Need)
+## Optional Features (Install What You Need)
 
-### With Router Module
-```bash
-pip install multimind-sdk[router]
-```
-Adds: FastAPI, Uvicorn, HTTP client support
+These are the extras actually defined in `pyproject.toml`:
 
-### With RAG Support
+### RAG Support
 ```bash
-pip install multimind-sdk[rag]
+pip install "multimind-sdk[rag]"
 ```
-Adds: FAISS, sentence-transformers, document parsing
+Adds: faiss-cpu, sentence-transformers, beautifulsoup4, lxml, numpy
 
-### With All Vector Store Backends
+### Additional Vector Store Backends
 ```bash
-pip install multimind-sdk[vector-stores]
+pip install "multimind-sdk[vector-stores]"
 ```
-Adds: Pinecone, Weaviate, Qdrant, Milvus, Elasticsearch, OpenSearch, etc.
+Adds: chromadb, qdrant-client, weaviate-client, pinecone-client, pymilvus, elasticsearch
 
-### With Advanced Document Processing
+### Agent Framework
 ```bash
-pip install multimind-sdk[documents]
+pip install "multimind-sdk[agents]"
 ```
-Adds: PDF handling, DOCX, PPTX, image OCR, HTML parsing
+Adds: the `[memory]` extra (redis, numpy) that agents rely on
 
-### With Fine-tuning Support
+### Memory Backends
 ```bash
-pip install multimind-sdk[fine-tuning]
+pip install "multimind-sdk[memory]"
 ```
-Adds: PyTorch, Transformers, PEFT, LoRA, QLoRA support
+Adds: redis, numpy
 
-### With Compliance Features
+### Document Processing
 ```bash
-pip install multimind-sdk[compliance]
+pip install "multimind-sdk[documents]"
 ```
-Adds: Cryptography, security, audit logging
+Adds: pdfplumber, PyPDF2, python-docx, python-pptx, pillow, pytesseract, unstructured
+
+### Fine-tuning (CPU / general)
+```bash
+pip install "multimind-sdk[finetune]"
+```
+Adds: torch, transformers, datasets, accelerate, peft, scikit-learn, optuna. Also required for the non-transformer models (Mamba, RWKV), which are HuggingFace-backed.
+
+### Fine-tuning (GPU, Linux + CUDA only)
+```bash
+pip install "multimind-sdk[finetune-gpu]"
+```
+Adds: everything in `[finetune]` plus bitsandbytes (Linux only; does not install on macOS/ARM)
+
+### Compliance Features
+```bash
+pip install "multimind-sdk[compliance]"
+```
+Adds: cryptography, bcrypt, pycryptodome, plotly, dash, pandas (dashboard visualization included)
+
+### Gateway / API Server
+```bash
+pip install "multimind-sdk[gateway]"
+```
+Adds: fastapi, uvicorn, redis, PyJWT, python-multipart
+
+### MCP Server (Claude Desktop / Claude Code integration)
+```bash
+pip install "multimind-sdk[mcp]"
+```
+Adds: mcp (the Model Context Protocol SDK) — needed to run the compliance MCP server (`python -m multimind.mcp_server`) described in [docs/mcp-server.md](./docs/mcp-server.md)
+
+### Framework Integrations
+```bash
+pip install "multimind-sdk[langchain]"    # langchain-core
+pip install "multimind-sdk[llamaindex]"   # llama-index-core
+pip install "multimind-sdk[crewai]"       # crewai
+```
+Each adds only the corresponding framework's core package, for the adapters described in [docs/integrations.md](./docs/integrations.md).
+
+### Everything
+```bash
+pip install "multimind-sdk[all]"
+```
+All of the above except `dev`, `finetune-gpu`, and the framework extras (`langchain`, `llamaindex`, `crewai`) — large download; includes torch and ML frameworks.
+
+> Note: extras like `[router]`, `[llm]`, `[minimal]`, and `[fine-tuning]` documented in older versions of this guide do not exist. The router and LLM providers are part of the core install.
 
 ---
 
-## 🔥 Pre-configured Bundles
-
-### Minimal (Quick Start)
-```bash
-pip install multimind-sdk[minimal]
-```
-Core + LLMs only (~100MB)
-
-### Full RAG Stack
-```bash
-pip install multimind-sdk[llm,rag]
-```
-Everything for RAG applications
-
-### Complete Installation (Everything)
-```bash
-pip install multimind-sdk[all]
-```
-All features (~2GB, includes ML frameworks)
-
----
-
-## 👨‍💻 Development Setup
+## Development Setup
 
 ### Clone & Install for Development
 ```bash
-git clone https://github.com/multimind-dev/multimind-sdk.git
+git clone https://github.com/multimindlab/multimind-sdk.git
 cd multimind-sdk
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install in editable mode with dev tools
-pip install -e .[dev]
+pip install -e ".[dev]"
 ```
 
 ### Run Tests
@@ -93,103 +113,85 @@ pytest -v --cov=multimind  # With coverage report
 
 ### Code Quality
 ```bash
-# Format code
-black multimind/
-isort multimind/
-
-# Lint
+# Lint and format (ruff handles both)
 ruff check multimind/
+ruff format multimind/
 
 # Type checking
 mypy multimind/
 ```
 
----
-
-## 📋 Dependency Matrix
-
-| Feature | Size | Dependencies |
-|---------|------|--------------|
-| `core` | ~50MB | pydantic, requests, numpy, pandas |
-| `llm` | +20MB | openai, anthropic |
-| `router` | +15MB | fastapi, uvicorn |
-| `rag` | +100MB | faiss-cpu, sentence-transformers |
-| `vector-stores` | +200MB | pinecone, weaviate, qdrant, milvus, etc. |
-| `documents` | +150MB | torch, transformers, pdf tools |
-| `fine-tuning` | +500MB | pytorch, transformers, peft |
-| `compliance` | +10MB | cryptography |
-| `dev` | +50MB | pytest, black, mypy, sphinx |
+See the `Makefile` for shortcuts (`make lint`, `make format`, `make test`, ...).
 
 ---
 
-## 🐛 Troubleshooting
+## Dependency Matrix
+
+| Extra | Key Dependencies |
+|-------|------------------|
+| core (no extra) | openai, anthropic, httpx, pydantic, pydantic-settings, python-dotenv, click, rich, PyYAML, aiohttp, requests, tenacity, coloredlogs |
+| `rag` | faiss-cpu, sentence-transformers, beautifulsoup4, lxml, numpy |
+| `vector-stores` | chromadb, qdrant-client, weaviate-client, pinecone-client, pymilvus, elasticsearch |
+| `agents` | multimind-sdk[memory] |
+| `memory` | redis, numpy |
+| `documents` | pdfplumber, PyPDF2, python-docx, python-pptx, pillow, pytesseract, unstructured |
+| `finetune` | torch, transformers, datasets, accelerate, peft, scikit-learn, optuna |
+| `finetune-gpu` | multimind-sdk[finetune] + bitsandbytes (Linux only) |
+| `compliance` | cryptography, bcrypt, pycryptodome, plotly, dash, pandas |
+| `gateway` | fastapi, uvicorn, redis, PyJWT, python-multipart |
+| `mcp` | mcp |
+| `langchain` | langchain-core |
+| `llamaindex` | llama-index-core |
+| `crewai` | crewai |
+| `dev` | pytest, ruff, mypy, pre-commit, bandit, pip-audit, build, twine, sphinx |
+
+---
+
+## Troubleshooting
 
 ### Issue: ModuleNotFoundError for specific feature
-**Solution:** Install the corresponding feature group:
+**Solution:** Install the corresponding extra:
 ```bash
-pip install multimind-sdk[feature-name]
+pip install "multimind-sdk[extra-name]"
 ```
 
 ### Issue: CUDA/GPU support for PyTorch
-**Solution:** Replace `torch` with GPU version:
+**Solution:** Install the GPU build of torch first, then the extra:
 ```bash
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-pip install multimind-sdk[fine-tuning]
+pip install "multimind-sdk[finetune]"
 ```
 
-### Issue: PostgreSQL build errors (timescale-vector)
-**Solution:** Vector stores are optional. If not needed, skip them. They're included in `[all]` but not in base installation.
+### Issue: bitsandbytes fails to install on macOS/ARM
+**Solution:** `bitsandbytes` is Linux/CUDA-only. Use `[finetune]` instead of `[finetune-gpu]` on macOS.
 
 ---
 
-## 📝 Requirements Files
-
-### requirements.txt
-- Core dependencies for end users
-- Minimal set of packages
-- ~30 packages total
-
-### requirements-dev.txt
-- Development and testing tools
-- Code quality tools
-- Documentation generators
-
-### pyproject.toml
-- Modern Python packaging standard
-- Defines all optional features
-- Configuration for tools (pytest, black, mypy, ruff)
-
----
-
-## ✅ Verification
+## Verification
 
 Test your installation:
 ```python
 import multimind
 print(multimind.__version__)
 
-# Test core import
-from multimind.core import BaseLLM
-print("✅ Core module works!")
+# Core model wrappers (no extras needed)
+from multimind import OpenAIModel, ClaudeModel
+from multimind.models.ollama import OllamaModel
+print("Core models import OK")
 
-# Test LLM provider
-from multimind.llm.openai_client import OpenAIClient
-print("✅ LLM module works!")
-
-# Test optional features (if installed)
+# Optional features (if installed)
 try:
-    from multimind.router import Router
-    print("✅ Router module works!")
+    from multimind.vector_store.base import VectorStoreFactory
+    print("Vector store module OK")
 except ImportError:
-    print("⚠️  Router not installed - run: pip install multimind-sdk[router]")
+    print("Vector stores not installed - run: pip install 'multimind-sdk[rag]'")
 ```
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
 1. Check out the [Getting Started Guide](./docs/quickstart.md)
 2. Browse [Examples](./examples/)
 3. Read the [API Reference](./docs/api_reference/)
 4. Join our [Discord Community](https://discord.gg/K64U65je7h)
-

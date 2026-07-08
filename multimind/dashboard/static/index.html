@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>MultiMind Governance</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>MultiMind<br><small>Governance</small></span>
+      </div>
+      <nav aria-label="Sections">
+        <a href="#/overview" data-view="overview">Overview</a>
+        <a href="#/audit" data-view="audit">Audit Trail</a>
+        <a href="#/costs" data-view="costs">Costs</a>
+        <a href="#/inventory" data-view="inventory">Inventory</a>
+        <a href="#/guardrails" data-view="guardrails">Guardrails</a>
+      </nav>
+      <div class="sidebar-foot">
+        Local artifacts only.<br>No data leaves this machine.
+      </div>
+    </aside>
+    <main id="view" class="content" tabindex="-1"></main>
+  </div>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

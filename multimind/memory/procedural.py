@@ -480,6 +480,7 @@ class ProceduralMemory(BaseMemory):
                         "last_monitoring": self.last_monitoring.isoformat(),
                     },
                     f,
+                    default=lambda o: list(o) if isinstance(o, set) else o,
                 )
 
     async def load(self) -> None:
@@ -488,6 +489,9 @@ class ProceduralMemory(BaseMemory):
             with open(self.storage_path) as f:
                 data = json.load(f)
                 self.procedures = data.get("procedures", [])
+                for procedure in self.procedures:
+                    metadata = procedure.get("metadata", {})
+                    metadata["prerequisites"] = set(metadata.get("prerequisites", []))
                 self.execution_history = data.get("execution_history", {})
                 self.procedure_weights = data.get("procedure_weights", {})
                 self.procedure_metadata = {
@@ -511,7 +515,9 @@ class ProceduralMemory(BaseMemory):
                 # Recreate embeddings
                 self.procedure_embeddings = []
                 for procedure in self.procedures:
-                    self.procedure_embeddings.append(self.llm.embeddings(procedure["content"]))
+                    self.procedure_embeddings.append(
+                        await self.llm.embeddings(procedure["content"])
+                    )
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Calculate cosine similarity between two vectors."""
@@ -543,7 +549,7 @@ class ProceduralMemory(BaseMemory):
             if record["success"] >= min_success_rate
         ]
 
-    async def get_procedure_stats(self) -> Dict[str, Any]:
+    async def _base_procedure_stats(self) -> Dict[str, Any]:
         """Get statistics about procedures."""
         stats = {
             "total_procedures": len(self.procedures),
@@ -602,7 +608,7 @@ class ProceduralMemory(BaseMemory):
 
         return stats
 
-    async def get_procedure_suggestions(self) -> List[Dict[str, Any]]:
+    async def _base_procedure_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for procedure optimization."""
         suggestions = []
 
@@ -616,7 +622,7 @@ class ProceduralMemory(BaseMemory):
             )
 
         # Check success rate distribution
-        stats = await self.get_procedure_stats()
+        stats = await self._base_procedure_stats()
         if stats["success_rate_distribution"]["low"] > len(self.procedures) * 0.3:
             suggestions.append(
                 {"type": "success_rate", "suggestion": "Consider improving procedure success rates"}
@@ -768,7 +774,7 @@ class ProceduralMemory(BaseMemory):
 
     async def get_procedure_stats(self) -> Dict[str, Any]:
         """Get statistics about procedures."""
-        stats = await super().get_procedure_stats()
+        stats = await self._base_procedure_stats()
 
         # Add chain statistics
         stats["chain_stats"] = {
@@ -825,7 +831,7 @@ class ProceduralMemory(BaseMemory):
 
     async def get_procedure_suggestions(self) -> List[Dict[str, Any]]:
         """Get suggestions for procedure optimization."""
-        suggestions = await super().get_procedure_suggestions()
+        suggestions = await self._base_procedure_suggestions()
 
         # Add chain-related suggestions
         stats = await self.get_procedure_stats()

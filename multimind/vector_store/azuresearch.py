@@ -81,39 +81,12 @@ class AzureSearchBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
-        explain = explain if explain is not None else self.explain
-        results = []
-        # Azure Search does not natively support vector search in all regions; this is a placeholder for hybrid search
-        # You may need to use semantic search or custom skills for hybrid
-        docs = self.client.search(search_text=query_text or "*", top=k)
-        for doc in docs:
-            meta = doc.get("metadata", {})
-            doc_content = doc.get("document", {})
-            score = doc.get("@search.score", 1.0)
-            bm25_score = None
-            if self.enable_hybrid_search and query_text:
-                bm25_score = self._bm25_score(query_text, doc_content.get("content", ""))
-                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
-            if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
-                continue
-            result = SearchResult(
-                id=doc["id"],
-                vector=doc.get("vector"),
-                metadata=meta,
-                document=doc_content,
-                score=score,
-            )
-            if explain:
-                result.explanation = {
-                    "vector_score": doc.get("@search.score", 1.0),
-                    "bm25_score": bm25_score,
-                    "final_score": score,
-                }
-            results.append(result)
-        if scoring_method and scoring_method != "weighted_sum":
-            results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics("search", len(results))
-        return results
+        raise NotImplementedError(
+            "AzureSearchBackend.search is not implemented: the previous "
+            "implementation ignored the query vector and ran a text-only search. Use "
+            "an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, Milvus, "
+            "or Weaviate."
+        )
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
@@ -134,7 +107,10 @@ class AzureSearchBackend(VectorStoreBackend):
     async def clear(self):
         # Azure Search does not have a direct clear; delete all docs by query
         # Placeholder: implement as needed
-        self.log_metrics("clear", 1)
+        raise NotImplementedError(
+            "AzureSearchBackend.clear is not implemented. Delete documents via "
+            "delete_vectors or recreate the index instead."
+        )
 
     async def persist(self, path):
         self.log_metrics("persist", 1)

@@ -9,9 +9,19 @@ from dotenv import load_dotenv
 
 from ..core.exceptions import ConfigurationError
 from .base import BaseLLM
+from .cerebras import CerebrasModel
 from .claude import ClaudeModel
+from .deepseek import DeepSeekModel
+from .fireworks import FireworksModel
+from .gemini import GeminiModel
+from .groq import GroqModel
+from .mistral import MistralAIModel
 from .ollama import OllamaModel
 from .openai import OpenAIModel
+from .openrouter import OpenRouterModel
+from .perplexity import PerplexityModel
+from .together import TogetherModel
+from .xai import XAIModel
 
 
 class ModelFactory:
@@ -32,6 +42,16 @@ class ModelFactory:
             "openai": OpenAIModel,
             "claude": ClaudeModel,
             "ollama": OllamaModel,
+            "groq": GroqModel,
+            "mistral": MistralAIModel,
+            "gemini": GeminiModel,
+            "deepseek": DeepSeekModel,
+            "openrouter": OpenRouterModel,
+            "together": TogetherModel,
+            "xai": XAIModel,
+            "perplexity": PerplexityModel,
+            "fireworks": FireworksModel,
+            "cerebras": CerebrasModel,
         }
 
         # Initialize API keys
@@ -47,6 +67,26 @@ class ModelFactory:
             available.append("openai")
         if self.claude_key:
             available.append("claude")
+        if os.getenv("GROQ_API_KEY"):
+            available.append("groq")
+        if os.getenv("MISTRAL_API_KEY"):
+            available.append("mistral")
+        if os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"):
+            available.append("gemini")
+        if os.getenv("DEEPSEEK_API_KEY"):
+            available.append("deepseek")
+        if os.getenv("OPENROUTER_API_KEY"):
+            available.append("openrouter")
+        if os.getenv("TOGETHER_API_KEY"):
+            available.append("together")
+        if os.getenv("XAI_API_KEY"):
+            available.append("xai")
+        if os.getenv("PERPLEXITY_API_KEY"):
+            available.append("perplexity")
+        if os.getenv("FIREWORKS_API_KEY"):
+            available.append("fireworks")
+        if os.getenv("CEREBRAS_API_KEY"):
+            available.append("cerebras")
 
         # Check Ollama availability (server + client libs)
         OLLAMA_HOST: Final[str] = os.getenv("OLLAMA_HOST", "http://localhost:11434")
@@ -96,6 +136,16 @@ class ModelFactory:
                 "openai": "gpt-4",
                 "claude": "claude-3-opus-20240229",
                 "ollama": "mistral",
+                "groq": "llama-3.3-70b-versatile",
+                "mistral": "mistral-small-latest",
+                "gemini": "gemini-2.0-flash",
+                "deepseek": "deepseek-chat",
+                "openrouter": "openrouter/auto",
+                "together": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                "xai": "grok-3",
+                "perplexity": "sonar",
+                "fireworks": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+                "cerebras": "llama-3.3-70b",
             }.get(provider)
 
         # Create instance key

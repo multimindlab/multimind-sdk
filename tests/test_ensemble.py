@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 from multimind.ensemble.advanced import AdvancedEnsemble
 
 class DummyRouter:

@@ -85,12 +85,11 @@ class CassandraBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
-        explain = explain if explain is not None else self.explain
-        # Placeholder: Cassandra does not natively support vector search; implement custom logic or use an extension
-        results = []
-        # Implement vector search logic here
-        self.log_metrics("search", len(results))
-        return results
+        raise NotImplementedError(
+            "CassandraBackend.search is not implemented: vector similarity search is "
+            "not supported by this backend yet. Use an implemented backend such as "
+            "FAISS, Chroma, Qdrant, Pinecone, Milvus, or Weaviate."
+        )
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (

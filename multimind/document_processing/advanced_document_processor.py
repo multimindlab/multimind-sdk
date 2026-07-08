@@ -2,6 +2,9 @@
 Advanced document processing with multi-modal support, table extraction, and structure analysis.
 """
 
+from __future__ import annotations
+
+import asyncio
 import logging
 from dataclasses import dataclass
 from enum import Enum
@@ -126,18 +129,66 @@ class AdvancedDocumentProcessor:
         """
         self.model = model
         self.kwargs = kwargs
+        self._vision_model_name = vision_model
+        self._table_model_name = table_model
 
-        # Initialize vision models if transformers is available
-        if TRANSFORMERS_AVAILABLE:
-            self.vision_processor = AutoProcessor.from_pretrained(vision_model)
-            self.vision_model = AutoModel.from_pretrained(vision_model)
-            self.table_processor = AutoProcessor.from_pretrained(table_model)
-            self.table_model = AutoModel.from_pretrained(table_model)
-        else:
-            self.vision_processor = None
-            self.vision_model = None
-            self.table_processor = None
-            self.table_model = None
+        # Vision/table transformer models are lazy-loaded on first use (see
+        # _ensure_vision_models_loaded/_ensure_table_models_loaded) so
+        # constructing a processor never triggers a network download.
+        self.vision_processor = None
+        self.vision_model = None
+        self.table_processor = None
+        self.table_model = None
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._models_lock = None
+
+    def _get_models_lock(self) -> asyncio.Lock:
+        if self._models_lock is None:
+            self._models_lock = asyncio.Lock()
+        return self._models_lock
+
+    async def _ensure_vision_models_loaded(self) -> None:
+        """Lazily download/load the vision transformer on first real use."""
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "Vision model features require transformers. "
+                "Install with: pip install 'multimind-sdk[finetune]'"
+            )
+        if self.vision_processor is not None and self.vision_model is not None:
+            return
+        async with self._get_models_lock():
+            if self.vision_processor is not None and self.vision_model is not None:
+                return
+
+            def _load():
+                processor = AutoProcessor.from_pretrained(self._vision_model_name)
+                model = AutoModel.from_pretrained(self._vision_model_name)
+                return processor, model
+
+            self.vision_processor, self.vision_model = await asyncio.to_thread(_load)
+
+    async def _ensure_table_models_loaded(self) -> None:
+        """Lazily download/load the table transformer on first real use."""
+        if not TRANSFORMERS_AVAILABLE:
+            raise ImportError(
+                "Table detection model features require transformers. "
+                "Install with: pip install 'multimind-sdk[finetune]'"
+            )
+        if self.table_processor is not None and self.table_model is not None:
+            return
+        async with self._get_models_lock():
+            if self.table_processor is not None and self.table_model is not None:
+                return
+
+            def _load():
+                processor = AutoProcessor.from_pretrained(self._table_model_name)
+                model = AutoModel.from_pretrained(self._table_model_name)
+                return processor, model
+
+            self.table_processor, self.table_model = await asyncio.to_thread(_load)
 
     async def process_document(
         self, document: Dict[str, Any], **kwargs
@@ -227,6 +278,9 @@ class AdvancedDocumentProcessor:
     async def _detect_tables(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Detect and extract tables."""
         tables = []
+        if not document.get("images"):
+            return tables
+        await self._ensure_table_models_loaded()
 
         # Process document with table transformer
         inputs = self.table_processor(images=document.get("images", []), return_tensors="pt")
@@ -241,6 +295,8 @@ class AdvancedDocumentProcessor:
     async def _extract_images(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Extract and process images."""
         images = []
+        if document.get("images"):
+            await self._ensure_vision_models_loaded()
 
         for image in document.get("images", []):
             # Process image with vision model
@@ -409,15 +465,153 @@ class AdvancedDocumentProcessor:
         return chunks
 
     async def _extract_table_data(self, table: Dict[str, Any], **kwargs) -> TableData:
-        """Extract data from table."""
-        # Use table transformer to extract structure
-        # This is a placeholder implementation
+        """
+        Extract data from a table dict. Supported input shapes:
+        - {"rows": [[...], ...], "header": [...]?} - pre-parsed rows (pandas required)
+        - {"pdf_path": str, "page": int?, "table_index": int?} - pdfplumber extraction
+        """
+        if not PANDAS_AVAILABLE:
+            raise NotImplementedError(
+                "Table extraction requires pandas. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
+        if "rows" in table:
+            df = self._dataframe_from_rows(table["rows"], table.get("header"))
+            return TableData(
+                content=df,
+                metadata=table.get("metadata", {}),
+                confidence=table.get("confidence", 1.0),
+                position=table.get("position", {}),
+                relationships=table.get("relationships", []),
+            )
+
+        if "pdf_path" in table:
+            return self._extract_pdf_table(table)
+
+        raise NotImplementedError(
+            "Unsupported table input shape. Supported shapes: "
+            "{'rows': [...], 'header': [...]} for pre-parsed rows, or "
+            "{'pdf_path': str, 'page': int, 'table_index': int} for pdfplumber extraction."
+        )
+
+    def _dataframe_from_rows(self, rows: List[List[Any]], header: Optional[List[Any]] = None):
+        """Build a DataFrame from pre-parsed rows, optionally using the first row as header."""
+        if header is not None:
+            return pd.DataFrame(rows, columns=header)
+        if rows:
+            return pd.DataFrame(rows[1:], columns=rows[0])
+        return pd.DataFrame()
+
+    def _extract_pdf_table(self, table: Dict[str, Any]) -> TableData:
+        """Extract a table from a PDF page using pdfplumber."""
+        try:
+            import pdfplumber
+        except ImportError as e:
+            raise NotImplementedError(
+                "PDF table extraction requires pdfplumber. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            ) from e
+
+        page_number = table.get("page", 0)
+        table_index = table.get("table_index", 0)
+        with pdfplumber.open(table["pdf_path"]) as pdf:
+            if page_number >= len(pdf.pages):
+                raise ValueError(
+                    f"Page {page_number} out of range for {table['pdf_path']} "
+                    f"({len(pdf.pages)} pages)"
+                )
+            page = pdf.pages[page_number]
+            tables = page.extract_tables()
+
+        if not tables:
+            raise ValueError(f"No tables found on page {page_number} of {table['pdf_path']}")
+        if table_index >= len(tables):
+            raise ValueError(
+                f"Table index {table_index} out of range: page {page_number} has "
+                f"{len(tables)} table(s)"
+            )
+
+        df = self._dataframe_from_rows(tables[table_index])
         return TableData(
-            content=pd.DataFrame(), metadata={}, confidence=0.0, position={}, relationships=[]
+            content=df,
+            metadata={
+                "source": table["pdf_path"],
+                "page": page_number,
+                "table_index": table_index,
+                "tables_on_page": len(tables),
+            },
+            confidence=1.0,
+            position=table.get("position", {"page": page_number}),
+            relationships=[],
         )
 
     async def _extract_image_data(self, image: Dict[str, Any], **kwargs) -> ImageData:
-        """Extract data from image."""
-        # Process image with vision model
-        # This is a placeholder implementation
-        return ImageData(content=np.array([]), text="", metadata={}, objects=[], captions=[])
+        """
+        Extract data from an image dict via OCR. Supported input shapes:
+        - {"path": str} or {"image_path": str} - image file loaded via PIL or cv2
+        - {"image": <PIL.Image.Image>} - in-memory PIL image
+        - {"array": np.ndarray} or {"content": np.ndarray} - raw pixel array
+
+        Only OCR text is extracted; objects/captions stay empty because no
+        vision model backend is configured.
+        """
+        if not PYTESSERACT_AVAILABLE:
+            raise NotImplementedError(
+                "Image extraction requires pytesseract for OCR. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
+        pixels, source, extractors = self._resolve_image_pixels(image)
+        text = pytesseract.image_to_string(pixels)
+        extractors.append("pytesseract")
+
+        return ImageData(
+            content=pixels,
+            text=text,
+            metadata={
+                **image.get("metadata", {}),
+                "source": source,
+                "extractors": extractors,
+                "objects_extracted": False,
+                "captions_extracted": False,
+            },
+            objects=[],
+            captions=[],
+        )
+
+    def _resolve_image_pixels(self, image: Dict[str, Any]) -> Tuple[np.ndarray, str, List[str]]:
+        """Resolve an image dict to (pixel array, source label, extractors used)."""
+        array = image.get("array", image.get("content"))
+        if isinstance(array, np.ndarray):
+            return array, "array", []
+
+        pil_image = image.get("image")
+        if pil_image is not None:
+            return np.asarray(pil_image), "pil_image", []
+
+        path = image.get("path", image.get("image_path"))
+        if path:
+            try:
+                from PIL import Image as PILImage
+            except ImportError:
+                PILImage = None
+            if PILImage is not None:
+                with PILImage.open(path) as img:
+                    return np.asarray(img), str(path), ["PIL"]
+            if OPENCV_AVAILABLE:
+                pixels = cv2.imread(str(path))
+                if pixels is None:
+                    raise ValueError(f"Could not read image file: {path}")
+                return pixels, str(path), ["cv2"]
+            raise NotImplementedError(
+                "Loading images from a path requires Pillow or opencv-python. "
+                "Install with: pip install 'multimind-sdk[documents]'"
+            )
+
+        raise NotImplementedError(
+            "Unsupported image input shape. Supported shapes: "
+            "{'path': str} or {'image_path': str} for image files, "
+            "{'image': PIL.Image} for in-memory images, or "
+            "{'array': np.ndarray} / {'content': np.ndarray} for pixel arrays."
+        )

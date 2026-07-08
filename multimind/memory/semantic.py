@@ -166,9 +166,11 @@ class SemanticMemory(BaseMemory):
         # Get concept embedding
         concept_embedding = await self.llm.embeddings(concept["content"])
 
-        # Calculate similarities
+        # Calculate similarities, excluding the concept itself.
         similarities = []
         for i, existing_embedding in enumerate(self.concept_embeddings):
+            if self.concepts[i]["id"] == concept["id"]:
+                continue
             similarity = self._cosine_similarity(concept_embedding, existing_embedding)
             if similarity >= self.similarity_threshold:
                 similarities.append(
@@ -392,6 +394,7 @@ class SemanticMemory(BaseMemory):
                         "last_validation": self.last_validation.isoformat(),
                     },
                     f,
+                    default=lambda o: list(o) if isinstance(o, set) else o,
                 )
 
     async def load(self) -> None:
@@ -400,6 +403,10 @@ class SemanticMemory(BaseMemory):
             with open(self.storage_path) as f:
                 data = json.load(f)
                 self.concepts = data.get("concepts", [])
+                for concept in self.concepts:
+                    concept["relationships"] = set(concept.get("relationships", []))
+                    metadata = concept.get("metadata", {})
+                    metadata["properties"] = set(metadata.get("properties", []))
                 self.relationships = {k: set(v) for k, v in data.get("relationships", {}).items()}
                 self.concept_weights = data.get("concept_weights", {})
                 self.concept_metadata = {
@@ -414,7 +421,7 @@ class SemanticMemory(BaseMemory):
                 # Recreate embeddings
                 self.concept_embeddings = []
                 for concept in self.concepts:
-                    self.concept_embeddings.append(self.llm.embeddings(concept["content"]))
+                    self.concept_embeddings.append(await self.llm.embeddings(concept["content"]))
 
     def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
         """Calculate cosine similarity between two vectors."""

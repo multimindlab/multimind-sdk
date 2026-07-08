@@ -62,10 +62,10 @@ class Config:
             if isinstance(value, dict):
                 value = value.get(k)
             else:
-                return defaul
+                return default
 
             if value is None:
-                return defaul
+                return default
 
         return value
 

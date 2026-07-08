@@ -13,11 +13,11 @@ from multimind.memory import (
     CognitiveScratchpadMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class LegalAssistant:
     def __init__(self, model: str = "mistral"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize knowledge graph memory for legal knowledge
         self.legal_knowledge = KnowledgeGraphMemory(

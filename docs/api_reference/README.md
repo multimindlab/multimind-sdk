@@ -1,57 +1,28 @@
 # MultiMind API Reference
 
-This directory contains the complete API reference documentation for the MultiMind SDK.
+Reference documentation for MultiMind's REST APIs. For the Python API, start with the [quickstart](../quickstart.md) and [cookbook](../cookbook.md).
 
-## Contents
+## REST APIs
 
-1. [REST API](rest_api.md) - Documentation for the REST API interface
-2. [Python API](python_api.md) - Documentation for the Python API
-3. [WebSocket API](websocket_api.md) - Documentation for the WebSocket API
-4. [Authentication](authentication.md) - API authentication and security
-5. [Rate Limiting](rate_limiting.md) - API rate limits and quotas
-6. [Error Codes](error_codes.md) - API error codes and handling
-7. [Data Types](data_types.md) - API data types and schemas
-8. [Webhooks](webhooks.md) - Webhook integration
-9. [SDKs](sdks.md) - Official SDKs and client libraries
+- [Gateway API](gateway.md) — chat, compare, sessions, metrics, and compliance endpoints
+- [RAG API](rag_api.md) — document management, semantic search, and generation endpoints ([step-by-step server setup](rag_api_server_setup.md))
+- [Ensemble API](rest_api.md) — text generation, code review, image analysis, and embeddings via model ensembles
 
-## Table of Contents
+## Generated OpenAPI specs
 
-### Core Components
-- [Models](models.md) - Language model wrappers and interfaces
-- [Agents](agents.md) - Agent system and tools
-- [Orchestration](orchestration.md) - Workflow and task management
-- [MCP](mcp.md) - Model Composition Protocol
-- [RAG](rag.md) - Retrieval Augmented Generation
+Machine-readable specs generated from the running services live in [docs/api/](../api/):
 
-### Utilities
-- [Memory](memory.md) - Conversation and context management
-- [Tools](tools.md) - Built-in and custom tools
-- [Logging](logging.md) - Usage tracking and monitoring
-- [Configuration](configuration.md) - Settings and environment management
+- [openapi-gateway.json](../api/openapi-gateway.json)
+- [openapi-rag.json](../api/openapi-rag.json)
+- [openapi-multi-model.json](../api/openapi-multi-model.json)
+- [openapi-unified.json](../api/openapi-unified.json)
+- [openapi-server.json](../api/openapi-server.json)
 
-### Integrations
-- [CLI](cli.md) - Command-line interface
-- [Framework Integrations](integrations.md) - Third-party framework support
+Every running server also serves live interactive Swagger docs at `http://localhost:8000/docs` (and the raw spec at `/openapi.json`).
 
-## Usage Examples
+## Python API
 
-Each component's documentation includes:
-- Detailed class and method descriptions
-- Type hints and parameters
-- Return value specifications
-- Usage examples
-- Common patterns and best practices
-
-## Versioning
-
-The API follows semantic versioning. Breaking changes will be indicated in the changelog and release notes.
-
-## Contributing
-
-To contribute to the API documentation:
-1. Follow the documentation style guide
-2. Include code examples
-3. Add type hints
-4. Update this index when adding new components
-
-For more information, see the [Development Guide](../development.md). 
+- [RAG pipeline guide](../rag.md)
+- [Memory systems](../memory.md)
+- [CLI reference](../cli.md)
+- [Configuration](../configuration.md)

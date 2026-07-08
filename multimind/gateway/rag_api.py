@@ -27,6 +27,7 @@ try:
 except ImportError:
     HAS_PASSLIB = False
 
+from .. import __version__
 from ..document_processing.base import Document
 from ..embeddings.embedding import EmbeddingConfig
 from ..models import ClaudeModel, OpenAIModel
@@ -41,30 +42,52 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     title="MultiMind RAG API",
-    description="RESTful API for the MultiMind RAG system",
-    version="1.0.0",
+    description=(
+        "RESTful API for the MultiMind RAG system: document ingestion, retrieval, "
+        "and grounded generation. The RAG backend is initialized lazily on first "
+        "use; provider API keys (OPENAI_API_KEY / ANTHROPIC_API_KEY) are read from "
+        "the environment at request time. Requests fail with 503 when the backend "
+        "cannot be initialized. Authentication uses `X-API-Key` (when `API_KEYS` is "
+        "set) or a JWT bearer token (when `JWT_SECRET` is set)."
+    ),
+    version=__version__,
+    openapi_tags=[
+        {"name": "auth", "description": "JWT token issuance"},
+        {"name": "documents", "description": "Document ingestion and management"},
+        {"name": "rag", "description": "Retrieval and grounded generation"},
+        {"name": "models", "description": "Model management"},
+        {"name": "system", "description": "Health and readiness probes"},
+    ],
 )
 
 
-def _get_allowed_origins() -> List[str]:
-    """
-    Get allowed CORS origins from MULTIMIND_ALLOWED_ORIGINS (comma-separated).
-    Defaults to localhost-only when not set.
-    """
-    raw = os.getenv("MULTIMIND_ALLOWED_ORIGINS")
-    if not raw:
-        return ["http://localhost", "http://127.0.0.1", "http://localhost:3000"]
+def _get_cors_origins() -> List[str]:
+    # CORS is off unless MULTIMIND_CORS_ORIGINS (or legacy MULTIMIND_ALLOWED_ORIGINS)
+    # is set to a comma-separated list of origins.
+    raw = os.getenv("MULTIMIND_CORS_ORIGINS") or os.getenv("MULTIMIND_ALLOWED_ORIGINS") or ""
     return [o.strip() for o in raw.split(",") if o.strip()]
 
 
-# Add CORS middleware with restricted origins when using credentials
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=_get_allowed_origins(),
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if _get_cors_origins():
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+
+class ErrorResponse(BaseModel):
+    detail: str
+
+
+ERROR_RESPONSES = {
+    401: {"model": ErrorResponse, "description": "Missing or invalid credentials"},
+    422: {"description": "Validation error"},
+    500: {"model": ErrorResponse, "description": "Internal server error"},
+    503: {"model": ErrorResponse, "description": "RAG backend not available"},
+}
 
 # Security setup
 security = HTTPBearer(auto_error=False)
@@ -85,11 +108,18 @@ def verify_password(password: str, hashed: str) -> bool:
     return pwd_context.verify(password, hashed)
 
 
-# Get API keys from environment
-API_KEYS = os.getenv("API_KEYS", "").split(",") if os.getenv("API_KEYS") else []
-JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = 30
+
+
+def _get_api_keys() -> List[str]:
+    # Read at request time so the app can start without any keys configured.
+    raw = os.getenv("API_KEYS", "")
+    return [k.strip() for k in raw.split(",") if k.strip()]
+
+
+def _get_jwt_secret() -> Optional[str]:
+    return os.getenv("JWT_SECRET")
 
 
 def _load_jwt_users() -> Dict[str, str]:
@@ -113,8 +143,6 @@ def _load_jwt_users() -> Dict[str, str]:
         return {}
 
 
-JWT_USERS = _load_jwt_users()
-
 # Global RAG instance and model
 rag_instance: Optional[RAG] = None
 current_model: Optional[BaseLLM] = None
@@ -133,6 +161,14 @@ class DocumentsRequest(BaseModel):
 
     documents: List[DocumentRequest] = Field(..., description="List of documents to add")
 
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {"documents": [{"text": "MultiMind is an AI SDK.", "metadata": {"source": "docs"}}]}
+            ]
+        }
+    }
+
 
 class DocumentResponse(BaseModel):
     """Response model for a document."""
@@ -149,6 +185,10 @@ class QueryRequest(BaseModel):
     top_k: Optional[int] = Field(default=3, description="Number of results to return")
     filter_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filter")
 
+    model_config = {
+        "json_schema_extra": {"examples": [{"query": "What is MultiMind?", "top_k": 3}]}
+    }
+
 
 class GenerateRequest(BaseModel):
     """Request model for generation."""
@@ -158,6 +198,12 @@ class GenerateRequest(BaseModel):
     temperature: Optional[float] = Field(default=0.7, description="Generation temperature")
     max_tokens: Optional[int] = Field(default=None, description="Maximum tokens to generate")
     filter_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Metadata filter")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{"query": "Summarize the indexed documents.", "top_k": 3}]
+        }
+    }
 
 
 class QueryResponse(BaseModel):
@@ -182,14 +228,19 @@ class TokenResponse(BaseModel):
 
 
 # Authentication functions
+def _auth_configured() -> bool:
+    # Anonymous access is only acceptable when no auth mechanism is configured at all
+    return bool(_get_api_keys()) or bool(_get_jwt_secret())
+
+
 def verify_api_key(api_key: Optional[str] = Header(None, alias="X-API-Key")) -> bool:
     """Verify API key."""
-    if not API_KEYS:
-        # If no API keys configured, allow access (for development)
+    api_keys = _get_api_keys()
+    if not _auth_configured():
         return True
     if not api_key:
         raise HTTPException(status_code=401, detail="API key required")
-    if api_key not in API_KEYS:
+    if api_key not in api_keys:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return True
 
@@ -198,14 +249,15 @@ def verify_token(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Dict[str, Any]:
     """Verify JWT token."""
-    if not JWT_SECRET:
+    jwt_secret = _get_jwt_secret()
+    if not jwt_secret:
         raise HTTPException(status_code=503, detail="JWT authentication is not configured")
     if not credentials:
         raise HTTPException(status_code=401, detail="Authorization header required")
 
     try:
         token = credentials.credentials
-        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, jwt_secret, algorithms=[JWT_ALGORITHM])
         return payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
@@ -218,8 +270,9 @@ def authenticate(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> bool:
     """Authenticate using either API key or JWT token."""
+    api_keys = _get_api_keys()
     # Try API key first
-    if api_key and api_key in API_KEYS:
+    if api_key and api_key in api_keys:
         return True
 
     # Try JWT token
@@ -230,8 +283,7 @@ def authenticate(
         except HTTPException:
             pass
 
-    # If no API keys configured, allow access (for development)
-    if not API_KEYS:
+    if not _auth_configured():
         return True
 
     raise HTTPException(status_code=401, detail="Authentication required")
@@ -330,43 +382,57 @@ async def initialize_rag():
         raise
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize RAG system on startup."""
-    await initialize_rag()
+async def _ensure_rag() -> RAG:
+    """Lazily initialize the RAG backend, mapping failures to a clear 503."""
+    if rag_instance is not None:
+        return rag_instance
+    try:
+        await initialize_rag()
+    except Exception as e:
+        logger.error(f"RAG backend unavailable: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "RAG backend is not available. Configure OPENAI_API_KEY or "
+                "ANTHROPIC_API_KEY (or install the local HuggingFace extras) and retry."
+            ),
+        )
+    return rag_instance
 
 
 # Authentication endpoints
-@app.post("/token", response_model=TokenResponse)
+@app.post("/token", response_model=TokenResponse, tags=["auth"], responses=ERROR_RESPONSES)
 async def login(username: str = Form(...), password: str = Form(...)):
     """Get JWT token for authentication."""
-    if not JWT_SECRET:
+    jwt_secret = _get_jwt_secret()
+    jwt_users = _load_jwt_users()
+    if not jwt_secret:
         raise HTTPException(status_code=503, detail="JWT authentication is not configured")
-    if not JWT_USERS:
+    if not jwt_users:
         raise HTTPException(status_code=503, detail="No JWT users configured")
 
-    if username not in JWT_USERS:
+    if username not in jwt_users:
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    if not verify_password(password, JWT_USERS[username]):
+    if not verify_password(password, jwt_users[username]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     # Create token
     expiration = datetime.utcnow() + timedelta(minutes=JWT_EXPIRATION_MINUTES)
     payload = {"sub": username, "exp": expiration, "scopes": ["rag:read", "rag:write"]}
 
-    token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    token = jwt.encode(payload, jwt_secret, algorithm=JWT_ALGORITHM)
     return TokenResponse(access_token=token)
 
 
 # Document management endpoints
-@app.post("/documents", response_model=Dict[str, Any])
+@app.post(
+    "/documents", response_model=Dict[str, Any], tags=["documents"], responses=ERROR_RESPONSES
+)
 async def add_documents(request: DocumentsRequest, authenticated: bool = Depends(authenticate)):
     """Add documents to the RAG system."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
         # Convert to Document objects
         documents = [
             Document(
@@ -379,7 +445,7 @@ async def add_documents(request: DocumentsRequest, authenticated: bool = Depends
         ]
 
         # Add documents
-        await rag_instance.add_documents(documents, process=True)
+        await rag.add_documents(documents, process=True)
 
         logger.info("Successfully added %d document(s)", len(request.documents))
 
@@ -389,22 +455,22 @@ async def add_documents(request: DocumentsRequest, authenticated: bool = Depends
             ],
             "total": len(request.documents),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error adding documents: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to add documents: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add documents")
 
 
-@app.post("/files", response_model=Dict[str, Any])
+@app.post("/files", response_model=Dict[str, Any], tags=["documents"], responses=ERROR_RESPONSES)
 async def add_file(
     file: UploadFile = File(...),
     metadata: Optional[str] = Form(None),
     authenticated: bool = Depends(authenticate),
 ):
     """Add a file to the RAG system."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
         # Parse metadata if provided
         file_metadata = {}
         if metadata:
@@ -450,7 +516,7 @@ async def add_file(
                 )
 
             # Add documents
-            await rag_instance.add_documents(documents, process=True)
+            await rag.add_documents(documents, process=True)
 
             return {
                 "documents": [
@@ -464,25 +530,25 @@ async def add_file(
             if tmp_path.exists():
                 tmp_path.unlink()
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error adding file: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to add file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to add file")
 
 
-@app.post("/query", response_model=QueryResponse)
+@app.post("/query", response_model=QueryResponse, tags=["rag"], responses=ERROR_RESPONSES)
 async def query_documents(request: QueryRequest, authenticated: bool = Depends(authenticate)):
     """Query the RAG system for relevant documents."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
         # Build filter criteria
         filter_criteria = None
         if request.filter_metadata:
             filter_criteria = request.filter_metadata
 
         # Retrieve documents
-        retrieved_docs = await rag_instance.retrieve(
+        retrieved_docs = await rag.retrieve(
             request.query, k=request.top_k, filter_criteria=filter_criteria
         )
 
@@ -503,27 +569,27 @@ async def query_documents(request: QueryRequest, authenticated: bool = Depends(a
 
         return QueryResponse(documents=documents, total=len(documents))
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error querying documents: {e}")
-        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Query failed")
 
 
-@app.post("/generate", response_model=GenerateResponse)
+@app.post("/generate", response_model=GenerateResponse, tags=["rag"], responses=ERROR_RESPONSES)
 async def generate_response(request: GenerateRequest, authenticated: bool = Depends(authenticate)):
     """Generate a response using the RAG system."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
         if current_model is None:
-            raise HTTPException(status_code=500, detail="No model available for generation")
+            raise HTTPException(status_code=503, detail="No model available for generation")
 
         # Retrieve relevant documents
         filter_criteria = None
         if request.filter_metadata:
             filter_criteria = request.filter_metadata
 
-        retrieved_docs = await rag_instance.retrieve(
+        retrieved_docs = await rag.retrieve(
             request.query, k=request.top_k, filter_criteria=filter_criteria
         )
 
@@ -562,37 +628,37 @@ Answer:"""
 
         return GenerateResponse(text=response_text, documents=documents)
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error generating response: {e}")
-        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Generation failed")
 
 
-@app.delete("/documents")
+@app.delete("/documents", tags=["documents"], responses=ERROR_RESPONSES)
 async def clear_documents(authenticated: bool = Depends(authenticate)):
     """Clear all documents from the RAG system."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
-        await rag_instance.clear()
+        await rag.clear()
 
         return {"message": "All documents cleared successfully"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error clearing documents: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to clear documents: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to clear documents")
 
 
-@app.get("/documents/count")
+@app.get("/documents/count", tags=["documents"], responses=ERROR_RESPONSES)
 async def get_document_count(authenticated: bool = Depends(authenticate)):
     """Get the number of documents in the RAG system."""
+    rag = await _ensure_rag()
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
         # Get count from vector store - try different methods
         count = 0
-        backend = rag_instance.vector_store._get_backend()
+        backend = rag.vector_store._get_backend()
 
         # Try to get count from backend metadata
         if hasattr(backend, "metadata") and backend.metadata:
@@ -614,7 +680,7 @@ async def get_document_count(authenticated: bool = Depends(authenticate)):
 
 
 # Model management endpoints
-@app.post("/models/switch")
+@app.post("/models/switch", tags=["models"], responses=ERROR_RESPONSES)
 async def switch_model(
     model_type: str = Form(...),
     model_name: str = Form(...),
@@ -639,40 +705,46 @@ async def switch_model(
 
         return {"message": f"Switched to {model_type} model: {model_name}"}
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error switching model: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to switch model: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to switch model")
 
 
 # Health check endpoint
-@app.get("/health")
+@app.get("/health", tags=["system"])
 async def health_check():
-    """Check the health of the RAG system."""
+    """Liveness probe (no auth; does not initialize the RAG backend)."""
+    return {
+        "status": "healthy",
+        "version": __version__,
+        "rag_initialized": rag_instance is not None,
+    }
+
+
+@app.get("/ready", tags=["system"], responses={503: {"model": ErrorResponse}})
+async def readiness_check():
+    """Readiness probe; 503 until the RAG backend has been initialized."""
+    if rag_instance is None:
+        raise HTTPException(status_code=503, detail="RAG backend not initialized")
+
+    count = 0
     try:
-        if rag_instance is None:
-            await initialize_rag()
-
-        # Get document count using the same method as get_document_count endpoint
+        backend = rag_instance.vector_store._get_backend()
+        if hasattr(backend, "metadata") and backend.metadata:
+            count = len(backend.metadata)
+        elif hasattr(backend, "_metadata") and backend._metadata:
+            count = len(backend._metadata)
+        elif hasattr(backend, "index") and hasattr(backend.index, "ntotal"):
+            count = backend.index.ntotal
+        elif hasattr(backend, "index") and hasattr(backend.index, "__len__"):
+            count = len(backend.index)
+    except Exception as count_error:
+        logger.warning(f"Could not get document count: {count_error}")
         count = 0
-        try:
-            backend = rag_instance.vector_store._get_backend()
-            if hasattr(backend, "metadata") and backend.metadata:
-                count = len(backend.metadata)
-            elif hasattr(backend, "_metadata") and backend._metadata:
-                count = len(backend._metadata)
-            elif hasattr(backend, "index") and hasattr(backend.index, "ntotal"):
-                count = backend.index.ntotal
-            elif hasattr(backend, "index") and hasattr(backend.index, "__len__"):
-                count = len(backend.index)
-        except Exception as count_error:
-            logger.warning(f"Could not get document count: {count_error}")
-            count = 0
 
-        return {"status": "healthy", "document_count": count}
-
-    except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        return {"status": "unhealthy", "error": str(e)}
+    return {"status": "ready", "version": __version__, "document_count": count}
 
 
 def start(host: str = "0.0.0.0", port: int = 8000):

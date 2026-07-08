@@ -32,8 +32,17 @@ class SQLiteVSSBackend(VectorStoreBackend):
         self._conn = sqlite3.connect(self.db_path, check_same_thread=False)
         if self.vss_extension_path:
             self._conn.enable_load_extension(True)
-            self._conn.load_extension(self.vss_extension_path)
+            self._load_vss_extension()
         self._ensure_table()
+
+    def _load_vss_extension(self) -> None:
+        """Load the sqlite-vss extension pair; vector0 must be registered before vss0."""
+        vector0_path = os.path.join(os.path.dirname(self.vss_extension_path), "vector0")
+        try:
+            self._conn.load_extension(vector0_path)
+        except sqlite3.OperationalError:
+            pass  # already registered, missing, or fused into vss0 on this build
+        self._conn.load_extension(self.vss_extension_path)
 
     def _ensure_table(self):
         with self._conn:
@@ -54,6 +63,10 @@ class SQLiteVSSBackend(VectorStoreBackend):
                 )
             except sqlite3.OperationalError:
                 pass  # Extension not loaded or already exists
+
+    async def initialize(self) -> None:
+        """No-op: the connection and tables are set up eagerly in __init__."""
+        pass
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         n = len(vectors)
@@ -103,22 +116,35 @@ class SQLiteVSSBackend(VectorStoreBackend):
 
         def _search():
             try:
+                # vss0's underlying faiss index aborts the whole process (an
+                # uncaught C++ exception, not a catchable Python error) when
+                # queried with zero rows present, so short-circuit here.
+                (count,) = self._conn.execute(f"SELECT COUNT(*) FROM {self.table}_vss").fetchone()
+                if count == 0:
+                    return []
+                # vss0 requires the LIMIT to be part of the vss_search() query
+                # itself, so it's applied in a subquery before the join.
                 sql = f"""
-                    SELECT t.id, t.metadata, t.document, v.distance
-                    FROM {self.table}_vss v
+                    SELECT t.id, t.metadata, t.document, t.vector, v.distance
+                    FROM (
+                        SELECT rowid, distance FROM {self.table}_vss
+                        WHERE vss_search(vector, ?)
+                        LIMIT ?
+                    ) v
                     JOIN {self.table} t ON v.rowid = t.rowid
-                    WHERE v.vector MATCH ?
                     ORDER BY v.distance ASC
-                    LIMIT ?
                 """
                 params = [np.array(query_vector, dtype=np.float32).tobytes(), k]
                 cur = self._conn.execute(sql, params)
                 results = cur.fetchall()
                 search_results = []
                 for row in results:
-                    id_, meta, doc, dist = row
+                    id_, meta, doc, vec_blob, dist = row
+                    vector = np.frombuffer(vec_blob, dtype=np.float32).tolist()
                     search_results.append(
-                        SearchResult(id=id_, score=-dist, metadata=meta, document=doc)
+                        SearchResult(
+                            id=id_, vector=vector, score=-dist, metadata=meta, document=doc
+                        )
                     )
                 return search_results
             except sqlite3.OperationalError:
@@ -134,7 +160,8 @@ class SQLiteVSSBackend(VectorStoreBackend):
         def _delete():
             with self._conn:
                 for id_ in ids:
-                    self._conn.execute(f"DELETE FROM {self.table} WHERE id = ?", (id_,))
+                    # Delete the vss row first: its rowid lookup joins against
+                    # the main table, which must still contain the row.
                     try:
                         self._conn.execute(
                             f"DELETE FROM {self.table}_vss WHERE rowid = (SELECT rowid FROM {self.table} WHERE id = ?)",
@@ -142,6 +169,7 @@ class SQLiteVSSBackend(VectorStoreBackend):
                         )
                     except sqlite3.OperationalError:
                         pass
+                    self._conn.execute(f"DELETE FROM {self.table} WHERE id = ?", (id_,))
 
         await loop.run_in_executor(None, _delete)
         self.log_metrics("delete_vectors", len(ids))

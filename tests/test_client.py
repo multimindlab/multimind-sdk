@@ -1,3 +1,7 @@
+import pytest  # noqa: E402
+
+pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
+
 import pytest
 from multimind.client import FederatedRouter, ModelClient, RAGClient
 
