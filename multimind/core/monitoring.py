@@ -55,7 +55,16 @@ class ModelMonitor:
                 "tokens": 0.0,
             }
         )
-        self._lock = asyncio.Lock()
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._lock: Optional[asyncio.Lock] = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def track_request(
         self,
@@ -67,7 +76,7 @@ class ModelMonitor:
         error: Optional[str] = None,
     ) -> None:
         """Track a model request and its metrics"""
-        async with self._lock:
+        async with self._get_lock():
             metrics = self.metrics[model]
             metrics.total_requests += 1
             metrics.total_tokens += tokens
@@ -122,7 +131,7 @@ class ModelMonitor:
 
     async def check_rate_limit(self, model: str, tokens: int) -> bool:
         """Check if a request would exceed rate limits"""
-        async with self._lock:
+        async with self._get_lock():
             limits = self.rate_limits[model]
             window = self._rate_windows[model]
             now = time.time()

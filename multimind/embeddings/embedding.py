@@ -1,5 +1,11 @@
 """
 Advanced embedding module with support for multiple models and multi-vector embeddings.
+
+Canonical source (per ``multimind/embeddings/__init__.py``) for ``Embedding``
+and ``EmbeddingType``. See ``multimind/embeddings/base.py`` for a note on how
+this differs from the unused, non-canonical classes of the same name kept
+there, and ``embeddings.py`` (plural) for the canonical ``EmbeddingConfig`` /
+``EmbeddingGenerator`` used by the RAG pipeline.
 """
 
 import json

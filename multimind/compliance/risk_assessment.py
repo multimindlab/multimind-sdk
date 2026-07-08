@@ -149,10 +149,29 @@ class RiskAssessmentManager(BaseModel):
         return factors
 
     def _evaluate_factor(self, factor: RiskFactor, metadata: Dict[str, Any]) -> float:
-        """Evaluate a single risk factor."""
-        # Implementation would evaluate specific factors
-        # This is a placeholder that returns a random score
-        return 0.5
+        """Evaluate a single risk factor from system metadata."""
+        key = factor.metadata.get("metadata_key", factor.factor_id)
+        if key not in metadata:
+            raise NotImplementedError(
+                f"No evaluation signal for risk factor '{factor.factor_id}': "
+                f"system metadata has no '{key}' entry and no custom evaluator is "
+                "configured; refusing to fabricate a risk score."
+            )
+
+        value = metadata[key]
+        if isinstance(value, bool):
+            return 1.0 if value else 0.0
+        if isinstance(value, (int, float)):
+            score = float(value)
+            if not 0.0 <= score <= 1.0:
+                raise ValueError(
+                    f"Risk factor '{factor.factor_id}' value must be in [0, 1], got {score}"
+                )
+            return score
+        raise NotImplementedError(
+            f"Risk factor '{factor.factor_id}' has non-numeric metadata value "
+            f"({type(value).__name__}); refusing to fabricate a risk score."
+        )
 
     async def _generate_findings(
         self, risk_level: RiskLevel, factors: List[Dict[str, Any]], metadata: Dict[str, Any]

@@ -680,6 +680,11 @@ class HybridMemory(BaseMemory):
                     data.get("last_evolution", datetime.now().isoformat())
                 )
 
+        # Restore each child memory's own persisted content as well, otherwise
+        # the child instances created in _initialize_memories() stay empty.
+        for memory in self.memories.values():
+            await memory.load()
+
     async def get_hybrid_stats(self) -> Dict[str, Any]:
         """Get statistics about hybrid memory."""
         total_messages = 0

@@ -1,8 +1,10 @@
 # MultiMind SDK: Features & Functions
 
-## Project Structure (Current & Implemented)
+> For the authoritative, per-feature status (Stable / Beta / Planned), see [FEATURES.md](../FEATURES.md) in the repository root. This page gives a structural overview; items marked "Planned" below are not implemented yet.
 
-Below is the current modular structure for MultiMind SDK. All modules are now implemented and available:
+## Project Structure
+
+Below is the representative modular structure for MultiMind SDK:
 
 ```
 multimind-sdk/
@@ -14,9 +16,8 @@ multimind-sdk/
 │   │   ├── base.py                # Base model interface
 │   │   ├── openai.py              # OpenAI model wrapper
 │   │   ├── claude.py              # Claude model wrapper
-│   │   ├── mistral.py             # Mistral model wrapper
 │   │   ├── huggingface.py         # HuggingFace model wrapper
-│   │   └── ollama.py              # Ollama model wrapper
+│   │   └── ollama.py              # Ollama wrapper (local models incl. Mistral, Llama)
 │
 │   ├── router/                    # Model routing and selection
 │   │   ├── strategy.py            # Routing strategies
@@ -51,10 +52,12 @@ multimind-sdk/
 │   │   ├── executor.py           # MCP workflow executor
 │   │   └── schema.json           # MCP schema definition
 │
-│   ├── integrations/           # Framework integrations
-│   │   ├── langchain_adapter.py   # LangChain integration
-│   │   ├── crewai_adapter.py      # CrewAI integration
-│   │   └── lite_llm.py           # LiteLLM integration
+│   ├── integrations/           # Service integrations
+│   │   ├── github.py              # GitHub integration
+│   │   ├── slack.py               # Slack integration
+│   │   ├── discord.py             # Discord integration
+│   │   ├── jira.py                # Jira integration
+│   │   └── model_adapters.py      # Model adapter layer
 │
 │   ├── logging/                # Monitoring and logging
 │   │   ├── trace_logger.py        # Trace logging
@@ -83,35 +86,26 @@ multimind-sdk/
 
 ### Model Support
 
-- **Model Wrappers:**
+- **Model Wrappers (available today):**
   - OpenAI (GPT-3.5, GPT-4)
-  - Anthropic Claude (Claude-3)
-  - Mistral AI (Mistral Medium)
-  - HuggingFace (any compatible model)
-  - Ollama (local models)
-  - TensorFlow and PyTorch Integration
-    - Custom model integration
-    - Fine-tuning capabilities
-    - Support for CV and NLP models
-- **Unified Interface:** All wrappers support `generate`, `chat`, and `embeddings` (where applicable)
+  - Anthropic Claude
+  - Ollama (local models, including Mistral and Llama)
+  - HuggingFace wrapper (experimental)
+- **Unified Interface:** All wrappers support `generate`, `chat`, and `embeddings` (where applicable), with streaming
+- **Non-Transformer Inference:** Mamba and RWKV run via HuggingFace-backed wrappers; other listed architectures are extension scaffolds only
 
 ### Agent System
 
-- **Agent Framework:**
-  - Configurable agents with memory and tools
+- **Agent Framework (available today):**
+  - Configurable agents with memory and tools (keyword-based tool routing)
   - Agent configuration loading from MCP files
   - Built-in tools (calculator, web search, file operations)
   - Extensible tool system
-  - Agent collaboration capabilities
-  - Hierarchical multi-agent systems
-  - Advanced inter-agent communication
-  - AutoML for agent configuration
-  - Self-configuring agent systems
+- **Planned:** agent collaboration, hierarchical multi-agent systems, inter-agent communication, AutoML-based agent configuration
 - **Memory Management:**
   - Conversation history tracking
   - Configurable memory size
   - Memory persistence
-  - Advanced memory optimization
 
 ### Orchestration
 
@@ -126,6 +120,8 @@ multimind-sdk/
   - Parallel execution
 
 ### Model Composition Protocol (MCP)
+
+> Note: this is MultiMind's own **Model Composition Protocol**, a JSON/YAML workflow executor for chaining models. It is not Anthropic's Model Context Protocol, which MultiMind does not support yet.
 
 - **Workflow Definition:**
   - JSON/YAML-based workflow specification
@@ -147,53 +143,26 @@ multimind-sdk/
 
 ### Fine-Tuning & PEFT
 
-- **PEFT Methods:**
-  - LoRA, Adapters, Prefix/Prompt Tuning
-  - IA³, BitFit, QLoRA, Compacter
-  - HyperLoRA, UniPELT, MAM
-  - AutoML-based parameter tuning
-- **Meta-Learning:**
-  - Few-shot (MAML, Reptile, Prototype)
-  - Transfer learning
-  - Multi-task adaptation
-  - Self-tuning capabilities
+- **Available today (basic):** LoRA and adapter training
+- **Planned/experimental:** QLoRA, IA³, BitFit, Compacter, HyperLoRA, UniPELT, MAM, AutoML-based parameter tuning, meta-learning (MAML, Reptile)
 - **RAG (Retrieval-Augmented Generation):**
-  - Vector store support (FAISS, Chroma)
+  - Vector store support (FAISS, Chroma today; Qdrant, Weaviate, Pinecone, Milvus in beta)
   - Embedding and retrieval utilities
-  - Self-tuning indexer with feedback loop
-  - Hybrid search with Knowledge Graph
+  - Planned: self-tuning indexer, hybrid search with knowledge graph
 
 ### Enterprise Integration
 
-- **Compliance Suite:**
-  - GDPR, CCPA, HIPAA support
-  - PII Redaction
-  - Data governance frameworks
-  - Audit logging systems
-- **Edge Deployment:**
-  - Optimized edge device deployment (Jetson, Pi)
-  - Resource efficiency tools
-  - Offline mode capabilities
-  - Edge-specific optimizations
-- **Integration Hub:**
-  - Plugin System (Slack, Notion, Salesforce)
-  - Database connectors (MongoDB, PostgreSQL)
-  - Real-time data integration (Kafka, MQTT)
-  - API connectors and service integrations
+- **Compliance Suite (available today):**
+  - GDPR and HIPAA policy modeling
+  - Data governance framework
+  - Audit logging
+  - Compliance dashboards (with the `[compliance]` extra)
+- **Service Integrations (available today):** GitHub, Slack, Discord, Jira
+- **Planned:** edge deployment toolkit, plugin system (Notion, Salesforce), database connectors, real-time data integration (Kafka, MQTT)
 
 ### Development Tools
 
-- **Visual Tools:**
-  - Visual workflow builder
-  - Drag-and-drop components
-  - No-code development interface
-  - Enterprise workflow templates
-- **Monitoring Dashboard:**
-  - Live state monitoring
-  - Memory editing capabilities
-  - Workflow visualization
-  - Performance analytics
-  - Real-time insights
+- **Planned:** visual workflow builder, drag-and-drop components, no-code interface, monitoring dashboard with live state and workflow visualization
 
 ### Logging & Monitoring
 
@@ -224,9 +193,9 @@ multimind-sdk/
   - MCP workflow execution
   - Fine-tuning commands
   - Usage monitoring
-- **Framework Integrations:**
-  - LangChain, CrewAI, LiteLLM, SuperAGI
-  - Adapter classes for seamless integration
+- **Service Integrations:**
+  - GitHub, Slack, Discord, Jira
+  - Model adapter classes for custom model types
 
 ---
 
@@ -234,31 +203,32 @@ multimind-sdk/
 
 | Category          | Feature/Functionality                                      | Status      |
 |-------------------|----------------------------------------------------------|-------------|
-| Model Wrappers    | OpenAI, Claude, Mistral, HuggingFace, Ollama             | Implemented |
-| TensorFlow/PyTorch| Custom models, CV/NLP support, Fine-tuning               | In Progress |
-| Agent System      | Framework, memory, tools, collaboration                   | Implemented |
-| Agent AutoML      | Self-configuration, optimization                         | In Progress |
-| Orchestration     | Prompt chains, task runner, workflow management          | Implemented |
-| MCP              | Workflow definition, execution, model composition         | Implemented |
-| Routing          | Strategy, fallback, dynamic selection                    | Implemented |
-| Enterprise        | Compliance, Edge deployment, Integration hub             | In Progress |
-| Development Tools | Visual builder, No-code interface, Templates            | In Progress |
-| Fine-Tuning      | PEFT methods, Meta-learning, AutoML                      | In Progress |
-| RAG              | Vector stores, Hybrid search, Self-tuning                | In Progress |
-| Monitoring       | Dashboard, Analytics, Real-time insights                 | In Progress |
-| Integrations     | LangChain, CrewAI, LiteLLM, SuperAGI                    | Implemented |
+| Model Wrappers    | OpenAI, Claude, Ollama (incl. local Mistral/Llama)       | Implemented |
+| Non-Transformers  | Mamba, RWKV inference; other architectures are scaffolds | Beta        |
+| Agent System      | Framework, memory, tools (keyword-based routing)         | Beta        |
+| Agent AutoML      | Self-configuration, optimization                         | Planned     |
+| Orchestration     | Prompt chains, task runner                               | Implemented |
+| MCP (Composition) | Workflow definition, execution, model composition        | Beta        |
+| Routing           | Strategy, fallback, dynamic selection                    | Implemented |
+| Compliance        | GDPR/HIPAA policy modeling, audit trails, dashboards     | Beta        |
+| Enterprise        | Edge deployment, integration hub                         | Planned     |
+| Development Tools | Visual builder, no-code interface, templates             | Planned     |
+| Fine-Tuning       | Basic LoRA/adapters; advanced PEFT and meta-learning     | Beta        |
+| RAG               | FAISS/Chroma stable; hybrid search and self-tuning       | Beta        |
+| Monitoring        | Basic logging and usage tracking; dashboards planned     | Beta        |
+| Integrations      | GitHub, Slack, Discord, Jira                             | Beta        |
 
 ---
 
 ## Examples
 
-The SDK includes comprehensive examples demonstrating all major features:
+The SDK includes examples demonstrating the major features:
 
-- [Basic Agent Usage](../examples/basic_agent.py) - Agent creation and usage
-- [Prompt Chaining](../examples/prompt_chain.py) - Complex reasoning workflows
-- [Task Running](../examples/task_runner.py) - Workflow orchestration
-- [MCP Workflows](../examples/mcp_workflow.py) - Model composition examples
-- [Usage Tracking](../examples/usage_tracking.py) - Monitoring and logging
+- [Basic Agent Usage](../examples/cli/basic_agent.py) - Agent creation and usage
+- [Prompt Chaining](../examples/cli/prompt_chain.py) - Multi-step reasoning workflows
+- [Task Running](../examples/cli/task_runner.py) - Workflow orchestration
+- [MCP Workflows](../examples/cli/mcp_workflow.py) - Model composition examples
+- [Usage Tracking](../examples/cli/usage_tracking.py) - Monitoring and logging
 
 See the [examples README](../examples/README.md) for detailed usage instructions.
 
@@ -284,9 +254,8 @@ graph TD
     subgraph Models
         OpenAI[OpenAI]
         Claude[Claude]
-        Mistral[Mistral]
+        Ollama[Ollama - local Mistral/Llama]
         HF[HuggingFace]
-        Ollama[Ollama]
     end
     
     subgraph Tools

@@ -1,5 +1,12 @@
 """
 Base retriever implementation.
+
+Canonical source (per ``multimind/retrieval/__init__.py``) for
+``Retriever``, ``RetrievalConfig``, and ``RetrievalResult`` — the classes
+importable as ``from multimind.retrieval import ...``. See ``base.py`` for a
+note on the unused, non-canonical classes of the same name kept there, and
+``retrieval.py`` for ``HybridRetriever`` (whose own ``RetrievalResult`` is a
+distinct, internal-only shape — see that module's docstring).
 """
 
 from dataclasses import dataclass

@@ -14,11 +14,11 @@ from multimind.memory import (
     KnowledgeGraphMemory,
     TokenBufferMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 async def main():
     # Initialize the LLM
-    llm = OllamaLLM(model="mistral")
+    llm = OllamaModel(model_name="mistral")
     
     # Initialize HybridMemory with multiple memory types
     memory = HybridMemory(

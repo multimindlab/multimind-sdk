@@ -11,6 +11,16 @@ Targets `0.3.0` — first release after the packaging modernization, lazy-import
 and test-stabilization passes.
 
 ### Added
+- Guard proxy: `multimind serve` — an OpenAI-compatible reverse proxy that
+  adds PII guarding, budgets, and audit logging to any existing app
+  (see `docs/guard-proxy.md`)
+- AI inventory and chargeback: `multimind audit` CLI (see `docs/ai-inventory.md`)
+- `multimind scan-text` CLI for scanning text for PII/sensitive data
+- Compliance MCP server (`python -m multimind.mcp_server`) for Claude
+  Desktop / Claude Code and other MCP clients (see `docs/mcp-server.md`)
+- Framework adapters for LangChain, LlamaIndex, CrewAI, and the OpenAI SDK
+  (see `docs/integrations.md`)
+- New extras: `mcp`, `langchain`, `llamaindex`, `crewai`
 - `pyproject.toml` with modular extras: `rag`, `vector-stores`, `agents`,
   `memory`, `documents`, `finetune`, `finetune-gpu`, `compliance`, `gateway`,
   `dev`, `all` (#41)

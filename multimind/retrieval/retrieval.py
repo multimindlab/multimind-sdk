@@ -1,5 +1,13 @@
 """
 Advanced retrieval mechanisms for RAG systems.
+
+Canonical source (per ``multimind/retrieval/__init__.py``, via
+``enhanced_retrieval.py``'s re-export) for ``HybridRetriever``. Note that the
+``RetrievalResult`` and ``QueryType`` defined in this module are internal to
+``HybridRetriever`` / ``QueryDecomposer`` and are a *different* shape than
+the package's canonical, publicly-exported ``RetrievalResult`` (see
+``retriever.py``) — same name, deliberately not aliased, see
+``base.py`` for the full duplication note.
 """
 
 from dataclasses import dataclass
@@ -51,9 +59,14 @@ class HybridRetriever:
         **kwargs,
     ):
         self.dense_retriever = dense_retriever
-        self.sparse_retriever = sparse_retriever or TfidfVectorizer(
-            max_features=10000, ngram_range=(1, 2)
-        )
+        if sparse_retriever is None:
+            if TfidfVectorizer is None:
+                raise ImportError(
+                    "HybridRetriever's default sparse retriever needs scikit-learn. "
+                    "Install with: pip install 'multimind-sdk[finetune]' or pass sparse_retriever="
+                )
+            sparse_retriever = TfidfVectorizer(max_features=10000, ngram_range=(1, 2))
+        self.sparse_retriever = sparse_retriever
         self.cross_encoder = cross_encoder
         self.alpha = alpha  # Weight for dense vs sparse scores
         self._fitted = False
@@ -90,7 +103,9 @@ class HybridRetriever:
 
         # Get dense embeddings
         dense_embeddings = await self.dense_retriever.embeddings(documents)
-        query_embedding = await self.dense_retriever.embeddings([query])[0]
+        # Parens matter: `[0]` binds tighter than `await`, so without them this
+        # indexed a not-yet-awaited coroutine object and always raised TypeError.
+        query_embedding = (await self.dense_retriever.embeddings([query]))[0]
 
         # Calculate dense scores
         dense_scores = np.array(

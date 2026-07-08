@@ -16,7 +16,14 @@ except ImportError:
 
 import random
 
-import numpy as np
+# Optional numpy import; only ParetoFrontStrategy's vectorized computation needs it.
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:
+    np = None
+    NUMPY_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +138,10 @@ class ParetoFrontStrategy(RoutingStrategy):
         **kwargs,
     ) -> Optional[BaseLLM]:
         """Select a model on the Pareto front, breaking ties by the secondary metric."""
+        if not NUMPY_AVAILABLE:
+            raise ImportError(
+                "ParetoFrontStrategy requires numpy. Install with: pip install 'multimind-sdk[rag]'"
+            )
         if not models:
             return None
         # Gather objective values for each model

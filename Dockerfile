@@ -1,50 +1,69 @@
-# Use Python 3.10 as base image
-FROM python:3.10-slim
+# syntax=docker/dockerfile:1
 
-# Set working directory
+# ── Stage 1: build the wheel ─────────────────────────────────────────────────
+FROM python:3.11-slim AS builder
+
+WORKDIR /src
+
+RUN pip install --no-cache-dir --upgrade pip build
+
+# Only what the sdist/wheel needs (see MANIFEST.in / pyproject.toml)
+COPY pyproject.toml setup.py MANIFEST.in README.md LICENSE ./
+COPY multimind/ multimind/
+
+RUN python -m build --wheel --outdir /wheels
+
+# ── Stage 2: runtime ─────────────────────────────────────────────────────────
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="MultiMind SDK" \
+      org.opencontainers.image.description="Compliance-first AI agent framework — gateway API image" \
+      org.opencontainers.image.vendor="MultimindLAB" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.source="https://github.com/multimindlab/multimind-sdk" \
+      org.opencontainers.image.documentation="https://github.com/multimindlab/multimind-sdk/blob/develop/docs/deployment.md"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    MULTIMIND_PORT=8000
+
+RUN groupadd --gid 10001 multimind \
+    && useradd --uid 10001 --gid multimind --create-home --shell /usr/sbin/nologin multimind
+
+# Extras installed into the image. Default is gateway-only (lean, no torch).
+# Override for a CLI-capable image: --build-arg MULTIMIND_EXTRAS=gateway,finetune
+ARG MULTIMIND_EXTRAS=gateway
+
+# Core deps + selected extras only. No torch, no docs, no tests, no examples.
+# numpy: multimind.gateway.api imports multimind.compliance, whose eager
+# imports need numpy but nothing else from the heavy [compliance] extra.
+RUN --mount=from=builder,source=/wheels,target=/wheels \
+    pip install --no-cache-dir "$(ls /wheels/multimind_sdk-*.whl)[${MULTIMIND_EXTRAS}]" "numpy>=1.21.0"
+
+# Launcher: some versions of the gateway only register GET /health inside
+# MultiMindAPI().configure_routes(), so call it when present (no-op otherwise).
+RUN printf '%s\n' \
+      'import os' \
+      'import uvicorn' \
+      'from multimind.gateway.api import app' \
+      'try:' \
+      '    from multimind.gateway.api import MultiMindAPI' \
+      '    MultiMindAPI().configure_routes()' \
+      'except Exception:' \
+      '    pass' \
+      'uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("MULTIMIND_PORT", "8000")))' \
+      > /usr/local/bin/multimind-serve.py
+
+# Writable app dir (chat sessions are stored under the working directory)
 WORKDIR /app
+RUN chown multimind:multimind /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+USER multimind
 
-# Install Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
+EXPOSE 8000
 
-# Copy requirements files
-COPY requirements-base.txt requirements.txt requirements-compliance.txt ./
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('MULTIMIND_PORT', '8000') + '/health', timeout=4)"
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the project files
-COPY . .
-
-# Install the package in development mode
-RUN pip install -e .
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PIP_NO_CACHE_DIR=1
-
-# Create necessary directories
-RUN mkdir -p /app/logs /app/data /app/cache
-
-# Set permissions
-RUN chmod -R 755 /app
-
-# Expose ports
-EXPOSE 8000 8001 6379
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
-
-# Set the default command
-CMD ["python", "-m", "multimind.api.main"] 
+CMD ["python", "/usr/local/bin/multimind-serve.py"]

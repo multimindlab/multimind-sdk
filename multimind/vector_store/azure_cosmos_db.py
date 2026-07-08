@@ -77,37 +77,12 @@ class AzureCosmosDBBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
-        explain = explain if explain is not None else self.explain
-        # Cosmos DB does not natively support vector search; placeholder for hybrid search
-        results = []
-        for doc in self.container.read_all_items():
-            meta = doc.get("metadata", {})
-            doc_content = doc.get("document", {})
-            score = 1.0  # Placeholder
-            bm25_score = None
-            if self.enable_hybrid_search and query_text:
-                bm25_score = self._bm25_score(query_text, doc_content.get("content", ""))
-                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
-            if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
-                continue
-            result = SearchResult(
-                id=doc["id"],
-                vector=doc.get("vector"),
-                metadata=meta,
-                document=doc_content,
-                score=score,
-            )
-            if explain:
-                result.explanation = {
-                    "vector_score": 1.0,
-                    "bm25_score": bm25_score,
-                    "final_score": score,
-                }
-            results.append(result)
-        if scoring_method and scoring_method != "weighted_sum":
-            results = self._apply_custom_scoring(results, scoring_method)
-        self.log_metrics("search", len(results))
-        return results[:k]
+        raise NotImplementedError(
+            "AzureCosmosDBBackend.search is not implemented: the previous "
+            "implementation ignored the query vector and returned every document with "
+            "a hardcoded score. Use an implemented backend such as FAISS, Chroma, "
+            "Qdrant, Pinecone, Milvus, or Weaviate."
+        )
 
     def _bm25_score(self, query_text: str, doc_text: str) -> float:
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
@@ -127,7 +102,10 @@ class AzureCosmosDBBackend(VectorStoreBackend):
 
     async def clear(self):
         # Placeholder: delete all items
-        self.log_metrics("clear", 1)
+        raise NotImplementedError(
+            "AzureCosmosDBBackend.clear is not implemented. Delete items via "
+            "delete_vectors or the Azure portal instead."
+        )
 
     async def persist(self, path):
         self.log_metrics("persist", 1)

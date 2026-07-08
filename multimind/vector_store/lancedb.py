@@ -45,11 +45,20 @@ class LanceDBBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         self._db = None
         self._tbl = None
-        self._init_lock = asyncio.Lock()
+        # Lazily created on first async use: on Python 3.9, asyncio.Lock()
+        # binds to the current event loop at construction time, so creating
+        # it here (in a sync __init__, with no loop running yet) raises
+        # RuntimeError.
+        self._init_lock = None
         self._initialized = False
 
+    def _get_init_lock(self) -> asyncio.Lock:
+        if self._init_lock is None:
+            self._init_lock = asyncio.Lock()
+        return self._init_lock
+
     async def _initialize(self):
-        async with self._init_lock:
+        async with self._get_init_lock():
             if self._initialized:
                 return
             # LanceDB supports both local and cloud

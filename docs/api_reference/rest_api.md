@@ -7,7 +7,7 @@ The MultiMind REST API provides a comprehensive interface for using the MultiMin
 Make sure you have the MultiMind package installed:
 
 ```bash
-pip install multimind
+pip install multimind-sdk
 ```
 
 ## Starting the API Server

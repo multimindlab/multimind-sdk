@@ -372,13 +372,18 @@ class AdapterFactory:
         "claude-1": AnthropicClaudeAdapter,
     }
 
+    @staticmethod
+    def _normalize(model_name: str) -> str:
+        return model_name.lower().replace(" ", "_").replace("-", "_")
+
     @classmethod
     def get_adapter(cls, model_name: str) -> ModelAdapter:
         """
         Get the appropriate adapter for a model.
 
         Args:
-            model_name: Name of the model (case-insensitive)
+            model_name: Name of the model (case-insensitive; hyphens,
+                underscores, and spaces are interchangeable)
 
         Returns:
             ModelAdapter instance
@@ -386,13 +391,15 @@ class AdapterFactory:
         Raises:
             ValueError: If model is not supported
         """
-        model_lower = model_name.lower().replace(" ", "_").replace("-", "_")
+        # Normalize both the query and registry keys so aliases registered
+        # with hyphens (e.g. "gpt-4") resolve regardless of "-" vs "_".
+        key = cls._normalize(model_name)
+        for registered, adapter_cls in cls._adapters.items():
+            if cls._normalize(registered) == key:
+                return adapter_cls()
 
-        if model_lower not in cls._adapters:
-            supported = ", ".join(sorted(cls._adapters.keys()))
-            raise ValueError(f"Model '{model_name}' not supported. Supported models: {supported}")
-
-        return cls._adapters[model_lower]()
+        supported = ", ".join(sorted(cls._adapters.keys()))
+        raise ValueError(f"Model '{model_name}' not supported. Supported models: {supported}")
 
     @classmethod
     def get_supported_models(cls) -> List[str]:

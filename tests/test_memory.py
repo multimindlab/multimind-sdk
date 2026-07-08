@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 from multimind.memory.buffer import BufferMemory
 from multimind.memory.summary_buffer import SummaryBufferMemory
 

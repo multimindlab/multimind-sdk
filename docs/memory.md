@@ -10,9 +10,9 @@ This document provides an overview of all memory implementations in the MultiMin
    - Defines core memory interface and common functionality
 
 2. **Conversation Memory**
-   - `ConversationBufferMemory`: Stores conversation history in a buffer
-   - `ConversationBufferWindowMemory`: Maintains a sliding window of conversation history
-   - `ConversationSummaryMemory`: Maintains summarized conversation history
+   - `BufferMemory`: Stores conversation history in a buffer
+   - `BufferWindowMemory`: Maintains a sliding window of conversation history
+   - `SummaryMemory` / `SummaryBufferMemory`: Maintain summarized conversation history
 
 3. **Entity Memory** (`EntityMemory`)
    - Stores and retrieves information about entities
@@ -261,13 +261,16 @@ This document provides an overview of all memory implementations in the MultiMin
 
 ## Usage Examples
 
+`FastWeightMemory` and `AdapterMemory` require the finetune extra: `pip install "multimind-sdk[finetune]"`.
+
 ```python
+from multimind import OpenAIModel
 from multimind.memory import (
-    ConversationBufferMemory,
+    BufferMemory,
     VectorStoreMemory,
     HybridMemory,
-    FastWeightMemory,
-    AdapterMemory,
+    FastWeightMemory,   # requires multimind-sdk[finetune]
+    AdapterMemory,      # requires multimind-sdk[finetune]
     HTMMemory,
     QRAM,
     QAM,
@@ -275,15 +278,18 @@ from multimind.memory import (
     QuantumClassicalHybridMemory
 )
 
+model = OpenAIModel(model_name="gpt-4o-mini")
+
 # Create a conversation memory
-conv_memory = ConversationBufferMemory()
+conv_memory = BufferMemory()
 
-# Create a vector store memory
-vector_memory = VectorStoreMemory()
+# Create a vector store memory (needs an LLM for embeddings/summaries)
+vector_memory = VectorStoreMemory(llm=model)
 
-# Create a hybrid memory
+# Create a hybrid memory (routes across memory types)
 hybrid_memory = HybridMemory(
-    memories=[conv_memory, vector_memory]
+    llm=model,
+    memory_types=[BufferMemory, VectorStoreMemory]
 )
 
 # Create a fast-weight memory
@@ -332,11 +338,9 @@ quantum_hybrid_memory = QuantumClassicalHybridMemory(
     hybrid_threshold=0.5
 )
 
-# Add memory
-await hybrid_memory.add_memory(
-    memory_id="example",
-    content="This is an example memory",
-    metadata={"type": "example"}
+# Add a message to the hybrid memory (routed to the best memory type)
+await hybrid_memory.add_message(
+    {"role": "user", "content": "This is an example memory"}
 )
 
 # Add memory to QRAM
@@ -367,8 +371,8 @@ await quantum_hybrid_memory.add_memory(
     metadata={"type": "hybrid"}
 )
 
-# Retrieve memory
-memory = await hybrid_memory.get_memory("example")
+# Retrieve messages from the hybrid memory
+messages = await hybrid_memory.get_messages()
 
 # Retrieve from QRAM
 qram_memory = await qram.get_memory("quantum_example")
@@ -408,14 +412,6 @@ hybrid_result = await quantum_hybrid_memory.get_memory("hybrid_example")
    - Handle anyon braiding operations
    - Manage hybrid memory allocation
 
-5. **Quantum Memory Considerations**
-   - Monitor coherence times
-   - Track error rates
-   - Implement error correction
-   - Consider quantum-classical interfaces
-   - Handle anyon braiding operations
-   - Manage hybrid memory allocation
-
 ## Contributing
 
 To contribute new memory implementations:
@@ -426,18 +422,3 @@ To contribute new memory implementations:
 4. Update documentation
 5. Add tests
 6. Submit a pull request
-
-## References
-
-1. [Memory Systems in Cognitive Science](https://example.com)
-2. [Neural Memory Networks](https://example.com)
-3. [Distributed Memory Systems](https://example.com)
-4. [Hierarchical Temporal Memory](https://example.com)
-5. [Fast-Weight Networks](https://example.com)
-6. [Adapter-Based Learning](https://example.com)
-7. [Quantum Random-Access Memory](https://example.com)
-8. [Quantum Associative Memory](https://example.com)
-9. [Quantum Error Correction](https://example.com)
-10. [Topological Quantum Computing](https://example.com)
-11. [Quantum-Classical Hybrid Systems](https://example.com)
-12. [Anyon Braiding](https://example.com) 

@@ -1,6 +1,10 @@
 """
 Token-aware memory buffer that can be used with any LLM application, including RAG.
 This implementation is similar to LangChain's token buffer but with additional features.
+
+Module consolidation review: a standalone variant alongside ``buffer.BufferMemory``
+(which has its own lighter-weight token tracking), not a redundant duplicate —
+this one owns its own tokenizer fallback and LangChain-style eviction policy.
 """
 
 import logging

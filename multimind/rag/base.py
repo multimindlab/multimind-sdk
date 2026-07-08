@@ -103,10 +103,16 @@ class BaseRAG(ABC):
         self.retrieval_strategy = retrieval_strategy
         self.chunking_strategy = chunking_strategy
         self.kwargs = kwargs
-        self._semaphore = asyncio.Semaphore(kwargs.get("max_concurrent_operations", 10))
+        self._max_concurrent_operations = kwargs.get("max_concurrent_operations", 10)
+        # Lazily created on first async use: on Python 3.9, asyncio.Semaphore()
+        # binds to the current event loop at construction time, so creating it
+        # here (in a sync __init__, with no loop running yet) raises RuntimeError.
+        self._semaphore = None
 
     async def _execute_with_semaphore(self, coro):
         """Execute coroutine with semaphore for rate limiting."""
+        if self._semaphore is None:
+            self._semaphore = asyncio.Semaphore(self._max_concurrent_operations)
         async with self._semaphore:
             return await coro
 

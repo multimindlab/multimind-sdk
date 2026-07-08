@@ -49,9 +49,18 @@ class AnnoyBackend(VectorStoreBackend):
         self.rev_id_map = {}
         self.metadata = {}
         self.documents = {}
-        self.next_idx = 0
+        # Raw vectors by id: Annoy indexes are immutable once built, so adds
+        # and deletes rebuild the index from these.
+        self._vectors: Dict[str, List[float]] = {}
+        # Monotonic counter for auto-generated ids only; kept separate from
+        # the Annoy item indices (see _rebuild_index) which must stay dense.
+        self._auto_id_counter = 0
         if self.persist_path and os.path.exists(self.persist_path):
             self.index.load(self.persist_path)
+
+    async def initialize(self) -> None:
+        """No-op: the Annoy index is set up eagerly in __init__."""
+        pass
 
     async def add_vectors(
         self,
@@ -61,15 +70,15 @@ class AnnoyBackend(VectorStoreBackend):
         ids: Optional[List[str]] = None,
     ) -> None:
         for i, vector in enumerate(vectors):
-            idx = self.next_idx
-            id_str = ids[i] if ids else str(idx)
-            self.index.add_item(idx, vector)
-            self.id_map[id_str] = idx
-            self.rev_id_map[idx] = id_str
+            if ids:
+                id_str = ids[i]
+            else:
+                id_str = str(self._auto_id_counter)
+                self._auto_id_counter += 1
             self.metadata[id_str] = metadatas[i]
             self.documents[id_str] = documents[i]
-            self.next_idx += 1
-        self.index.build(self.n_trees)
+            self._vectors[id_str] = list(vector)
+        self._rebuild_index()
         if self.live_indexing:
             await self._run_plugin("on_live_index", vectors, metadatas, documents, ids)
         self.log_metrics("add_vectors", len(vectors))
@@ -92,11 +101,11 @@ class AnnoyBackend(VectorStoreBackend):
             meta = self.metadata[id_str]
             doc = self.documents[id_str]
             score = 1 / (1 + dist)
-            bm25_score = None
+            keyword_score = None
             # Hybrid search
             if self.enable_hybrid_search and query_text:
-                bm25_score = self._bm25_score(query_text, doc.get("content", ""))
-                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * bm25_score
+                keyword_score = self._token_overlap_score(query_text, doc.get("content", ""))
+                score = self.hybrid_weight * score + (1 - self.hybrid_weight) * keyword_score
             # Metadata filtering
             if filter_criteria and not all(meta.get(k) == v for k, v in filter_criteria.items()):
                 continue
@@ -106,7 +115,7 @@ class AnnoyBackend(VectorStoreBackend):
             if explain:
                 result.explanation = {
                     "vector_score": 1 / (1 + dist),
-                    "bm25_score": bm25_score,
+                    "keyword_score": keyword_score,
                     "final_score": score,
                 }
             results.append(result)
@@ -116,8 +125,8 @@ class AnnoyBackend(VectorStoreBackend):
         self.log_metrics("search", len(results))
         return results
 
-    def _bm25_score(self, query_text: str, doc_text: str) -> float:
-        # Simple BM25 placeholder (replace with real BM25 if needed)
+    def _token_overlap_score(self, query_text: str, doc_text: str) -> float:
+        # Naive token-overlap keyword score; not BM25
         return float(len(set(query_text.split()) & set(doc_text.split()))) / (
             len(doc_text.split()) + 1
         )
@@ -129,19 +138,29 @@ class AnnoyBackend(VectorStoreBackend):
                 r.score = 1.0 / (i + 1)
         return results
 
+    def _rebuild_index(self) -> None:
+        """Rebuild the (immutable-once-built) Annoy index from stored vectors.
+
+        Renumbers every id to a contiguous 0..n-1 range: Annoy silently
+        returns wrong/incomplete results when item indices have gaps (e.g.
+        after a delete), so ids are kept dense across every add/delete.
+        """
+        self.index = AnnoyIndex(self.vector_dim, "angular")
+        self.id_map = {}
+        self.rev_id_map = {}
+        for new_idx, id_str in enumerate(self._vectors):
+            self.index.add_item(new_idx, self._vectors[id_str])
+            self.id_map[id_str] = new_idx
+            self.rev_id_map[new_idx] = id_str
+        self.index.build(self.n_trees)
+
     async def delete_vectors(self, ids: List[str]) -> None:
         for id_str in ids:
-            idx = self.id_map.pop(id_str, None)
-            if idx is not None:
-                self.rev_id_map.pop(idx, None)
+            if id_str in self._vectors:
                 self.metadata.pop(id_str, None)
                 self.documents.pop(id_str, None)
-        self.index = AnnoyIndex(self.vector_dim, "angular")
-        self.next_idx = 0
-        for id_str, idx in self.id_map.items():
-            self.index.add_item(idx, self.documents[id_str]["vector"])
-            self.next_idx += 1
-        self.index.build(self.n_trees)
+                self._vectors.pop(id_str, None)
+        self._rebuild_index()
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
@@ -150,7 +169,8 @@ class AnnoyBackend(VectorStoreBackend):
         self.rev_id_map.clear()
         self.metadata.clear()
         self.documents.clear()
-        self.next_idx = 0
+        self._vectors.clear()
+        self._auto_id_counter = 0
         self.log_metrics("clear", 1)
 
     async def persist(self, path: str) -> None:

@@ -7,14 +7,15 @@ Thank you for your interest in contributing to MultiMind SDK! This document prov
 1. [Code of Conduct](#code-of-conduct)
 2. [Getting Started](#getting-started)
 3. [Development Setup](#development-setup)
-4. [Contribution Workflow](#contribution-workflow)
-5. [Code Style and Standards](#code-style-and-standards)
-6. [Testing](#testing)
-7. [Documentation](#documentation)
-8. [Pull Request Process](#pull-request-process)
-9. [Feature Requests and Bug Reports](#feature-requests-and-bug-reports)
-10. [Community](#community)
-11. [CLI Testing Guidelines](#cli-testing-guidelines)
+4. [Good First Areas](#good-first-areas)
+5. [Contribution Workflow](#contribution-workflow)
+6. [Code Style and Standards](#code-style-and-standards)
+7. [Testing](#testing)
+8. [Documentation](#documentation)
+9. [Pull Request Process](#pull-request-process)
+10. [Feature Requests and Bug Reports](#feature-requests-and-bug-reports)
+11. [Community](#community)
+12. [CLI Testing Guidelines](#cli-testing-guidelines)
 
 ## Code of Conduct
 
@@ -30,7 +31,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
    ```
 3. Add the upstream repository:
    ```bash
-   git remote add upstream https://github.com/original-username/multimind-sdk.git
+   git remote add upstream https://github.com/multimindlab/multimind-sdk.git
    ```
 
 ## Development Setup
@@ -87,6 +88,30 @@ manually.
 If a hook modifies files (e.g. `ruff --fix` cleans an import), the commit
 fails with a clear message. Re-run `git add` for the modified files and
 commit again.
+
+## Good First Areas
+
+Approachable places to make a genuinely useful first contribution:
+
+- **Examples** (`examples/`) — small, runnable scripts demonstrating one feature.
+  Several offline examples ([examples/compliance/guarded_model.py](examples/compliance/guarded_model.py),
+  [examples/observability/cost_tracking.py](examples/observability/cost_tracking.py),
+  [examples/evaluation/hallucination_detection.py](examples/evaluation/hallucination_detection.py))
+  show the pattern; a new example needs no deep knowledge of the internals.
+- **Documentation** (`docs/`, README, this file) — fixing inaccuracies, adding
+  recipes to [docs/cookbook.md](docs/cookbook.md), or improving the
+  [non-technical guide](docs/getting-started-non-technical.md). If a doc
+  confused you, that confusion is the bug report.
+- **Vector-store backends** (`multimind/vector_store/`) — many of the 40+
+  backends are client-backed stubs whose methods still `raise NotImplementedError`
+  (e.g. `cassandra.py`, `azuresearch.py`, `clickhouse.py`, `tiledb.py`).
+  Picking one and implementing its methods against the real client library is
+  self-contained: the interface to satisfy is in
+  `multimind/vector_store/base.py`, and working references include the FAISS
+  and Chroma backends.
+
+Also check issues labeled `good first issue` on
+[GitHub](https://github.com/multimindlab/multimind-sdk/issues).
 
 ## Contribution Workflow
 
@@ -278,9 +303,9 @@ pytest --cov=multimind
 
 ### Getting Help
 
-- Check the [documentation](https://multimind-sdk.readthedocs.io/)
+- Check the [documentation](docs/README.md)
 - Search existing issues
-- Join our [Discord community](https://discord.gg/your-invite-link)
+- Join our [Discord community](https://discord.gg/K64U65je7h)
 - Ask in GitHub Discussions
 
 ### Recognition
@@ -294,7 +319,7 @@ pytest --cov=multimind
 - [Project Roadmap](ROADMAP.md)
 - [Architecture Overview](docs/architecture.md)
 - [Development Guidelines](docs/development.md)
-- [Release Process](docs/release_process.md)
+- [Docs Index](docs/README.md)
 
 ## CLI Testing Guidelines
 

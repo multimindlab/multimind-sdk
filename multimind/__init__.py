@@ -98,8 +98,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     "PromptChain": ("multimind.orchestration.prompt_chain", None),
     "TaskRunner": ("multimind.orchestration.task_runner", None),
     # Ensemble
-    "AdvancedEnsemble": ("multimind.ensemble", None),
-    "EnsembleMethod": ("multimind.ensemble.advanced", None),
+    "AdvancedEnsemble": ("multimind.ensemble", "finetune"),
+    "EnsembleMethod": ("multimind.ensemble.advanced", "finetune"),
     # MCP
     "MCPExecutor": ("multimind.mcp.executor", None),
     "MCPParser": ("multimind.mcp.parser", None),
@@ -116,6 +116,16 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     # Models (extras live in their own families)
     "OllamaModel": ("multimind.models.ollama", None),
     "MistralModel": ("multimind.models.ollama", None),
+    "GroqModel": ("multimind.models.groq", None),
+    "MistralAIModel": ("multimind.models.mistral", None),
+    "GeminiModel": ("multimind.models.gemini", None),
+    "DeepSeekModel": ("multimind.models.deepseek", None),
+    "OpenRouterModel": ("multimind.models.openrouter", None),
+    "TogetherModel": ("multimind.models.together", None),
+    "XAIModel": ("multimind.models.xai", None),
+    "PerplexityModel": ("multimind.models.perplexity", None),
+    "FireworksModel": ("multimind.models.fireworks", None),
+    "CerebrasModel": ("multimind.models.cerebras", None),
     "ModelFactory": ("multimind.models.factory", None),
     "MultiModelWrapper": ("multimind.models.multi_model", None),
     "HuggingFaceModel": ("multimind.models.huggingface", "finetune"),
@@ -247,8 +257,8 @@ _LAZY_ATTRS: dict[str, tuple[str, str | None]] = {
     "PipelineConverter": ("multimind.model_conversion", "finetune"),
     "ModelConversionManager": ("multimind.model_conversion", "finetune"),
     # Context window
-    "ContextManager": ("multimind.context_window", None),
-    "ContextOptimizer": ("multimind.context_window", None),
+    "ContextManager": ("multimind.context_window", "rag"),
+    "ContextOptimizer": ("multimind.context_window", "rag"),
     # Patterns (RAG-flavoured)
     "RetrievalStep": ("multimind.patterns", "rag"),
     "FusionResult": ("multimind.patterns", "rag"),
@@ -365,9 +375,19 @@ if TYPE_CHECKING:  # pragma: no cover
         SummaryMemory,
     )
     from multimind.models.base import BaseLLM  # noqa: F401
+    from multimind.models.cerebras import CerebrasModel  # noqa: F401
+    from multimind.models.deepseek import DeepSeekModel  # noqa: F401
     from multimind.models.factory import ModelFactory  # noqa: F401
+    from multimind.models.fireworks import FireworksModel  # noqa: F401
+    from multimind.models.gemini import GeminiModel  # noqa: F401
+    from multimind.models.groq import GroqModel  # noqa: F401
+    from multimind.models.mistral import MistralAIModel  # noqa: F401
     from multimind.models.multi_model import MultiModelWrapper  # noqa: F401
     from multimind.models.ollama import MistralModel, OllamaModel  # noqa: F401
+    from multimind.models.openrouter import OpenRouterModel  # noqa: F401
+    from multimind.models.perplexity import PerplexityModel  # noqa: F401
+    from multimind.models.together import TogetherModel  # noqa: F401
+    from multimind.models.xai import XAIModel  # noqa: F401
     from multimind.rag import (  # noqa: F401
         RAG,
         BaseRAG,

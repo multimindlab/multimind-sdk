@@ -14,6 +14,22 @@ from .utils import MemoryUtils
 
 logger = logging.getLogger(__name__)
 
+# Lexical cues used by the heuristic causal analysis.
+_CAUSAL_CUES = (
+    "because",
+    "caused by",
+    "causes",
+    "caused",
+    "leads to",
+    "led to",
+    "results in",
+    "resulted in",
+    "due to",
+    "as a result",
+    "therefore",
+    "consequently",
+)
+
 
 class DeclarativeMemory(BaseMemory):
     """Memory that manages factual knowledge with verification and confidence scoring."""
@@ -53,9 +69,11 @@ class DeclarativeMemory(BaseMemory):
         enable_knowledge_graph: bool = True,
         graph_update_interval: int = 3600,  # 1 hour
         relationship_types: Set[str] = None,
+        graph_memory: Optional[BaseMemory] = None,
     ):
         super().__init__(memory_key)
         self.llm = llm
+        self.graph_memory = graph_memory
         self.storage_path = Path(storage_path) if storage_path else None
         self.max_facts = max_facts
         self.verification_threshold = verification_threshold
@@ -526,6 +544,105 @@ class DeclarativeMemory(BaseMemory):
             logger.error(f"Error detecting contradictions: {e}")
 
         self.last_contradiction = datetime.now()
+
+    async def _analyze_temporal_relations(
+        self, fact_id: str, concurrent_window: float = 60.0
+    ) -> None:
+        """Derive before/after/concurrent relations from stored fact timestamps."""
+        fact = next(f for f in self.facts if f["id"] == fact_id)
+        fact_time = datetime.fromisoformat(fact["timestamp"])
+
+        relations = []
+        for other in self.facts:
+            if other["id"] == fact_id:
+                continue
+            delta = (fact_time - datetime.fromisoformat(other["timestamp"])).total_seconds()
+            if abs(delta) <= concurrent_window:
+                relation = "temporally_during"
+            elif delta > 0:
+                relation = "temporally_after"
+            else:
+                relation = "temporally_before"
+            relations.append({"fact_id": other["id"], "relation": relation, "delta_seconds": delta})
+
+        self.temporal_relations[fact_id] = {
+            "timestamp": datetime.now().isoformat(),
+            # Timestamps are exact, so ordering is certain whenever peers exist.
+            "score": 1.0 if relations else 0.0,
+            "type": "timestamp_ordering",
+            "relations": relations,
+        }
+        fact["metadata"]["temporal_data"] = self.temporal_relations[fact_id]
+        self.last_temporal = datetime.now()
+
+    async def _analyze_causal_chains(self, fact_id: str) -> None:
+        """Heuristic causal analysis: lexical cues plus temporal ordering.
+
+        Flags explicit cue words ("because", "led to", ...) and lists earlier
+        facts as candidate causes. Not a causal model; results are labeled
+        as heuristic.
+        """
+        fact = next(f for f in self.facts if f["id"] == fact_id)
+        content = fact["content"].lower()
+        cues = [cue for cue in _CAUSAL_CUES if cue in content]
+
+        chains = []
+        if cues:
+            fact_time = datetime.fromisoformat(fact["timestamp"])
+            candidate_causes = [
+                other["id"]
+                for other in self.facts
+                if other["id"] != fact_id
+                and datetime.fromisoformat(other["timestamp"]) <= fact_time
+            ]
+            chains.append(
+                {
+                    "chain_type": "lexical_cue",
+                    "cues": cues,
+                    "candidate_causes": candidate_causes,
+                }
+            )
+
+        self.causal_chains[fact_id] = {
+            "timestamp": datetime.now().isoformat(),
+            "score": 1.0 if cues else 0.0,
+            "method": "lexical_heuristic",
+            "chains": chains,
+        }
+        fact["metadata"]["causal_data"] = self.causal_chains[fact_id]
+        self.last_causal = datetime.now()
+
+    async def _update_knowledge_graph(self, fact_id: str) -> None:
+        """Add the fact to the knowledge graph.
+
+        Delegates to a configured graph memory (e.g. KnowledgeGraphMemory)
+        when available; otherwise maintains a plain dict graph keyed by
+        fact id with edges from temporal/causal analysis.
+        """
+        fact = next(f for f in self.facts if f["id"] == fact_id)
+
+        if self.graph_memory is not None:
+            await self.graph_memory.add_message(
+                {"role": "declarative_memory", "content": fact["content"]}
+            )
+            fact["metadata"]["graph_data"] = {"delegated_to": type(self.graph_memory).__name__}
+        else:
+            edges: Dict[str, List[str]] = {}
+            temporal = self.temporal_relations.get(fact_id, {})
+            for rel in temporal.get("relations", []):
+                edges.setdefault(rel["relation"], []).append(rel["fact_id"])
+            for chain in self.causal_chains.get(fact_id, {}).get("chains", []):
+                for cause_id in chain.get("candidate_causes", []):
+                    edges.setdefault("candidate_causes", []).append(cause_id)
+            self.knowledge_graph[fact_id] = {
+                "type": "fact",
+                "content": fact["content"],
+                "timestamp": fact["timestamp"],
+                "edges": edges,
+            }
+            fact["metadata"]["graph_data"] = {"node_id": fact_id, "type": "fact"}
+
+        self.last_graph_update = datetime.now()
 
     async def _update_learning_progress(self, fact_id: str) -> None:
         """Update learning progress for a fact."""

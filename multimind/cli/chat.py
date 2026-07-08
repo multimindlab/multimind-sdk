@@ -3,6 +3,7 @@ Chat management commands for MultiMind CLI
 """
 
 import asyncio
+import sys
 from typing import Optional
 
 import click
@@ -11,10 +12,23 @@ from rich.panel import Panel
 from rich.progress import Progress
 from rich.table import Table
 
-from ..gateway.chat import chat_manager
-from ..gateway.models import get_model_handler
+from .models import _require_api_key
 
 console = Console()
+
+
+def _gateway():
+    # Gateway needs the [gateway] extras; import at command time so `multimind
+    # --help` and torch-free/core installs keep working
+    try:
+        from ..gateway.chat import chat_manager
+        from ..gateway.models import get_model_handler
+    except ImportError as exc:
+        raise click.ClickException(
+            "Chat commands require the gateway extras. "
+            "Install with: pip install 'multimind-sdk[gateway]'"
+        ) from exc
+    return chat_manager, get_model_handler
 
 
 @click.group()
@@ -28,12 +42,18 @@ def chat():
 @click.option("--prompt", "-p", help="Single prompt to send (optional)")
 def start(model: str, prompt: Optional[str]):
     """Start an interactive chat session with a model"""
+    _require_api_key(model)
     try:
+        _, get_model_handler = _gateway()
         handler = get_model_handler(model)
 
         if prompt:
             # Single message mode
-            response = asyncio.run(handler.generate(prompt))
+            try:
+                response = asyncio.run(handler.generate(prompt))
+            except Exception as e:
+                console.print(f"[red]Error: {str(e)}[/red]")
+                sys.exit(1)
             console.print(Panel(response.content, title=f"{model} Response"))
             return
 
@@ -74,12 +94,14 @@ def start(model: str, prompt: Optional[str]):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
 def list_sessions():
     """List all chat sessions"""
     try:
+        chat_manager, _ = _gateway()
         sessions = chat_manager.list_sessions()
 
         if not sessions:
@@ -106,6 +128,7 @@ def list_sessions():
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -113,12 +136,13 @@ def list_sessions():
 def load(session_id: str):
     """Load a chat session"""
     try:
+        chat_manager, _ = _gateway()
         session = chat_manager.get_session(session_id)
         if not session:
             session = chat_manager.load_session(session_id)
         if not session:
             console.print(f"[red]Session {session_id} not found[/red]")
-            return
+            sys.exit(1)
 
         console.print(f"[green]Loaded session {session_id}[/green]")
         console.print(f"Model: {session.model}")
@@ -134,6 +158,7 @@ def load(session_id: str):
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -141,13 +166,16 @@ def load(session_id: str):
 def save(session_id: str):
     """Save a chat session"""
     try:
+        chat_manager, _ = _gateway()
         if chat_manager.save_session(session_id):
             console.print(f"[green]Saved session {session_id}[/green]")
         else:
             console.print(f"[red]Failed to save session {session_id}[/red]")
+            sys.exit(1)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)
 
 
 @chat.command()
@@ -155,10 +183,13 @@ def save(session_id: str):
 def delete(session_id: str):
     """Delete a chat session"""
     try:
+        chat_manager, _ = _gateway()
         if chat_manager.delete_session(session_id):
             console.print(f"[green]Deleted session {session_id}[/green]")
         else:
             console.print(f"[red]Session {session_id} not found[/red]")
+            sys.exit(1)
 
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
+        sys.exit(1)

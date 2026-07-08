@@ -5,6 +5,7 @@ Base classes for Mixture of Experts (MoE) implementation.
 import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
+from statistics import fmean
 from typing import Any, Dict, Optional
 
 logger = logging.getLogger(__name__)
@@ -18,8 +19,6 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
     logger.warning("PyTorch not available. MoE base features will be disabled.")
-
-import numpy as np
 
 
 class Expert(ABC):
@@ -84,7 +83,7 @@ class ExpertRouter(ABC):
         avg_weights = {}
         for expert_id in self.experts.keys():
             weights = [entry["weights"].get(expert_id, 0.0) for entry in self.routing_history]
-            avg_weights[expert_id] = np.mean(weights)
+            avg_weights[expert_id] = fmean(weights)
 
         return {"total_routes": len(self.routing_history), "average_weights": avg_weights}
 

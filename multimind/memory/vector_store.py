@@ -49,15 +49,17 @@ class VectorStoreMemory(BaseMemory):
         # Initialize vector store with default config if none provided
         if vector_store_config is None:
             vector_store_config = VectorStoreConfig(
+                connection_params={
+                    "dimension": 1536,  # Default for OpenAI embeddings
+                    "max_vectors": 10000,
+                    "storage_path": None,  # Will be set if needed
+                    "index_type": "flat",  # Default index type
+                    "enable_compression": True,
+                    "compression_threshold": 0.8,
+                    "enable_quantization": False,
+                    "quantization_bits": 8,
+                },
                 store_type=VectorStoreType.FAISS,  # Default to FAISS
-                vector_dim=1536,  # Default for OpenAI embeddings
-                max_vectors=10000,
-                storage_path=None,  # Will be set if needed
-                index_type="flat",  # Default index type
-                enable_compression=True,
-                compression_threshold=0.8,
-                enable_quantization=False,
-                quantization_bits=8,
             )
 
         self.vector_store = VectorStore(vector_store_config)
@@ -79,8 +81,8 @@ class VectorStoreMemory(BaseMemory):
     async def get_messages(self) -> List[Dict[str, str]]:
         """Return stored message payloads."""
         results = await self.vector_store.search(
-            query_vector=[0] * self.vector_store.config.vector_dim,
-            k=self.vector_store.config.max_vectors,
+            query_vector=[0] * self.vector_store.config.get("dimension", 1536),
+            k=self.vector_store.config.get("max_vectors", 10000),
         )
         messages: List[Dict[str, str]] = []
         for result in results:
@@ -138,7 +140,7 @@ class VectorStoreMemory(BaseMemory):
         """Get a vector by ID."""
         # Search for exact ID using search with filter
         results = await self.vector_store.search(
-            query_vector=[0] * self.vector_store.config.vector_dim,  # Dummy vector
+            query_vector=[0] * self.vector_store.config.get("dimension", 1536),  # Dummy vector
             k=1,
             filter_criteria={"id": memory_id},
         )
@@ -162,7 +164,8 @@ class VectorStoreMemory(BaseMemory):
     async def _get_embedding(self, text: str) -> np.ndarray:
         """Get embedding for text using LLM."""
         # Use the actual LLM to generate embeddings
-        return await self.llm.get_embedding(text)
+        embedding = await self.llm.embeddings(text)
+        return np.asarray(embedding, dtype=float)
 
     async def _prune_vectors(self) -> None:
         """Prune vectors based on access patterns."""
@@ -171,8 +174,8 @@ class VectorStoreMemory(BaseMemory):
 
         # Get all vectors and find ones to prune
         results = await self.vector_store.search(
-            query_vector=[0] * self.vector_store.config.vector_dim,
-            k=self.vector_store.config.max_vectors,
+            query_vector=[0] * self.vector_store.config.get("dimension", 1536),
+            k=self.vector_store.config.get("max_vectors", 10000),
         )
 
         to_prune = []
@@ -196,10 +199,11 @@ class VectorStoreMemory(BaseMemory):
 
     async def _backup(self) -> None:
         """Create a backup of the current state."""
-        if not self.enable_backup or not self.vector_store.config.storage_path:
+        if not self.enable_backup or not self.vector_store.config.get("storage_path"):
             return
 
-        backup_path = f"{self.vector_store.config.storage_path}/backup_{datetime.now().isoformat()}"
+        base_storage_path = self.vector_store.config.get("storage_path")
+        backup_path = f"{base_storage_path}/backup_{datetime.now().isoformat()}"
         await self.vector_store.persist(backup_path)
 
         self.backup_history.append({"path": backup_path, "timestamp": datetime.now().isoformat()})
@@ -229,14 +233,14 @@ class VectorStoreMemory(BaseMemory):
 
     async def save(self) -> None:
         """Persist the vector store when storage is configured."""
-        storage_path = self.vector_store.config.storage_path
+        storage_path = self.vector_store.config.get("storage_path")
         if not storage_path:
             return
         await self.vector_store.persist(storage_path)
 
     async def load(self) -> None:
         """Load the vector store from persistent storage."""
-        storage_path = self.vector_store.config.storage_path
+        storage_path = self.vector_store.config.get("storage_path")
         if not storage_path:
             return
         self.vector_store = await VectorStore.load(storage_path, self.vector_store.config)

@@ -1,0 +1,123 @@
+name: Release
+
+# Triggers on a published GitHub release (the normal flow) and on pushing a
+# `v*` tag directly (useful for testing the build/test-wheel jobs without
+# cutting a full GitHub release). Publishing to PyPI only runs for the
+# `release: published` event — see the `publish` job's `if:` condition.
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Build sdist + wheel, validate metadata with twine, upload as artifacts
+  # for the downstream jobs (and for manual inspection on tag-only runs).
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build sdist + wheel
+        run: python -m build
+      - name: Validate distribution metadata (twine check)
+        run: twine check dist/*
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Install the *built wheel* (not the editable/source checkout) in a clean
+  # environment and run a small smoke subset — this is what actually catches
+  # packaging mistakes (missing package-data, wrong `packages.find` excludes,
+  # etc.) that `pip install -e .` in CI would never surface.
+  # ---------------------------------------------------------------------------
+  test-wheel:
+    name: Test built wheel
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Install the built wheel (+ test runner only, no editable install)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+          python -m pip install "pytest>=9.0.3" "pytest-asyncio>=0.21.0"
+      - name: Import smoke test
+        run: python -c "import multimind; print('multimind', multimind.__version__)"
+      - name: Run smoke test subset against the installed wheel
+        run: |
+          pytest tests/test_import.py tests/test_basic.py -v --tb=short \
+            -m "not integration and not slow and not requires_api_key"
+
+  # ---------------------------------------------------------------------------
+  # Publish to PyPI via OIDC trusted publishing — no long-lived API token
+  # secrets are stored or referenced. Requires a one-time trusted-publisher
+  # registration on pypi.org (see docs/releasing.md). Only runs for an
+  # actual published GitHub release, never for a bare tag push or
+  # workflow_dispatch, so tag-based testing of build/test-wheel can't
+  # accidentally publish.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [test-wheel]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/multimind-sdk/
+    permissions:
+      id-token: write # required for OIDC trusted publishing — no API token needed
+    steps:
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+      # --- TestPyPI variant (commented out) ---------------------------------
+      # Useful while setting up trusted publishing for the first time, or for
+      # dry-running a release without touching the real index. Requires its
+      # own trusted-publisher registration on test.pypi.org and a separate
+      # `testpypi` environment (see docs/releasing.md).
+      #
+      # - name: Publish to TestPyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1
+      #   with:
+      #     repository-url: https://test.pypi.org/legacy/
+      #     packages-dir: dist/

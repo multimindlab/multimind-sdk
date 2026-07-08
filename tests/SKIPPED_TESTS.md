@@ -13,7 +13,6 @@ These tests are skipped because they test abstract base classes or features that
 - `test_integration_handler_init` - Tests `IntegrationHandler` which is abstract
 - `test_buffer_memory_basic` - `BufferMemory` doesn't support append operation
 - `test_summary_buffer_memory_basic` - `SummaryBufferMemory` is abstract
-- `test_implicit_memory_basic` - `ImplicitMemory` is abstract
 - `test_vector_store_backends` - Various vector store backends are abstract (Clarifai, DashVector, DingoDB, Epsilla)
 
 **Status**: These are legitimate skips. Tests should be updated when concrete implementations are available.

@@ -21,6 +21,10 @@ class FAISSBackend(VectorStoreBackend):
         self.index = None
         self.metadata = {}
         self.documents = {}
+        # Insertion-ordered id list (FAISS positions) and raw vectors, kept so
+        # search can map positions to caller ids and delete can rebuild.
+        self._id_order: List[str] = []
+        self._vectors: Dict[str, np.ndarray] = {}
         self.logger = logging.getLogger(__name__)
 
     async def initialize(self) -> None:
@@ -69,11 +73,13 @@ class FAISSBackend(VectorStoreBackend):
         vectors_array = np.array(vectors).astype("float32")
         self.index.add(vectors_array)
 
-        start_id = len(self.metadata)
+        start_id = len(self._id_order)
         for i, (metadata, doc) in enumerate(zip(metadatas, documents)):
             id = ids[i] if ids else f"vec_{start_id + i}"
             self.metadata[id] = metadata
             self.documents[id] = doc
+            self._id_order.append(id)
+            self._vectors[id] = vectors_array[i]
 
     async def search(
         self,
@@ -91,9 +97,9 @@ class FAISSBackend(VectorStoreBackend):
         results = []
         for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
             if idx >= 0 and idx < len(
-                self.metadata
+                self._id_order
             ):  # Check idx >= 0 (FAISS returns -1 for invalid)
-                id = f"vec_{idx}"
+                id = self._id_order[idx]
                 # Check if metadata and document exist for this ID
                 if id in self.metadata and id in self.documents:
                     results.append(
@@ -109,32 +115,30 @@ class FAISSBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids: List[str]) -> None:
-        """Delete vectors from FAISS index."""
+        """Delete vectors from FAISS index (rebuilds the index without them)."""
         if not self.index:
             return
 
-        # Create new index
-        dimension = self.config.get("dimension", 768)
-        new_index = faiss.IndexFlatL2(dimension)
-        new_metadata = {}
-        new_documents = {}
+        to_delete = set(ids)
+        remaining = [id for id in self._id_order if id not in to_delete]
 
-        # Rebuild with remaining vectors
-        for i, (id, metadata) in enumerate(self.metadata.items()):
-            if id not in ids:
-                new_metadata[id] = metadata
-                new_documents[id] = self.documents[id]
+        # Rebuild the index from the retained raw vectors.
+        await self.initialize()
+        if remaining:
+            self.index.add(np.stack([self._vectors[id] for id in remaining]))
 
-        # Update index
-        self.index = new_index
-        self.metadata = new_metadata
-        self.documents = new_documents
+        self.metadata = {id: self.metadata[id] for id in remaining}
+        self.documents = {id: self.documents[id] for id in remaining}
+        self._vectors = {id: self._vectors[id] for id in remaining}
+        self._id_order = remaining
 
     async def clear(self) -> None:
         """Clear FAISS index."""
         self.index = None
         self.metadata = {}
         self.documents = {}
+        self._id_order = []
+        self._vectors = {}
 
     async def persist(self, path: str) -> None:
         """Persist FAISS index to disk."""
@@ -152,6 +156,8 @@ class FAISSBackend(VectorStoreBackend):
             pickle.dump(self.metadata, f)
         with open(path / "documents.pkl", "wb") as f:
             pickle.dump(self.documents, f)
+        with open(path / "vectors.pkl", "wb") as f:
+            pickle.dump({"id_order": self._id_order, "vectors": self._vectors}, f)
 
     @classmethod
     async def load(cls, path: str, config: VectorStoreConfig) -> "FAISSBackend":
@@ -171,5 +177,13 @@ class FAISSBackend(VectorStoreBackend):
         if (path / "documents.pkl").exists():
             with open(path / "documents.pkl", "rb") as f:
                 backend.documents = pickle.load(f)
+        if (path / "vectors.pkl").exists():
+            with open(path / "vectors.pkl", "rb") as f:
+                state = pickle.load(f)
+            backend._id_order = state["id_order"]
+            backend._vectors = state["vectors"]
+        else:
+            # Older persisted stores: fall back to metadata insertion order.
+            backend._id_order = list(backend.metadata.keys())
 
         return backend

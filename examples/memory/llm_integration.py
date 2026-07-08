@@ -5,25 +5,26 @@ LLM integration examples with MultiMind memory systems.
 import asyncio
 from multimind.memory import (
     HybridMemory,
-    ConversationBufferMemory,
+    BufferMemory,
     VectorStoreMemory,
     FastWeightMemory,
-    AdapterMemory
+    AdapterMemory,
+    QuantumClassicalHybridMemory
 )
-from multimind.llm import LLM
+from multimind.models import OpenAIModel
 
 async def llm_memory_example():
     """Demonstrate LLM integration with memory systems."""
     # Initialize LLM
-    llm = LLM(
+    llm = OpenAIModel(
         model_name="gpt-4",
         temperature=0.7
     )
-    
+
     # Create memory system
     memory_system = HybridMemory(
         memories=[
-            ConversationBufferMemory(),
+            BufferMemory(),
             VectorStoreMemory(),
             FastWeightMemory(
                 input_size=768,
@@ -79,11 +80,11 @@ async def llm_memory_example():
 async def llm_quantum_memory_example():
     """Demonstrate LLM integration with quantum memory."""
     # Initialize LLM
-    llm = LLM(
+    llm = OpenAIModel(
         model_name="gpt-4",
         temperature=0.7
     )
-    
+
     # Create quantum-classical hybrid memory
     hybrid_memory = QuantumClassicalHybridMemory(
         quantum_threshold=0.7,

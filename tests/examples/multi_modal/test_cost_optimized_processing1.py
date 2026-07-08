@@ -9,6 +9,7 @@ These tests are intentionally offline-safe:
 import sys
 from pathlib import Path
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 from multimind.router.multi_modal_router import MultiModalRouter
 from multimind.types import UnifiedRequest, ModalityInput

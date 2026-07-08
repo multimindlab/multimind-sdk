@@ -14,11 +14,11 @@ from multimind.memory import (
     CognitiveScratchpadMemory,
     HybridMemory
 )
-from multimind.models import OllamaLLM
+from multimind.models import OllamaModel
 
 class ContentCreationCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "content_creation.json"):
-        self.llm = OllamaLLM(model=model)
+        self.llm = OllamaModel(model_name=model)
         
         # Initialize knowledge graph memory for content knowledge
         self.content_knowledge = KnowledgeGraphMemory(

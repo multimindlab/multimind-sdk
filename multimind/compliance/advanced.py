@@ -16,30 +16,42 @@ except ImportError:
     np = None
 
 
-# Dummy implementations for cryptography modules that don't exist
+# Fail-closed stubs for cryptography backends that are not available.
 class ZeroKnowledgeProof:
-    """Dummy implementation for ZeroKnowledgeProof."""
+    """Stub for ZeroKnowledgeProof; fails closed because no real ZKP backend is available."""
 
     def __init__(self, *args, **kwargs):
         import warnings
 
-        warnings.warn("cryptography.zkp is not installed; using dummy ZeroKnowledgeProof.")
+        warnings.warn(
+            "No zero-knowledge proof backend is installed; "
+            "ZeroKnowledgeProof.prove/verify will raise NotImplementedError."
+        )
 
     def prove(self, *args, **kwargs):
-        return {"proof": "dummy_proof", "valid": True}
+        raise NotImplementedError(
+            "Zero-knowledge proof generation requires a real ZKP backend "
+            "(e.g. a zk-SNARK/zk-STARK library); refusing to fabricate a proof."
+        )
 
     def verify(self, *args, **kwargs):
-        return True
+        raise NotImplementedError(
+            "Zero-knowledge proof verification requires a real ZKP backend "
+            "(e.g. a zk-SNARK/zk-STARK library); refusing to report a proof as valid."
+        )
 
 
 class HomomorphicEncryption:
-    """Dummy implementation for HomomorphicEncryption."""
+    """Stub for HomomorphicEncryption; fails closed because no HE backend is available."""
 
     def __init__(self):
         self.epsilon = 0.1
 
     def encrypt(self, data):
-        return data
+        raise NotImplementedError(
+            "Homomorphic encryption requires a real HE backend (e.g. TenSEAL/Pyfhel); "
+            "refusing to return plaintext as if it were encrypted."
+        )
 
     def update_epsilon(self, epsilon: float):
         """Update the epsilon value for differential privacy."""
@@ -48,7 +60,10 @@ class HomomorphicEncryption:
 
 import asyncio
 import hashlib
+import hmac
 import json
+import math
+import random
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -93,12 +108,7 @@ class ComplianceShard:
 
     def _load_local_rules(self) -> Dict[str, Any]:
         """Load local compliance rules for the shard."""
-        # Placeholder implementation: Replace with actual rule loading logic
-        return {
-            "rule1": "Ensure data encryption",
-            "rule2": "Verify user consent",
-            "rule3": "Limit data retention to 30 days",
-        }
+        return self.config.get("local_rules", {})
 
     async def verify_compliance(
         self, data: Dict[str, Any], level: Optional[ComplianceLevel] = None
@@ -157,8 +167,10 @@ class ComplianceShard:
         self, data: Dict[str, Any], level: ComplianceLevel
     ) -> Dict[str, Any]:
         """Apply local compliance rules to the data."""
-        # Placeholder implementation: Replace with actual rule application logic
-        return {"compliant": True, "details": "All rules passed."}
+        raise NotImplementedError(
+            "No compliance rule engine is configured for shard "
+            f"'{self.shard_id}'; refusing to report data as compliant without evaluation."
+        )
 
     async def _generate_zk_proof(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Generate zero-knowledge proof for compliance result."""
@@ -279,20 +291,11 @@ class SelfHealingCompliance:
 
     def _load_vulnerability_database(self) -> Dict[str, Any]:
         """Load the vulnerability database for compliance checks."""
-        # Placeholder implementation: Replace with actual database loading logic
-        return {
-            "vuln1": {"severity": "high", "description": "Data leakage risk"},
-            "vuln2": {"severity": "medium", "description": "Weak encryption"},
-            "vuln3": {"severity": "low", "description": "Outdated software"},
-        }
+        return self.config.get("vulnerability_database", {})
 
     def _load_regulatory_changes(self) -> Dict[str, Any]:
         """Load regulatory changes for compliance checks."""
-        # Placeholder implementation: Replace with actual regulatory change loading logic
-        return {
-            "change1": "New data encryption standard",
-            "change2": "Updated user consent requirements",
-        }
+        return self.config.get("regulatory_changes", {})
 
     async def check_and_heal(self, compliance_state: Dict[str, Any]) -> Dict[str, Any]:
         """Enhanced self-healing with effectiveness tracking and rollback points."""
@@ -341,26 +344,37 @@ class SelfHealingCompliance:
         self, compliance_state: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """Detect vulnerabilities in the compliance state."""
-        # Placeholder implementation: Replace with actual vulnerability detection logic
         vulnerabilities = []
         if compliance_state.get("status") == "needs_healing":
             vulnerabilities.append(
-                {"id": "vuln1", "severity": "high", "description": "Compliance state needs healing"}
+                {
+                    "id": "state_needs_healing",
+                    "severity": "high",
+                    "description": "Compliance state flagged as needing healing",
+                }
+            )
+        for vuln_id in compliance_state.get("vulnerabilities", []):
+            entry = self.vulnerability_database.get(vuln_id, {})
+            vulnerabilities.append(
+                {
+                    "id": vuln_id,
+                    "severity": entry.get("severity", "unknown"),
+                    "description": entry.get("description", "Reported vulnerability"),
+                }
             )
         return vulnerabilities
 
     async def _check_regulatory_changes(self) -> List[Dict[str, Any]]:
         """Check for regulatory changes that affect compliance."""
-        # Placeholder implementation: Replace with actual regulatory change checking logic
         return [
-            {"id": "change1", "description": "New data encryption standard", "impact": "medium"}
+            {"id": change_id, "description": description}
+            for change_id, description in self.regulatory_changes.items()
         ]
 
     async def _generate_patches(
         self, vulnerabilities: List[Dict[str, Any]], regulatory_updates: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Generate patches for detected vulnerabilities and regulatory changes."""
-        # Placeholder implementation: Replace with actual patch generation logic
         patches = []
         for vuln in vulnerabilities:
             patches.append(
@@ -377,33 +391,34 @@ class SelfHealingCompliance:
         self, compliance_state: Dict[str, Any], patches: List[Dict[str, Any]]
     ) -> Dict[str, Any]:
         """Apply patches to the compliance state."""
-        # Placeholder implementation: Replace with actual patch application logic
+        if patches:
+            raise NotImplementedError(
+                "Automatic patch application is not implemented; refusing to mark "
+                f"the compliance state as healed with {len(patches)} unapplied patch(es)."
+            )
         healed_state = compliance_state.copy()
-        healed_state["status"] = "healed"
-        healed_state["patches_applied"] = [p["id"] for p in patches]
+        healed_state["patches_applied"] = []
         return healed_state
 
     def _update_patch_effectiveness(
         self, patches: List[Dict[str, Any]], healed_state: Dict[str, Any]
     ):
         """Update patch effectiveness tracking."""
-        # Placeholder implementation: Replace with actual effectiveness tracking logic
-        for patch in patches:
-            self.patch_effectiveness[patch["id"]] = {
-                "effectiveness": 0.9,
-                "timestamp": datetime.now().isoformat(),
-            }
+        if patches:
+            raise NotImplementedError(
+                "Patch effectiveness measurement is not implemented; "
+                "refusing to record fabricated effectiveness scores."
+            )
 
     def _update_patch_history(self, patches: List[Dict[str, Any]]):
         """Update patch history with effectiveness metrics."""
-        # Placeholder implementation: Replace with actual history update logic
         for patch in patches:
             self.patch_history.append(
                 {
                     "patch": patch,
                     "timestamp": datetime.now().isoformat(),
                     "effectiveness": self.patch_effectiveness.get(patch["id"], {}).get(
-                        "effectiveness", 0.0
+                        "effectiveness"
                     ),
                 }
             )
@@ -421,32 +436,39 @@ class ExplainableDTO:
     def _initialize_explanation_model(self):
         """Initialize the explanation model for generating explanations."""
 
-        # Placeholder implementation
         class ExplanationModel:
             async def explain(self, factors, depth):
-                return {"explanation": "Detailed explanation"}
+                raise NotImplementedError(
+                    "No explanation model backend is configured; "
+                    "refusing to emit a fabricated explanation."
+                )
 
         return ExplanationModel()
 
     def _extract_decision_factors(self, decision: Dict[str, Any]) -> List[str]:
         """Extract decision factors for explanation."""
-        # Placeholder implementation
-        return ["factor1", "factor2"]
+        return list(decision.keys())
 
     def _calculate_confidence(self, explanation: Dict[str, Any]) -> float:
         """Calculate confidence for the explanation."""
-        # Placeholder implementation
-        return 0.9
+        raise NotImplementedError(
+            "Explanation confidence estimation is not implemented; "
+            "refusing to report a fabricated confidence score."
+        )
 
     def _calculate_uncertainty(self, explanation: Dict[str, Any]) -> float:
         """Calculate uncertainty for the explanation."""
-        # Placeholder implementation
-        return 0.1
+        raise NotImplementedError(
+            "Explanation uncertainty estimation is not implemented; "
+            "refusing to report a fabricated uncertainty score."
+        )
 
     def _rank_factor_importance(self, factors: List[str]) -> Dict[str, float]:
         """Rank the importance of decision factors."""
-        # Placeholder implementation
-        return {factor: 1.0 for factor in factors}
+        raise NotImplementedError(
+            "Factor importance ranking is not implemented; "
+            "refusing to report fabricated importance scores."
+        )
 
     async def explain_decision(
         self, decision: Dict[str, Any], depth: Optional[int] = None
@@ -491,33 +513,45 @@ class ModelWatermarking:
     def _initialize_tamper_detection(self):
         """Initialize tamper detection system."""
 
-        # Placeholder implementation: Replace with actual initialization logic
         class TamperDetection:
             async def initialize(self, model):
-                return True
+                raise NotImplementedError(
+                    "Tamper detection requires a real backend; "
+                    "refusing to initialize a no-op detector."
+                )
 
             async def check(self, model):
-                return {"detected": False, "details": "No tampering detected"}
+                raise NotImplementedError(
+                    "Tamper detection requires a real backend; "
+                    "refusing to report that no tampering was detected."
+                )
 
         return TamperDetection()
 
     def _initialize_watermark_generator(self):
         """Initialize the watermark generator for model watermarking."""
 
-        # Placeholder implementation: Replace with actual initialization logic
         class WatermarkGenerator:
             async def generate(self):
-                return "secure_watermark"
+                raise NotImplementedError(
+                    "Watermark generation requires a real watermarking backend; "
+                    "refusing to emit a constant fake watermark."
+                )
 
         return WatermarkGenerator()
 
     def _initialize_fingerprint_tracker(self):
         """Initialize the fingerprint tracker for model watermarking."""
 
-        # Placeholder implementation: Replace with actual initialization logic
         class FingerprintTracker:
+            def __init__(self):
+                self.fingerprints: List[Dict[str, str]] = []
+
             async def track(self, fingerprint: str):
-                return "secure_fingerprint"
+                self.fingerprints.append(
+                    {"fingerprint": fingerprint, "timestamp": datetime.now().isoformat()}
+                )
+                return fingerprint
 
         return FingerprintTracker()
 
@@ -540,14 +574,17 @@ class ModelWatermarking:
 
     async def _apply_watermark(self, model: Any, watermark: str) -> Any:
         """Apply watermark to the model."""
-        # Placeholder implementation: Replace with actual watermark application logic
-        # In a real implementation, this would modify the model to include the watermark
-        return model
+        raise NotImplementedError(
+            "Watermark embedding requires a real watermarking backend; "
+            "refusing to return an unwatermarked model as watermarked."
+        )
 
     async def _extract_watermark(self, model: Any) -> str:
         """Extract watermark from the model."""
-        # Placeholder implementation: Replace with actual watermark extraction logic
-        return "extracted_watermark"
+        raise NotImplementedError(
+            "Watermark extraction requires a real watermarking backend; "
+            "refusing to fabricate an extracted watermark."
+        )
 
     async def _generate_fingerprint(self, model: Any) -> str:
         """Generate fingerprint for the model."""
@@ -561,31 +598,13 @@ class ModelWatermarking:
 
     async def verify_watermark(self, model) -> Dict[str, Any]:
         """Enhanced watermark verification with tamper detection."""
-        # Extract watermark with version check
-        extracted_watermark = await self._extract_watermark(model)
-
-        # Verify against original with confidence scoring
-        # Placeholder: In real implementation, watermark_generator would have a verify method
-        verification_result = {"is_valid": True, "confidence": 0.95}
-
-        # Check for tampering
-        tamper_result = await self.tamper_detection.check(model)
-
-        # Store verification result
-        self.verification_history.append(
-            {
-                "timestamp": datetime.now().isoformat(),
-                "verification_result": verification_result,
-                "tamper_result": tamper_result,
-            }
+        # Fails closed: extraction, verification and tamper detection all
+        # require a real watermarking backend.
+        await self._extract_watermark(model)
+        raise NotImplementedError(
+            "Watermark verification requires a real watermarking backend; "
+            "refusing to report a watermark as valid."
         )
-
-        return {
-            "is_valid": verification_result["is_valid"],
-            "confidence": verification_result["confidence"],
-            "tamper_detected": tamper_result["detected"],
-            "tamper_details": tamper_result["details"],
-        }
 
     async def track_fingerprint(self, model: Any) -> Dict[str, Any]:
         """Track and return fingerprint information for a model."""
@@ -601,6 +620,100 @@ class ModelWatermarking:
             "timestamp": datetime.now().isoformat(),
             "model_id": model_id,
         }
+
+
+class BudgetExhaustedError(Exception):
+    """Raised when a :class:`PrivacyBudget`'s total epsilon has been spent."""
+
+
+class PrivacyBudget:
+    """Tracks a total epsilon budget spent across privatize() calls.
+
+    Composition is *simple sequential composition*: cumulative privacy loss
+    is the sum of each call's epsilon (Dwork & Roth, "The Algorithmic
+    Foundations of Differential Privacy", Theorem 3.16). This is a
+    conservative, easy-to-audit bound. It does NOT implement
+    (epsilon, delta)-advanced composition, which permits a tighter,
+    sub-linear bound on cumulative loss across many queries — that is not
+    implemented here.
+    """
+
+    def __init__(self, total_epsilon: float):
+        if total_epsilon <= 0:
+            raise ValueError("total_epsilon must be positive")
+        self.total_epsilon = total_epsilon
+        self.spent_epsilon = 0.0
+
+    @property
+    def remaining_epsilon(self) -> float:
+        return self.total_epsilon - self.spent_epsilon
+
+    def spend(self, epsilon: float) -> None:
+        """Deduct ``epsilon`` from the budget.
+
+        Raises:
+            BudgetExhaustedError: if ``epsilon`` exceeds what remains.
+        """
+        if epsilon <= 0:
+            raise ValueError("epsilon must be positive")
+        if epsilon > self.remaining_epsilon + 1e-9:
+            raise BudgetExhaustedError(
+                f"Privacy budget exhausted: requested epsilon={epsilon}, "
+                f"only {self.remaining_epsilon} remaining of {self.total_epsilon} total"
+            )
+        self.spent_epsilon += epsilon
+
+
+class DPMechanism:
+    """Laplace-mechanism differential privacy with optional epsilon-budget accounting.
+
+    When ``budget`` is provided, each :meth:`privatize` call spends
+    ``self.epsilon`` from it (simple sequential composition — see
+    :class:`PrivacyBudget`) and raises :class:`BudgetExhaustedError` once the
+    budget is spent. Without a budget, behavior is unchanged: unlimited calls.
+    """
+
+    def __init__(self, epsilon: float, sensitivity: float = 1.0, budget: Optional[Any] = None):
+        self.epsilon = epsilon
+        self.sensitivity = sensitivity
+        self.budget = budget
+
+    def _laplace_noise(self) -> float:
+        # Inverse-CDF sampling of Laplace(0, sensitivity/epsilon).
+        scale = self.sensitivity / self.epsilon
+        u = random.random() - 0.5
+        return -scale * math.copysign(1.0, u) * math.log(1 - 2 * abs(u))
+
+    def privatize(self, data: Any) -> Any:
+        """Apply Laplace-mechanism differential privacy to numeric data.
+
+        Spends ``self.epsilon`` from ``self.budget`` (if configured) once per
+        call, regardless of how deeply nested ``data`` is.
+        """
+        if self.budget is not None:
+            self.budget.spend(self.epsilon)
+        return self._apply_noise(data)
+
+    def _apply_noise(self, data: Any) -> Any:
+        if isinstance(data, bool):
+            raise NotImplementedError("Differential privacy for boolean values is not implemented")
+        if isinstance(data, (int, float)):
+            return float(data) + self._laplace_noise()
+        if torch is not None and isinstance(data, torch.Tensor):
+            scale = self.sensitivity / self.epsilon
+            tensor = data if data.is_floating_point() else data.float()
+            u = torch.rand_like(tensor) - 0.5
+            magnitude = u.abs().clamp(max=0.5 - 1e-7)
+            noise = -scale * torch.sign(u) * torch.log1p(-2.0 * magnitude)
+            return tensor + noise
+        if isinstance(data, dict):
+            return {key: self._apply_noise(value) for key, value in data.items()}
+        if isinstance(data, list):
+            return [self._apply_noise(value) for value in data]
+        raise NotImplementedError(
+            "Differential privacy is only implemented for numeric data; "
+            f"refusing to return {type(data).__name__} data unnoised."
+        )
 
 
 class AdaptivePrivacy:
@@ -651,13 +764,18 @@ class AdaptivePrivacy:
 
     async def _verify_privacy_guarantees(self):
         """Verify privacy guarantees after updating epsilon."""
-        # Placeholder implementation
-        pass
+        epsilon = self.homomorphic_encryption.epsilon
+        if not self._validate_epsilon(epsilon):
+            raise ValueError(f"Privacy guarantee violated: epsilon {epsilon} is out of bounds")
+        if self.dp_mechanism.epsilon != epsilon:
+            raise RuntimeError(
+                "Privacy guarantee violated: DP mechanism epsilon "
+                f"({self.dp_mechanism.epsilon}) does not match configured epsilon ({epsilon})"
+            )
 
     def _initialize_adaptation_strategy(self):
         """Initialize the adaptation strategy for privacy parameter adjustment."""
 
-        # Placeholder implementation: Replace with actual strategy initialization logic
         class AdaptationStrategy:
             def __init__(self, config: Dict[str, Any]):
                 self.config = config
@@ -694,7 +812,6 @@ class AdaptivePrivacy:
 
     def _update_privacy_metrics(self, feedback: Dict[str, Any]):
         """Update privacy metrics based on feedback."""
-        # Placeholder implementation: Replace with actual metrics update logic
         if "loss" in feedback:
             self.privacy_metrics["avg_loss"] = (
                 self.privacy_metrics.get("avg_loss", 0.0) * 0.9 + feedback["loss"] * 0.1
@@ -707,22 +824,9 @@ class AdaptivePrivacy:
 
     def _initialize_dp_mechanism(self):
         """Initialize the differential privacy mechanism."""
-
-        # Placeholder implementation: Replace with actual DP mechanism initialization
-        class DPMechanism:
-            def __init__(self, epsilon: float):
-                self.epsilon = epsilon
-
-            def privatize(self, data: Any) -> Any:
-                """Apply differential privacy to data."""
-                # Placeholder implementation: In a real implementation, this would add noise
-                # For now, just return the data as-is, ensuring dictionary format is preserved
-                if isinstance(data, dict):
-                    return data.copy() if hasattr(data, "copy") else dict(data)
-                return data
-
         initial_epsilon = self.config.get("initial_epsilon", 1.0)
-        return DPMechanism(initial_epsilon)
+        sensitivity = self.config.get("dp_sensitivity", 1.0)
+        return DPMechanism(initial_epsilon, sensitivity)
 
 
 class RegulatoryChangeDetector:
@@ -771,13 +875,15 @@ class RegulatoryChangeDetector:
 
     async def _validate_patch(self, patch: Dict[str, Any]) -> bool:
         """Validate a patch for regulatory compliance."""
-        # Placeholder implementation
-        return True
+        raise NotImplementedError(
+            "Patch validation is not implemented; refusing to report a patch as valid."
+        )
 
     async def _test_patch(self, patch: Dict[str, Any]) -> bool:
         """Test a patch for effectiveness."""
-        # Placeholder implementation
-        return True
+        raise NotImplementedError(
+            "Patch testing is not implemented; refusing to report a patch as effective."
+        )
 
 
 class FederatedCompliance:
@@ -792,21 +898,37 @@ class FederatedCompliance:
 
     def _initialize_shards(self) -> List[ComplianceShard]:
         """Initialize compliance shards for federated compliance."""
-        # Placeholder implementation
-        return []
+        return [
+            ComplianceShard(
+                shard_config["shard_id"],
+                shard_config["jurisdiction"],
+                shard_config.get("config", {}),
+            )
+            for shard_config in self.config.get("shards", [])
+        ]
 
     def _initialize_coordinator(self):
         """Initialize the coordinator for federated compliance."""
-        # Placeholder implementation
+        # No coordinator backend available; verify_global_compliance fails closed.
         return None
 
     def _initialize_consensus_mechanism(self):
         """Initialize the consensus mechanism for federated compliance."""
-        # Placeholder implementation
+        # No consensus backend available; verify_global_compliance fails closed.
         return None
 
     async def verify_global_compliance(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Enhanced global compliance verification with consensus."""
+        if not self.shards:
+            raise NotImplementedError(
+                "No compliance shards configured; refusing to report global compliance."
+            )
+        if self.coordinator is None or self.consensus_mechanism is None:
+            raise NotImplementedError(
+                "Federated compliance requires real coordinator and consensus backends; "
+                "refusing to report global compliance without them."
+            )
+
         # Distribute verification to shards with load balancing
         shard_results = await asyncio.gather(
             *[shard.verify_compliance(data) for shard in self.shards]
@@ -841,15 +963,23 @@ class FederatedCompliance:
 
     async def _generate_global_proof(self, result: Dict[str, Any]) -> Dict[str, Any]:
         """Generate enhanced global compliance proof."""
-        # Implement advanced proof generation
+        payload = json.dumps(result, sort_keys=True, default=str).encode("utf-8")
         return {
             "timestamp": datetime.now().isoformat(),
             "aggregated_result": result,
-            "consensus_evidence": "dummy_evidence",
-            "signature": "dummy_signature",
+            "result_checksum": hashlib.sha256(payload).hexdigest(),
+            "signature": await self._generate_secure_signature(result),
         }
 
     async def _generate_secure_signature(self, result: Dict[str, Any]) -> str:
         """Generate secure signature for compliance result."""
-        # Placeholder implementation
-        return "dummy_signature"
+        key = self.config.get("signing_key")
+        if not key:
+            raise NotImplementedError(
+                "No 'signing_key' configured for FederatedCompliance; "
+                "refusing to emit an unsigned or fake signature."
+            )
+        if isinstance(key, str):
+            key = key.encode("utf-8")
+        payload = json.dumps(result, sort_keys=True, default=str).encode("utf-8")
+        return hmac.new(key, payload, hashlib.sha256).hexdigest()

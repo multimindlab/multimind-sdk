@@ -3,6 +3,7 @@ Basic tests for Multimind SDK.
 """
 
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 from typing import AsyncGenerator, Coroutine, Any, Optional, List, Dict, Union, cast
 from multimind import (
     BaseLLM, ModelRouter, Config,

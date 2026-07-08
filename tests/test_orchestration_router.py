@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 from multimind.orchestration.prompt_chain import PromptChain
 from multimind.orchestration.task_runner import TaskRunner
 from multimind.router import ModelRouter

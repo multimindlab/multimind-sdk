@@ -5,6 +5,14 @@ Requires the ``finetune`` extras: ``pip install 'multimind-sdk[finetune]'``
 (or ``[finetune-gpu]`` on Linux+CUDA for bitsandbytes-backed QLoRA).
 """
 
+from __future__ import annotations
+
+from typing import Any
+
+# Synthetic Q/A data generation is pure-python (no torch) and always available,
+# regardless of the ``finetune`` extras gating everything else below.
+from .synthetic_data import QAPair, SyntheticQAGenerator
+
 try:
     from .adapter_drop import AdapterDropTuner
     from .adapter_fusion import AdapterFusionTuner
@@ -51,14 +59,29 @@ try:
     from .unified_tuning import (
         UniPELTTuner as UnifiedUniPELTTuner,
     )
+
+    _heavy_import_error: Exception | None = None
 except ImportError as exc:  # pragma: no cover - exercised on minimal installs
-    raise ImportError(
-        "Fine-tuning features require additional dependencies. "
-        "Install with: pip install 'multimind-sdk[finetune]' "
-        "(or 'multimind-sdk[finetune-gpu]' on Linux+CUDA for bitsandbytes)."
-    ) from exc
+    # Don't fail the whole package import: SyntheticQAGenerator/QAPair above
+    # need no torch and must stay importable. Heavy tuner names raise this
+    # same friendly error lazily, only when actually accessed (see __getattr__).
+    _heavy_import_error = exc
+
+
+def __getattr__(name: str) -> Any:
+    if _heavy_import_error is not None and name in __all__:
+        raise ImportError(
+            "Fine-tuning features require additional dependencies. "
+            "Install with: pip install 'multimind-sdk[finetune]' "
+            "(or 'multimind-sdk[finetune-gpu]' on Linux+CUDA for bitsandbytes)."
+        ) from _heavy_import_error
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
+    # Synthetic data (no torch required)
+    "QAPair",
+    "SyntheticQAGenerator",
     # Core fine-tuning
     "AdapterDropTuner",
     "AdapterFusionTuner",
