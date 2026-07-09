@@ -6,6 +6,22 @@ import torch.nn as nn
 from .base import BaseModelConverter
 
 
+def _safe_torch_load(model_path: str) -> Any:
+    """Load a checkpoint with pickle-execution disabled (CWE-502).
+
+    ``torch.load`` deserializes via ``pickle`` by default. On PyTorch < 2.6
+    the default of ``weights_only=False`` means loading a file crafted by
+    an attacker executes arbitrary Python (RCE). Since MultiMind pins only
+    ``torch>=2.0.0``, we must opt in to safe loading explicitly rather
+    than depending on the caller's torch version.
+
+    ``weights_only=True`` restricts unpickling to a small allow-list of
+    tensor / storage / primitive types and rejects arbitrary class
+    instances (including ``__reduce__``-based payloads).
+    """
+    return torch.load(model_path, weights_only=True)
+
+
 class AdvancedOptimization:
     """Advanced model optimization techniques."""
 
@@ -164,7 +180,9 @@ class OptimizationConverter(BaseModelConverter):
     ) -> str:
         """Convert model with advanced optimization."""
         config = config or {}
-        model = torch.load(model_path)
+        # Safe-load: reject arbitrary pickle payloads (CWE-502). See
+        # ``_safe_torch_load`` for the rationale.
+        model = _safe_torch_load(model_path)
 
         # Apply optimization based on config
         if "pruning" in config:
@@ -180,14 +198,14 @@ class OptimizationConverter(BaseModelConverter):
     def validate(self, model_path: str) -> bool:
         """Validate if model can be optimized."""
         try:
-            model = torch.load(model_path)
+            model = _safe_torch_load(model_path)
             return isinstance(model, nn.Module)
         except Exception:
             return False
 
     def get_metadata(self, model_path: str) -> Dict[str, Any]:
         """Get optimization metadata."""
-        model = torch.load(model_path)
+        model = _safe_torch_load(model_path)
         return {
             "num_parameters": sum(p.numel() for p in model.parameters()),
             "num_nonzero_parameters": sum((p != 0).sum().item() for p in model.parameters()),
