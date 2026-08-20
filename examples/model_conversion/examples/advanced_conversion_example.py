@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-import os
 import argparse
+import os
 from pathlib import Path
-from typing import Dict, Any, List
-import torch
+from typing import Any, Dict, List
+
 import tensorflow as tf
+import torch
+
 from multimind.model_conversion import ModelConversionManager
 from multimind.model_conversion.formats import (
-    TensorFlowConverter,
+    GGMLConverter,
     ONNXRuntimeConverter,
     SafetensorsConverter,
-    GGMLConverter
+    TensorFlowConverter,
 )
+
 
 def setup_conversion_pipeline() -> Dict[str, Any]:
     """Set up the conversion pipeline configuration."""
@@ -48,7 +51,7 @@ def convert_pytorch_to_multiple_formats(
         target_formats=["gguf", "onnx", "safetensors"],
         pipeline_config=config
     )
-    
+
     return converter.convert(model_path, output_dir)
 
 def convert_tensorflow_to_multiple_formats(
@@ -62,7 +65,7 @@ def convert_tensorflow_to_multiple_formats(
         target_formats=["tflite", "onnx"],
         pipeline_config=config
     )
-    
+
     return converter.convert(model_path, output_dir)
 
 def convert_onnx_to_optimized_runtime(
@@ -97,16 +100,16 @@ def main():
     parser.add_argument("--target-formats", type=str, nargs="+",
                       default=["gguf", "onnx", "tflite", "safetensors"],
                       help="Target formats for conversion")
-    
+
     args = parser.parse_args()
-    
+
     # Create output directory
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Set up conversion pipeline
     pipeline_config = setup_conversion_pipeline()
-    
+
     try:
         # Perform conversions based on source format
         if args.source_format == "pytorch":
@@ -129,7 +132,7 @@ def main():
                 pipeline_config
             )
             converted_paths = [converted_path]
-        
+
         # Convert to Safetensors if requested
         if "safetensors" in args.target_formats:
             safetensors_path = convert_to_safetensors(
@@ -139,13 +142,13 @@ def main():
                 pipeline_config
             )
             converted_paths.append(safetensors_path)
-        
+
         # Print results
         print("\nConversion Results:")
         print("------------------")
         for path in converted_paths:
             print(f"Converted model saved to: {path}")
-        
+
         # Print metadata for each converted model
         print("\nModel Metadata:")
         print("--------------")
@@ -155,12 +158,12 @@ def main():
             print(f"\nModel: {path}")
             for key, value in metadata.items():
                 print(f"{key}: {value}")
-        
+
     except Exception as e:
         print(f"Error during conversion: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

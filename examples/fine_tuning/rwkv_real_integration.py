@@ -4,10 +4,10 @@
 #   pip install rwkv torch optuna
 #   (For real weights, download from https://huggingface.co/BlinkDL/rwkv-4-pile-169m or similar)
 
-import torch
-from torch.utils.data import DataLoader, Dataset
-import torch.nn as nn
 import optuna
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 
 # Import RWKV model (after installing the pip package)
 try:
@@ -99,4 +99,4 @@ for epoch in range(2):
 
 print("[INFO] RWKV adapter fine-tuning complete. Save or evaluate your adapter as needed.")
 
-# For real use, use a real tokenizer, dataset, and loss (e.g., cross-entropy for language modeling) 
+# For real use, use a real tokenizer, dataset, and loss (e.g., cross-entropy for language modeling)

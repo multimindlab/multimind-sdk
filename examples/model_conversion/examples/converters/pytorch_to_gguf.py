@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-import os
 import argparse
+import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 import torch
+
 from multimind.model_conversion import ModelConversionManager
+
 
 def convert_pytorch_to_gguf(
     model_path: str,
@@ -45,7 +48,7 @@ def convert_pytorch_to_gguf(
             ]
         }
     )
-    
+
     return converter.convert(model_path, output_path)
 
 def main():
@@ -64,16 +67,16 @@ def main():
     parser.add_argument("--embedding-type", type=str, default="float32",
                       choices=["float32", "float16", "int8"],
                       help="Embedding type")
-    
+
     args = parser.parse_args()
-    
+
     config = {
         "sparsity": args.sparsity,
         "quantization": args.quantization,
         "context_length": args.context_length,
         "embedding_type": args.embedding_type
     }
-    
+
     try:
         output_path = convert_pytorch_to_gguf(
             args.model_path,
@@ -81,19 +84,19 @@ def main():
             config
         )
         print(f"Model converted successfully to: {output_path}")
-        
+
         # Print model metadata
         converter = ModelConversionManager()
         metadata = converter.get_metadata(output_path)
         print("\nModel Metadata:")
         for key, value in metadata.items():
             print(f"{key}: {value}")
-            
+
     except Exception as e:
         print(f"Error during conversion: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

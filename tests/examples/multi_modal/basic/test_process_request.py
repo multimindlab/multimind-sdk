@@ -8,6 +8,7 @@ expert building to avoid external provider/API calls.
 from __future__ import annotations
 
 import pytest
+
 pytest.importorskip("fastapi")  # requires optional extras absent on core-only installs
 from fastapi.testclient import TestClient
 

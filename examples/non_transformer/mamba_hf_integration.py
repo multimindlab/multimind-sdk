@@ -2,9 +2,11 @@
 # Requires: pip install transformers mamba-ssm torch
 # See: https://huggingface.co/state-spaces/mamba-130m-hf
 
-from multimind.llm.non_transformer_llm import MambaLLM
-import torch
 import asyncio
+
+import torch
+
+from multimind.llm.non_transformer_llm import MambaLLM
 
 try:
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -38,4 +40,4 @@ async def main():
     print(f"Prompt: {prompt}\nGenerated: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

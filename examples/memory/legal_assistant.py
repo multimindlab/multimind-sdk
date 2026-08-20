@@ -5,20 +5,18 @@ combining knowledge graph memory for legal knowledge and cognitive scratchpad fo
 """
 
 import asyncio
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
-from multimind.memory import (
-    KnowledgeGraphMemory,
-    CognitiveScratchpadMemory,
-    HybridMemory
-)
+from multimind.memory import CognitiveScratchpadMemory, HybridMemory, KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class LegalAssistant:
     def __init__(self, model: str = "mistral"):
         self.llm = OllamaModel(model_name=model)
-        
+
         # Initialize knowledge graph memory for legal knowledge
         self.legal_knowledge = KnowledgeGraphMemory(
             llm=self.llm,
@@ -30,7 +28,7 @@ class LegalAssistant:
             validation_interval=3600,  # 1 hour
             storage_path="legal_knowledge.json"
         )
-        
+
         # Initialize cognitive scratchpad for case analysis
         self.case_analysis = CognitiveScratchpadMemory(
             llm=self.llm,
@@ -41,7 +39,7 @@ class LegalAssistant:
             analysis_interval=3600,  # 1 hour
             storage_path="case_analysis.json"
         )
-        
+
         # Initialize hybrid memory for overall context
         self.memory = HybridMemory(
             llm=self.llm,
@@ -54,7 +52,7 @@ class LegalAssistant:
             enable_analysis=True,
             storage_path="legal_memory.json"
         )
-        
+
         self.mm = MultiMind(
             llm=self.llm,
             memory=self.memory,
@@ -110,7 +108,7 @@ class LegalAssistant:
 async def main():
     # Initialize legal assistant
     assistant = LegalAssistant()
-    
+
     # Add some example legal knowledge
     legal_facts = [
         ("Contract", "is_a", "Legal Agreement", 0.95),
@@ -120,16 +118,16 @@ async def main():
         ("Tort", "is_a", "Civil Wrong", 0.95),
         ("Tort", "remedy", "Compensation", 0.90)
     ]
-    
+
     print("Adding legal knowledge...")
     for subject, predicate, object_, confidence in legal_facts:
         await assistant.add_legal_knowledge(subject, predicate, object_, confidence)
-    
+
     # Example case analysis
     print("\nStarting case analysis...")
     case_description = "A company failed to deliver goods as per contract terms"
     chain_id = await assistant.start_case_analysis(case_description)
-    
+
     # Add analysis steps
     analysis_steps = [
         ("Identify contract elements and terms", 0.9),
@@ -137,10 +135,10 @@ async def main():
         ("Assess damages and remedies", 0.8),
         ("Consider applicable legal precedents", 0.75)
     ]
-    
+
     for step, confidence in analysis_steps:
         await assistant.add_analysis_step(chain_id, step, confidence)
-    
+
     # Query legal knowledge
     print("\nQuerying legal knowledge...")
     query_result = await assistant.query_legal_knowledge("What are the remedies for breach of contract?")
@@ -151,24 +149,24 @@ async def main():
     print("\nInferences:")
     for inference in query_result['inferences']:
         print(f"- {inference}")
-    
+
     # Analyze case
     print("\nAnalyzing case...")
     analysis = await assistant.analyze_case(chain_id)
     print("\nAnalysis Steps:")
     for step in analysis['steps']:
         print(f"- {step}")
-    
+
     print("\nStep Dependencies:")
     for step, deps in analysis['dependencies'].items():
         print(f"\nStep: {step}")
         print("Depends on:")
         for dep in deps:
             print(f"- {dep}")
-    
+
     print("\nAnalysis Results:")
     for result in analysis['analysis']:
         print(f"- {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

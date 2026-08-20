@@ -1,6 +1,8 @@
 # Example usage for demonstration purposes only
 import asyncio
-from multimind.client.rag_client import RAGClient, Document
+
+from multimind.client.rag_client import Document, RAGClient
+
 
 async def example():
     # Initialize client
@@ -38,4 +40,4 @@ async def example():
     print("Health status:", health)
 
 if __name__ == "__main__":
-    asyncio.run(example()) 
+    asyncio.run(example())

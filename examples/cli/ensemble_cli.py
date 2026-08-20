@@ -2,10 +2,10 @@
 CLI interface for the MultiMind Ensemble system.
 """
 
-import os
 import asyncio
 import json
 import logging
+import os
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import click
@@ -23,10 +23,15 @@ from multimind import (
     TaskConfig,
     TaskType,
 )
-from multimind.core.provider import ProviderConfig, ImageAnalysisResult, GenerationResult, EmbeddingResult
-from multimind.providers.openai import OpenAIProvider
+from multimind.core.provider import (
+    EmbeddingResult,
+    GenerationResult,
+    ImageAnalysisResult,
+    ProviderConfig,
+)
 from multimind.providers.claude import ClaudeProvider
 from multimind.providers.ollama import OllamaProvider
+from multimind.providers.openai import OpenAIProvider
 
 if load_dotenv:
     load_dotenv()
@@ -233,7 +238,7 @@ def generate(prompt: str, providers: List[str], method: str, output: Optional[st
                         )
                     elif "timeout" in error_msg.lower():
                         click.echo(
-                            f"Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
+                            "Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
                             err=True,
                         )
                     else:
@@ -247,42 +252,42 @@ def generate(prompt: str, providers: List[str], method: str, output: Optional[st
                         err=True,
                     )
                 return None
-        
+
         results = await asyncio.gather(*[get_result(provider) for provider in text_providers])
         results = [r for r in results if r is not None]  # Filter out None results
-        
+
         if not results:
             raise click.ClickException(
                 "Text generation failed: all providers returned errors."
             )
-        
+
         # Combine results
         combined_result = await ensemble.combine_results(
             results=results,
             method=EnsembleMethod(method),
             task_type=TaskType.TEXT_GENERATION
         )
-        
+
         # Format output
         result_obj = combined_result.result
         if hasattr(result_obj, 'text'):
             result_text = result_obj.text
         else:
             result_text = str(result_obj)
-        
+
         output_data = {
             "result": result_text,
             "confidence": combined_result.confidence.score,
             "explanation": combined_result.confidence.explanation,
             "provider_votes": combined_result.provider_votes
         }
-        
+
         if output:
             with open(output, 'w') as f:
                 json.dump(output_data, f, indent=2)
         else:
             click.echo(json.dumps(output_data, indent=2))
-    
+
     asyncio.run(run())
 
 @ensemble.command()
@@ -302,7 +307,7 @@ def review(code: str, providers: List[str], output: Optional[str]):
         # Read code file
         with open(code, 'r') as f:
             code_content = f.read()
-        
+
         # Prepare prompt
         prompt = f"""Please review the following code and provide feedback on:
 1. Code quality
@@ -313,7 +318,7 @@ def review(code: str, providers: List[str], output: Optional[str]):
 
 Code:
 {code_content}"""
-        
+
         evaluation_models: Dict[str, str] = {}
 
         # Get reviews from all providers
@@ -347,7 +352,7 @@ Code:
                         )
                     elif "timeout" in error_msg.lower():
                         click.echo(
-                            f"Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
+                            "Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
                             err=True,
                         )
                     else:
@@ -361,15 +366,15 @@ Code:
                         err=True,
                     )
                 return None
-        
+
         results = await asyncio.gather(*[get_review(provider) for provider in review_providers])
         results = [r for r in results if r is not None]  # Filter out None results
-        
+
         if not results:
             raise click.ClickException(
                 "Code review failed: all providers returned errors."
             )
-        
+
         # Combine results using the confidence cascade (same scoring used for image analysis)
         combined_result = await ensemble.combine_results(
             results=results,
@@ -378,27 +383,27 @@ Code:
             confidence_threshold=0.7,
             evaluation_models=evaluation_models
         )
-        
+
         # Format output
         result_obj = combined_result.result
         if hasattr(result_obj, 'text'):
             review_text = result_obj.text
         else:
             review_text = str(result_obj)
-        
+
         output_data = {
             "review": review_text,
             "confidence": combined_result.confidence.score,
             "explanation": combined_result.confidence.explanation,
             "provider_votes": combined_result.provider_votes
         }
-        
+
         if output:
             with open(output, 'w') as f:
                 json.dump(output_data, f, indent=2)
         else:
             click.echo(json.dumps(output_data, indent=2))
-    
+
     asyncio.run(run())
 
 @ensemble.command()
@@ -411,9 +416,9 @@ Code:
 @click.option('--output', '-o', type=click.Path(), help='Output file path')
 def analyze_image(image: str, providers: List[str], analysis_prompt: str, output: Optional[str]):
     """Analyze image using ensemble of models.
-    
+
     IMAGE: Path to the image file to analyze (required)
-    
+
     Example:
         ensemble_cli.py analyze-image path/to/image.jpg --prompt "Summarize the slide"
     """
@@ -427,7 +432,7 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
         # Read image file
         with open(image, 'rb') as f:
             image_data = f.read()
-        
+
         async def get_model_for_provider(provider: str) -> Optional[str]:
             """Select the best available model for a provider."""
             if provider == "openai":
@@ -437,7 +442,7 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
             if provider == "ollama":
                 return os.getenv("OLLAMA_VISION_MODEL", "llava-phi3:latest")
             return "default"
-        
+
         results = []
         evaluation_models: Dict[str, str] = {}
         for provider in vision_providers:
@@ -452,7 +457,7 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
                     evaluation_models[provider] = "claude-3-sonnet"
                 elif provider == "ollama":
                     evaluation_models[provider] = os.getenv("OLLAMA_TEXT_MODEL", "mistral")
-                
+
                 result = await router.route(
                     TaskType.IMAGE_ANALYSIS,
                     image_data,
@@ -473,7 +478,7 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
                         )
                     elif "timeout" in error_msg.lower():
                         click.echo(
-                            f"Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
+                            "Skipping provider: ollama (request timeout). Model may be too slow on CPU.",
                             err=True,
                         )
                     else:
@@ -486,12 +491,12 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
                         f"Skipping provider: {provider} ({error_msg})",
                         err=True,
                     )
-        
+
         if not results:
             raise click.ClickException(
                 "Image analysis failed: all providers returned errors."
             )
-        
+
         # Combine results
         combined_result = await ensemble.combine_results(
             results=results,
@@ -500,27 +505,27 @@ def analyze_image(image: str, providers: List[str], analysis_prompt: str, output
             confidence_threshold=0.7,
             evaluation_models=evaluation_models
         )
-        
+
         # Format output
         result_obj = combined_result.result
         if isinstance(result_obj, ImageAnalysisResult):
             analysis_text = result_obj.text or (result_obj.captions[0] if result_obj.captions else "No analysis available")
         else:
             analysis_text = getattr(result_obj, 'text', str(result_obj))
-        
+
         output_data = {
             "analysis": analysis_text,
             "confidence": combined_result.confidence.score,
             "explanation": combined_result.confidence.explanation,
             "provider_votes": combined_result.provider_votes
         }
-        
+
         if output:
             with open(output, 'w') as f:
                 json.dump(output_data, f, indent=2)
         else:
             click.echo(json.dumps(output_data, indent=2))
-    
+
     asyncio.run(run())
 
 @ensemble.command()
@@ -543,7 +548,7 @@ def embed(text: str, providers: List[str], model: Optional[str], output: Optiona
             if model:
                 # User specified a model, use it for all providers
                 return model
-            
+
             # Provider-specific defaults
             if provider == "openai":
                 return "text-embedding-ada-002"
@@ -567,7 +572,7 @@ def embed(text: str, providers: List[str], model: Optional[str], output: Optiona
                 return "mistral"
             else:
                 return "default"
-        
+
         # Get embeddings from all providers with proper model selection
         results = []
         for provider in embedding_providers:
@@ -589,16 +594,16 @@ def embed(text: str, providers: List[str], model: Optional[str], output: Optiona
                             available = await ollama_adapter.list_models()
                             if available:
                                 click.echo(f"Warning: Model not found. Available Ollama models: {', '.join(available)}", err=True)
-                                click.echo(f"Try: --model <model_name> or pull the model with: ollama pull <model_name>", err=True)
+                                click.echo("Try: --model <model_name> or pull the model with: ollama pull <model_name>", err=True)
                     except Exception:
                         pass
                 # Re-raise the error
                 raise
-        
+
         # Combine results
         if not results:
             raise click.ClickException("No providers succeeded in generating embeddings.")
-        
+
         weight = 1.0 / len(results)
         # Map results to their providers (we need to track which provider succeeded)
         # For now, use equal weights for all successful results
@@ -608,28 +613,28 @@ def embed(text: str, providers: List[str], model: Optional[str], output: Optiona
             task_type=TaskType.EMBEDDINGS,
             weights={_get_provider_name(r): weight for r in results}
         )
-        
+
         # Format output
         result_obj = combined_result.result
         if hasattr(result_obj, 'embedding'):
             embedding_data = result_obj.embedding
         else:
             embedding_data = []
-        
+
         output_data = {
             "embedding": embedding_data,
             "confidence": combined_result.confidence.score,
             "explanation": combined_result.confidence.explanation,
             "provider_votes": combined_result.provider_votes
         }
-        
+
         if output:
             with open(output, 'w') as f:
                 json.dump(output_data, f, indent=2)
         else:
             click.echo(json.dumps(output_data, indent=2))
-    
+
     asyncio.run(run())
 
 if __name__ == '__main__':
-    ensemble() 
+    ensemble()

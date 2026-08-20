@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import CustomRNNLLM
+import asyncio
+
 import torch
 import torch.nn as nn
-import asyncio
+
+from multimind.llm.non_transformer_llm import CustomRNNLLM
 
 # Toy vocabulary and tokenizer
 vocab = ["<pad>", "I", "love", "AI", "and", "Python", "."]

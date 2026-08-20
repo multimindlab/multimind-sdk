@@ -1,8 +1,10 @@
-from multimind.fine_tuning.unified_fine_tuner import MoEWrapper
+import numpy as np
 import torch
 import torch.nn as nn
 from sklearn.tree import DecisionTreeClassifier
-import numpy as np
+
+from multimind.fine_tuning.unified_fine_tuner import MoEWrapper
+
 
 # Dummy RNN expert
 class DummyRNNExpert(nn.Module):
@@ -39,4 +41,4 @@ class MoEWrapper:
 
     def forward(self, x):
         print("[MoEWrapper] Routing input through experts.")
-        return x * 2 
+        return x * 2

@@ -3,32 +3,32 @@ Tests for cross-modal retrieval example.
 """
 
 import pytest
+
 pytest.skip("Skipping example test not structured as importable module.", allow_module_level=True)
 import asyncio
-from pathlib import Path
-import sys
-import os
 import base64
+import os
+import sys
+from pathlib import Path
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from examples.multi_modal.workflows.cross_modal_retrieval import (
-    CrossModalRetrievalWorkflow,
-    main as cross_modal_main
-)
+from examples.multi_modal.workflows.cross_modal_retrieval import CrossModalRetrievalWorkflow
+from examples.multi_modal.workflows.cross_modal_retrieval import main as cross_modal_main
+
 
 def create_test_files():
     """Create test image and audio files."""
     data_dir = Path(__file__).parent.parent.parent / "examples" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create a small test image
     image_path = data_dir / "sample_image.jpg"
     if not image_path.exists():
         with open(image_path, "wb") as f:
             f.write(b"fake image data")
-    
+
     # Create a small test audio file
     audio_path = data_dir / "sample_audio.mp3"
     if not audio_path.exists():
@@ -55,14 +55,14 @@ async def test_cross_modal_retrieval():
 async def test_cross_modal_workflow():
     """Test CrossModalRetrievalWorkflow class."""
     from multimind.router.multi_modal_router import MultiModalRouter
-    
+
     # Initialize workflow
     router = MultiModalRouter()
     workflow = CrossModalRetrievalWorkflow(
         models=router.models,
         integrations={}
     )
-    
+
     # Create test request
     request = {
         "content": {
@@ -72,23 +72,23 @@ async def test_cross_modal_workflow():
         },
         "modalities": ["text", "image", "audio"]
     }
-    
+
     # Execute workflow
     result = await workflow.execute(request)
-    
+
     # Check results
     assert "embeddings" in result
     assert "similarities" in result
     assert "analysis" in result
-    
+
     # Check embeddings
     assert len(result["embeddings"]) == 3
     assert all(modality in result["embeddings"] for modality in ["text", "image", "audio"])
-    
+
     # Check similarities
     assert len(result["similarities"]) > 0
     assert all(isinstance(similarity, float) for similarity in result["similarities"].values())
-    
+
     # Check analysis
     assert isinstance(result["analysis"], str)
     assert len(result["analysis"]) > 0
@@ -104,4 +104,4 @@ def test_data_files():
     data_dir = Path(__file__).parent.parent.parent / "examples" / "data"
     required_files = ["sample_image.jpg", "sample_audio.mp3"]
     missing_files = [f for f in required_files if not (data_dir / f).exists()]
-    assert not missing_files, f"Missing data files: {', '.join(missing_files)}" 
+    assert not missing_files, f"Missing data files: {', '.join(missing_files)}"

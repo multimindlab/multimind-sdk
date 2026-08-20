@@ -2,11 +2,12 @@
 # Requires: pip install transformers mamba-ssm torch peft
 # See: https://huggingface.co/state-spaces/mamba-130m
 
+import math
+
 import torch
+from peft import PeftModel
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-import math
 
 MODEL_NAME = "state-spaces/mamba-130m"
 ADAPTER_PATH = "./mamba_lora_adapter"  # Path to LoRA adapter (if used)
@@ -64,4 +65,4 @@ mean_acc = sum(all_accs) / len(all_accs)
 print(f"Validation Perplexity: {perplexity:.2f}")
 print(f"Validation Next-Token Accuracy: {mean_acc:.2%}")
 
-# For real use, evaluate on a larger validation/test set and use more metrics as needed 
+# For real use, evaluate on a larger validation/test set and use more metrics as needed

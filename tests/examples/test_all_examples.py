@@ -9,14 +9,14 @@ and generates a detailed report of their status.
 import asyncio
 import importlib
 import inspect
+import json
 import os
 import sys
 import traceback
-from pathlib import Path
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
-import json
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # Add the project root to the path
 project_root = Path(__file__).parent.parent.parent
@@ -37,12 +37,12 @@ class ExampleTestResult:
 
 class ExampleTester:
     """Systematic tester for all examples."""
-    
+
     def __init__(self, examples_dir: Path):
         self.examples_dir = examples_dir
         self.results: List[ExampleTestResult] = []
         self.start_time = datetime.now()
-    
+
     def find_python_files(self, directory: Path) -> List[Path]:
         """Find all Python files in a directory recursively."""
         python_files = []
@@ -52,7 +52,7 @@ class ExampleTester:
             elif item.is_dir() and not item.name.startswith('__'):
                 python_files.extend(self.find_python_files(item))
         return python_files
-    
+
     def analyze_file(self, file_path: Path) -> Dict[str, Any]:
         """Analyze a Python file to understand its structure."""
         analysis = {
@@ -63,24 +63,24 @@ class ExampleTester:
             "classes": [],
             "dependencies": []
         }
-        
+
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            
+
             # Check for main function
             if "def main(" in content or "async def main(" in content:
                 analysis["has_main"] = True
                 if "async def main(" in content:
                     analysis["is_async"] = True
-            
+
             # Check for imports
             lines = content.split('\n')
             for line in lines:
                 line = line.strip()
                 if line.startswith('import ') or line.startswith('from '):
                     analysis["imports"].append(line)
-                
+
                 # Check for common dependencies
                 if 'openai' in line:
                     analysis["dependencies"].append("openai")
@@ -102,25 +102,25 @@ class ExampleTester:
                     analysis["dependencies"].append("fastapi")
                 if 'uvicorn' in line:
                     analysis["dependencies"].append("uvicorn")
-            
+
             # Remove duplicates
             analysis["dependencies"] = list(set(analysis["dependencies"]))
-            
+
         except Exception as e:
             analysis["error"] = str(e)
-        
+
         return analysis
-    
+
     async def test_example_file(self, file_path: Path) -> ExampleTestResult:
         """Test a single example file."""
         relative_path = file_path.relative_to(self.examples_dir)
         name = str(relative_path).replace('/', '.').replace('\\', '.')
-        
+
         print(f"Testing: {name}")
-        
+
         # Analyze the file
         analysis = self.analyze_file(file_path)
-        
+
         # Skip files that don't have a main function
         if not analysis.get("has_main", False):
             return ExampleTestResult(
@@ -132,24 +132,24 @@ class ExampleTester:
                 is_async=analysis.get("is_async", False),
                 dependencies=analysis.get("dependencies", [])
             )
-        
+
         # Try to import and test the module
         start_time = asyncio.get_event_loop().time()
-        
+
         try:
             # Create a mock environment for testing
             with self.create_mock_environment():
                 # Try to import the module
                 clean_name = name.replace('.py', '').replace('/', '.').replace('\\', '.')
                 module_name = f"examples.{clean_name}"
-                
+
                 # Import the module
                 module = importlib.import_module(module_name)
-                
+
                 # Check if it has a main function
                 if hasattr(module, 'main'):
                     main_func = getattr(module, 'main')
-                    
+
                     # Test if it's async
                     if inspect.iscoroutinefunction(main_func):
                         # Run async main function
@@ -157,9 +157,9 @@ class ExampleTester:
                     else:
                         # Run sync main function
                         main_func()
-                    
+
                     execution_time = asyncio.get_event_loop().time() - start_time
-                    
+
                     return ExampleTestResult(
                         name=name,
                         path=str(file_path),
@@ -180,7 +180,7 @@ class ExampleTester:
                         is_async=analysis.get("is_async", False),
                         dependencies=analysis.get("dependencies", [])
                     )
-        
+
         except ImportError as e:
             return ExampleTestResult(
                 name=name,
@@ -192,7 +192,7 @@ class ExampleTester:
                 dependencies=analysis.get("dependencies", []),
                 test_notes="Failed to import module"
             )
-        
+
         except Exception as e:
             execution_time = asyncio.get_event_loop().time() - start_time
             return ExampleTestResult(
@@ -206,11 +206,11 @@ class ExampleTester:
                 dependencies=analysis.get("dependencies", []),
                 test_notes="Runtime error during execution"
             )
-    
+
     def create_mock_environment(self):
         """Create a context manager that mocks external dependencies."""
         import unittest.mock
-        
+
         # Mock common external services
         mocks = {
             'openai.AsyncOpenAI': unittest.mock.MagicMock(),
@@ -218,55 +218,55 @@ class ExampleTester:
             'requests.get': unittest.mock.MagicMock(return_value=unittest.mock.MagicMock(status_code=200)),
             'requests.post': unittest.mock.MagicMock(return_value=unittest.mock.MagicMock(status_code=200)),
         }
-        
+
         # Create patches
         patches = []
         for target, mock_obj in mocks.items():
             patches.append(unittest.mock.patch(target, mock_obj))
-        
+
         # Return a context manager
         class MockContext:
             def __enter__(self):
                 for patch in patches:
                     patch.start()
                 return self
-            
+
             def __exit__(self, exc_type, exc_val, exc_tb):
                 for patch in patches:
                     patch.stop()
-        
+
         return MockContext()
-    
+
     async def test_all_examples(self) -> List[ExampleTestResult]:
         """Test all examples in the examples directory."""
         print(f"Starting comprehensive example testing at {self.start_time}")
         print(f"Examples directory: {self.examples_dir}")
-        
+
         # Find all Python files
         python_files = self.find_python_files(self.examples_dir)
         print(f"Found {len(python_files)} Python files to test")
-        
+
         # Test each file
         for file_path in python_files:
             result = await self.test_example_file(file_path)
             self.results.append(result)
-        
+
         return self.results
-    
+
     def generate_report(self) -> Dict[str, Any]:
         """Generate a comprehensive test report."""
         end_time = datetime.now()
         total_time = (end_time - self.start_time).total_seconds()
-        
+
         # Count results by status
         status_counts = {}
         for result in self.results:
             status_counts[result.status] = status_counts.get(result.status, 0) + 1
-        
+
         # Calculate success rate
         total_tested = len([r for r in self.results if r.status != "skipped"])
         success_rate = (status_counts.get("passed", 0) / total_tested * 100) if total_tested > 0 else 0
-        
+
         # Group by directory
         by_directory = {}
         for result in self.results:
@@ -274,14 +274,14 @@ class ExampleTester:
             if dir_name not in by_directory:
                 by_directory[dir_name] = []
             by_directory[dir_name].append(result)
-        
+
         # Find common issues
         common_errors = {}
         for result in self.results:
             if result.error_message:
                 error_type = type(result.error_message).__name__
                 common_errors[error_type] = common_errors.get(error_type, 0) + 1
-        
+
         report = {
             "summary": {
                 "total_files": len(self.results),
@@ -322,19 +322,19 @@ class ExampleTester:
                 for r in self.results
             ]
         }
-        
+
         return report
-    
+
     def save_report(self, report: Dict[str, Any], output_file: str = "example_test_report.json"):
         """Save the test report to a JSON file."""
         with open(output_file, 'w') as f:
             json.dump(report, f, indent=2)
         print(f"Report saved to {output_file}")
-    
+
     def print_summary(self, report: Dict[str, Any]):
         """Print a summary of the test results."""
         summary = report["summary"]
-        
+
         print("\n" + "="*60)
         print("MULTIMIND SDK EXAMPLES TEST SUMMARY")
         print("="*60)
@@ -347,12 +347,12 @@ class ExampleTester:
         print(f"Success rate: {summary['success_rate']}%")
         print(f"Total time: {summary['total_time_seconds']} seconds")
         print("="*60)
-        
+
         # Print by directory
         print("\nResults by directory:")
         for dir_name, stats in report["by_directory"].items():
             print(f"  {dir_name}: {stats['passed']}/{stats['total']} passed")
-        
+
         # Print common errors
         if report["common_errors"]:
             print("\nCommon error types:")
@@ -363,20 +363,20 @@ class ExampleTester:
 async def main():
     """Main function to run the comprehensive example testing."""
     examples_dir = project_root / "examples"
-    
+
     if not examples_dir.exists():
         print(f"Error: Examples directory not found at {examples_dir}")
         return 1
-    
+
     # Create tester and run tests
     tester = ExampleTester(examples_dir)
     results = await tester.test_all_examples()
-    
+
     # Generate and save report
     report = tester.generate_report()
     tester.save_report(report)
     tester.print_summary(report)
-    
+
     # Return exit code based on success rate
     success_rate = report["summary"]["success_rate"]
     if success_rate >= 80:
@@ -392,4 +392,4 @@ async def main():
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
-    sys.exit(exit_code) 
+    sys.exit(exit_code)

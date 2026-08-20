@@ -1,7 +1,8 @@
+import logging
+from typing import List, Optional
+
 from fastapi import FastAPI, HTTPException
 from model_wrapper import ModelWrapper
-from typing import Optional, List
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -30,17 +31,17 @@ async def query_model(
             status_code=400,
             detail=f"Model {model} is not available. Available models: {', '.join(available)}"
         )
-    
+
     logger.info(f"Querying {model} with prompt: {prompt}")
-    
+
     result = wrapper.query_model(
         model=model,
         prompt=prompt,
         ollama_model=ollama_model,
         hf_model_id=hf_model_id
     )
-    
+
     if result["status"] == "error":
         raise HTTPException(status_code=500, detail=result["error"])
-        
-    return result 
+
+    return result

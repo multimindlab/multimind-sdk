@@ -1,7 +1,9 @@
 import asyncio
+
+from multimind.memory import TokenAwareMemory
 from multimind.patterns.advanced_patterns import SelfImprovingRAG
 from multimind.retrieval.retrieval import HybridRetriever
-from multimind.memory import TokenAwareMemory
+
 
 # Mock LLM, Retriever, and PEFTTuner for demonstration
 class MockLLM:
@@ -72,4 +74,4 @@ async def main():
         print(f"Feedback analytics: {analytics['stats']}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

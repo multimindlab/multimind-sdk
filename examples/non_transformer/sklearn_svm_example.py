@@ -1,8 +1,10 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from sklearn.svm import SVC
-from sklearn.feature_extraction.text import CountVectorizer
-import numpy as np
 import asyncio
+
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.svm import SVC
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy training data
 texts = [
@@ -48,4 +50,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted label: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

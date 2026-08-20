@@ -3,9 +3,12 @@ API usage example of the MultiModelWrapper.
 """
 
 import asyncio
-import aiohttp
 import json
+
+import aiohttp
+
 from multimind import ModelFactory, MultiModelWrapper
+
 
 async def run_api_examples():
     base_url = "http://localhost:8000"  # Default FastAPI port
@@ -58,4 +61,4 @@ async def run_api_examples():
             print("Health status:", result["status"])
 
 if __name__ == "__main__":
-    asyncio.run(run_api_examples()) 
+    asyncio.run(run_api_examples())

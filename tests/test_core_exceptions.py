@@ -1,12 +1,14 @@
 import pytest
+
 from multimind.core.exceptions import (
-    MultiMindError,
-    RetrievalError,
-    GenerationError,
+    ConfigurationError,
     DocumentProcessingError,
     EmbeddingError,
-    ConfigurationError
+    GenerationError,
+    MultiMindError,
+    RetrievalError,
 )
+
 
 def test_multimind_error():
     with pytest.raises(MultiMindError):
@@ -30,4 +32,4 @@ def test_embedding_error():
 
 def test_configuration_error():
     with pytest.raises(ConfigurationError):
-        raise ConfigurationError("test error") 
+        raise ConfigurationError("test error")

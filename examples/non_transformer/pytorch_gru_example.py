@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
+import asyncio
+
 import torch
 import torch.nn as nn
-import asyncio
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy vocabulary and tokenizer
 vocab = ["<pad>", "I", "love", "AI", "and", "Python", "."]
@@ -75,4 +77,4 @@ async def main():
     print(f"Prompt: {prompt}\nGenerated: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

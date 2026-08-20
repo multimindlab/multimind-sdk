@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-import os
 import argparse
+import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 import torch
 from safetensors.torch import save_file
+
 from multimind.model_conversion import ModelConversionManager
+
 
 def convert_pytorch_to_safetensors(
     model_path: str,
@@ -45,7 +48,7 @@ def convert_pytorch_to_safetensors(
             ]
         }
     )
-    
+
     return converter.convert(model_path, output_path)
 
 def main():
@@ -64,23 +67,23 @@ def main():
                       help="Device to use for conversion")
     parser.add_argument("--metadata", type=str, nargs="+",
                       help="Additional metadata as key=value pairs")
-    
+
     args = parser.parse_args()
-    
+
     # Parse metadata
     metadata = {}
     if args.metadata:
         for item in args.metadata:
             key, value = item.split("=")
             metadata[key] = value
-    
+
     config = {
         "compression": args.compression,
         "compression_level": args.compression_level,
         "device": args.device,
         "metadata": metadata
     }
-    
+
     try:
         output_path = convert_pytorch_to_safetensors(
             args.model_path,
@@ -88,19 +91,19 @@ def main():
             config
         )
         print(f"Model converted successfully to: {output_path}")
-        
+
         # Print model metadata
         converter = ModelConversionManager()
         metadata = converter.get_metadata(output_path)
         print("\nModel Metadata:")
         for key, value in metadata.items():
             print(f"{key}: {value}")
-            
+
     except Exception as e:
         print(f"Error during conversion: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

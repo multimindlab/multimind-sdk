@@ -4,9 +4,11 @@ Example demonstrating intelligent model switching and optimization features.
 
 import asyncio
 import time
-from typing import List, Dict
+from typing import Dict, List
+
 from multimind.models.factory import ModelFactory
 from multimind.models.multi_model import MultiModelWrapper
+
 
 async def run_intelligent_examples():
     # Initialize the model factory
@@ -59,7 +61,7 @@ async def run_intelligent_examples():
     # Example 2: Performance-based model selection
     print("\nExample 2: Performance-based model selection")
     print("Running multiple requests to build performance metrics...")
-    
+
     for _ in range(5):
         await multi_model.generate(
             prompt="What is artificial intelligence?",
@@ -137,4 +139,4 @@ async def run_intelligent_examples():
         print(f"  Error Rate: {metrics['error_rate']:.2f}")
 
 if __name__ == "__main__":
-    asyncio.run(run_intelligent_examples()) 
+    asyncio.run(run_intelligent_examples())

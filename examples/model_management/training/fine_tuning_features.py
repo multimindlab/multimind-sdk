@@ -3,17 +3,19 @@ Example demonstrating fine-tuning integration and advanced model management feat
 """
 
 import asyncio
-import time
 import json
-from typing import List, Dict, Any, Optional, Union
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
 from multimind.models.factory import ModelFactory
 from multimind.models.multi_model import MultiModelWrapper
 
+
 class FineTunedMultiModelWrapper(MultiModelWrapper):
     """Extended MultiModelWrapper with fine-tuning and advanced model management."""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fine_tuned_models = {}  # Track fine-tuned model versions
@@ -47,10 +49,10 @@ class FineTunedMultiModelWrapper(MultiModelWrapper):
             'response_time': 0.0,
             'token_usage': 0
         }
-        
+
         total_time = 0
         correct_responses = 0
-        
+
         for example in test_data:
             start_time = time.time()
             try:
@@ -59,19 +61,19 @@ class FineTunedMultiModelWrapper(MultiModelWrapper):
                     temperature=0.3
                 )
                 total_time += time.time() - start_time
-                
+
                 # Simple accuracy check (customize based on your needs)
                 if example.get('expected_response') and example['expected_response'] in response:
                     correct_responses += 1
-                
+
                 metrics['token_usage'] += len(response.split())
             except Exception as e:
                 print(f"Error evaluating model {model_name}: {e}")
-        
+
         if test_data:
             metrics['accuracy'] = correct_responses / len(test_data)
             metrics['response_time'] = total_time / len(test_data)
-        
+
         return metrics
 
     async def fine_tune_model(
@@ -85,17 +87,17 @@ class FineTunedMultiModelWrapper(MultiModelWrapper):
     ) -> Dict[str, Any]:
         """Fine-tune a model with custom training data."""
         print(f"Starting fine-tuning for model {model_name}...")
-        
+
         # Prepare training data
         data_splits = await self._prepare_training_data(
             model_name,
             training_data,
             validation_split
         )
-        
+
         # Store training data
         self.training_data[model_name] = data_splits
-        
+
         # Simulate fine-tuning process
         # In a real implementation, this would call the model's fine-tuning API
         print(f"Training for {epochs} epochs...")
@@ -103,13 +105,13 @@ class FineTunedMultiModelWrapper(MultiModelWrapper):
             print(f"Epoch {epoch + 1}/{epochs}")
             # Simulate training progress
             await asyncio.sleep(1)
-        
+
         # Evaluate the fine-tuned model
         evaluation_metrics = await self._evaluate_model(
             model_name,
             data_splits['validation']
         )
-        
+
         # Store fine-tuned model information
         model_version = f"{model_name}_ft_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         self.fine_tuned_models[model_version] = {
@@ -123,7 +125,7 @@ class FineTunedMultiModelWrapper(MultiModelWrapper):
                 **kwargs
             }
         }
-        
+
         return {
             'model_version': model_version,
             'evaluation_metrics': evaluation_metrics,
@@ -282,4 +284,4 @@ async def run_fine_tuning_examples():
         print(json.dumps(metrics, indent=2))
 
 if __name__ == "__main__":
-    asyncio.run(run_fine_tuning_examples()) 
+    asyncio.run(run_fine_tuning_examples())

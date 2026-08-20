@@ -4,12 +4,14 @@ Example demonstrating how to use the hybrid workflow system for RAG and vision+l
 
 import asyncio
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from multimind.core.provider import ProviderConfig
-from multimind.core.router import Router, TaskType, TaskConfig, RoutingStrategy
-from multimind.rag.hybrid_workflow import HybridWorkflow
-from multimind.providers.openai import OpenAIProvider
+from multimind.core.router import Router, RoutingStrategy, TaskConfig, TaskType
 from multimind.providers.claude import ClaudeProvider
+from multimind.providers.openai import OpenAIProvider
+from multimind.rag.hybrid_workflow import HybridWorkflow
+
 
 async def main():
     # Initialize providers
@@ -21,15 +23,15 @@ async def main():
         api_key=os.getenv("ANTHROPIC_API_KEY"),
         base_url="https://api.anthropic.com"
     )
-    
+
     openai_provider = OpenAIProvider(openai_config)
     claude_provider = ClaudeProvider(claude_config)
-    
+
     # Initialize router
     router = Router()
     router.register_provider("openai", openai_provider)
     router.register_provider("claude", claude_provider)
-    
+
     # Configure tasks
     text_generation_config = TaskConfig(
         preferred_providers=["openai", "claude"],
@@ -44,13 +46,13 @@ async def main():
             "min_confidence": 0.7
         }
     )
-    
+
     embeddings_config = TaskConfig(
         preferred_providers=["openai"],
         fallback_providers=[],
         routing_strategy=RoutingStrategy.COST_BASED
     )
-    
+
     image_analysis_config = TaskConfig(
         preferred_providers=["openai", "claude"],
         fallback_providers=[],
@@ -63,14 +65,14 @@ async def main():
             }
         }
     )
-    
+
     router.configure_task(TaskType.TEXT_GENERATION, text_generation_config)
     router.configure_task(TaskType.EMBEDDINGS, embeddings_config)
     router.configure_task(TaskType.IMAGE_ANALYSIS, image_analysis_config)
-    
+
     # Initialize hybrid workflow
     workflow = HybridWorkflow(router)
-    
+
     # Example 1: Adding documents to RAG system
     print("\nAdding documents to RAG system...")
     await workflow.add_document(
@@ -78,13 +80,13 @@ async def main():
         context_id="quantum_computing",
         metadata={"source": "textbook", "topic": "quantum_basics"}
     )
-    
+
     await workflow.add_document(
         content="Qubits can be implemented using various physical systems like superconducting circuits, trapped ions, or photons.",
         context_id="quantum_computing",
         metadata={"source": "research_paper", "topic": "qubit_implementation"}
     )
-    
+
     # Example 2: Adding image documents
     print("\nAdding image documents...")
     # Note: In a real example, you would load actual images
@@ -94,7 +96,7 @@ async def main():
         context_id="quantum_computing",
         metadata={"source": "diagram", "topic": "quantum_circuit"}
     )
-    
+
     # Example 3: Processing RAG query
     print("\nProcessing RAG query...")
     result = await workflow.process_with_rag(
@@ -106,7 +108,7 @@ async def main():
     print(f"RAG result: {result.result}")
     print(f"Cost: ${result.cost_estimate_usd:.4f}")
     print(f"Latency: {result.latency_ms:.0f}ms")
-    
+
     # Example 4: Processing vision+language query
     print("\nProcessing vision+language query...")
     result = await workflow.process_vision_language(
@@ -118,7 +120,7 @@ async def main():
     print(f"Vision+Language result: {result.result}")
     print(f"Cost: ${result.cost_estimate_usd:.4f}")
     print(f"Latency: {result.latency_ms:.0f}ms")
-    
+
     # Example 5: Processing hybrid query
     print("\nProcessing hybrid query...")
     result = await workflow.process_hybrid(
@@ -130,7 +132,7 @@ async def main():
     print(f"Hybrid result: {result.result}")
     print(f"Cost: ${result.cost_estimate_usd:.4f}")
     print(f"Latency: {result.latency_ms:.0f}ms")
-    
+
     # Print context information
     print("\nShared Contexts:")
     for context_id, context in workflow.shared_contexts.items():
@@ -143,4 +145,4 @@ async def main():
         print(f"  Metadata: {context.metadata}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

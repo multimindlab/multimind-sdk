@@ -2,11 +2,11 @@
 # Requires: pip install transformers mamba-ssm torch optuna
 # See: https://huggingface.co/state-spaces/s4-small
 
+import optuna
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch.nn as nn
-import optuna
 
 MODEL_NAME = "state-spaces/s4-small"
 
@@ -83,4 +83,4 @@ study.optimize(objective, n_trials=5)
 print("[INFO] Best hyperparameters:")
 print(study.best_params)
 
-# For real use, extend to more epochs, larger datasets, and more parameters 
+# For real use, extend to more epochs, larger datasets, and more parameters

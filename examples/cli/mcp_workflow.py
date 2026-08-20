@@ -4,33 +4,34 @@ MCP workflow example demonstrating how to use Model Composition Protocol for com
 
 import asyncio
 import os
+
 from dotenv import load_dotenv
-from multimind import (
-    OpenAIModel, ClaudeModel, MCPExecutor
-)
+
+from multimind import ClaudeModel, MCPExecutor, OpenAIModel
+
 
 async def main():
     # Load environment variables
     load_dotenv()
-    
+
     # Check which API keys are available
     openai_key = os.getenv("OPENAI_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY")
-    
+
     has_openai = openai_key is not None and openai_key.strip() != ""
     has_claude = anthropic_key is not None and anthropic_key.strip() != ""
-    
+
     if not has_openai and not has_claude:
         print("Error: No API keys found. Please set OPENAI_API_KEY or ANTHROPIC_API_KEY/CLAUDE_API_KEY")
         return
-    
+
     # Create MCP executor
     executor = MCPExecutor()
-    
+
     # Create and register available models
     available_models = []
     model_registry = {}
-    
+
     if has_openai:
         try:
             openai_model = OpenAIModel(
@@ -51,7 +52,7 @@ async def main():
         except Exception as e:
             print(f"Warning: Failed to initialize OpenAI model: {e}")
             has_openai = False
-    
+
     if has_claude:
         try:
             claude_model = ClaudeModel(
@@ -72,7 +73,7 @@ async def main():
         except Exception as e:
             print(f"Warning: Failed to initialize Claude model: {e}")
             has_claude = False
-    
+
     # Determine which models to use for each step
     if has_openai and has_claude:
         # Both models available - use both
@@ -89,26 +90,26 @@ async def main():
         initial_model = "claude-3"
         review_model = "claude-3"
         print("\nUsing Claude for both steps (OpenAI API key not found)")
-    
+
     # Ask user for topic (or use default if empty)
     print("\n" + "="*50)
     print("MCP Workflow - Topic Analysis")
     print("="*50)
     user_topic = input("\nEnter a topic to analyze (or press Enter for default): ").strip()
-    
+
     if not user_topic:
         topic = "The Future of Artificial Intelligence"
         print(f"\nUsing default topic: {topic}")
     else:
         topic = user_topic
         print(f"\nAnalyzing topic: {topic}")
-    
+
     # Calculate quality check word from topic
     # Extract meaningful words from topic for quality check (skip common words)
     topic_words = topic.lower().split()
     articles = ["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "but"]
     significant_words = [w for w in topic_words if w not in articles]
-    
+
     # Use the last significant word (usually the main subject) or first if only one
     # This works better when there are typos in the topic
     if len(significant_words) > 1:
@@ -117,10 +118,10 @@ async def main():
         quality_check_word = significant_words[0]
     else:
         quality_check_word = "analysis"
-    
+
     # Build workflow dynamically based on available models
     workflow_models = [model_registry[model] for model in available_models]
-    
+
     workflow = {
         "version": "1.0.0",
         "models": workflow_models,
@@ -179,13 +180,13 @@ async def main():
             ]
         }
     }
-    
+
     results = await executor.execute(workflow, {"topic": topic})
-    
+
     # Print results
     print("MCP Workflow Results:")
     print("====================")
-    
+
     for step_id, result in results.items():
         print(f"\n{step_id.upper()}:")
         print("-" * len(step_id))
@@ -193,4 +194,4 @@ async def main():
         print()
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

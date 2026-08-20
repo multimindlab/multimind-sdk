@@ -2,18 +2,26 @@
 FastAPI interface for the MultiMind Ensemble system.
 """
 
-import os
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any, Tuple
 import asyncio
+import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-from multimind import Router, TaskType, AdvancedEnsemble, EnsembleMethod, TaskConfig, RoutingStrategy
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from multimind import (
+    AdvancedEnsemble,
+    EnsembleMethod,
+    Router,
+    RoutingStrategy,
+    TaskConfig,
+    TaskType,
+)
 from multimind.core.provider import ProviderConfig
-from multimind.providers.openai import OpenAIProvider
 from multimind.providers.claude import ClaudeProvider
 from multimind.providers.ollama import OllamaProvider
+from multimind.providers.openai import OpenAIProvider
 
 try:
     from dotenv import load_dotenv
@@ -69,17 +77,17 @@ def _prepare_router(providers: List[str]) -> Tuple[Router, List[str]]:
     """Prepare router with registered providers."""
     router = Router()
     registered: List[str] = []
-    
+
     for name in providers:
         name_lower = name.lower()
         spec = PROVIDER_REGISTRY.get(name_lower)
         if not spec:
             # Skip unsupported providers
             continue
-        
+
         env_vars = spec["env"]
         api_key = _get_env_value(env_vars) if env_vars else None
-        
+
         # For Ollama (no API key needed)
         if name_lower == "ollama":
             ollama_base = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -92,10 +100,10 @@ def _prepare_router(providers: List[str]) -> Tuple[Router, List[str]]:
             continue
         else:
             provider_adapter = spec["adapter"](ProviderConfig(api_key=api_key))
-        
+
         router.register_provider(name_lower, provider_adapter)
         registered.append(name_lower)
-    
+
     # Configure default tasks
     if registered:
         for task_type in [TaskType.TEXT_GENERATION, TaskType.EMBEDDINGS, TaskType.IMAGE_ANALYSIS]:
@@ -117,7 +125,7 @@ def _prepare_router(providers: List[str]) -> Tuple[Router, List[str]]:
                         },
                     ),
                 )
-    
+
     router.fallback_policy.notify_user = False
     return router, registered
 
@@ -146,21 +154,21 @@ async def generate_text(request: TextGenerationRequest):
                 status_code=400,
                 detail="No providers could be registered. Check API keys and provider names."
             )
-        
+
         ensemble = AdvancedEnsemble(router)
-        
+
         # Filter to only registered providers that support text generation
         text_providers = [
             p for p in registered_providers
             if TaskType.TEXT_GENERATION in PROVIDER_REGISTRY.get(p, {}).get("capabilities", set())
         ]
-        
+
         if not text_providers:
             raise HTTPException(
                 status_code=400,
                 detail="No registered providers support text generation."
             )
-        
+
         # Get results from all providers with error handling and timeout
         async def get_result(provider: str):
             try:
@@ -181,17 +189,17 @@ async def generate_text(request: TextGenerationRequest):
             except Exception as e:
                 # Return None for failed providers, we'll filter them out
                 return None
-        
+
         results = await asyncio.gather(*[get_result(provider) for provider in text_providers], return_exceptions=True)
         # Filter out None results and exceptions
         results = [r for r in results if r is not None and not isinstance(r, Exception)]
-        
+
         if not results:
             raise HTTPException(
                 status_code=500,
                 detail="All providers failed to generate text."
             )
-        
+
         # Combine results
         combined_result = await ensemble.combine_results(
             results=results,
@@ -199,14 +207,14 @@ async def generate_text(request: TextGenerationRequest):
             task_type=TaskType.TEXT_GENERATION,
             weights=request.weights
         )
-        
+
         # Access text from GenerationResult (it has 'text' attribute)
         result_obj = combined_result.result
         if hasattr(result_obj, 'text'):
             result_text = result_obj.text
         else:
             result_text = str(result_obj)
-        
+
         return {
             "result": result_text,
             "confidence": combined_result.confidence.score,
@@ -228,21 +236,21 @@ async def generate_embeddings(request: EmbeddingRequest):
                 status_code=400,
                 detail="No providers could be registered. Check API keys and provider names."
             )
-        
+
         ensemble = AdvancedEnsemble(router)
-        
+
         # Filter to only registered providers that support embeddings
         embedding_providers = [
             p for p in registered_providers
             if TaskType.EMBEDDINGS in PROVIDER_REGISTRY.get(p, {}).get("capabilities", set())
         ]
-        
+
         if not embedding_providers:
             raise HTTPException(
                 status_code=400,
                 detail="No registered providers support embeddings."
             )
-        
+
         # Get embeddings from all providers with error handling and timeout
         async def get_result(provider: str):
             try:
@@ -262,24 +270,24 @@ async def generate_embeddings(request: EmbeddingRequest):
                 return None
             except Exception as e:
                 return None
-        
+
         results = await asyncio.gather(*[get_result(provider) for provider in embedding_providers], return_exceptions=True)
         # Filter out None results and exceptions
         results = [r for r in results if r is not None and not isinstance(r, Exception)]
-        
+
         if not results:
             raise HTTPException(
                 status_code=500,
                 detail="All providers failed to generate embeddings."
             )
-        
+
         # Use equal weights if not provided
         if not request.weights:
             weight = 1.0 / len(results)
             weights = {getattr(r, 'provider_name', 'unknown'): weight for r in results}
         else:
             weights = request.weights
-        
+
         # Combine results
         combined_result = await ensemble.combine_results(
             results=results,
@@ -287,14 +295,14 @@ async def generate_embeddings(request: EmbeddingRequest):
             task_type=TaskType.EMBEDDINGS,
             weights=weights
         )
-        
+
         # Access embedding from EmbeddingResult (it has 'embedding' attribute, not 'result')
         embedding = combined_result.result.embedding
         if hasattr(embedding, 'tolist'):
             embedding = embedding.tolist()
         elif not isinstance(embedding, list):
             embedding = list(embedding) if hasattr(embedding, '__iter__') else [embedding]
-        
+
         return {
             "embedding": embedding,
             "confidence": combined_result.confidence.score,
@@ -316,21 +324,21 @@ async def review_code(request: CodeReviewRequest):
                 status_code=400,
                 detail="No providers could be registered. Check API keys and provider names."
             )
-        
+
         ensemble = AdvancedEnsemble(router)
-        
+
         # Filter to only registered providers that support text generation
         text_providers = [
             p for p in registered_providers
             if TaskType.TEXT_GENERATION in PROVIDER_REGISTRY.get(p, {}).get("capabilities", set())
         ]
-        
+
         if not text_providers:
             raise HTTPException(
                 status_code=400,
                 detail="No registered providers support text generation."
             )
-        
+
         # Prepare prompt
         prompt = f"""Please review the following code and provide feedback on:
 1. Code quality
@@ -341,7 +349,7 @@ async def review_code(request: CodeReviewRequest):
 
 Code:
 {request.code}"""
-        
+
         # Get reviews from all providers with error handling and timeout
         async def get_result(provider: str):
             try:
@@ -361,33 +369,33 @@ Code:
                 return None
             except Exception as e:
                 return None
-        
+
         results = await asyncio.gather(*[get_result(provider) for provider in text_providers], return_exceptions=True)
         # Filter out None results and exceptions
         results = [r for r in results if r is not None and not isinstance(r, Exception)]
-        
+
         if not results:
             raise HTTPException(
                 status_code=500,
                 detail="All providers failed to review code."
             )
-        
+
         # Combine results
-        # Use CONFIDENCE_CASCADE for code review 
+        # Use CONFIDENCE_CASCADE for code review
         combined_result = await ensemble.combine_results(
             results=results,
             method=EnsembleMethod.CONFIDENCE_CASCADE,
             task_type=TaskType.TEXT_GENERATION,
             confidence_threshold=0.7
         )
-        
+
         # Access text from GenerationResult (it has 'text' attribute)
         result_obj = combined_result.result
         if hasattr(result_obj, 'text'):
             review_text = result_obj.text
         else:
             review_text = str(result_obj)
-        
+
         return {
             "review": review_text,
             "confidence": combined_result.confidence.score,
@@ -412,24 +420,24 @@ async def analyze_image(
                 status_code=400,
                 detail="No providers could be registered. Check API keys and provider names."
             )
-        
+
         ensemble = AdvancedEnsemble(router)
-        
+
         # Filter to only registered providers that support image analysis
         image_providers = [
             p for p in registered_providers
             if TaskType.IMAGE_ANALYSIS in PROVIDER_REGISTRY.get(p, {}).get("capabilities", set())
         ]
-        
+
         if not image_providers:
             raise HTTPException(
                 status_code=400,
                 detail="No registered providers support image analysis."
             )
-        
+
         # Read image file
         image_data = await image.read()
-        
+
         # Get analysis from all providers with error handling
         async def get_result(provider: str):
             try:
@@ -442,16 +450,16 @@ async def analyze_image(
                 )
             except Exception as e:
                 return None
-        
+
         results = await asyncio.gather(*[get_result(provider) for provider in image_providers])
         results = [r for r in results if r is not None]  # Filter out None results
-        
+
         if not results:
             raise HTTPException(
                 status_code=500,
                 detail="All providers failed to analyze image."
             )
-        
+
         # Combine results
         combined_result = await ensemble.combine_results(
             results=results,
@@ -459,7 +467,7 @@ async def analyze_image(
             task_type=TaskType.IMAGE_ANALYSIS,
             confidence_threshold=0.7
         )
-        
+
         return {
             "analysis": combined_result.result.result,
             "confidence": combined_result.confidence.score,
@@ -473,4 +481,4 @@ async def analyze_image(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

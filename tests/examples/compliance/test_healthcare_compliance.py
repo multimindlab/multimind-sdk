@@ -2,12 +2,13 @@
 Tests for healthcare compliance examples.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -21,12 +22,12 @@ except ImportError:
 
 class MockComplianceModel:
     """Mock compliance model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
         self.compliance_checks = []
-    
+
     async def generate(self, prompt: str, **kwargs):
         if "HIPAA" in prompt:
             return "HIPAA compliance check passed"
@@ -36,10 +37,10 @@ class MockComplianceModel:
             return "GDPR compliance check passed"
         else:
             return "General compliance check passed"
-    
+
     async def chat(self, messages, **kwargs):
         return "Compliance analysis completed"
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.1] * 384
@@ -59,7 +60,7 @@ class MockComplianceTrainer:
         self.config = config or {}
         self.kwargs = kwargs
         self.training_history = []
-    
+
     async def train(self, training_data=None, validation_data=None, **kwargs):
         self.training_history.append({
             "training_data": training_data or kwargs.get("train_data"),
@@ -77,7 +78,7 @@ class MockComplianceTrainer:
         async def _async_noop(*args, **kwargs):
             return {}
         return _async_noop
-    
+
     async def evaluate(self, test_data):
         return {
             "accuracy": 0.94,
@@ -90,11 +91,11 @@ class MockComplianceTrainer:
 
 class MockComplianceEvaluator:
     """Mock compliance evaluator for testing."""
-    
+
     def __init__(self, model):
         self.model = model
         self.evaluation_results = []
-    
+
     async def evaluate_model(self, model, test_data):
         result = {
             "overall_score": 0.95,
@@ -173,7 +174,7 @@ async def test_clinical_trial_compliance_main():
         'examples.compliance.healthcare.clinical_trial_compliance.load_dotenv',
         create=True,
     ):
-        
+
         try:
             await clinical_trial_main()
             assert True  # If we get here, the function ran without errors
@@ -193,15 +194,15 @@ async def test_compliance_model_initialization():
 async def test_compliance_model_generation():
     """Test that compliance models can generate compliance-related responses."""
     model = MockComplianceModel("gpt-4")
-    
+
     # Test HIPAA compliance
     hipaa_response = await model.generate("Check HIPAA compliance")
     assert "HIPAA compliance check passed" in hipaa_response
-    
+
     # Test FDA compliance
     fda_response = await model.generate("Check FDA compliance")
     assert "FDA compliance check passed" in fda_response
-    
+
     # Test GDPR compliance
     gdpr_response = await model.generate("Check GDPR compliance")
     assert "GDPR compliance check passed" in gdpr_response
@@ -212,23 +213,23 @@ async def test_compliance_trainer():
     """Test compliance trainer functionality."""
     model = MockComplianceModel("gpt-4")
     trainer = MockComplianceTrainer(model)
-    
+
     # Test training
     training_data = [
         {"text": "Patient data", "label": "hipaa_compliant"},
         {"text": "Medical records", "label": "hipaa_compliant"}
     ]
-    
+
     result = await trainer.train(training_data)
     assert result["accuracy"] == 0.95
     assert result["compliance_score"] == 0.98
     assert len(trainer.training_history) == 1
-    
+
     # Test evaluation
     test_data = [
         {"text": "Test patient data", "label": "hipaa_compliant"}
     ]
-    
+
     eval_result = await trainer.evaluate(test_data)
     assert eval_result["accuracy"] == 0.94
     assert eval_result["hipaa_score"] == 0.99
@@ -239,12 +240,12 @@ async def test_compliance_evaluator():
     """Test compliance evaluator functionality."""
     model = MockComplianceModel("gpt-4")
     evaluator = MockComplianceEvaluator(model)
-    
+
     # Test model evaluation
     test_data = [
         {"text": "Test data", "label": "compliant"}
     ]
-    
+
     result = await evaluator.evaluate_model(model, test_data)
     assert result["overall_score"] == 0.95
     assert result["hipaa_compliance"] == 0.98
@@ -257,13 +258,13 @@ async def test_compliance_evaluator():
 async def test_hipaa_compliance_check():
     """Test HIPAA compliance checking."""
     model = MockComplianceModel("gpt-4")
-    
+
     # Test HIPAA compliance prompt
     prompt = """
     Analyze the following text for HIPAA compliance:
     "Patient John Doe, DOB 01/01/1980, was diagnosed with diabetes."
     """
-    
+
     response = await model.generate(prompt)
     assert "HIPAA compliance check passed" in response
 
@@ -272,13 +273,13 @@ async def test_hipaa_compliance_check():
 async def test_fda_compliance_check():
     """Test FDA compliance checking."""
     model = MockComplianceModel("gpt-4")
-    
+
     # Test FDA compliance prompt
     prompt = """
     Analyze the following clinical trial data for FDA compliance:
     "Phase 2 clinical trial results for new drug XYZ."
     """
-    
+
     response = await model.generate(prompt)
     assert "FDA compliance check passed" in response
 
@@ -287,13 +288,13 @@ async def test_fda_compliance_check():
 async def test_gdpr_compliance_check():
     """Test GDPR compliance checking."""
     model = MockComplianceModel("gpt-4")
-    
+
     # Test GDPR compliance prompt
     prompt = """
     Analyze the following data processing for GDPR compliance:
     "Processing personal health data of EU citizens."
     """
-    
+
     response = await model.generate(prompt)
     assert "GDPR compliance check passed" in response
 
@@ -302,13 +303,13 @@ async def test_gdpr_compliance_check():
 async def test_compliance_model_embeddings():
     """Test that compliance models can generate embeddings."""
     model = MockComplianceModel("gpt-4")
-    
+
     # Test single text embedding
     text = "Patient health data"
     embedding = await model.embeddings(text)
     assert len(embedding) == 384
     assert all(isinstance(x, float) for x in embedding)
-    
+
     # Test multiple text embeddings
     texts = ["HIPAA compliant", "FDA approved", "GDPR compliant"]
     embeddings = await model.embeddings(texts)
@@ -325,7 +326,7 @@ async def test_compliance_model_chat():
         {"role": "assistant", "content": "Let me analyze the data for HIPAA compliance."},
         {"role": "user", "content": "What are the key requirements?"}
     ]
-    
+
     response = await model.chat(messages)
     assert "Compliance analysis completed" in response
 
@@ -336,24 +337,24 @@ async def test_compliance_training_workflow():
     model = MockComplianceModel("gpt-4")
     trainer = MockComplianceTrainer(model)
     evaluator = MockComplianceEvaluator(model)
-    
+
     # Training data
     training_data = [
         {"text": "Patient data with PHI", "label": "hipaa_compliant"},
         {"text": "Clinical trial results", "label": "fda_compliant"},
         {"text": "EU patient data", "label": "gdpr_compliant"}
     ]
-    
+
     # Train the model
     training_result = await trainer.train(training_data)
     assert training_result["accuracy"] > 0.9
     assert training_result["compliance_score"] > 0.9
-    
+
     # Evaluate the model
     test_data = [
         {"text": "Test patient data", "label": "hipaa_compliant"}
     ]
-    
+
     eval_result = await evaluator.evaluate_model(model, test_data)
     assert eval_result["overall_score"] > 0.9
     assert eval_result["hipaa_compliance"] > 0.9
@@ -365,9 +366,9 @@ async def test_error_handling():
     # Test with failing model
     failing_model = MockComplianceModel("gpt-4")
     failing_model.generate = AsyncMock(side_effect=Exception("API Error"))
-    
+
     trainer = MockComplianceTrainer(failing_model)
-    
+
     # The trainer should handle the error gracefully
     try:
         await trainer.train([{"text": "test", "label": "compliant"}])
@@ -380,14 +381,14 @@ def test_healthcare_compliance_structure():
     """Test that the healthcare compliance examples have the expected structure."""
     examples_dir = Path(__file__).parent.parent.parent.parent / "examples" / "compliance" / "healthcare"
     assert examples_dir.exists(), "Healthcare compliance examples directory should exist"
-    
+
     # Check for expected files
     expected_files = [
         "clinical_trial_compliance.py",
         "ehr_compliance.py",
         "drug_discovery_compliance.py"
     ]
-    
+
     for file_name in expected_files:
         file_path = examples_dir / file_name
         if file_path.exists():
@@ -407,7 +408,7 @@ async def test_environment_variables():
     except ImportError:
         # If import fails due to missing dependencies, that's acceptable
         pass
-    
+
     # Test with environment variables
     with patch.dict(os.environ, {'OPENAI_API_KEY': 'test_key'}):
         # This should not raise any errors
@@ -421,8 +422,8 @@ def test_compliance_configuration():
     assert model.model_name == "gpt-4"
     assert model.kwargs["temperature"] == 0.1
     assert model.kwargs["max_tokens"] == 1000
-    
+
     # Test trainer configuration
     trainer = MockComplianceTrainer(model, config={"batch_size": 32, "epochs": 10})
     assert trainer.config["batch_size"] == 32
-    assert trainer.config["epochs"] == 10 
+    assert trainer.config["epochs"] == 10

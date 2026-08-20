@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
+import asyncio
+
 import nltk
 from nltk.sentiment import SentimentIntensityAnalyzer
-import asyncio
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Download VADER lexicon if not already present
 nltk.download('vader_lexicon', quiet=True)
@@ -29,4 +31,4 @@ async def main():
     print(f"Prompt: {prompt}\nSentiment Scores: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

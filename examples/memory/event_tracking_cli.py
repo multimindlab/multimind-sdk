@@ -3,13 +3,15 @@ CLI version of the event tracking system, featuring complex use cases.
 This example demonstrates advanced event tracking capabilities in an interactive CLI environment.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import EventSourcedMemory
 from multimind.models import OllamaModel
+
 
 class EventTrackingCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "event_sourced.json"):
@@ -72,7 +74,7 @@ class EventTrackingCLI:
         event_type = input("Event type: ").strip()
         description = input("Description: ").strip()
         metadata = {}
-        
+
         # Add metadata fields
         while True:
             key = input("Metadata key (or empty to finish): ").strip()
@@ -80,7 +82,7 @@ class EventTrackingCLI:
                 break
             value = input(f"Value for {key}: ").strip()
             metadata[key] = value
-        
+
         self.memory.add_event(
             event_type=event_type,
             description=description,
@@ -93,7 +95,7 @@ class EventTrackingCLI:
         query = input("\nEnter your query: ").strip()
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Get related events
         related = self.memory.get_related_events(query)
         if related:
@@ -105,7 +107,7 @@ class EventTrackingCLI:
         """Process a natural language query."""
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Update current session
         self.update_session(query)
 
@@ -124,7 +126,7 @@ class EventTrackingCLI:
         print(f"Total events: {stats['total_events']}")
         print(f"Total sessions: {stats['total_sessions']}")
         print(f"Average events per session: {stats['average_events_per_session']}")
-        
+
         # Show event type distribution
         types = self.memory.get_event_type_distribution()
         if types:
@@ -218,11 +220,11 @@ async def main():
     args = parser.parse_args()
 
     et = EventTrackingCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Welcome to MultiMind Event Tracking CLI!")
     print("Type /help for available commands.")
     print("Type /exit to quit.")
-    
+
     while True:
         try:
             command = input("\nCommand: ").strip()
@@ -235,4 +237,4 @@ async def main():
             print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

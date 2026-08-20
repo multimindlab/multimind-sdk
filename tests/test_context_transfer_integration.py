@@ -6,25 +6,25 @@ for the Chrome extension use case.
 """
 
 import json
-import tempfile
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 # Import the context transfer modules directly
 sys.path.insert(0, 'multimind')
-from context_transfer.manager import ContextTransferManager
 from context_transfer.adapters import AdapterFactory
+from context_transfer.manager import ContextTransferManager
 
 
 class TestContextTransferIntegration(unittest.TestCase):
     """Integration tests for context transfer functionality."""
-    
+
     def setUp(self):
         """Set up test fixtures."""
         self.manager = ContextTransferManager()
-        
+
         # Sample ChatGPT conversation (what Chrome extension would capture)
         self.chatgpt_conversation = [
             {
@@ -32,7 +32,7 @@ class TestContextTransferIntegration(unittest.TestCase):
                 "content": "I need help with a Python project. I'm building a web scraper that needs to handle dynamic content."
             },
             {
-                "role": "assistant", 
+                "role": "assistant",
                 "content": "I can help you build a web scraper for dynamic content! There are several approaches depending on your needs. What kind of dynamic content are you dealing with - JavaScript-rendered content, AJAX-loaded data, or something else?"
             },
             {
@@ -52,20 +52,20 @@ class TestContextTransferIntegration(unittest.TestCase):
                 "content": "Great! Here's how to handle infinite scrolling with Selenium:\n\n```python\nimport time\nfrom selenium.webdriver.common.keys import Keys\n\n# Scroll to bottom to trigger loading\nlast_height = driver.execute_script('return document.body.scrollHeight')\n\nwhile True:\n    # Scroll down\n    driver.execute_script('window.scrollTo(0, document.body.scrollHeight);')\n    \n    # Wait for new content to load\n    time.sleep(2)\n    \n    # Calculate new scroll height\n    new_height = driver.execute_script('return document.body.scrollHeight')\n    \n    # If height is the same, we've reached the bottom\n    if new_height == last_height:\n        break\n        \n    last_height = new_height\n\n# Now collect all the content\nall_content = driver.find_elements(By.CLASS_NAME, 'content-item')\nfor item in all_content:\n    print(item.text)\n```\n\nThis will scroll until no more content loads. Would you like me to show you how to optimize this for better performance?"
             }
         ]
-    
+
     def test_chrome_extension_workflow(self):
         """Test the complete Chrome extension workflow."""
         print("\n🧪 Testing Chrome Extension Workflow")
         print("=" * 50)
-        
+
         # Step 1: Create temporary files (simulating Chrome extension)
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as input_f:
             json.dump(self.chatgpt_conversation, input_f)
             input_file = input_f.name
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as output_f:
             output_file = output_f.name
-        
+
         try:
             # Step 2: Test context transfer (what Chrome extension would call)
             print("🔄 Transferring context from ChatGPT to DeepSeek...")
@@ -76,46 +76,46 @@ class TestContextTransferIntegration(unittest.TestCase):
                 output_file=output_file,
                 last_n=5
             )
-            
+
             # Step 3: Verify the output
             self.assertTrue(os.path.exists(output_file), "Output file should be created")
-            
+
             with open(output_file, 'r') as f:
                 saved_content = f.read()
-            
+
             self.assertEqual(formatted_prompt, saved_content, "Content should match")
-            
+
             # Step 4: Verify the formatted prompt contains expected elements
             self.assertIn("You are DeepSeek", formatted_prompt, "Should contain DeepSeek system prompt")
             self.assertIn("chatgpt", formatted_prompt, "Should mention source model")
             self.assertIn("web scraper", formatted_prompt, "Should contain conversation context")
             self.assertIn("Selenium", formatted_prompt, "Should contain technical details")
-            
+
             print("✅ Chrome extension workflow test passed!")
             print(f"📄 Generated prompt length: {len(formatted_prompt)} characters")
-            
+
         finally:
             # Cleanup
             os.unlink(input_file)
             os.unlink(output_file)
-    
+
     def test_multiple_model_transfers(self):
         """Test transferring to different target models."""
         print("\n🧪 Testing Multiple Model Transfers")
         print("=" * 40)
-        
+
         models_to_test = ["deepseek", "claude", "gemini"]
-        
+
         for target_model in models_to_test:
             print(f"🔄 Testing transfer to {target_model}...")
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as input_f:
                 json.dump(self.chatgpt_conversation, input_f)
                 input_file = input_f.name
-            
+
             with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as output_f:
                 output_file = output_f.name
-            
+
             try:
                 formatted_prompt = self.manager.transfer_context(
                     from_model="chatgpt",
@@ -124,7 +124,7 @@ class TestContextTransferIntegration(unittest.TestCase):
                     output_file=output_file,
                     last_n=3
                 )
-                
+
                 # Verify model-specific formatting
                 if target_model == "deepseek":
                     self.assertIn("You are DeepSeek", formatted_prompt)
@@ -132,13 +132,13 @@ class TestContextTransferIntegration(unittest.TestCase):
                     self.assertIn("You are Claude", formatted_prompt)
                 elif target_model == "gemini":
                     self.assertIn("You are Gemini", formatted_prompt)
-                
+
                 print(f"✅ {target_model} transfer successful")
-                
+
             finally:
                 os.unlink(input_file)
                 os.unlink(output_file)
-    
+
     def test_context_extraction_variations(self):
         """Test different context extraction scenarios."""
         print("\n🧪 Testing Context Extraction Variations")
@@ -177,12 +177,12 @@ class TestContextTransferIntegration(unittest.TestCase):
         finally:
             Path(input_file).unlink()
             Path(output_file).unlink()
-    
+
     def test_error_handling(self):
         """Test error handling scenarios."""
         print("\n🧪 Testing Error Handling")
         print("=" * 30)
-        
+
         # Test with non-existent file
         with self.assertRaises(FileNotFoundError):
             self.manager.transfer_context(
@@ -191,12 +191,12 @@ class TestContextTransferIntegration(unittest.TestCase):
                 input_file="nonexistent.json",
                 output_file="output.txt"
             )
-        
+
         # Test with invalid JSON
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
             f.write("invalid json content")
             invalid_file = f.name
-        
+
         try:
             with self.assertRaises((json.JSONDecodeError, ValueError)):
                 self.manager.transfer_context(
@@ -207,15 +207,15 @@ class TestContextTransferIntegration(unittest.TestCase):
                 )
         finally:
             os.unlink(invalid_file)
-        
+
         # Test with unsupported model
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as input_f:
             json.dump(self.chatgpt_conversation, input_f)
             input_file = input_f.name
-        
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as output_f:
             output_file = output_f.name
-        
+
         try:
             # This should work with generic formatting
             formatted_prompt = self.manager.transfer_context(
@@ -224,42 +224,42 @@ class TestContextTransferIntegration(unittest.TestCase):
                 input_file=input_file,
                 output_file=output_file
             )
-            
+
             self.assertIn("You are unsupported_model", formatted_prompt)
             print("✅ Unsupported model handled gracefully")
-            
+
         finally:
             os.unlink(input_file)
             os.unlink(output_file)
-    
+
     def test_adapter_functionality(self):
         """Test the model adapters directly."""
         print("\n🧪 Testing Model Adapters")
         print("=" * 25)
-        
+
         summary = "User: Hello\nAssistant: Hi there!"
-        
+
         # Test DeepSeek adapter
         deepseek_adapter = AdapterFactory.get_adapter("deepseek")
         deepseek_formatted = deepseek_adapter.format_context(summary, "chatgpt")
         self.assertIn("You are DeepSeek", deepseek_formatted)
         self.assertIn("chatgpt", deepseek_formatted)
         print("✅ DeepSeek adapter works")
-        
+
         # Test Claude adapter
         claude_adapter = AdapterFactory.get_adapter("claude")
         claude_formatted = claude_adapter.format_context(summary, "deepseek")
         self.assertIn("You are Claude", claude_formatted)
         self.assertIn("deepseek", claude_formatted)
         print("✅ Claude adapter works")
-        
+
         # Test Gemini adapter
         gemini_adapter = AdapterFactory.get_adapter("gemini")
         gemini_formatted = gemini_adapter.format_context(summary, "chatgpt")
         self.assertIn("You are Gemini", gemini_formatted)
         self.assertIn("chatgpt", gemini_formatted)
         print("✅ Gemini adapter works")
-        
+
         # Test unsupported model
         with self.assertRaises(ValueError):
             AdapterFactory.get_adapter("unsupported_model")
@@ -269,14 +269,14 @@ def run_chrome_extension_demo():
     """Run a demo of the Chrome extension workflow."""
     print("\n🚀 Chrome Extension Context Transfer Demo")
     print("=" * 60)
-    
+
     # Create test instance
     test_instance = TestContextTransferIntegration()
     test_instance.setUp()
-    
+
     # Run the main workflow test
     test_instance.test_chrome_extension_workflow()
-    
+
     print("\n✅ Demo completed successfully!")
     print("\n📋 Summary:")
     print("   • Context transfer functionality works perfectly")
@@ -284,7 +284,7 @@ def run_chrome_extension_demo():
     print("   • Handles various context extraction scenarios")
     print("   • Robust error handling")
     print("   • Ready for Chrome extension integration")
-    
+
     print("\n🎯 Chrome Extension Integration Ready:")
     print("   1. Extension captures ChatGPT conversation")
     print("   2. Calls MultiMind SDK context transfer")
@@ -296,7 +296,7 @@ def run_chrome_extension_demo():
 if __name__ == "__main__":
     # Run the demo
     run_chrome_extension_demo()
-    
+
     # Run all tests
     print("\n🧪 Running all tests...")
-    unittest.main(verbosity=2) 
+    unittest.main(verbosity=2)

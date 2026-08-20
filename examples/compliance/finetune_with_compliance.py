@@ -8,37 +8,39 @@ This example shows how to:
 5. Ensure regulatory compliance during training
 """
 
+import asyncio
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
-from typing import Dict, Any, List, Optional
-import asyncio
-from datetime import datetime
 
 from multimind.compliance.advanced import (
-    ComplianceShard,
-    SelfHealingCompliance,
-    ExplainableDTO,
-    ModelWatermarking,
     AdaptivePrivacy,
-    RegulatoryChangeDetector,
+    ComplianceLevel,
+    ComplianceShard,
+    ExplainableDTO,
     FederatedCompliance,
-    ComplianceLevel
+    ModelWatermarking,
+    RegulatoryChangeDetector,
+    SelfHealingCompliance,
 )
 from multimind.compliance.advanced_config import (
-    ComplianceShardConfig,
-    SelfHealingConfig,
-    ExplainableDTOConfig,
-    ModelWatermarkingConfig,
     AdaptivePrivacyConfig,
+    ComplianceShardConfig,
+    ExplainableDTOConfig,
+    FederatedComplianceConfig,
+    ModelWatermarkingConfig,
     RegulatoryChangeConfig,
-    FederatedComplianceConfig
+    SelfHealingConfig,
 )
+
 
 class CompliantModelTrainer:
     """Trainer that ensures compliance during model finetuning."""
-    
+
     def __init__(
         self,
         model_name: str,
@@ -49,14 +51,14 @@ class CompliantModelTrainer:
         # Initialize model and tokenizer
         self.model = AutoModelForSequenceClassification.from_pretrained(model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        
+
         # Initialize compliance components
         self.compliance_shard = ComplianceShard(
             shard_id="training_shard",
             jurisdiction="global",
             config=compliance_config
         )
-        
+
         # Initialize privacy mechanism
         self.privacy = AdaptivePrivacy(
             privacy_config or {
@@ -67,7 +69,7 @@ class CompliantModelTrainer:
                 "feedback_window": 100
             }
         )
-        
+
         # Initialize watermarking
         self.watermarking = ModelWatermarking(
             watermark_config or {
@@ -77,7 +79,7 @@ class CompliantModelTrainer:
                 "verification_threshold": 0.9
             }
         )
-        
+
         # Initialize explainable DTO
         self.explainer = ExplainableDTO({
             "model_version": "1.0.0",
@@ -85,11 +87,11 @@ class CompliantModelTrainer:
             "explanation_depth": 3,
             "include_metadata": True
         })
-        
+
         # Training history
         self.training_history = []
         self.compliance_history = []
-    
+
     async def finetune(
         self,
         train_data: List[Dict[str, Any]],
@@ -102,37 +104,37 @@ class CompliantModelTrainer:
         # Prepare data
         train_dataloader = self._prepare_dataloader(train_data, batch_size)
         val_dataloader = self._prepare_dataloader(val_data, batch_size) if val_data else None
-        
+
         # Initialize optimizer
         optimizer = torch.optim.AdamW(self.model.parameters(), lr=learning_rate)
-        
+
         # Training loop
         for epoch in range(num_epochs):
             self.model.train()
             epoch_loss = 0
-            
+
             for batch in train_dataloader:
                 # Forward pass with privacy
                 outputs = await self._private_forward(batch)
                 loss = outputs.loss
-                
+
                 # Backward pass
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
-                
+
                 epoch_loss += loss.item()
-                
+
                 # Check compliance
                 compliance_result = await self._check_compliance(batch, outputs)
                 self.compliance_history.append(compliance_result)
-                
+
                 # Update privacy parameters
                 await self.privacy.adapt_privacy({
                     "loss": loss.item(),
                     "compliance_score": compliance_result["compliance_score"]
                 })
-            
+
             # Epoch end compliance check
             epoch_compliance = await self._check_epoch_compliance(epoch_loss)
             self.training_history.append({
@@ -145,12 +147,12 @@ class CompliantModelTrainer:
             print(f"Epoch {epoch + 1}/{num_epochs}")
             print(f"Training Loss: {epoch_loss:.4f}")
             print(f"Compliance Score: {epoch_compliance['compliance_score']:.4f}")
-            
+
             # Validate if validation data provided
             if val_dataloader:
                 val_metrics = await self._validate(val_dataloader)
                 print(f"Validation Metrics: {val_metrics}")
-    
+
     async def _private_forward(self, batch: Dict[str, torch.Tensor]) -> Any:
         """Perform forward pass with privacy protection."""
         # Ensure batch is a dictionary
@@ -164,19 +166,19 @@ class CompliantModelTrainer:
                 }
             else:
                 raise ValueError(f"Unexpected batch format: {type(batch)}")
-        
+
         # Apply differential privacy to inputs
         private_inputs = self.privacy.dp_mechanism.privatize(batch)
-        
+
         # Ensure private_inputs is a dictionary
         if not isinstance(private_inputs, dict):
             private_inputs = batch  # Fallback to original batch if privatize doesn't return dict
-        
+
         # Forward pass
         outputs = self.model(**private_inputs)
-        
+
         return outputs
-    
+
     async def _check_compliance(
         self,
         batch: Dict[str, torch.Tensor],
@@ -190,20 +192,20 @@ class CompliantModelTrainer:
             "model_state": self.model.state_dict(),
             "timestamp": datetime.now().isoformat()
         }
-        
+
         # Verify compliance
         is_compliant, result = await self.compliance_shard.verify_compliance(
             compliance_data,
             level=ComplianceLevel.ADVANCED
         )
-        
+
         return {
             "is_compliant": is_compliant,
             "compliance_score": result["metrics"].score,
             "proof": result["proof"],
             "private_result": result["private_result"]
         }
-    
+
     async def _check_epoch_compliance(self, epoch_loss: float) -> Dict[str, Any]:
         """Check compliance at the end of an epoch."""
         # Generate explanation for training progress
@@ -212,38 +214,38 @@ class CompliantModelTrainer:
             "model_state": self.model.state_dict(),
             "compliance_history": self.compliance_history[-100:]  # Last 100 checks
         })
-        
+
         # Extract confidence from metadata, with fallback
         confidence = explanation.get("metadata", {}).get("confidence", 0.5)
-        
+
         return {
             "compliance_score": confidence,
             "explanation": explanation,
             "metrics": self.compliance_shard.metrics_history[-1] if self.compliance_shard.metrics_history else None
         }
-    
+
     async def _validate(self, val_dataloader: DataLoader) -> Dict[str, float]:
         """Validate model with compliance checks."""
         self.model.eval()
         total_loss = 0
         correct = 0
         total = 0
-        
+
         with torch.no_grad():
             for batch in val_dataloader:
                 outputs = await self._private_forward(batch)
                 loss = outputs.loss
                 total_loss += loss.item()
-                
+
                 predictions = outputs.logits.argmax(dim=-1)
                 correct += (predictions == batch["labels"]).sum().item()
                 total += len(batch["labels"])
-        
+
         return {
             "loss": total_loss / len(val_dataloader),
             "accuracy": correct / total
         }
-    
+
     def _prepare_dataloader(
         self,
         data: List[Dict[str, Any]],
@@ -257,31 +259,31 @@ class CompliantModelTrainer:
             padding=True,
             return_tensors="pt"
         )
-        
+
         # Create a custom dataset that returns dictionaries
         class DictDataset(torch.utils.data.Dataset):
             def __init__(self, input_ids, attention_mask, labels):
                 self.input_ids = input_ids
                 self.attention_mask = attention_mask
                 self.labels = labels
-            
+
             def __len__(self):
                 return len(self.input_ids)
-            
+
             def __getitem__(self, idx):
                 return {
                     "input_ids": self.input_ids[idx],
                     "attention_mask": self.attention_mask[idx],
                     "labels": self.labels[idx]
                 }
-        
+
         # Create dataset
         dataset = DictDataset(
             encodings["input_ids"],
             encodings["attention_mask"],
             torch.tensor([item["label"] for item in data])
         )
-        
+
         # Custom collate function to ensure dictionary format
         def collate_fn(batch):
             return {
@@ -289,17 +291,17 @@ class CompliantModelTrainer:
                 "attention_mask": torch.stack([item["attention_mask"] for item in batch]),
                 "labels": torch.stack([item["labels"] for item in batch])
             }
-        
+
         return DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-    
+
     async def save_model(self, path: str):
         """Save model with compliance proofs and watermarks."""
         # Apply watermark
         watermarked_model = await self.watermarking.watermark_model(self.model)
-        
+
         # Generate final compliance proof
         final_compliance = await self._check_epoch_compliance(0.0)  # Use 0.0 as dummy loss
-        
+
         # Save model and metadata
         torch.save({
             "model_state": watermarked_model.state_dict(),
@@ -323,14 +325,14 @@ async def main():
             ]
         }
     )
-    
+
     # Example training data
     train_data = [
         {"text": "This is a positive example", "label": 1},
         {"text": "This is a negative example", "label": 0},
         # Add more examples...
     ]
-    
+
     # Finetune model
     await trainer.finetune(
         train_data=train_data,
@@ -338,9 +340,9 @@ async def main():
         batch_size=16,
         learning_rate=2e-5
     )
-    
+
     # Save model
     await trainer.save_model("compliant_model.pt")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

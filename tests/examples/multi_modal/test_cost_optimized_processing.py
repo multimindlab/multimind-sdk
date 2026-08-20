@@ -3,36 +3,35 @@ Tests for the cost-optimized multi-modal processing example.
 """
 
 import pytest
+
 pytest.skip("Skipping example test not structured as importable module.", allow_module_level=True)
 import asyncio
-from pathlib import Path
-import sys
-import os
 import base64
+import os
+import sys
+from pathlib import Path
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
-from examples.multi_modal.advanced.cost_optimized_processing import (
-    CostOptimizedMultiModalProcessor
-)
-from multimind.router.multi_modal_router import MultiModalRouter
+from examples.multi_modal.advanced.cost_optimized_processing import CostOptimizedMultiModalProcessor
 from multimind.metrics.cost_tracker import CostTracker
 from multimind.metrics.performance import PerformanceTracker
-from multimind.types import UnifiedRequest, ModalityInput
+from multimind.router.multi_modal_router import MultiModalRouter
+from multimind.types import ModalityInput, UnifiedRequest
 
 
 def create_test_files():
     """Create test files if they don't exist."""
     data_dir = Path("examples/data")
     data_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create test image
     image_path = data_dir / "sample_image.jpg"
     if not image_path.exists():
         with open(image_path, "wb") as f:
             f.write(b"fake image data")
-    
+
     # Create test audio
     audio_path = data_dir / "sample_audio.mp3"
     if not audio_path.exists():
@@ -51,12 +50,12 @@ def setup_test_files():
 @pytest.mark.asyncio
 async def test_cost_optimized_processing(setup_test_files):
     """Test the cost-optimized multi-modal processing."""
-    
+
     # Initialize components
     router = MultiModalRouter()
     cost_tracker = CostTracker()
     performance_tracker = PerformanceTracker()
-    
+
     # Create processor
     processor = CostOptimizedMultiModalProcessor(
         router=router,
@@ -64,19 +63,19 @@ async def test_cost_optimized_processing(setup_test_files):
         performance_tracker=performance_tracker,
         budget=0.1
     )
-    
+
     # Load test data
     data_dir = Path("examples/data")
     image_path = data_dir / "sample_image.jpg"
     audio_path = data_dir / "sample_audio.mp3"
-    
+
     # Read files
     with open(image_path, "rb") as f:
         image_data = base64.b64encode(f.read()).decode()
-    
+
     with open(audio_path, "rb") as f:
         audio_data = base64.b64encode(f.read()).decode()
-    
+
     # Create request
     request = UnifiedRequest(
         inputs=[
@@ -94,26 +93,26 @@ async def test_cost_optimized_processing(setup_test_files):
             )
         ]
     )
-    
+
     # Process request
     result = await processor.process_request(
         request,
         optimize_cost=True
     )
-    
+
     # Verify results
     assert "results" in result
     assert "cost" in result
     assert "latency" in result
-    
+
     # Verify modalities
     assert "image" in result["results"]
     assert "audio" in result["results"]
     assert "text" in result["results"]
-    
+
     # Verify cost
     assert result["cost"] <= 0.1  # Budget check
-    
+
     # Verify latency
     assert result["latency"] >= 0
 
@@ -121,12 +120,12 @@ async def test_cost_optimized_processing(setup_test_files):
 @pytest.mark.asyncio
 async def test_cost_optimized_processor(setup_test_files):
     """Test the CostOptimizedMultiModalProcessor class."""
-    
+
     # Initialize components
     router = MultiModalRouter()
     cost_tracker = CostTracker()
     performance_tracker = PerformanceTracker()
-    
+
     # Create processor
     processor = CostOptimizedMultiModalProcessor(
         router=router,
@@ -134,11 +133,11 @@ async def test_cost_optimized_processor(setup_test_files):
         performance_tracker=performance_tracker,
         budget=0.1
     )
-    
+
     # Test model selection
     model = processor._get_cost_optimized_model("image")
     assert model is not None
-    
+
     # Test budget exceeded
     with pytest.raises(ValueError):
         await processor.process_request(
@@ -161,7 +160,7 @@ def test_environment_variables():
         "ANTHROPIC_API_KEY",
         "HUGGINGFACE_API_KEY"
     ]
-    
+
     for var in required_vars:
         assert var in os.environ, f"Missing required environment variable: {var}"
 
@@ -173,6 +172,6 @@ def test_data_files():
         "sample_image.jpg",
         "sample_audio.mp3"
     ]
-    
+
     for file in required_files:
-        assert (data_dir / file).exists(), f"Missing required data file: {file}" 
+        assert (data_dir / file).exists(), f"Missing required data file: {file}"

@@ -1,6 +1,8 @@
 import pytest
-from multimind.llm.non_transformer_llm import QLoRALLM, CompacterLLM
+
 from multimind.llm.llm_interface import LLMInterface, ModelType
+from multimind.llm.non_transformer_llm import CompacterLLM, QLoRALLM
+
 
 class DummyModel:
     model_name = "dummy"
@@ -24,4 +26,4 @@ def test_llm_interface_init():
 
 def test_model_type_enum():
     # Check for actual enum values
-    assert len(list(ModelType)) > 0 
+    assert len(list(ModelType)) > 0

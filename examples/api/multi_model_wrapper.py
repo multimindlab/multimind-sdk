@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 # CNN Block
 class CNNBlock(nn.Module):
     def __init__(self, input_channels, output_channels):
@@ -51,4 +52,4 @@ class MultiModelWrapper(nn.Module):
         x = x.unsqueeze(1)
         x = self.transformer(x)
         x = self.fc(x)
-        return torch.sigmoid(x) 
+        return torch.sigmoid(x)

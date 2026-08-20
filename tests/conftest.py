@@ -17,7 +17,6 @@ import os
 
 import pytest
 
-
 # --- collection hook ---------------------------------------------------------
 
 # Any of these env vars being set is treated as "we have at least one key

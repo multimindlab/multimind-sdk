@@ -4,22 +4,20 @@ This example demonstrates how to use MultiMind's memory capabilities for scienti
 combining knowledge graph memory for research knowledge and event-sourced memory for experiment tracking.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
-from multimind.memory import (
-    KnowledgeGraphMemory,
-    EventSourcedMemory,
-    HybridMemory
-)
+from multimind.memory import EventSourcedMemory, HybridMemory, KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class ScientificResearchCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "scientific_research.json"):
         self.llm = OllamaModel(model_name=model)
-        
+
         # Initialize knowledge graph memory for research knowledge
         self.research_knowledge = KnowledgeGraphMemory(
             llm=self.llm,
@@ -31,7 +29,7 @@ class ScientificResearchCLI:
             validation_interval=3600,  # 1 hour
             storage_path=f"{storage_path}_knowledge.json"
         )
-        
+
         # Initialize event-sourced memory for experiment tracking
         self.experiment_tracking = EventSourcedMemory(
             llm=self.llm,
@@ -43,7 +41,7 @@ class ScientificResearchCLI:
             pattern_interval=3600,  # 1 hour
             storage_path=f"{storage_path}_experiments.json"
         )
-        
+
         # Initialize hybrid memory for overall context
         self.memory = HybridMemory(
             llm=self.llm,
@@ -56,7 +54,7 @@ class ScientificResearchCLI:
             enable_analysis=True,
             storage_path=storage_path
         )
-        
+
         self.mm = MultiMind(
             llm=self.llm,
             memory=self.memory,
@@ -74,7 +72,7 @@ class ScientificResearchCLI:
             subject, predicate, object_, confidence = args[0], args[1], args[2], float(args[3])
             await self.add_research_knowledge(subject, predicate, object_, confidence)
             print(f"Added knowledge: {subject} {predicate} {object_} (confidence: {confidence})")
-        
+
         elif command == "/add_experiment":
             if len(args) < 3:
                 print("Usage: /add_experiment <type> <description> <metadata>")
@@ -83,44 +81,44 @@ class ScientificResearchCLI:
             metadata = eval(args[2])  # Convert string to dict
             await self.add_experiment(event_type, description, metadata)
             print(f"Added experiment: {event_type} - {description}")
-        
+
         elif command == "/query":
             if not args:
                 print("Usage: /query <query_text>")
                 return
             query = " ".join(args)
             await self.query_research(query)
-        
+
         elif command == "/analyze":
             if not args:
                 print("Usage: /analyze <experiment_id>")
                 return
             experiment_id = args[0]
             await self.analyze_experiment(experiment_id)
-        
+
         elif command == "/stats":
             await self.show_stats()
-        
+
         elif command == "/export":
             if len(args) < 1:
                 print("Usage: /export <filename>")
                 return
             filename = args[0]
             await self.export_data(filename)
-        
+
         elif command == "/import":
             if len(args) < 1:
                 print("Usage: /import <filename>")
                 return
             filename = args[0]
             await self.import_data(filename)
-        
+
         elif command == "/clear":
             await self.clear_data()
-        
+
         elif command == "/help":
             self.show_help()
-        
+
         else:
             print(f"Unknown command: {command}")
             self.show_help()
@@ -147,7 +145,7 @@ class ScientificResearchCLI:
         response = await self.mm.chat(query)
         related = self.research_knowledge.get_related_concepts(query)
         inferences = self.research_knowledge.get_inferences(query)
-        
+
         print(f"\nResponse: {response}")
         print("\nRelated Concepts:")
         for concept in related:
@@ -161,15 +159,15 @@ class ScientificResearchCLI:
         patterns = self.experiment_tracking.get_event_patterns(experiment_id)
         causality = self.experiment_tracking.get_causality_analysis(experiment_id)
         timeline = self.experiment_tracking.get_event_timeline()
-        
+
         print("\nExperiment Patterns:")
         for pattern in patterns:
             print(f"- {pattern}")
-        
+
         print("\nCausality Analysis:")
         for cause in causality:
             print(f"- {cause}")
-        
+
         print("\nTimeline:")
         for event in timeline:
             print(f"- {event}")
@@ -178,11 +176,11 @@ class ScientificResearchCLI:
         """Show research and experiment statistics."""
         knowledge_stats = self.research_knowledge.get_graph_stats()
         experiment_stats = self.experiment_tracking.get_event_stats()
-        
+
         print("\nKnowledge Graph Statistics:")
         for key, value in knowledge_stats.items():
             print(f"{key}: {value}")
-        
+
         print("\nExperiment Statistics:")
         for key, value in experiment_stats.items():
             print(f"{key}: {value}")
@@ -222,29 +220,29 @@ async def main():
     parser.add_argument("--model", default="mistral", help="LLM model to use")
     parser.add_argument("--storage", default="scientific_research.json", help="Storage path")
     args = parser.parse_args()
-    
+
     cli = ScientificResearchCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Scientific Research CLI")
     print("Type /help for available commands")
-    
+
     while True:
         try:
             user_input = input("\n> ").strip()
             if user_input.lower() == "/exit":
                 break
-            
+
             if user_input.startswith("/"):
                 command = user_input.split()[0]
                 args = user_input.split()[1:]
                 await cli.process_command(command, args)
             else:
                 print("Unknown command. Type /help for available commands.")
-        
+
         except KeyboardInterrupt:
             break
         except Exception as e:
             print(f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())
