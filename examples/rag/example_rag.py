@@ -4,11 +4,12 @@ Example RAG implementation demonstrating how to use the RAG system.
 
 import asyncio
 import os
-from typing import List, Dict, Any
-from multimind import RAG, RAGConfig, OpenAIModel
-from multimind.vector_store import VectorStoreConfig
-from multimind.embeddings.embedding import EmbeddingConfig
+from typing import Any, Dict, List
+
+from multimind import RAG, OpenAIModel, RAGConfig
 from multimind.document_processing.base import Document
+from multimind.embeddings.embedding import EmbeddingConfig
+from multimind.vector_store import VectorStoreConfig
 
 # Try to import HuggingFaceModel
 try:
@@ -20,20 +21,20 @@ except ImportError:
 
 class SimpleRAGWrapper:
     """Simple wrapper around RAG to provide a simpler API."""
-    
+
     def __init__(self, rag: RAG, model, similarity_threshold: float = 0.4):
         self.rag = rag
         self.model = model
         self.similarity_threshold = similarity_threshold
         self._last_retrieved = []
-    
+
     async def add_documents(self, documents: List[str]):
         """Add documents to the RAG system."""
         # Convert strings to Document objects
         doc_objects = [Document(id=f"doc_{i}", content=doc, metadata={}, source="example") for i, doc in enumerate(documents)]
         # Enable processing - document processor now has access to embedding model
         await self.rag.add_documents(doc_objects, process=True)
-    
+
     async def query(self, query: str) -> str:
         """Query the RAG system and generate a response."""
         # Retrieve relevant documents
@@ -46,19 +47,19 @@ class SimpleRAGWrapper:
         ]
 
         self._last_retrieved = filtered_docs
-        
+
         # Check if we have any retrieved documents above the threshold
         if not filtered_docs:
             return "I don't have enough information to answer this."
-        
+
         # Determine the best similarity score for guard rails
         best_score = max(getattr(doc, "score", 0.0) for doc in filtered_docs)
         if best_score < self.similarity_threshold:
             return "I don't have enough information to answer this."
-        
+
         # Build context from retrieved documents
         context = "\n\n".join([doc.content for doc in filtered_docs])
-        
+
         # Generate response using the model with strict instructions
         prompt = f"""Context:
 {context}
@@ -66,10 +67,10 @@ class SimpleRAGWrapper:
 Question: {query}
 
 Answer:"""
-        
+
         # Limit tokens to prevent continuation and hallucination
         response = await self.model.generate(prompt, temperature=0.7, max_tokens=100)
-        
+
         # Clean up: stop at first new question or if response seems to be continuing
         response = response.strip()
         if not response or response.lower().startswith("you are a helpful assistant"):
@@ -83,29 +84,29 @@ Answer:"""
             parts = response.split("Q:")
             if len(parts) > 1:
                 response = parts[0].strip()
-        
+
         if not response:
             response = self._build_fallback_answer(filtered_docs)
-        
+
         return response
-    
+
     def _build_fallback_answer(self, retrieved_docs: List[Document]) -> str:
         """Build a simple fallback answer using retrieved documents."""
         if not retrieved_docs:
             return "I don't have enough information to answer this."
-        
+
         # Use the most relevant document to craft a concise answer
         top_doc = retrieved_docs[0].content.strip()
         if not top_doc:
             return "I don't have enough information to answer this."
-        
+
         # Provide a brief summary capped to a reasonable length
         summary = top_doc.split("\n")[0].strip()
         if len(summary) > 280:
             summary = summary[:277].rstrip() + "..."
-        
+
         return summary
-    
+
     async def get_retrieved_documents(self, query: str) -> List[Dict[str, Any]]:
         """Get retrieved documents for a query."""
         if not self._last_retrieved:
@@ -116,7 +117,7 @@ Answer:"""
             ]
         else:
             retrieved_docs = self._last_retrieved
-        
+
         return [
             {
                 "text": doc.content,
@@ -160,7 +161,7 @@ async def main():
         print("\nFor local testing without API keys, install:")
         print("  pip install transformers torch")
         return
-    
+
     # Create vector store config - use FAISS
     try:
         vector_store_config = VectorStoreConfig.create_faiss_config(
@@ -174,7 +175,7 @@ async def main():
         print("   or")
         print("   pip install faiss-gpu  (if you have CUDA)")
         raise ImportError("FAISS backend is required but not installed. Install with: pip install faiss-cpu") from e
-    
+
     # Create embedding config
     embedding_config = EmbeddingConfig(
         model_name=embedding_model_name,
@@ -186,7 +187,7 @@ async def main():
         cache_dir=None,
         custom_params={"api_key": embedding_api_key} if embedding_api_key else {}
     )
-    
+
     # Create RAG configuration
     similarity_threshold = 0.5
     config = RAGConfig(
@@ -195,14 +196,14 @@ async def main():
         embedding_config=embedding_config,
         document_config={"min_chunk_size": 100, "max_chunk_size": 1000, "chunk_overlap": 200}
     )
-    
+
     # Initialize RAG system
     rag = RAG(config)
     await rag.initialize()
-    
+
     # Wrap RAG with simpler API
     simple_rag = SimpleRAGWrapper(rag, model, similarity_threshold=similarity_threshold)
-    
+
     # Example documents
     documents = [
         "Quantum computing is a type of computation that harnesses the collective properties of quantum states to perform calculations.",
@@ -211,26 +212,26 @@ async def main():
         "Unlike classical computers that use binary digits (0 or 1), qubits can exist in multiple states simultaneously.",
         "This property, called superposition, allows quantum computers to process vast amounts of information simultaneously."
     ]
-    
+
     # Add documents to the RAG system
     await simple_rag.add_documents(documents)
-    
+
     # Example queries
     queries = [
         "What is quantum computing?",
         "How do quantum computers differ from classical computers?",
         "What are qubits and how do they work?"
     ]
-    
+
     # Process queries
     for query in queries:
         print(f"\nQuery: {query}")
         print("-" * 50)
-        
+
         # Get response from RAG
         response = await simple_rag.query(query)
         print(f"Response: {response}")
-        
+
         # Get retrieved documents
         retrieved_docs = await simple_rag.get_retrieved_documents(query)
         print(f"Retrieved documents: {len(retrieved_docs)}")
@@ -238,4 +239,4 @@ async def main():
             print(f"  {i+1}. {doc['text'][:100]}...")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

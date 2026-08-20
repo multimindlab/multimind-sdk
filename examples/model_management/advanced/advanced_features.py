@@ -4,14 +4,16 @@ Example demonstrating advanced features of the MultiModelWrapper.
 
 import asyncio
 import time
-from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional
+
 from multimind.models.factory import ModelFactory
 from multimind.models.multi_model import MultiModelWrapper
 
+
 class AdvancedMultiModelWrapper(MultiModelWrapper):
     """Extended MultiModelWrapper with advanced features."""
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rate_limits = {}  # Track rate limits per model
@@ -72,7 +74,7 @@ class AdvancedMultiModelWrapper(MultiModelWrapper):
                 'fast': 0.9
             }
         }
-        
+
         # Simple keyword-based analysis
         prompt_lower = prompt.lower()
         scores = {}
@@ -101,21 +103,21 @@ class AdvancedMultiModelWrapper(MultiModelWrapper):
         """Generate text with advanced features."""
         # Analyze model specialties
         specialty_scores = await self._analyze_specialties(prompt)
-        
+
         # Adjust model weights based on specialties
         adjusted_weights = self.model_weights.copy()
         for model, score in specialty_scores.items():
             if model in adjusted_weights:
                 adjusted_weights[model] *= (1 + score)
-        
+
         # Normalize weights
         total = sum(adjusted_weights.values())
         if total > 0:
             adjusted_weights = {k: v/total for k, v in adjusted_weights.items()}
-        
+
         # Select model with highest adjusted weight
         selected_model = max(adjusted_weights.items(), key=lambda x: x[1])[0]
-        
+
         # Check rate limits
         if not await self._check_rate_limits(selected_model):
             # Try fallback models
@@ -123,7 +125,7 @@ class AdvancedMultiModelWrapper(MultiModelWrapper):
                 if await self._check_rate_limits(fallback):
                     selected_model = fallback
                     break
-        
+
         # Generate response
         start_time = time.time()
         try:
@@ -133,15 +135,15 @@ class AdvancedMultiModelWrapper(MultiModelWrapper):
                 max_tokens=max_tokens,
                 **kwargs
             )
-            
+
             # Update metrics
             await self._update_rate_limits(selected_model)
             if track_cost:
                 await self._track_cost(selected_model, len(response.split()))
-            
+
             # Update last used time
             self.last_used[selected_model] = datetime.now()
-            
+
             return response
         except Exception as e:
             # Handle errors and try fallback
@@ -230,7 +232,7 @@ async def run_advanced_features_examples():
     # Example 2: Rate limiting and cost tracking
     print("\nExample 2: Rate limiting and cost tracking")
     print("Running multiple requests to test rate limiting...")
-    
+
     for _ in range(5):
         response = await advanced_model.generate_with_advanced_features(
             prompt="What is machine learning?",
@@ -263,7 +265,7 @@ async def run_advanced_features_examples():
     # Example 4: Performance optimization
     print("\nExample 4: Performance optimization")
     print("Testing performance with different configurations...")
-    
+
     configurations = [
         {
             "name": "balanced",
@@ -288,7 +290,7 @@ async def run_advanced_features_examples():
             }
             for model in advanced_model.models
         }
-        
+
         # Run performance test
         start_time = time.time()
         for _ in range(3):
@@ -297,9 +299,9 @@ async def run_advanced_features_examples():
                 temperature=0.7
             )
             await asyncio.sleep(0.1)
-        
+
         print(f"Total time: {time.time() - start_time:.2f} seconds")
-        
+
         # Show metrics
         metrics = advanced_model.get_advanced_metrics()
         print(f"Metrics for {config['name']}:")
@@ -314,4 +316,4 @@ async def run_advanced_features_examples():
     print("Model Usage Times:", final_metrics['last_used'])
 
 if __name__ == "__main__":
-    asyncio.run(run_advanced_features_examples()) 
+    asyncio.run(run_advanced_features_examples())

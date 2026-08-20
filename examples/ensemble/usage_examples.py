@@ -4,17 +4,19 @@ Examples of using the MultiMind Ensemble system through CLI and API interfaces.
 
 import asyncio
 import json
-import requests
-from pathlib import Path
 import subprocess
 import sys
-from typing import Dict, Any
+from pathlib import Path
+from typing import Any, Dict
+
+import requests
+
 
 # Example 1: Using the CLI interface
 def run_cli_examples():
     """Run examples using the CLI interface."""
     print("\n=== CLI Examples ===")
-    
+
     # 1. Text Generation
     print("\n1. Text Generation:")
     cmd = [
@@ -24,7 +26,7 @@ def run_cli_examples():
         "--method", "weighted_voting"
     ]
     subprocess.run(cmd)
-    
+
     # 2. Code Review
     print("\n2. Code Review:")
     code = """
@@ -38,7 +40,7 @@ def run_cli_examples():
     """
     code_file = Path("temp_code.py")
     code_file.write_text(code)
-    
+
     cmd = [
         "python", "-m", "examples.cli.ensemble_cli", "review",
         str(code_file),
@@ -46,7 +48,7 @@ def run_cli_examples():
     ]
     subprocess.run(cmd)
     code_file.unlink()
-    
+
     # 3. Embedding Generation
     print("\n3. Embedding Generation:")
     cmd = [
@@ -60,7 +62,7 @@ def run_cli_examples():
 async def run_api_examples():
     """Run examples using the API interface."""
     print("\n=== API Examples ===")
-    
+
     # Start the API server in a separate process
     server_process = subprocess.Popen(
         [sys.executable, "-m", "examples.api.ensemble_api"],
@@ -68,19 +70,19 @@ async def run_api_examples():
         stderr=subprocess.PIPE,
         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if sys.platform == "win32" else 0
     )
-    
+
     # Wait for the server to start with retries
     max_retries = 15
     retry_count = 0
     server_ready = False
-    
+
     # Check if process is still running
     if server_process.poll() is not None:
         print("Error: Server process failed to start")
         stderr_output = server_process.stderr.read().decode() if server_process.stderr else ""
         print(f"Server error: {stderr_output}")
         return
-    
+
     while retry_count < max_retries and not server_ready:
         await asyncio.sleep(1)
         # Check if process is still running
@@ -96,11 +98,11 @@ async def run_api_examples():
                 break
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
             retry_count += 1
-    
+
     if not server_ready:
         print("Warning: Server may not be ready, but continuing with requests...")
         print("Note: Make sure the server is running on http://localhost:8000")
-    
+
     try:
         # 1. Text Generation
         print("\n1. Text Generation:")
@@ -120,11 +122,11 @@ async def run_api_examples():
             try:
                 error_detail = response.json().get("detail", str(e))
                 print(f"Error: {error_detail}")
-            except:
+            except Exception:
                 print(f"Error: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
-        
+
         # 2. Code Review
         print("\n2. Code Review:")
         code = """
@@ -151,11 +153,11 @@ async def run_api_examples():
             try:
                 error_detail = response.json().get("detail", str(e))
                 print(f"Error: {error_detail}")
-            except:
+            except Exception:
                 print(f"Error: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
-        
+
         # 3. Embedding Generation
         print("\n3. Embedding Generation:")
         try:
@@ -173,11 +175,11 @@ async def run_api_examples():
             try:
                 error_detail = response.json().get("detail", str(e))
                 print(f"Error: {error_detail}")
-            except:
+            except Exception:
                 print(f"Error: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Error: {e}")
-        
+
         # 4. Image Analysis (if image file exists)
         image_path = Path("sample_image.jpg")
         if image_path.exists():
@@ -195,7 +197,7 @@ async def run_api_examples():
                     print(json.dumps(response.json(), indent=2))
             except requests.exceptions.RequestException as e:
                 print(f"Error: {e}")
-    
+
     finally:
         # Stop the server
         try:
@@ -214,9 +216,9 @@ async def main():
     """Run all examples."""
     # Run CLI examples
     run_cli_examples()
-    
+
     # Run API examples
     await run_api_examples()
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

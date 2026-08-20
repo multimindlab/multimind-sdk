@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from hmmlearn.hmm import GaussianHMM
-import numpy as np
 import asyncio
+
+import numpy as np
+from hmmlearn.hmm import GaussianHMM
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy data: 1D sequence
 X = np.array([[0.0], [1.0], [0.5], [1.5], [0.0], [1.0], [0.5], [1.5]])
@@ -36,4 +38,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted states: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

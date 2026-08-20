@@ -1,11 +1,13 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
+import asyncio
+
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.layers import Conv1D, Dense, Embedding, GlobalMaxPooling1D
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Embedding, Conv1D, GlobalMaxPooling1D, Dense
-from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-import asyncio
+from tensorflow.keras.preprocessing.text import Tokenizer
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy training data
 texts = [
@@ -62,4 +64,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted label: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

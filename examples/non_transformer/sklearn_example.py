@@ -1,7 +1,10 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
+import asyncio
+
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.naive_bayes import MultinomialNB
-import asyncio
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
+
 
 # NonTransformerLLM is an extension scaffold: subclass it and implement generate.
 class SklearnTextClassifierLLM(NonTransformerLLM):

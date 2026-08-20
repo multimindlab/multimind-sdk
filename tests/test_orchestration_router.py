@@ -1,11 +1,13 @@
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
+import asyncio
+
 from multimind.orchestration.prompt_chain import PromptChain
 from multimind.orchestration.task_runner import TaskRunner
-from multimind.router import ModelRouter
 from multimind.pipeline.pipeline import Pipeline, PipelineBuilder
+from multimind.router import ModelRouter
 
-import asyncio
 
 @pytest.mark.asyncio
 async def test_prompt_chain():
@@ -36,4 +38,4 @@ async def test_pipeline():
     class DummyRouter:
         pass
     pipeline = Pipeline(DummyRouter())
-    assert pipeline is not None 
+    assert pipeline is not None

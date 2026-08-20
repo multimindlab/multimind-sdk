@@ -5,8 +5,10 @@ This script demonstrates how to use the Documentation workflow API to automate d
 """
 
 import asyncio
-from multimind import DocumentationWorkflow, OpenAIModel, ClaudeModel, GitHubIntegrationHandler
-from multimind.integrations import SlackIntegrationHandler, DiscordIntegrationHandler
+
+from multimind import ClaudeModel, DocumentationWorkflow, GitHubIntegrationHandler, OpenAIModel
+from multimind.integrations import DiscordIntegrationHandler, SlackIntegrationHandler
+
 
 async def main():
     # Initialize models
@@ -35,15 +37,15 @@ async def main():
             def __init__(self, config):
                 self.config = config
                 self.cache = {}
-            
+
             def process(self, data):
                 if not isinstance(data, dict):
                     raise ValueError("Data must be a dictionary")
                 return {k: v for k, v in data.items() if v is not None}
-            
+
             def get_cached(self, key):
                 return self.cache.get(key)
-            
+
             def set_cached(self, key, value):
                 self.cache[key] = value
         """,
@@ -70,4 +72,4 @@ async def main():
     print("Workflow result:", result)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

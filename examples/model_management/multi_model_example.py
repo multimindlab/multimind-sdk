@@ -3,7 +3,9 @@ Multi-model example demonstrating how to use multiple AI models with intelligent
 """
 
 import asyncio
+
 from multimind import ModelFactory, MultiModelWrapper
+
 
 async def main():
     # Initialize the model factory
@@ -55,4 +57,4 @@ async def main():
     print("\nEmbeddings shape:", len(embeddings))
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

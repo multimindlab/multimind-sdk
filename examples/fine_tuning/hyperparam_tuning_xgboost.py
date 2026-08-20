@@ -1,6 +1,8 @@
-from multimind.fine_tuning.unified_fine_tuner import HyperparameterTuner
-import xgboost as xgb
 import numpy as np
+import xgboost as xgb
+
+from multimind.fine_tuning.unified_fine_tuner import HyperparameterTuner
+
 
 # Toy data
 def get_data():
@@ -43,4 +45,4 @@ class HyperparameterTuner:
 
     def tune(self, train_func, n_trials=10):
         print(f"[HyperparameterTuner] Running {n_trials} trials with backend {self.backend}.")
-        return {"best_param": 42} 
+        return {"best_param": 42}

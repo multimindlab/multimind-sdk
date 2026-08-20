@@ -3,13 +3,14 @@ Tests for the ensemble examples module.
 """
 
 import asyncio
-import sys
 import json
-from types import SimpleNamespace
+import sys
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from types import SimpleNamespace
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 # Make the examples package importable
@@ -18,8 +19,12 @@ sys.path.insert(0, str(project_root))
 
 import examples.ensemble.ensemble_examples as ensemble_examples  # noqa: E402
 from multimind import TaskType  # noqa: E402
-from multimind.core.provider import GenerationResult, EmbeddingResult, ImageAnalysisResult  # noqa: E402
-from multimind.ensemble.advanced import EnsembleResult, ConfidenceScore  # noqa: E402
+from multimind.core.provider import (  # noqa: E402
+    EmbeddingResult,
+    GenerationResult,
+    ImageAnalysisResult,
+)
+from multimind.ensemble.advanced import ConfidenceScore, EnsembleResult  # noqa: E402
 
 
 class DummyRouter:
@@ -96,7 +101,7 @@ class DummyEnsemble:
                 if provider_name not in provider_names:
                     provider_names.append(provider_name)
             provider_votes = {p: 1.0 / len(provider_names) if provider_names else 1.0 for p in provider_names}
-        
+
         return EnsembleResult(
             result=result,
             confidence=confidence,
@@ -339,13 +344,13 @@ async def test_serialize_ensemble_result():
     )
 
     serialized = ensemble_examples.serialize_ensemble_result(result)
-    
+
     # Should be a dictionary
     assert isinstance(serialized, dict)
     assert "result" in serialized
     assert "confidence" in serialized
     assert "provider_votes" in serialized
-    
+
     # Should be JSON serializable
     json_str = json.dumps(serialized, default=str)
     assert isinstance(json_str, str)
@@ -387,12 +392,12 @@ async def test_serialize_ensemble_result_dict():
     }
 
     serialized = ensemble_examples.serialize_ensemble_result(result_dict)
-    
+
     assert isinstance(serialized, dict)
     assert len(serialized) == 2
     assert "weighted_voting" in serialized
     assert "confidence_cascade" in serialized
-    
+
     # Should be JSON serializable
     json_str = json.dumps(serialized, default=str)
     assert isinstance(json_str, str)
@@ -433,11 +438,11 @@ async def test_serialize_ensemble_result_list():
     ]
 
     serialized = ensemble_examples.serialize_ensemble_result(results)
-    
+
     assert isinstance(serialized, list)
     assert len(serialized) == 2
     assert all(isinstance(item, dict) for item in serialized)
-    
+
     # Should be JSON serializable
     json_str = json.dumps(serialized, default=str)
     assert isinstance(json_str, str)
@@ -454,7 +459,7 @@ async def test_weight_calculation_two_providers(monkeypatch, dummy_router, patch
 
     weighted_result = result["weighted_voting"]
     weights = weighted_result.provider_votes
-    
+
     # Should have weights for both providers
     assert "openai" in weights
     assert "ollama" in weights
@@ -473,7 +478,7 @@ async def test_weight_calculation_three_providers(monkeypatch, dummy_router, pat
 
     weighted_result = result["weighted_voting"]
     weights = weighted_result.provider_votes
-    
+
     # Should have weights for all three providers
     assert "openai" in weights
     assert "anthropic" in weights

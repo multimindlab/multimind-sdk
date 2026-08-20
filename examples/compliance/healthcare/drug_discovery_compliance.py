@@ -3,34 +3,37 @@ Example script demonstrating compliance monitoring for drug discovery and develo
 This script ensures regulatory compliance and ethical standards in AI-powered drug discovery.
 """
 
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from multimind.compliance.model_training import (
-    ComplianceDataset,
-    ComplianceTrainer,
-    ComplianceMetrics
-)
-from multimind.compliance import GovernanceConfig, Regulation
 import asyncio
 import json
-from pathlib import Path
-from typing import Dict, Any, List
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
 import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
+
+from multimind.compliance import GovernanceConfig, Regulation
+from multimind.compliance.model_training import (
+    ComplianceDataset,
+    ComplianceMetrics,
+    ComplianceTrainer,
+)
+
 
 class DrugDiscoveryDataset(Dataset):
     """Dataset for drug discovery and development."""
-    
+
     def __init__(self, size: int, input_size: int, num_classes: int):
         self.size = size
         self.input_size = input_size
         self.num_classes = num_classes
-        
+
         # Generate synthetic drug discovery data
         self.data = torch.randn(size, input_size)
         self.labels = torch.randint(0, num_classes, (size,))
-        
+
         # Add metadata for compliance checks
         self.metadata = {
             "compound_id": [f"CMP_{i:06d}" for i in range(size)],
@@ -56,10 +59,10 @@ class DrugDiscoveryDataset(Dataset):
             "transparency": True,
             "safety_monitoring": True
         }
-    
+
     def __len__(self):
         return self.size
-    
+
     def __getitem__(self, idx):
         metadata = {}
         for k, v in self.metadata.items():
@@ -72,7 +75,7 @@ class DrugDiscoveryDataset(Dataset):
                     metadata[k] = v
             else:
                 metadata[k] = v
-        
+
         return {
             "input": self.data[idx],
             "target": self.labels[idx],
@@ -81,10 +84,10 @@ class DrugDiscoveryDataset(Dataset):
 
 class DrugDiscoveryModel(nn.Module):
     """Drug discovery model with explainability and safety assessment."""
-    
+
     def __init__(self, input_size: int, num_classes: int):
         super().__init__()
-        
+
         # Feature extractor
         self.feature_extractor = nn.Sequential(
             nn.Linear(input_size, 512),
@@ -94,7 +97,7 @@ class DrugDiscoveryModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3)
         )
-        
+
         # Attention mechanism for explainability
         self.attention = nn.Sequential(
             nn.Linear(256, 128),
@@ -102,26 +105,26 @@ class DrugDiscoveryModel(nn.Module):
             nn.Linear(128, 1),
             nn.Softmax(dim=1)
         )
-        
+
         # Safety assessment
         self.safety_assessor = nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, 3)  # 3 risk levels
         )
-        
+
         # Development stage predictor
         self.stage_predictor = nn.Sequential(
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, 5)  # 5 development stages
         )
-        
+
         # Classifier
         self.classifier = nn.Sequential(
             nn.Linear(256, num_classes)
         )
-        
+
         # Compliance monitoring
         self.compliance_metrics = ComplianceMetrics(
             bias_score=0.0,
@@ -129,26 +132,26 @@ class DrugDiscoveryModel(nn.Module):
             transparency_score=0.0,
             fairness_score=0.0
         )
-    
+
     def forward(self, x):
         # Extract features
         features = self.feature_extractor(x)
-        
+
         # Calculate attention weights
         attention_weights = self.attention(features)
-        
+
         # Apply attention
         attended_features = features * attention_weights
-        
+
         # Assess safety
         safety_scores = self.safety_assessor(attended_features)
-        
+
         # Predict development stage
         stage_scores = self.stage_predictor(attended_features)
-        
+
         # Classify
         logits = self.classifier(attended_features)
-        
+
         return {
             "logits": logits,
             "attention_weights": attention_weights,
@@ -159,7 +162,7 @@ class DrugDiscoveryModel(nn.Module):
 
 class DrugDiscoveryCompliance(ComplianceDataset):
     """Compliance wrapper for drug discovery and development."""
-    
+
     def __init__(
         self,
         base_dataset: Dataset,
@@ -167,7 +170,7 @@ class DrugDiscoveryCompliance(ComplianceDataset):
         data_categories: List[str]
     ):
         super().__init__(base_dataset, compliance_rules, data_categories)
-    
+
     async def check_privacy_compliance(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Check privacy compliance for drug discovery data."""
         metadata = data["metadata"]
@@ -178,7 +181,7 @@ class DrugDiscoveryCompliance(ComplianceDataset):
             "data_retention": metadata["data_retention_period"] <= 365,
             "researcher_verification": bool(metadata["researcher_id"])
         }
-    
+
     async def check_fairness_compliance(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Check fairness compliance for drug discovery."""
         return {
@@ -187,7 +190,7 @@ class DrugDiscoveryCompliance(ComplianceDataset):
             "disparate_impact": True,
             "safety_assessment_fairness": True
         }
-    
+
     async def check_transparency_compliance(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Check transparency compliance for drug discovery."""
         return {
@@ -233,11 +236,11 @@ async def main():
             Regulation.GCP
         ]
     )
-    
+
     # Create model and datasets
     model = DrugDiscoveryModel(input_size=20, num_classes=5)
     base_dataset = DrugDiscoveryDataset(size=1000, input_size=20, num_classes=5)
-    
+
     # Wrap dataset with compliance checks
     compliance_dataset = DrugDiscoveryCompliance(
         base_dataset=base_dataset,
@@ -250,11 +253,11 @@ async def main():
         },
         data_categories=["drug_development", "research_data", "sensitive_data"]
     )
-    
+
     # Create data loaders
     train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True)
     val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False)
-    
+
     # Configure compliance training
     compliance_rules = {
         "bias_threshold": 0.05,
@@ -267,7 +270,7 @@ async def main():
         "explainability": True,
         "safety_monitoring": True
     }
-    
+
     training_config = {
         "epochs": 10,
         "thresholds": compliance_rules,
@@ -280,14 +283,14 @@ async def main():
             "safety_assessment"
         ]
     }
-    
+
     # Initialize compliance trainer
     trainer = ComplianceTrainer(
         model=model,
         compliance_rules=compliance_rules,
         training_config=training_config
     )
-    
+
     # Train model with compliance monitoring
     results = await trainer.train(
         train_data=train_loader,
@@ -302,20 +305,20 @@ async def main():
             "safety_monitoring": True
         }
     )
-    
+
     # Save results
     results_path = "drug_discovery_results.json"
     with open(results_path, "w") as f:
         json.dump(_make_json_serializable(results), f, indent=2)
-    
+
     # Print compliance evaluation results
     print("\nDrug Discovery Compliance Evaluation Results:")
     print(json.dumps(_make_json_serializable(results["final_evaluation"]), indent=2))
-    
+
     # Print recommendations
     print("\nRecommendations:")
     for rec in results["final_evaluation"]["recommendations"]:
         print(f"- {rec['action']} (Priority: {rec['priority']})")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

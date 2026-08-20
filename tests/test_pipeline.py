@@ -1,5 +1,7 @@
 import pytest
+
 from multimind.pipeline.pipeline import Pipeline, PipelineBuilder
+
 
 class DummyRouter:
     pass
@@ -27,4 +29,4 @@ async def test_pipeline_builder_init():
 @pytest.mark.asyncio
 async def test_pipeline_builder_build():
     builder = PipelineBuilder(DummyRouter())
-    assert builder is not None 
+    assert builder is not None

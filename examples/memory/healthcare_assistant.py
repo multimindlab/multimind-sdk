@@ -5,20 +5,18 @@ combining knowledge graph memory for medical knowledge and cognitive scratchpad 
 """
 
 import asyncio
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
-from multimind.memory import (
-    KnowledgeGraphMemory,
-    CognitiveScratchpadMemory,
-    HybridMemory
-)
+from multimind.memory import CognitiveScratchpadMemory, HybridMemory, KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class HealthcareAssistant:
     def __init__(self, model: str = "mistral"):
         self.llm = OllamaModel(model_name=model)
-        
+
         # Initialize knowledge graph memory for medical knowledge
         self.medical_knowledge = KnowledgeGraphMemory(
             llm=self.llm,
@@ -30,7 +28,7 @@ class HealthcareAssistant:
             validation_interval=3600,  # 1 hour
             storage_path="medical_knowledge.json"
         )
-        
+
         # Initialize cognitive scratchpad for diagnosis reasoning
         self.diagnosis_reasoning = CognitiveScratchpadMemory(
             llm=self.llm,
@@ -41,7 +39,7 @@ class HealthcareAssistant:
             analysis_interval=3600,  # 1 hour
             storage_path="diagnosis_reasoning.json"
         )
-        
+
         # Initialize hybrid memory for overall context
         self.memory = HybridMemory(
             llm=self.llm,
@@ -54,7 +52,7 @@ class HealthcareAssistant:
             enable_analysis=True,
             storage_path="healthcare_memory.json"
         )
-        
+
         self.mm = MultiMind(
             llm=self.llm,
             memory=self.memory,
@@ -108,7 +106,7 @@ class HealthcareAssistant:
 async def main():
     # Initialize healthcare assistant
     assistant = HealthcareAssistant()
-    
+
     # Add some example medical knowledge
     medical_facts = [
         ("Hypertension", "is_a", "Cardiovascular Disease", 0.95),
@@ -118,16 +116,16 @@ async def main():
         ("Diabetes", "symptom", "High Blood Sugar", 0.95),
         ("Diabetes", "treatment", "Insulin", 0.90)
     ]
-    
+
     print("Adding medical knowledge...")
     for subject, predicate, object_, confidence in medical_facts:
         await assistant.add_medical_knowledge(subject, predicate, object_, confidence)
-    
+
     # Example diagnosis scenario
     print("\nStarting diagnosis scenario...")
     symptoms = "Patient presents with high blood pressure and frequent urination"
     chain_id = await assistant.start_diagnosis(symptoms)
-    
+
     # Add diagnosis steps
     diagnosis_steps = [
         ("Consider hypertension as primary condition", 0.8),
@@ -135,10 +133,10 @@ async def main():
         ("Review patient's medical history", 0.9),
         ("Recommend blood tests for confirmation", 0.85)
     ]
-    
+
     for step, confidence in diagnosis_steps:
         await assistant.add_diagnosis_step(chain_id, step, confidence)
-    
+
     # Query medical knowledge
     print("\nQuerying medical knowledge...")
     query_result = await assistant.query_medical_knowledge("What are the treatments for hypertension?")
@@ -146,24 +144,24 @@ async def main():
     print("\nRelated Concepts:")
     for concept in query_result['related_concepts']:
         print(f"- {concept}")
-    
+
     # Analyze diagnosis
     print("\nAnalyzing diagnosis...")
     analysis = await assistant.analyze_diagnosis(chain_id)
     print("\nDiagnosis Steps:")
     for step in analysis['steps']:
         print(f"- {step}")
-    
+
     print("\nStep Dependencies:")
     for step, deps in analysis['dependencies'].items():
         print(f"\nStep: {step}")
         print("Depends on:")
         for dep in deps:
             print(f"- {dep}")
-    
+
     print("\nAnalysis Results:")
     for result in analysis['analysis']:
         print(f"- {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

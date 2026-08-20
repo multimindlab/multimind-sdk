@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.mark.skip(reason="ClarifaiBackend is abstract and cannot be instantiated.")
 def test_clarifai_backend():
     pass
@@ -14,4 +15,4 @@ def test_dingodb_backend():
 
 @pytest.mark.skip(reason="EpsillaBackend is abstract and cannot be instantiated.")
 def test_epsilla_backend():
-    pass 
+    pass

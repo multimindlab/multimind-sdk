@@ -2,13 +2,14 @@
 Tests for compliance_cli.py CLI example.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import os
 import sys
-from pathlib import Path
 from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 from click.testing import CliRunner
 
 # Add root directory to path
@@ -16,27 +17,27 @@ root_dir = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(root_dir))
 
 from examples.cli.compliance_cli import governance
+from multimind.compliance.governance import DataCategory, Regulation
 from multimind.compliance.privacy import (
-    PrivacyCompliance,
+    AuditAction,
+    AuditTrail,
+    ComplianceEvent,
+    ComplianceReport,
+    ComplianceReportTemplate,
+    ComplianceScore,
+    ComplianceWorkflow,
+    DataPurpose,
     GovernanceConfig,
     NotificationType,
-    AuditAction,
-    RiskScore,
-    ComplianceReportTemplate,
+    PrivacyCompliance,
     PrivacyData,
-    DataPurpose,
-    ComplianceReport,
-    ComplianceWorkflow,
-    ComplianceEvent,
-    AuditTrail,
-    ComplianceScore,
+    RiskScore,
 )
-from multimind.compliance.governance import Regulation, DataCategory
 
 
 class MockPrivacyCompliance:
     """Mock PrivacyCompliance for testing."""
-    
+
     def __init__(self, config=None):
         self.config = config or GovernanceConfig(
             organization_id="org_123",
@@ -55,7 +56,7 @@ class MockPrivacyCompliance:
         self.anomalies = []
         self.compliance_reports = []
         self.consent_history = []
-    
+
     async def add_data_purpose(
         self,
         purpose_id: str,
@@ -75,7 +76,7 @@ class MockPrivacyCompliance:
         )
         self.data_purposes[purpose_id] = purpose
         return purpose
-    
+
     async def process_privacy_data(
         self,
         data_id: str,
@@ -98,7 +99,7 @@ class MockPrivacyCompliance:
         )
         self.privacy_data[data_id] = privacy_data
         return privacy_data
-    
+
     async def get_audit_trails(
         self,
         entity_id: str = None,
@@ -113,7 +114,7 @@ class MockPrivacyCompliance:
         if end_date:
             trails = [t for t in trails if t.timestamp <= end_date]
         return trails
-    
+
     async def generate_compliance_report(
         self,
         template_id: str,
@@ -137,10 +138,10 @@ class MockPrivacyCompliance:
         )
         self.compliance_reports.append(report)
         return report
-    
+
     async def export_data_portability(self, user_id: str, format: str = "json"):
         return f'{{"user_id": "{user_id}", "data": "exported"}}'
-    
+
     async def process_data_subject_request(
         self,
         request_type: str,
@@ -154,7 +155,7 @@ class MockPrivacyCompliance:
             "data_ids": data_ids,
             "status": "completed"
         }
-    
+
     async def create_compliance_workflow(
         self,
         workflow_id: str,
@@ -175,7 +176,7 @@ class MockPrivacyCompliance:
         )
         self.workflows[workflow_id] = workflow
         return workflow
-    
+
     async def create_audit_trail(
         self,
         action: AuditAction,
@@ -195,15 +196,15 @@ class MockPrivacyCompliance:
         )
         self.audit_trails.append(trail)
         return trail
-    
+
     async def detect_anomalies(self):
         return self.anomalies
-    
+
     async def calculate_risk_score(self, entity_id: str):
         if entity_id in self.risk_scores:
             return self.risk_scores[entity_id]
         return RiskScore(score=0.5, level="medium", factors=[])
-    
+
     async def calculate_compliance_score(
         self,
         entity_id: str,
@@ -219,7 +220,7 @@ class MockPrivacyCompliance:
             trend="improving",
             components={"data_protection": 0.9, "privacy": 0.8}
         )
-    
+
     async def create_compliance_event(
         self,
         title: str,
@@ -244,7 +245,7 @@ class MockPrivacyCompliance:
         )
         self.compliance_calendar[event.event_id] = event
         return event
-    
+
     async def create_notification(
         self,
         type: NotificationType,
@@ -265,7 +266,7 @@ class MockPrivacyCompliance:
         }
         self.notifications.append(notification)
         return notification
-    
+
     async def get_consent_history(self):
         return self.consent_history
 
@@ -344,7 +345,7 @@ def test_monitor_anomalies_command(cli_runner, mock_privacy_compliance):
             metadata={"severity": "HIGH"}
         )
     ]
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         start_time = datetime.now().isoformat()
         result = cli_runner.invoke(governance, [
@@ -395,7 +396,7 @@ def test_dsar_erase_command(cli_runner, mock_privacy_compliance):
             metadata={"user_id": "user_123"}
         )
     }
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'dsar', 'erase',
@@ -482,7 +483,7 @@ def test_audit_verify_command(cli_runner, mock_privacy_compliance):
             metadata={}
         )
     ]
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'audit-verify',
@@ -497,7 +498,7 @@ def test_policy_publish_command(cli_runner, mock_privacy_compliance, tmp_path):
     # Create a temporary policy file
     policy_file = tmp_path / "policy.txt"
     policy_file.write_text("Test policy content")
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'policy-publish',
@@ -513,7 +514,7 @@ def test_incident_create_command(cli_runner, mock_privacy_compliance, tmp_path):
     # Create a temporary incident details file
     details_file = tmp_path / "incident.txt"
     details_file.write_text("Test incident details")
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'incident-create',
@@ -536,7 +537,7 @@ def test_consent_check_command(cli_runner, mock_privacy_compliance):
             "granted": True
         }
     ]
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'consent-check',
@@ -601,7 +602,7 @@ def test_monitor_anomalies_with_severity_filter(cli_runner, mock_privacy_complia
             metadata={"severity": "HIGH"}
         )
     ]
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         start_time = datetime.now().isoformat()
         result = cli_runner.invoke(governance, [
@@ -654,7 +655,7 @@ def test_incident_create_with_playbook(cli_runner, mock_privacy_compliance, tmp_
     """Test incident-create with playbook."""
     details_file = tmp_path / "incident.txt"
     details_file.write_text("Test incident details")
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'incident-create',
@@ -671,7 +672,7 @@ def test_policy_publish_with_metadata(cli_runner, mock_privacy_compliance, tmp_p
     """Test policy-publish with metadata."""
     policy_file = tmp_path / "policy.txt"
     policy_file.write_text("Test policy content")
-    
+
     with patch('examples.cli.compliance_cli.PrivacyCompliance', return_value=mock_privacy_compliance):
         result = cli_runner.invoke(governance, [
             'policy-publish',
@@ -721,7 +722,7 @@ def test_compliance_cli_structure():
     """Test that the compliance CLI has the expected structure."""
     example_path = Path(__file__).parent.parent.parent.parent / "examples" / "cli" / "compliance_cli.py"
     assert example_path.exists(), "compliance_cli.py example should exist"
-    
+
     # Check that the file contains expected components
     with open(example_path, 'r') as f:
         content = f.read()

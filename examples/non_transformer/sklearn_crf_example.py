@@ -1,6 +1,8 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-import sklearn_crfsuite
 import asyncio
+
+import sklearn_crfsuite
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy data: sequence labeling (BIO format)
 X_train = [[{'word': 'John'}, {'word': 'loves'}, {'word': 'Mary'}]]
@@ -40,4 +42,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted labels: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

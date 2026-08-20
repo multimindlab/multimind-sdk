@@ -3,10 +3,12 @@
 Test script to check if examples can be imported without errors.
 """
 
-import sys
 import importlib
+import sys
 import traceback
+
 import pytest
+
 
 @pytest.mark.parametrize("module_name", [
     "examples.cli.basic_agent",
@@ -36,4 +38,4 @@ def test_import(module_name):
         pytest.skip(f"Module {module_name} not available: {e}")
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"]) 
+    pytest.main([__file__, "-v"])

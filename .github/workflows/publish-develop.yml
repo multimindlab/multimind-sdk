@@ -1,0 +1,173 @@
+name: Publish (develop)
+
+# Auto-publish to PyPI when a PR merges into `develop` with a version bump.
+#
+# PyPI refuses to re-upload an existing version, so the pipeline publishes
+# only when `multimind.__version__` differs from the latest release on PyPI.
+# Merges that don't bump the version (docs, CI, refactors) skip publishing
+# cleanly. The PyPI project description is rebuilt from README.md on every
+# publish (pyproject `readme = "README.md"`), so the PyPI page text always
+# matches the merged README.
+#
+# Requires a one-time trusted-publisher registration on pypi.org for THIS
+# workflow file (owner: multimindlab, repo: multimind-sdk,
+# workflow: publish-develop.yml, environment: pypi) — trusted publishing is
+# registered per workflow filename, so the existing release.yml registration
+# does not cover this file.
+#
+# The manual flow in release.yml (publish on a GitHub release) still works
+# unchanged; this workflow tags the release itself, and tags/releases created
+# with GITHUB_TOKEN do not re-trigger release.yml, so a double publish is
+# impossible.
+
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+
+concurrency:
+  group: publish-develop
+  cancel-in-progress: false
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Publish only when the version in the repo is new to PyPI.
+  # ---------------------------------------------------------------------------
+  check-version:
+    name: Check for version bump
+    runs-on: ubuntu-latest
+    outputs:
+      should_publish: ${{ steps.check.outputs.should_publish }}
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compare repo version against PyPI
+        id: check
+        run: |
+          python - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, re, urllib.request
+
+          src = open("multimind/__init__.py", encoding="utf-8").read()
+          local = re.search(r'^__version__\s*=\s*["\']([^"\']+)["\']', src, re.M).group(1)
+
+          with urllib.request.urlopen(
+              "https://pypi.org/pypi/multimind-sdk/json", timeout=30
+          ) as resp:
+              data = json.load(resp)
+          published = set(data.get("releases", {}))
+
+          should = local not in published
+          print(f"version={local}")
+          print(f"should_publish={str(should).lower()}")
+          EOF
+      - name: Report
+        run: |
+          if [ "${{ steps.check.outputs.should_publish }}" = "true" ]; then
+            echo "Version ${{ steps.check.outputs.version }} is new — will publish."
+          else
+            echo "Version ${{ steps.check.outputs.version }} already on PyPI — skipping publish."
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Build sdist + wheel, validate metadata with twine. Mirrors release.yml.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    needs: [check-version]
+    if: needs.check-version.outputs.should_publish == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build sdist + wheel
+        run: python -m build
+      - name: Validate distribution metadata (twine check)
+        run: twine check dist/*
+      - name: Upload distribution artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Install the built wheel in a clean environment and smoke-test it —
+  # catches packaging mistakes an editable install never would.
+  # ---------------------------------------------------------------------------
+  test-wheel:
+    name: Test built wheel
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Install the built wheel (+ test runner only, no editable install)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install dist/*.whl
+          python -m pip install "pytest>=9.0.3" "pytest-asyncio>=0.21.0"
+      - name: Import smoke test
+        run: python -c "import multimind; print('multimind', multimind.__version__)"
+      - name: Run smoke test subset against the installed wheel
+        run: |
+          pytest tests/test_import.py tests/test_basic.py -v --tb=short \
+            -m "not integration and not slow and not requires_api_key"
+
+  # ---------------------------------------------------------------------------
+  # Publish to PyPI via OIDC trusted publishing, then tag the commit and
+  # create a GitHub release so the published version is traceable in git.
+  # ---------------------------------------------------------------------------
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [check-version, test-wheel]
+    environment:
+      name: pypi
+      url: https://pypi.org/project/multimind-sdk/
+    permissions:
+      id-token: write # OIDC trusted publishing — no API token needed
+      contents: write # push the version tag + create the GitHub release
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download distribution artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+      - name: Tag and create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check-version.outputs.version }}
+        run: |
+          git tag "v${VERSION}" "${GITHUB_SHA}"
+          git push origin "v${VERSION}"
+          gh release create "v${VERSION}" dist/* \
+            --title "v${VERSION}" \
+            --generate-notes \
+            --target "${GITHUB_SHA}"

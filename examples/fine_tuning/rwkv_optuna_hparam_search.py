@@ -2,10 +2,11 @@
 # Requires: pip install torch optuna
 # For real RWKV, see: https://github.com/BlinkDL/RWKV-LM
 
-import torch
-from torch.utils.data import DataLoader, Dataset
-import torch.nn as nn
 import optuna
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
+
 
 # Dummy RWKV model for demonstration (replace with real model for production)
 class DummyRWKVModel(nn.Module):
@@ -84,4 +85,4 @@ study.optimize(objective, n_trials=5)
 print("[INFO] Best hyperparameters:")
 print(study.best_params)
 
-# For real use, replace DummyRWKVModel with the real RWKV model and tokenizer 
+# For real use, replace DummyRWKVModel with the real RWKV model and tokenizer

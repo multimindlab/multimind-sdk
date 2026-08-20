@@ -3,9 +3,9 @@
 # See: https://huggingface.co/state-spaces/mamba-130m-hf
 
 import torch
+import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch.nn.functional as F
 
 MODEL_NAME = "state-spaces/mamba-130m-hf"
 
@@ -51,4 +51,4 @@ for epoch in range(2):
 
 print("[INFO] Fine-tuning complete. Save or evaluate your model as needed.")
 
-# For real tasks, use a larger dataset, more epochs, and advanced strategies (PEFT, adapters, etc.) 
+# For real tasks, use a larger dataset, more epochs, and advanced strategies (PEFT, adapters, etc.)

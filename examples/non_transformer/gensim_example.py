@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
+import asyncio
+
 from gensim.corpora.dictionary import Dictionary
 from gensim.models.ldamodel import LdaModel
-import asyncio
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy data
 documents = [
@@ -47,4 +49,4 @@ async def main():
     print(f"Prompt: {prompt}\nTopic Distribution: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

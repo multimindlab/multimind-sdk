@@ -15,83 +15,82 @@ This script provides examples for various healthcare use cases including:
 - Fraud Detection
 """
 
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from multimind.compliance.model_training import (
-    ComplianceDataset,
-    ComplianceTrainer,
-    ComplianceMetrics
-)
-from multimind.compliance import GovernanceConfig, Regulation
 import asyncio
 import json
-from pathlib import Path
-from typing import Dict, Any
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict
+
 import numpy as np
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
+
+from examples.compliance.healthcare.clinical_trial_compliance import (
+    ClinicalTrialCompliance,
+    ClinicalTrialDataset,
+    ClinicalTrialModel,
+)
+from examples.compliance.healthcare.drug_discovery_compliance import (
+    DrugDiscoveryCompliance,
+    DrugDiscoveryDataset,
+    DrugDiscoveryModel,
+)
+from examples.compliance.healthcare.ehr_compliance import EHRCompliance, EHRDataset, EHRModel
+from examples.compliance.healthcare.fraud_detection_compliance import (
+    FraudDetectionCompliance,
+    FraudDetectionDataset,
+    FraudDetectionModel,
+)
+from examples.compliance.healthcare.medical_device_compliance import (
+    MedicalDeviceCompliance,
+    MedicalDeviceDataset,
+    MedicalDeviceModel,
+)
 
 # Import healthcare-specific examples
 from examples.compliance.healthcare.medical_diagnosis_compliance import (
-    MedicalDiagnosisDataset,
     DiagnosisModel,
-    MedicalDiagnosisCompliance
-)
-from examples.compliance.healthcare.patient_monitoring_compliance import (
-    PatientMonitoringDataset,
-    PatientMonitoringModel,
-    PatientMonitoringCompliance
-)
-from examples.compliance.healthcare.medical_imaging_compliance import (
-    MedicalImagingDataset,
-    MedicalImagingModel,
-    MedicalImagingCompliance
-)
-from examples.compliance.healthcare.clinical_trial_compliance import (
-    ClinicalTrialDataset,
-    ClinicalTrialModel,
-    ClinicalTrialCompliance
-)
-from examples.compliance.healthcare.ehr_compliance import (
-    EHRDataset,
-    EHRModel,
-    EHRCompliance
-)
-from examples.compliance.healthcare.medical_device_compliance import (
-    MedicalDeviceDataset,
-    MedicalDeviceModel,
-    MedicalDeviceCompliance
-)
-from examples.compliance.healthcare.medical_research_compliance import (
-    MedicalResearchDataset,
-    MedicalResearchModel,
-    MedicalResearchCompliance
-)
-from examples.compliance.healthcare.telemedicine_compliance import (
-    TelemedicineDataset,
-    TelemedicineModel,
-    TelemedicineCompliance
-)
-from examples.compliance.healthcare.mental_health_compliance import (
-    MentalHealthDataset,
-    MentalHealthModel,
-    MentalHealthCompliance
+    MedicalDiagnosisCompliance,
+    MedicalDiagnosisDataset,
 )
 from examples.compliance.healthcare.medical_imaging_analysis_compliance import (
+    MedicalImagingCompliance,
     MedicalImagingDataset,
     MedicalImagingModel,
-    MedicalImagingCompliance
 )
-from examples.compliance.healthcare.drug_discovery_compliance import (
-    DrugDiscoveryDataset,
-    DrugDiscoveryModel,
-    DrugDiscoveryCompliance
+from examples.compliance.healthcare.medical_imaging_compliance import (
+    MedicalImagingCompliance,
+    MedicalImagingDataset,
+    MedicalImagingModel,
 )
-from examples.compliance.healthcare.fraud_detection_compliance import (
-    FraudDetectionDataset,
-    FraudDetectionModel,
-    FraudDetectionCompliance
+from examples.compliance.healthcare.medical_research_compliance import (
+    MedicalResearchCompliance,
+    MedicalResearchDataset,
+    MedicalResearchModel,
 )
+from examples.compliance.healthcare.mental_health_compliance import (
+    MentalHealthCompliance,
+    MentalHealthDataset,
+    MentalHealthModel,
+)
+from examples.compliance.healthcare.patient_monitoring_compliance import (
+    PatientMonitoringCompliance,
+    PatientMonitoringDataset,
+    PatientMonitoringModel,
+)
+from examples.compliance.healthcare.telemedicine_compliance import (
+    TelemedicineCompliance,
+    TelemedicineDataset,
+    TelemedicineModel,
+)
+from multimind.compliance import GovernanceConfig, Regulation
+from multimind.compliance.model_training import (
+    ComplianceDataset,
+    ComplianceMetrics,
+    ComplianceTrainer,
+)
+
 
 def _make_json_serializable(obj: Any) -> Any:
     """Convert objects to JSON-serializable format."""
@@ -123,11 +122,11 @@ async def run_healthcare_compliance_example(
     config: Dict[str, Any]
 ):
     """Run compliance monitoring for a specific healthcare use case."""
-    
+
     # Create model and datasets
     model = model_class(input_size=20, num_classes=5)
     base_dataset = dataset_class(size=1000, input_size=20, num_classes=5)
-    
+
     # Wrap dataset with compliance checks
     compliance_dataset = compliance_class(
         base_dataset=base_dataset,
@@ -140,7 +139,7 @@ async def run_healthcare_compliance_example(
         },
         data_categories=config["data_categories"]
     )
-    
+
     # Custom collate function to handle variable-length metadata
     def custom_collate_fn(batch):
         """Custom collate function to handle variable-length metadata."""
@@ -152,11 +151,11 @@ async def run_healthcare_compliance_example(
             "target": targets,
             "metadata": metadata
         }
-    
+
     # Create data loaders
     train_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=True, collate_fn=custom_collate_fn)
     val_loader = DataLoader(compliance_dataset, batch_size=32, shuffle=False, collate_fn=custom_collate_fn)
-    
+
     # Configure compliance training
     compliance_rules = {
         "bias_threshold": 0.1,
@@ -168,7 +167,7 @@ async def run_healthcare_compliance_example(
         "audit_trail": True,
         "explainability": True
     }
-    
+
     training_config = {
         "epochs": 10,
         "thresholds": compliance_rules,
@@ -180,21 +179,21 @@ async def run_healthcare_compliance_example(
             "hipaa_compliance"
         ]
     }
-    
+
     # Initialize compliance trainer
     trainer = ComplianceTrainer(
         model=model,
         compliance_rules=compliance_rules,
         training_config=training_config
     )
-    
+
     # Train model with compliance monitoring
     results = await trainer.train(
         train_data=train_loader,
         val_data=val_loader,
         metadata=config["metadata"]
     )
-    
+
     return results
 
 async def main():
@@ -209,7 +208,7 @@ async def main():
             Regulation.AI_ACT
         ]
     )
-    
+
     # Define configurations for each healthcare use case
     use_cases = {
         "medical_diagnosis": {
@@ -385,7 +384,7 @@ async def main():
             }
         }
     }
-    
+
     # Run compliance monitoring for each use case
     results = {}
     for use_case, config in use_cases.items():
@@ -396,20 +395,20 @@ async def main():
             compliance_class=config["compliance_class"],
             config=config
         )
-        
+
         # Save results
         results_path = f"{use_case}_results.json"
         with open(results_path, "w") as f:
             json.dump(_make_json_serializable(results[use_case]), f, indent=2)
-        
+
         # Print compliance evaluation results
         print(f"\n{use_case.title()} Compliance Evaluation Results:")
         print(json.dumps(_make_json_serializable(results[use_case]["final_evaluation"]), indent=2))
-        
+
         # Print recommendations
         print("\nRecommendations:")
         for rec in results[use_case]["final_evaluation"]["recommendations"]:
             print(f"- {rec['action']} (Priority: {rec['priority']})")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

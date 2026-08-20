@@ -3,9 +3,9 @@
 # See: https://huggingface.co/state-spaces/s4-small and https://github.com/huggingface/peft
 
 import torch
+from peft import LoraConfig, TaskType, get_peft_model
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import LoraConfig, get_peft_model, TaskType
 
 MODEL_NAME = "state-spaces/s4-small"
 
@@ -63,4 +63,4 @@ for epoch in range(2):
 model.save_pretrained("./s4_lora_adapter")
 print("[INFO] LoRA fine-tuning complete. Adapter saved to ./s4_lora_adapter")
 
-# For production: use a real dataset, more epochs, and advanced evaluation/checkpointing 
+# For production: use a real dataset, more epochs, and advanced evaluation/checkpointing

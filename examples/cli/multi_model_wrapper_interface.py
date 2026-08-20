@@ -1,17 +1,19 @@
+import argparse
 import os
 import subprocess
-import argparse
-from openai import OpenAI
+
 from dotenv import load_dotenv
+from openai import OpenAI
+
 
 def query_chatgpt(prompt):
     # Load environment variables from .env file
     load_dotenv()
-    
+
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set. Please set it in a .env file or as an environment variable.")
-    
+
     client = OpenAI(api_key=api_key)
     response = client.chat.completions.create(
         model="gpt-4",
@@ -42,4 +44,4 @@ def main():
     print(output)
 
 if __name__ == "__main__":
-    main() 
+    main()

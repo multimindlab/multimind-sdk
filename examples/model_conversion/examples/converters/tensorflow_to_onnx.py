@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-import os
 import argparse
+import os
 from pathlib import Path
-from typing import Dict, Any
-import tensorflow as tf
+from typing import Any, Dict
+
 import onnx
+import tensorflow as tf
+
 from multimind.model_conversion import ModelConversionManager
+
 
 def convert_tensorflow_to_onnx(
     model_path: str,
@@ -47,7 +50,7 @@ def convert_tensorflow_to_onnx(
             ]
         }
     )
-    
+
     return converter.convert(model_path, output_path)
 
 def main():
@@ -66,22 +69,22 @@ def main():
                       help="Input shapes as name=shape pairs")
     parser.add_argument("--output-shape", type=str, nargs="+",
                       help="Output shapes as name=shape pairs")
-    
+
     args = parser.parse_args()
-    
+
     # Parse input and output shapes
     input_signature = {}
     if args.input_shape:
         for item in args.input_shape:
             name, shape = item.split("=")
             input_signature[name] = [int(dim) for dim in shape.split(",")]
-    
+
     output_signature = {}
     if args.output_shape:
         for item in args.output_shape:
             name, shape = item.split("=")
             output_signature[name] = [int(dim) for dim in shape.split(",")]
-    
+
     config = {
         "opset_version": args.opset_version,
         "do_constant_folding": args.do_constant_folding,
@@ -89,7 +92,7 @@ def main():
         "input_signature": input_signature,
         "output_signature": output_signature
     }
-    
+
     try:
         output_path = convert_tensorflow_to_onnx(
             args.model_path,
@@ -97,19 +100,19 @@ def main():
             config
         )
         print(f"Model converted successfully to: {output_path}")
-        
+
         # Print model metadata
         converter = ModelConversionManager()
         metadata = converter.get_metadata(output_path)
         print("\nModel Metadata:")
         for key, value in metadata.items():
             print(f"{key}: {value}")
-            
+
     except Exception as e:
         print(f"Error during conversion: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

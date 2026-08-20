@@ -1,5 +1,6 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
 import asyncio
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # --- Hyena Model Integration Stub ---
 # There is no built-in HyenaLLM class: NonTransformerLLM is an extension scaffold.

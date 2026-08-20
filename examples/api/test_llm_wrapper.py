@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 from model_wrapper import ModelWrapper
+
 
 @pytest.fixture
 def wrapper():
@@ -12,7 +14,7 @@ def test_available_models_with_no_keys(wrapper):
     wrapper.openai_key = None
     wrapper.claude_key = None
     wrapper.hf_token = None
-    
+
     with patch('subprocess.run', side_effect=FileNotFoundError):
         available = wrapper.available_models()
         assert len(available) == 0
@@ -22,7 +24,7 @@ def test_available_models_with_all_keys(wrapper):
     wrapper.openai_key = "test"
     wrapper.claude_key = "test"
     wrapper.hf_token = "test"
-    
+
     with patch('subprocess.run', return_value=MagicMock(returncode=0)):
         available = wrapper.available_models()
         assert "openai" in available
@@ -44,7 +46,7 @@ def test_query_openai(mock_create, wrapper):
         choices=[MagicMock(message={'content': 'test response'})]
     )
     wrapper.openai_key = "test"
-    
+
     result = wrapper.query_model("openai", "test prompt")
     assert result["status"] == "success"
     assert result["response"] == "test response"

@@ -1,5 +1,7 @@
 import warnings
+
 import pytest
+
 
 def test_legacy_imports():
     """Test that legacy imports work or are handled gracefully."""
@@ -7,12 +9,12 @@ def test_legacy_imports():
         warnings.simplefilter("always")
         try:
             from multimind.compliance import (
+                configure_alerts,
+                generate_report,
                 run_compliance,
                 run_example,
-                generate_report,
-                show_dashboard,
                 show_alerts,
-                configure_alerts,
+                show_dashboard,
             )
             # If imports succeed, verify they are callable or None
             assert callable(run_compliance), "run_compliance should be callable"
@@ -21,4 +23,4 @@ def test_legacy_imports():
         except (ImportError, AttributeError) as e:
             # Legacy imports may not be available - this is acceptable
             # The module should handle this gracefully
-            pytest.skip(f"Legacy compliance functions not available: {e}") 
+            pytest.skip(f"Legacy compliance functions not available: {e}")

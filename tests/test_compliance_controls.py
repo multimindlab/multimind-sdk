@@ -1,5 +1,6 @@
 from multimind.compliance.iso import ISOControl
 
+
 def test_iso_control_check_compliance():
     control = ISOControl(
         control_id="C1",
@@ -11,4 +12,4 @@ def test_iso_control_check_compliance():
     )
     assert control.check_compliance() is True
     control.implementation_status = "not_implemented"
-    assert control.check_compliance() is False 
+    assert control.check_compliance() is False

@@ -1,7 +1,9 @@
 # Example model classes for demonstration purposes only
 import torch
 import torch.nn as nn
+
 from multimind.client.model_client import ModelClient
+
 
 class LSTMModel(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size):
@@ -57,4 +59,4 @@ class S4Client(ModelClient):
         input_ids = self.tokenizer.encode(prompt, return_tensors='pt')
         with torch.no_grad():
             output_ids = self.model.generate(input_ids)
-        return self.tokenizer.decode(output_ids[0]) 
+        return self.tokenizer.decode(output_ids[0])

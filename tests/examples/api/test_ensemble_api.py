@@ -2,12 +2,13 @@
 Tests for ensemble API examples.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -21,12 +22,12 @@ except ImportError:
 
 class MockEnsembleModel:
     """Mock ensemble model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
         self.predictions = []
-    
+
     async def generate(self, prompt: str, **kwargs):
         if "gpt" in self.model_name.lower():
             return f"GPT response: {prompt}"
@@ -36,10 +37,10 @@ class MockEnsembleModel:
             return f"Mistral response: {prompt}"
         else:
             return f"Generic response: {prompt}"
-    
+
     async def chat(self, messages, **kwargs):
         return f"Chat response from {self.model_name}"
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.1] * 384
@@ -48,24 +49,24 @@ class MockEnsembleModel:
 
 class MockEnsemble:
     """Mock ensemble for testing."""
-    
+
     def __init__(self, models, strategy="majority"):
         self.models = models
         self.strategy = strategy
         self.predictions = []
-    
+
     async def predict(self, prompt: str, **kwargs):
         predictions = []
         for model in self.models:
             response = await model.generate(prompt)
             predictions.append(response)
-        
+
         self.predictions.append({
             "prompt": prompt,
             "predictions": predictions,
             "strategy": self.strategy
         })
-        
+
         # Return majority or consensus response
         if self.strategy == "majority":
             return self._majority_vote(predictions)
@@ -73,15 +74,15 @@ class MockEnsemble:
             return self._consensus(predictions)
         else:
             return predictions[0]  # Default to first model
-    
+
     def _majority_vote(self, predictions):
         # Simple majority vote implementation
         return predictions[0]  # For testing, just return first prediction
-    
+
     def _consensus(self, predictions):
         # Simple consensus implementation
         return predictions[0]  # For testing, just return first prediction
-    
+
     async def evaluate(self, test_data):
         return {
             "accuracy": 0.95,
@@ -92,16 +93,16 @@ class MockEnsemble:
 
 class MockEnsembleEvaluator:
     """Mock ensemble evaluator for testing."""
-    
+
     def __init__(self, ensemble):
         self.ensemble = ensemble
         self.evaluation_results = []
-    
+
     async def evaluate_ensemble(self, test_data):
         result = await self.ensemble.evaluate(test_data)
         self.evaluation_results.append(result)
         return result
-    
+
     async def compare_models(self, models, test_data):
         results = {}
         for model_name, model in models.items():
@@ -162,13 +163,13 @@ async def test_ensemble_api_main():
     """Test that the ensemble API main function can be called."""
     if ensemble_main is None:
         pytest.skip("Ensemble API main function not available")
-    
+
     with patch('examples.api.ensemble_api.OpenAIModel', MockEnsembleModel), \
          patch('examples.api.ensemble_api.ClaudeModel', MockEnsembleModel), \
          patch('examples.api.ensemble_api.MistralModel', MockEnsembleModel), \
          patch('examples.api.ensemble_api.AdvancedEnsemble', MockEnsemble), \
          patch('examples.api.ensemble_api.load_dotenv'):
-        
+
         try:
             await ensemble_main()
             assert True  # If we get here, the function ran without errors
@@ -182,7 +183,7 @@ async def test_ensemble_model_initialization():
     gpt_model = MockEnsembleModel("gpt-4", temperature=0.7)
     claude_model = MockEnsembleModel("claude-3", temperature=0.7)
     mistral_model = MockEnsembleModel("mistral", temperature=0.7)
-    
+
     assert gpt_model.model_name == "gpt-4"
     assert claude_model.model_name == "claude-3"
     assert mistral_model.model_name == "mistral"
@@ -195,18 +196,18 @@ async def test_ensemble_model_generation():
     gpt_model = MockEnsembleModel("gpt-4")
     claude_model = MockEnsembleModel("claude-3")
     mistral_model = MockEnsembleModel("mistral")
-    
+
     prompt = "Explain machine learning"
-    
+
     # Test individual model generation
     gpt_response = await gpt_model.generate(prompt)
     assert "GPT response" in gpt_response
     assert prompt in gpt_response
-    
+
     claude_response = await claude_model.generate(prompt)
     assert "Claude response" in claude_response
     assert prompt in claude_response
-    
+
     mistral_response = await mistral_model.generate(prompt)
     assert "Mistral response" in mistral_response
     assert prompt in mistral_response
@@ -220,7 +221,7 @@ async def test_ensemble_creation():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     ensemble = MockEnsemble(models, strategy="majority")
     assert len(ensemble.models) == 3
     assert ensemble.strategy == "majority"
@@ -234,13 +235,13 @@ async def test_ensemble_prediction():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     ensemble = MockEnsemble(models, strategy="majority")
-    
+
     # Test ensemble prediction
     prompt = "What is artificial intelligence?"
     result = await ensemble.predict(prompt)
-    
+
     assert result is not None
     assert len(ensemble.predictions) == 1
     assert ensemble.predictions[0]["prompt"] == prompt
@@ -255,12 +256,12 @@ async def test_ensemble_strategies():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     # Test majority strategy
     majority_ensemble = MockEnsemble(models, strategy="majority")
     result1 = await majority_ensemble.predict("Test prompt")
     assert result1 is not None
-    
+
     # Test consensus strategy
     consensus_ensemble = MockEnsemble(models, strategy="consensus")
     result2 = await consensus_ensemble.predict("Test prompt")
@@ -275,16 +276,16 @@ async def test_ensemble_evaluation():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     ensemble = MockEnsemble(models)
     evaluator = MockEnsembleEvaluator(ensemble)
-    
+
     # Test ensemble evaluation
     test_data = [
         {"prompt": "Test 1", "expected": "Response 1"},
         {"prompt": "Test 2", "expected": "Response 2"}
     ]
-    
+
     result = await evaluator.evaluate_ensemble(test_data)
     assert result["accuracy"] == 0.95
     assert result["consensus_score"] == 0.92
@@ -300,21 +301,21 @@ async def test_model_comparison():
         "claude-3": MockEnsembleModel("claude-3"),
         "mistral": MockEnsembleModel("mistral")
     }
-    
+
     evaluator = MockEnsembleEvaluator(MockEnsemble(list(models.values())))
-    
+
     # Test model comparison
     test_data = [
         {"prompt": "Test 1", "expected": "Response 1"},
         {"prompt": "Test 2", "expected": "Response 2"}
     ]
-    
+
     results = await evaluator.compare_models(models, test_data)
-    
+
     assert "gpt-4" in results
     assert "claude-3" in results
     assert "mistral" in results
-    
+
     for model_name, metrics in results.items():
         assert "accuracy" in metrics
         assert "latency" in metrics
@@ -328,13 +329,13 @@ async def test_model_comparison():
 async def test_ensemble_model_embeddings():
     """Test that ensemble models can generate embeddings."""
     model = MockEnsembleModel("gpt-4")
-    
+
     # Test single text embedding
     text = "Test text"
     embedding = await model.embeddings(text)
     assert len(embedding) == 384
     assert all(isinstance(x, float) for x in embedding)
-    
+
     # Test multiple text embeddings
     texts = ["Text 1", "Text 2", "Text 3"]
     embeddings = await model.embeddings(texts)
@@ -351,7 +352,7 @@ async def test_ensemble_model_chat():
         {"role": "assistant", "content": "Hi there!"},
         {"role": "user", "content": "How are you?"}
     ]
-    
+
     response = await model.chat(messages)
     assert "Chat response from gpt-4" in response
 
@@ -365,28 +366,28 @@ async def test_ensemble_workflow():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     # Create ensemble
     ensemble = MockEnsemble(models, strategy="majority")
-    
+
     # Create evaluator
     evaluator = MockEnsembleEvaluator(ensemble)
-    
+
     # Test data
     test_data = [
         {"prompt": "What is AI?", "expected": "AI explanation"},
         {"prompt": "Explain ML", "expected": "ML explanation"}
     ]
-    
+
     # Make predictions
     for item in test_data:
         result = await ensemble.predict(item["prompt"])
         assert result is not None
-    
+
     # Evaluate ensemble
     eval_result = await evaluator.evaluate_ensemble(test_data)
     assert eval_result["accuracy"] > 0.9
-    
+
     # Compare individual models
     model_dict = {f"model_{i}": model for i, model in enumerate(models)}
     comparison = await evaluator.compare_models(model_dict, test_data)
@@ -399,10 +400,10 @@ async def test_error_handling():
     # Test with failing model
     failing_model = MockEnsembleModel("gpt-4")
     failing_model.generate = AsyncMock(side_effect=Exception("API Error"))
-    
+
     models = [failing_model, MockEnsembleModel("claude-3")]
     ensemble = MockEnsemble(models)
-    
+
     # The ensemble should handle the error gracefully
     with pytest.raises(Exception, match="API Error"):
         await ensemble.predict("Test prompt")
@@ -412,7 +413,7 @@ def test_ensemble_api_structure():
     """Test that the ensemble API examples have the expected structure."""
     examples_dir = Path(__file__).parent.parent.parent / "examples" / "api"
     assert examples_dir.exists(), "API examples directory should exist"
-    
+
     # Check for ensemble_api.py
     ensemble_api_path = examples_dir / "ensemble_api.py"
     if ensemble_api_path.exists():
@@ -428,7 +429,7 @@ async def test_environment_variables():
     pytest.importorskip("fastapi")  # example app needs the [gateway] extras
     # Test that the module can be imported without load_dotenv
     import examples.api.ensemble_api
-    
+
     # Test with environment variables
     with patch.dict(os.environ, {'OPENAI_API_KEY': 'test_key'}):
         # This should not raise any errors
@@ -442,7 +443,7 @@ def test_ensemble_configuration():
     assert model.model_name == "gpt-4"
     assert model.kwargs["temperature"] == 0.1
     assert model.kwargs["max_tokens"] == 1000
-    
+
     # Test ensemble configuration
     models = [MockEnsembleModel("gpt-4"), MockEnsembleModel("claude-3")]
     ensemble = MockEnsemble(models, strategy="consensus")
@@ -458,28 +459,28 @@ async def test_ensemble_performance_metrics():
         MockEnsembleModel("claude-3"),
         MockEnsembleModel("mistral")
     ]
-    
+
     ensemble = MockEnsemble(models)
     evaluator = MockEnsembleEvaluator(ensemble)
-    
+
     # Test performance evaluation
     test_data = [
         {"prompt": "Performance test", "expected": "Response"}
     ]
-    
+
     # Make multiple predictions to test performance
     import time
     start_time = time.perf_counter()
-    
+
     for _ in range(5):
         await ensemble.predict("Performance test prompt")
-    
+
     end_time = time.perf_counter()
     total_time = end_time - start_time
-    
+
     # Evaluate ensemble
     result = await evaluator.evaluate_ensemble(test_data)
-    
+
     assert result["accuracy"] > 0.9
     assert len(ensemble.predictions) == 5
-    assert total_time > 0  # Should take some time 
+    assert total_time > 0  # Should take some time

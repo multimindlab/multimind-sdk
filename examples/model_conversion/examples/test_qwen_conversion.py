@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-import os
-import json
-import time
 import argparse
+import json
+import os
+import time
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 import requests
-from qwen_to_ollama import download_qwen_model, convert_to_ollama
+from qwen_to_ollama import convert_to_ollama, download_qwen_model
+
 
 class QwenConversionTester:
     """Test suite for Qwen model conversion."""
-    
+
     def __init__(self, model_path: str, ollama_host: str = "http://localhost:11434"):
         self.model_path = model_path
         self.ollama_host = ollama_host
         self.test_results = []
-    
+
     def run_performance_test(self, prompt: str, num_tokens: int = 100) -> Dict[str, Any]:
         """Test model performance with a given prompt."""
         try:
@@ -30,7 +32,7 @@ class QwenConversionTester:
                 }
             )
             end_time = time.time()
-            
+
             if response.status_code == 200:
                 result = response.json()
                 tokens_per_second = num_tokens / (end_time - start_time)
@@ -54,7 +56,7 @@ class QwenConversionTester:
                 "prompt": prompt,
                 "error": str(e)
             }
-    
+
     def run_accuracy_test(self, test_cases: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         """Test model accuracy with a set of test cases."""
         results = []
@@ -68,7 +70,7 @@ class QwenConversionTester:
                         "stream": False
                     }
                 )
-                
+
                 if response.status_code == 200:
                     result = response.json()
                     results.append({
@@ -94,7 +96,7 @@ class QwenConversionTester:
                     "error": str(e)
                 })
         return results
-    
+
     def run_memory_test(self) -> Dict[str, Any]:
         """Test model memory usage."""
         try:
@@ -121,7 +123,7 @@ class QwenConversionTester:
                 "status": "error",
                 "error": str(e)
             }
-    
+
     def run_all_tests(self) -> Dict[str, Any]:
         """Run all test cases and collect results."""
         # Performance test cases
@@ -132,7 +134,7 @@ class QwenConversionTester:
             "Explain the concept of blockchain technology.",
             "Describe the process of photosynthesis."
         ]
-        
+
         # Accuracy test cases
         accuracy_test_cases = [
             {
@@ -161,7 +163,7 @@ class QwenConversionTester:
                 "expected_keywords": ["robot", "paint", "art", "learn"]
             }
         ]
-        
+
         # Run tests
         results = {
             "performance_tests": [],
@@ -169,27 +171,27 @@ class QwenConversionTester:
             "memory_test": None,
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
         }
-        
+
         # Run performance tests
         print("Running performance tests...")
         for prompt in performance_prompts:
             result = self.run_performance_test(prompt)
             results["performance_tests"].append(result)
             print(f"Completed performance test: {prompt[:50]}...")
-        
+
         # Run accuracy tests
         print("\nRunning accuracy tests...")
         accuracy_results = self.run_accuracy_test(accuracy_test_cases)
         results["accuracy_tests"] = accuracy_results
         print("Completed accuracy tests")
-        
+
         # Run memory test
         print("\nRunning memory test...")
         results["memory_test"] = self.run_memory_test()
         print("Completed memory test")
-        
+
         return results
-    
+
     def save_results(self, results: Dict[str, Any], output_file: str):
         """Save test results to a JSON file."""
         with open(output_file, 'w') as f:
@@ -204,32 +206,32 @@ def main():
                       help="Output file for test results")
     parser.add_argument("--ollama-host", type=str, default="http://localhost:11434",
                       help="Ollama API host")
-    
+
     args = parser.parse_args()
-    
+
     try:
         # Initialize tester
         tester = QwenConversionTester(args.model_path, args.ollama_host)
-        
+
         # Run all tests
         print("Starting comprehensive test suite...")
         results = tester.run_all_tests()
-        
+
         # Save results
         tester.save_results(results, args.output_file)
-        
+
         # Print summary
         print("\nTest Summary:")
         print(f"Total performance tests: {len(results['performance_tests'])}")
         print(f"Total accuracy tests: {len(results['accuracy_tests'])}")
         print(f"Average tokens per second: {sum(t['tokens_per_second'] for t in results['performance_tests'] if t['status'] == 'success') / len(results['performance_tests']):.2f}")
         print(f"Accuracy test pass rate: {sum(1 for t in results['accuracy_tests'] if t.get('contains_keywords', False)) / len(results['accuracy_tests']) * 100:.2f}%")
-        
+
     except Exception as e:
         print(f"Error during testing: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

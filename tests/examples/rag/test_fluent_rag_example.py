@@ -3,32 +3,33 @@ Tests for fluent_rag_example.py RAG example.
 """
 
 import pytest
+
 pytest.importorskip("multimind.rag", exc_type=ImportError)  # requires optional extras absent on core-only installs
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from examples.rag.fluent_rag_example import main
-from multimind.core.router import Router, TaskType, TaskConfig, RoutingStrategy
-from multimind.core.provider import ProviderConfig, GenerationResult, EmbeddingResult
+from multimind.core.provider import EmbeddingResult, GenerationResult, ProviderConfig
+from multimind.core.router import Router, RoutingStrategy, TaskConfig, TaskType
 from multimind.rag.fluent import RAGConfig, RAGPipeline, RAGResult
+from multimind.vector_store.base import SearchResult, VectorStoreConfig, VectorStoreType
 from multimind.vector_store.vector_store import VectorStore
-from multimind.vector_store.base import VectorStoreConfig, SearchResult, VectorStoreType
 
 
 class MockOpenAIProvider:
     """Mock OpenAI provider for testing."""
-    
+
     def __init__(self, config):
         self.config = config
         self.api_key = config.api_key if hasattr(config, 'api_key') else None
-    
+
     async def generate(self, prompt: str, **kwargs):
         """Mock text generation."""
         return GenerationResult(
@@ -39,7 +40,7 @@ class MockOpenAIProvider:
             latency_ms=100.0,
             cost_estimate_usd=0.001
         )
-    
+
     async def embed(self, text: str, **kwargs):
         """Mock embedding generation."""
         # Return a mock embedding vector
@@ -56,11 +57,11 @@ class MockOpenAIProvider:
 
 class MockClaudeProvider:
     """Mock Claude provider for testing."""
-    
+
     def __init__(self, config):
         self.config = config
         self.api_key = config.api_key if hasattr(config, 'api_key') else None
-    
+
     async def generate(self, prompt: str, **kwargs):
         """Mock text generation."""
         return GenerationResult(
@@ -71,7 +72,7 @@ class MockClaudeProvider:
             latency_ms=120.0,
             cost_estimate_usd=0.0015
         )
-    
+
     async def embed(self, text: str, **kwargs):
         """Mock embedding generation."""
         # Return a mock embedding vector
@@ -88,14 +89,14 @@ class MockClaudeProvider:
 
 class MockVectorStore(VectorStore):
     """Mock vector store for testing."""
-    
+
     def __init__(self, config):
         # Initialize parent with config
         super().__init__(config)
         self.vectors = []
         self.metadata_list = []
         self.documents_list = []
-    
+
     async def add_vectors(self, vectors, metadata=None, documents=None, ids=None):
         """Add vectors to the store."""
         start_id = len(self.vectors)
@@ -106,7 +107,7 @@ class MockVectorStore(VectorStore):
             self.documents_list.extend(documents)
         # Return list of IDs
         return list(range(start_id, len(self.vectors)))
-    
+
     async def search(self, query_vector, k=5, filter_criteria=None, **kwargs):
         """Search for similar vectors."""
         # Return mock search results
@@ -122,21 +123,21 @@ class MockVectorStore(VectorStore):
                 score=0.9 - (i * 0.1)
             ))
         return results
-    
+
     async def initialize(self):
         """Initialize the vector store."""
         pass
-    
+
     async def delete_vectors(self, ids):
         """Delete vectors by IDs."""
         pass
-    
+
     async def clear(self):
         """Clear all vectors."""
         self.vectors = []
         self.metadata_list = []
         self.documents_list = []
-    
+
     async def persist(self, path):
         """Persist the vector store."""
         pass
@@ -144,19 +145,19 @@ class MockVectorStore(VectorStore):
 
 class MockRouter:
     """Mock router for testing."""
-    
+
     def __init__(self):
         self.providers = {}
         self.task_configs = {}
-    
+
     def register_provider(self, name: str, provider):
         """Register a provider."""
         self.providers[name] = provider
-    
+
     def configure_task(self, task_type: TaskType, config: TaskConfig):
         """Configure a task."""
         self.task_configs[task_type] = config
-    
+
     async def route(self, task_type: TaskType, input_data, provider=None, model=None, **kwargs):
         """Route a task to a provider."""
         if task_type == TaskType.EMBEDDINGS:
@@ -173,7 +174,7 @@ class MockRouter:
 
 class MockVectorStoreConfig(VectorStoreConfig):
     """Mock VectorStoreConfig for testing."""
-    
+
     @staticmethod
     def create_faiss_config(dimension: int, metric: str = "cosine", index_type: str = "flat"):
         # Use the actual VectorStoreConfig.create_faiss_config method
@@ -186,7 +187,7 @@ class MockVectorStoreConfig(VectorStoreConfig):
 
 class MockVectorStoreFactory:
     """Mock VectorStoreFactory for testing."""
-    
+
     @staticmethod
     def create_store(store_type: str, config):
         """Create a vector store."""
@@ -268,16 +269,16 @@ async def test_rag_pipeline_load_documents(mock_rag_pipeline):
         "Quantum computing is a type of computing that uses quantum bits.",
         "Artificial Intelligence is the simulation of human intelligence."
     ]
-    
+
     pipeline = (
         mock_rag_pipeline
         .load_documents(documents)
     )
-    
+
     # Run the load step directly without execute() since execute() expects answer/sources
     if pipeline._steps:
         await pipeline._steps[0]()
-    
+
     # Verify documents were added to vector store
     assert len(mock_rag_pipeline.config.vector_store.vectors) > 0
     assert "chunks" in mock_rag_pipeline._context
@@ -291,7 +292,7 @@ async def test_rag_pipeline_basic_query(mock_rag_pipeline):
         "Quantum computing uses quantum bits or qubits.",
         "AI includes learning, reasoning, and self-correction."
     ]
-    
+
     result = await (
         mock_rag_pipeline
         .load_documents(documents)
@@ -299,7 +300,7 @@ async def test_rag_pipeline_basic_query(mock_rag_pipeline):
         .generate()
         .execute()
     )
-    
+
     assert result is not None
     assert isinstance(result, RAGResult)
     assert result.answer is not None
@@ -314,12 +315,12 @@ async def test_rag_pipeline_with_filtering(mock_rag_pipeline):
         "Quantum computing uses quantum bits or qubits.",
         "AI includes learning, reasoning, and self-correction."
     ]
-    
+
     def filter_quantum(result):
         """Filter results to only include quantum computing content."""
         # Use get_content() method for consistent content extraction
         return "quantum" in result.get_content().lower()
-    
+
     result = await (
         mock_rag_pipeline
         .load_documents(documents)
@@ -328,7 +329,7 @@ async def test_rag_pipeline_with_filtering(mock_rag_pipeline):
         .generate()
         .execute()
     )
-    
+
     assert result is not None
     assert isinstance(result, RAGResult)
     assert result.answer is not None
@@ -341,14 +342,14 @@ async def test_rag_pipeline_with_custom_prompt(mock_rag_pipeline):
         "Quantum computing uses quantum bits or qubits.",
         "AI includes learning, reasoning, and self-correction."
     ]
-    
+
     custom_prompt = """
     You are an expert. Based on the context, answer the question.
     Context: {context}
     Question: {query}
     Answer:
     """
-    
+
     result = await (
         mock_rag_pipeline
         .load_documents(documents)
@@ -356,7 +357,7 @@ async def test_rag_pipeline_with_custom_prompt(mock_rag_pipeline):
         .generate(prompt_template=custom_prompt)
         .execute()
     )
-    
+
     assert result is not None
     assert isinstance(result, RAGResult)
     assert result.answer is not None
@@ -369,23 +370,23 @@ async def test_rag_pipeline_with_transformation(mock_rag_pipeline):
         "Quantum computing uses quantum bits or qubits.",
         "AI includes learning, reasoning, and self-correction."
     ]
-    
+
     def add_relevance_score(result):
         """Add a relevance score to each result."""
         # Use get_content() method for consistent content extraction
         text = result.get_content().lower()
-        
+
         query = "quantum computing applications"
         words = query.split()
         score = sum(1 for word in words if word in text)
-        
+
         # Add relevance score to metadata
         if not isinstance(result.metadata, dict):
             result.metadata = {}
         result.metadata["relevance_score"] = score
-        
+
         return result
-    
+
     result = await (
         mock_rag_pipeline
         .load_documents(documents)
@@ -394,7 +395,7 @@ async def test_rag_pipeline_with_transformation(mock_rag_pipeline):
         .generate()
         .execute()
     )
-    
+
     assert result is not None
     assert isinstance(result, RAGResult)
     assert result.answer is not None
@@ -413,7 +414,7 @@ async def test_rag_config_creation(mock_vector_store):
         chunk_overlap=200,
         max_results=5
     )
-    
+
     assert config.vector_store == mock_vector_store
     assert config.embedding_provider == "openai"
     assert config.embedding_model == "text-embedding-ada-002"
@@ -432,7 +433,7 @@ async def test_vector_store_config_creation():
         metric="cosine",
         index_type="flat"
     )
-    
+
     # VectorStoreConfig stores values in connection_params, use get() method
     assert config.get("dimension") == 1536
     assert config.get("metric") == "cosine"
@@ -444,7 +445,7 @@ async def test_router_provider_registration(mock_router, mock_openai_provider, m
     """Test router provider registration."""
     mock_router.register_provider("openai", mock_openai_provider)
     mock_router.register_provider("claude", mock_claude_provider)
-    
+
     assert "openai" in mock_router.providers
     assert "claude" in mock_router.providers
 
@@ -457,9 +458,9 @@ async def test_router_task_configuration(mock_router):
         fallback_providers=[],
         routing_strategy=RoutingStrategy.COST_BASED
     )
-    
+
     mock_router.configure_task(TaskType.TEXT_GENERATION, task_config)
-    
+
     assert TaskType.TEXT_GENERATION in mock_router.task_configs
 
 
@@ -472,7 +473,7 @@ async def test_router_embedding_routing(mock_router):
         provider="openai",
         model="text-embedding-ada-002"
     )
-    
+
     assert result is not None
     assert hasattr(result, "embedding")
     assert len(result.embedding) == 1536
@@ -487,7 +488,7 @@ async def test_router_generation_routing(mock_router):
         provider="openai",
         model="gpt-4"
     )
-    
+
     assert result is not None
     assert hasattr(result, "text")
     assert len(result.text) > 0
@@ -502,7 +503,7 @@ async def test_fluent_rag_example_main_with_openai():
          patch('examples.rag.fluent_rag_example.VectorStoreFactory', MockVectorStoreFactory), \
          patch('examples.rag.fluent_rag_example.VectorStoreConfig', MockVectorStoreConfig), \
          patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'}):
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -520,7 +521,7 @@ async def test_fluent_rag_example_main_with_claude():
          patch('examples.rag.fluent_rag_example.VectorStoreFactory', MockVectorStoreFactory), \
          patch('examples.rag.fluent_rag_example.VectorStoreConfig', MockVectorStoreConfig), \
          patch.dict(os.environ, {'ANTHROPIC_API_KEY': 'test-key'}, clear=True):
-        
+
         try:
             await main()
             assert True
@@ -541,7 +542,7 @@ async def test_fluent_rag_example_main_with_both_providers():
              'OPENAI_API_KEY': 'test-key',
              'ANTHROPIC_API_KEY': 'test-key'
          }):
-        
+
         try:
             await main()
             assert True
@@ -559,7 +560,7 @@ async def test_fluent_rag_example_main_no_providers():
          patch('examples.rag.fluent_rag_example.VectorStoreFactory', MockVectorStoreFactory), \
          patch('examples.rag.fluent_rag_example.VectorStoreConfig', MockVectorStoreConfig), \
          patch.dict(os.environ, {}, clear=True):
-        
+
         with pytest.raises(ValueError, match="At least one provider"):
             await main()
 
@@ -568,16 +569,16 @@ async def test_fluent_rag_example_main_no_providers():
 async def test_rag_pipeline_chunking(mock_rag_pipeline):
     """Test that documents are properly chunked."""
     long_document = " ".join(["word"] * 2000)  # Create a long document
-    
+
     pipeline = (
         mock_rag_pipeline
         .load_documents([long_document])
     )
-    
+
     # Run the load step directly without execute() since execute() expects answer/sources
     if pipeline._steps:
         await pipeline._steps[0]()
-    
+
     # Verify chunks were created
     assert "chunks" in mock_rag_pipeline._context
     assert len(mock_rag_pipeline._context["chunks"]) > 1
@@ -590,7 +591,7 @@ async def test_rag_pipeline_sources_format(mock_rag_pipeline):
         "Quantum computing uses quantum bits or qubits.",
         "AI includes learning, reasoning, and self-correction."
     ]
-    
+
     result = await (
         mock_rag_pipeline
         .load_documents(documents)
@@ -598,11 +599,11 @@ async def test_rag_pipeline_sources_format(mock_rag_pipeline):
         .generate()
         .execute()
     )
-    
+
     assert result.sources is not None
     assert isinstance(result.sources, list)
     assert len(result.sources) > 0
-    
+
     # Check source structure
     for source in result.sources:
         assert "text" in source
@@ -614,7 +615,7 @@ def test_fluent_rag_example_structure():
     """Test that the example has the expected structure."""
     example_path = Path(__file__).parent.parent.parent.parent / "examples" / "rag" / "fluent_rag_example.py"
     assert example_path.exists(), "fluent_rag_example.py should exist"
-    
+
     # Check that the file contains expected components
     with open(example_path, 'r') as f:
         content = f.read()
