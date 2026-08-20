@@ -4,22 +4,20 @@ This example demonstrates how to use MultiMind's memory capabilities for softwar
 combining knowledge graph memory for code knowledge and event-sourced memory for development tracking.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
-from multimind.memory import (
-    KnowledgeGraphMemory,
-    EventSourcedMemory,
-    HybridMemory
-)
+from multimind.memory import EventSourcedMemory, HybridMemory, KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class SoftwareDevelopmentCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "software_development.json"):
         self.llm = OllamaModel(model_name=model)
-        
+
         # Initialize knowledge graph memory for code knowledge
         self.code_knowledge = KnowledgeGraphMemory(
             llm=self.llm,
@@ -31,7 +29,7 @@ class SoftwareDevelopmentCLI:
             validation_interval=3600,  # 1 hour
             storage_path=f"{storage_path}_knowledge.json"
         )
-        
+
         # Initialize event-sourced memory for development tracking
         self.dev_tracking = EventSourcedMemory(
             llm=self.llm,
@@ -43,7 +41,7 @@ class SoftwareDevelopmentCLI:
             pattern_interval=3600,  # 1 hour
             storage_path=f"{storage_path}_events.json"
         )
-        
+
         # Initialize hybrid memory for overall context
         self.memory = HybridMemory(
             llm=self.llm,
@@ -56,7 +54,7 @@ class SoftwareDevelopmentCLI:
             enable_analysis=True,
             storage_path=storage_path
         )
-        
+
         self.mm = MultiMind(
             llm=self.llm,
             memory=self.memory,
@@ -74,7 +72,7 @@ class SoftwareDevelopmentCLI:
             subject, predicate, object_, confidence = args[0], args[1], args[2], float(args[3])
             await self.add_code_knowledge(subject, predicate, object_, confidence)
             print(f"Added knowledge: {subject} {predicate} {object_} (confidence: {confidence})")
-        
+
         elif command == "/add_event":
             if len(args) < 3:
                 print("Usage: /add_event <type> <description> <metadata>")
@@ -83,44 +81,44 @@ class SoftwareDevelopmentCLI:
             metadata = eval(args[2])  # Convert string to dict
             await self.add_dev_event(event_type, description, metadata)
             print(f"Added event: {event_type} - {description}")
-        
+
         elif command == "/query":
             if not args:
                 print("Usage: /query <query_text>")
                 return
             query = " ".join(args)
             await self.query_knowledge(query)
-        
+
         elif command == "/analyze":
             if not args:
                 print("Usage: /analyze <project_id>")
                 return
             project_id = args[0]
             await self.analyze_development(project_id)
-        
+
         elif command == "/stats":
             await self.show_stats()
-        
+
         elif command == "/export":
             if len(args) < 1:
                 print("Usage: /export <filename>")
                 return
             filename = args[0]
             await self.export_data(filename)
-        
+
         elif command == "/import":
             if len(args) < 1:
                 print("Usage: /import <filename>")
                 return
             filename = args[0]
             await self.import_data(filename)
-        
+
         elif command == "/clear":
             await self.clear_data()
-        
+
         elif command == "/help":
             self.show_help()
-        
+
         else:
             print(f"Unknown command: {command}")
             self.show_help()
@@ -147,7 +145,7 @@ class SoftwareDevelopmentCLI:
         response = await self.mm.chat(query)
         related = self.code_knowledge.get_related_concepts(query)
         inferences = self.code_knowledge.get_inferences(query)
-        
+
         print(f"\nResponse: {response}")
         print("\nRelated Concepts:")
         for concept in related:
@@ -161,15 +159,15 @@ class SoftwareDevelopmentCLI:
         patterns = self.dev_tracking.get_event_patterns(project_id)
         causality = self.dev_tracking.get_causality_analysis(project_id)
         timeline = self.dev_tracking.get_event_timeline()
-        
+
         print("\nDevelopment Patterns:")
         for pattern in patterns:
             print(f"- {pattern}")
-        
+
         print("\nDependency Analysis:")
         for cause in causality:
             print(f"- {cause}")
-        
+
         print("\nTimeline:")
         for event in timeline:
             print(f"- {event}")
@@ -178,11 +176,11 @@ class SoftwareDevelopmentCLI:
         """Show development and knowledge statistics."""
         event_stats = self.dev_tracking.get_event_stats()
         knowledge_stats = self.code_knowledge.get_graph_stats()
-        
+
         print("\nDevelopment Statistics:")
         for key, value in event_stats.items():
             print(f"{key}: {value}")
-        
+
         print("\nKnowledge Graph Statistics:")
         for key, value in knowledge_stats.items():
             print(f"{key}: {value}")
@@ -222,29 +220,29 @@ async def main():
     parser.add_argument("--model", default="mistral", help="LLM model to use")
     parser.add_argument("--storage", default="software_development.json", help="Storage path")
     args = parser.parse_args()
-    
+
     cli = SoftwareDevelopmentCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Software Development CLI")
     print("Type /help for available commands")
-    
+
     while True:
         try:
             user_input = input("\n> ").strip()
             if user_input.lower() == "/exit":
                 break
-            
+
             if user_input.startswith("/"):
                 command = user_input.split()[0]
                 args = user_input.split()[1:]
                 await cli.process_command(command, args)
             else:
                 print("Unknown command. Type /help for available commands.")
-        
+
         except KeyboardInterrupt:
             break
         except Exception as e:
             print(f"Error: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

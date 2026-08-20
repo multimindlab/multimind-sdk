@@ -5,21 +5,23 @@ in a conversation while using different memory types for different aspects of th
 """
 
 import asyncio
-from typing import Dict, Any
+from typing import Any, Dict
+
 from multimind import MultiMind
 from multimind.memory import (
     HybridMemory,
-    VectorStoreMemory,
-    TimeWeightedMemory,
     KnowledgeGraphMemory,
-    TokenBufferMemory
+    TimeWeightedMemory,
+    TokenBufferMemory,
+    VectorStoreMemory,
 )
 from multimind.models import OllamaModel
+
 
 async def main():
     # Initialize the LLM
     llm = OllamaModel(model_name="mistral")
-    
+
     # Initialize HybridMemory with multiple memory types
     memory = HybridMemory(
         llm=llm,
@@ -34,14 +36,14 @@ async def main():
         enable_analysis=True,  # Enable memory analysis
         storage_path="chatbot_memory.json"
     )
-    
+
     # Initialize MultiMind with the memory system
     mm = MultiMind(
         llm=llm,
         memory=memory,
         system_prompt="You are a helpful AI assistant with excellent memory."
     )
-    
+
     # Example conversation
     conversation = [
         "Hi, I'm interested in learning about AI safety.",
@@ -50,20 +52,20 @@ async def main():
         "What are some practical approaches to implementing these principles?",
         "How does this relate to current AI systems?"
     ]
-    
+
     # Simulate conversation
     for message in conversation:
         print(f"\nUser: {message}")
         response = await mm.chat(message)
         print(f"Assistant: {response}")
-        
+
         # Get memory statistics
         stats = memory.get_memory_stats()
         print("\nMemory Statistics:")
         print(f"Total items: {stats['total_items']}")
         print(f"Memory types used: {stats['memory_types_used']}")
         print(f"Routing performance: {stats['routing_performance']}")
-        
+
         # Get memory suggestions
         suggestions = memory.get_memory_suggestions()
         if suggestions:
@@ -72,4 +74,4 @@ async def main():
                 print(f"- {suggestion}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

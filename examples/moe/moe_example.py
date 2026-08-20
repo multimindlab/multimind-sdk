@@ -1,11 +1,13 @@
+import logging
+
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-import numpy as np
-from multimind.models.moe.moe_model import MoEModel
-from multimind.fine_tuning.moe_tuning import MoETrainer
+
 from multimind.config.moe_config import MoEConfig
-import logging
+from multimind.fine_tuning.moe_tuning import MoETrainer
+from multimind.models.moe.moe_model import MoEModel
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -15,10 +17,10 @@ def create_dummy_data(num_samples: int, input_dim: int, num_classes: int) -> tup
     """Create dummy data for demonstration."""
     # Generate random input data
     X = torch.randn(num_samples, input_dim)
-    
+
     # Generate random labels
     y = torch.randint(0, num_classes, (num_samples,))
-    
+
     return X, y
 
 def main():
@@ -44,7 +46,7 @@ def main():
     # Create data loaders
     train_dataset = TensorDataset(X_train, y_train)
     val_dataset = TensorDataset(X_val, y_val)
-    
+
     train_loader = DataLoader(
         train_dataset,
         batch_size=config.batch_size,
@@ -119,4 +121,4 @@ def main():
             logger.info(f"  Expert {expert_idx}: {usage_value:.4f}")
 
 if __name__ == "__main__":
-    main() 
+    main()

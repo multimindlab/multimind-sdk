@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta
 
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 from multimind.memory.declarative import DeclarativeMemory

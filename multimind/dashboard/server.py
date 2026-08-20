@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, Header, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,6 +45,7 @@ class DashboardSettings(BaseModel):
     guardrails_path: str = "guardrails.json"
     host: str = "127.0.0.1"
     port: int = 8501
+    write_api_key: Optional[str] = None
 
     @classmethod
     def from_env(cls, **overrides: Any) -> "DashboardSettings":
@@ -56,6 +57,7 @@ class DashboardSettings(BaseModel):
             "guardrails_path": "MULTIMIND_DASHBOARD_GUARDRAILS",
             "host": "MULTIMIND_DASHBOARD_HOST",
             "port": "MULTIMIND_DASHBOARD_PORT",
+            "write_api_key": "MULTIMIND_DASHBOARD_API_KEY",
         }
         values: Dict[str, Any] = {}
         for field_name, env_var in env_map.items():
@@ -227,10 +229,13 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
     app = FastAPI(
         title="MultiMind Governance Dashboard",
         description=(
-            "Local, read-only dashboard over MultiMind governance artifacts: "
+            "Local, mostly-read-only dashboard over MultiMind governance artifacts: "
             "PII audit trail, spend and chargeback, shadow-AI inventory, and "
-            "no-code guardrail authoring. No external calls, no auth; bind to "
-            "localhost or put behind a reverse proxy."
+            "no-code guardrail authoring. No external calls. Read endpoints are "
+            "unauthenticated; the one write endpoint (PUT /api/guardrails) is "
+            "unauthenticated by default but can be gated with an X-API-Key header "
+            "by setting MULTIMIND_DASHBOARD_API_KEY. Bind to localhost or put "
+            "behind a reverse proxy."
         ),
         version=__version__,
         openapi_tags=[
@@ -387,7 +392,11 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
         }
 
     @app.put("/api/guardrails", tags=["governance"])
-    async def put_guardrails(config: GuardrailsConfig):
+    async def put_guardrails(
+        config: GuardrailsConfig, x_api_key: Optional[str] = Header(default=None)
+    ):
+        if settings.write_api_key and x_api_key != settings.write_api_key:
+            raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
         path = Path(settings.guardrails_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(config.model_dump(), indent=2) + "\n", encoding="utf-8")

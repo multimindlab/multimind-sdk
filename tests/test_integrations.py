@@ -1,5 +1,7 @@
 import pytest
+
 from multimind.integrations import IntegrationHandler
+
 # The following handlers are not exposed or do not exist in multimind.integrations:
 # from multimind.integrations import GitHubIntegrationHandler, SlackIntegrationHandler, DiscordIntegrationHandler, JiraIntegrationHandler
 
@@ -22,4 +24,4 @@ def test_integration_handler_init():
 #
 # def test_jira_integration_handler_init():
 #     handler = JiraIntegrationHandler()
-#     assert handler is not None 
+#     assert handler is not None

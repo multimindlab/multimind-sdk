@@ -7,10 +7,11 @@ import os
 import subprocess
 import sys
 import time
-import requests
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -29,11 +30,11 @@ class OllamaError(Exception):
 class OllamaChat:
     def __init__(self, model_name: str = "mistral", history_file: Optional[str] = None):
         """Initialize the Ollama chat interface.
-        
+
         Args:
             model_name: Name of the Ollama model to use (default: "mistral")
             history_file: Optional path to save chat history
-            
+
         Raises:
             OllamaError: If Ollama is not running or model is not available
         """
@@ -124,10 +125,10 @@ class OllamaChat:
 
     def pull_model(self, model_name: str) -> bool:
         """Pull a model from Ollama.
-        
+
         Args:
             model_name: Name of the model to pull
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -148,14 +149,14 @@ class OllamaChat:
 
     def chat(self, prompt: str, stream: bool = True) -> str:
         """Send a message to the Ollama model and get the response.
-        
+
         Args:
             prompt: The user's message
             stream: Whether to stream the response (default: True)
-            
+
         Returns:
             The model's response
-            
+
         Raises:
             OllamaError: If there's an error communicating with Ollama
         """
@@ -201,7 +202,7 @@ class OllamaChat:
                     timeout=300
                 )
                 response.raise_for_status()
-                
+
                 full_response = ""
                 for line in response.iter_lines():
                     if line:
@@ -215,7 +216,7 @@ class OllamaChat:
                                 break
                         except json.JSONDecodeError:
                             continue
-                
+
                 print()  # New line after streaming
                 full_response = full_response.strip()
             else:
@@ -236,7 +237,7 @@ class OllamaChat:
                 "content": full_response,
                 "timestamp": datetime.now().isoformat()
             })
-            
+
             self._save_history()
             return full_response
 
@@ -259,7 +260,7 @@ class OllamaChat:
 
     def show_history(self, limit: Optional[int] = None) -> None:
         """Display chat history.
-        
+
         Args:
             limit: Optional number of messages to show (default: all)
         """
@@ -316,19 +317,19 @@ def main():
     try:
         # Initialize chat interface
         chat = OllamaChat(model_name=args.model, history_file=args.history)
-        
+
         # Show available models
         print("\nAvailable models:")
         models = chat.get_available_models()
         for model in models:
             print(f"  - {model}")
         print(f"\nUsing model: {chat.model_name}")
-        
+
         # Show chat history if it exists
         if chat.chat_history:
             print("\nPrevious chat history:")
             chat.show_history(limit=5)  # Show last 5 messages
-        
+
         print("\nStarting chat (type 'exit' to quit, 'history' to show history, 'models' to list models)")
         print("Special commands:")
         print("  exit     - Exit the chat")
@@ -342,7 +343,7 @@ def main():
             try:
                 # Get user input
                 prompt = input("\nYou: ").strip()
-                
+
                 # Handle special commands
                 if prompt.lower() == 'exit':
                     break
@@ -401,4 +402,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main() 
+    main()

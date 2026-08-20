@@ -3,7 +3,9 @@ import pytest  # noqa: E402
 pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
 
 import pytest
+
 from multimind.client import FederatedRouter, ModelClient, RAGClient
+
 
 class DummyClient:
     def generate(self, prompt, **kwargs):
@@ -36,4 +38,4 @@ def test_model_client_query():
 def test_rag_client_query():
     client = RAGClient()
     # Only test instantiation, as RAGClient methods are async and require a running API
-    assert client.base_url.startswith("http") 
+    assert client.base_url.startswith("http")

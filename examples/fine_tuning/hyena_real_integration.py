@@ -6,10 +6,10 @@
 #   pip install torch optuna
 # Note: This script assumes you have the hyena repo installed and available in PYTHONPATH.
 
-import torch
-from torch.utils.data import DataLoader, Dataset
-import torch.nn as nn
 import optuna
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader, Dataset
 
 # Import Hyena model (after installing the repo)
 try:
@@ -95,4 +95,4 @@ for epoch in range(2):
 
 print("[INFO] Hyena adapter fine-tuning complete. Save or evaluate your adapter as needed.")
 
-# For real use, use a real tokenizer, dataset, and loss (e.g., cross-entropy for language modeling) 
+# For real use, use a real tokenizer, dataset, and loss (e.g., cross-entropy for language modeling)

@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .audit import audit
+from .backend import backend
 from .chat import chat
 from .compliance import compliance
 from .config import config
@@ -33,6 +34,7 @@ cli.add_command(config)
 cli.add_command(serve)
 cli.add_command(audit)
 cli.add_command(dashboard)
+cli.add_command(backend)
 
 
 def _run_convert():

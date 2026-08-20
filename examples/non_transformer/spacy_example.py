@@ -1,6 +1,8 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-import spacy
 import asyncio
+
+import spacy
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Load spaCy model
 nlp = spacy.blank("en")
@@ -31,4 +33,4 @@ async def main():
     print(f"Prompt: {prompt}\nNamed Entities: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

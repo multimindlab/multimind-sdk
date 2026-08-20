@@ -257,6 +257,32 @@ def test_guardrails_roundtrip(client, tmp_path):
     assert client.get("/api/guardrails").json()["config"] == payload
 
 
+def test_guardrails_write_api_key_gate(tmp_path, project_dir):
+    settings = DashboardSettings(
+        project_path=str(project_dir),
+        guardrails_path=str(tmp_path / "guardrails.json"),
+        write_api_key="secret123",
+    )
+    client = TestClient(create_dashboard_app(settings))
+    payload = {"strategy": "hash", "block_on": [], "budget_max_cost": None, "scan_output": True}
+
+    unauthenticated = client.put("/api/guardrails", json=payload)
+    assert unauthenticated.status_code == 401
+    assert not (tmp_path / "guardrails.json").exists()
+
+    wrong_key = client.put(
+        "/api/guardrails", json=payload, headers={"X-API-Key": "wrong"}
+    )
+    assert wrong_key.status_code == 401
+
+    authenticated = client.put(
+        "/api/guardrails", json=payload, headers={"X-API-Key": "secret123"}
+    )
+    assert authenticated.status_code == 200
+    # Reads stay open even when a write key is configured.
+    assert client.get("/api/guardrails").json()["config"] == payload
+
+
 @pytest.mark.parametrize(
     "payload",
     [

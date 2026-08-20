@@ -4,9 +4,11 @@ Advanced usage examples of the MultiModelWrapper demonstrating complex scenarios
 
 import asyncio
 import json
-from typing import List, Dict
+from typing import Dict, List
+
 from multimind.models.factory import ModelFactory
 from multimind.models.multi_model import MultiModelWrapper
+
 
 async def run_advanced_examples():
     # Initialize the model factory
@@ -110,4 +112,4 @@ async def run_advanced_examples():
         # The wrapper will automatically try fallback models
 
 if __name__ == "__main__":
-    asyncio.run(run_advanced_examples()) 
+    asyncio.run(run_advanced_examples())

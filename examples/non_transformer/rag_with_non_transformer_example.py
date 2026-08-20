@@ -1,5 +1,7 @@
 import torch
+
 from multimind.client.model_client import LSTMModelClient, SpaCyClient
+
 
 # Dummy retriever for demonstration
 class DummyRetriever:
@@ -42,4 +44,4 @@ try:
     rag_response_spacy = simple_rag_pipeline(query, retriever, spacy_client)
     print("RAG with SpaCyClient:", rag_response_spacy)
 except ImportError:
-    print("spaCy not installed, skipping SpaCyClient RAG example.") 
+    print("spaCy not installed, skipping SpaCyClient RAG example.")

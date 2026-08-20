@@ -1,6 +1,8 @@
 import asyncio
+
 import torch
-from multimind.llm.non_transformer_llm import MambaLLM, RWKVLLM, CustomRNNLLM
+
+from multimind.llm.non_transformer_llm import RWKVLLM, CustomRNNLLM, MambaLLM
 
 # Example: Advanced non-transformer LLM usage.
 # MambaLLM and RWKVLLM run real HuggingFace inference; the other wrapper

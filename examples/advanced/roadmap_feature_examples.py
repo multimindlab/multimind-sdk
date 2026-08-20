@@ -1,20 +1,29 @@
 import torch
-from multimind.client.model_client import (
-    LSTMModelClient, DynamicMoEModelClient, MultiModalClient, ImageModelClient, AudioModelClient, VideoModelClient, CodeModelClient
-)
-from multimind.llm.non_transformer_llm import MambaLLM
-from multimind.agents.react_toolchain import ReasoningChain, ReasoningStep
+
 from multimind.agents.agent_registry import AgentRegistry
 from multimind.agents.prompt_correction import PromptCorrectionLayer
+from multimind.agents.react_toolchain import ReasoningChain, ReasoningStep
 from multimind.client.federated_router import FederatedRouter
+from multimind.client.model_client import (
+    AudioModelClient,
+    CodeModelClient,
+    DynamicMoEModelClient,
+    ImageModelClient,
+    LSTMModelClient,
+    MultiModalClient,
+    VideoModelClient,
+)
 from multimind.fine_tuning.rag_fine_tuner import RAGFineTuner
+from multimind.llm.non_transformer_llm import MambaLLM
+
 
 # --- DynamicMoEModelClient Example ---
 class DummyClient:
     def __init__(self, name): self.name = name
     def generate(self, prompt, **kwargs): return f"[{self.name} output for: {prompt}]"
 def router_fn(prompt, metrics):
-    if len(prompt) > 10: return "slow"
+    if len(prompt) > 10:
+        return "slow"
     return "fast"
 moe_client = DynamicMoEModelClient({"fast": DummyClient("fast"), "slow": DummyClient("slow")}, router_fn)
 print("DynamicMoEModelClient (short):", moe_client.generate("hi"))
@@ -84,7 +93,9 @@ print("FederatedRouter (long):", fed_router.generate("this is a very long prompt
 
 # --- RAGFineTuner Example ---
 def dummy_rag_pipeline(query): return {"context": f"[Context for: {query}]", "answer": f"[Answer for: {query}]"}
-def dummy_fine_tune(train_data, **kwargs): print(f"Fine-tuning on {len(train_data)} examples."); return "fine-tuned-model"
+def dummy_fine_tune(train_data, **kwargs):
+    print(f"Fine-tuning on {len(train_data)} examples.")
+    return "fine-tuned-model"
 rag_ft = RAGFineTuner(dummy_rag_pipeline, dummy_fine_tune)
 queries = ["What is the capital of France?", "Who wrote Hamlet?"]
-print("RAGFineTuner result:", rag_ft.auto_ft_from_rag(queries, n_per_query=2)) 
+print("RAGFineTuner result:", rag_ft.auto_ft_from_rag(queries, n_per_query=2))

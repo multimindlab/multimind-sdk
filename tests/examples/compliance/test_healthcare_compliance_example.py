@@ -7,16 +7,17 @@ import pytest  # noqa: E402
 
 pytest.importorskip("torch", reason="requires multimind-sdk[finetune]")
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+import json
 import os
 import sys
-import json
-import torch
-import numpy as np
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import numpy as np
+import pytest
+import torch
 
 # Add root directory to path
 root_dir = Path(__file__).parent.parent.parent.parent
@@ -24,52 +25,48 @@ sys.path.insert(0, str(root_dir))
 
 # Import the example components
 try:
-    from examples.compliance.healthcare_compliance_example import (
-        run_healthcare_compliance_example,
-        _make_json_serializable,
-        main
-    )
-    from examples.compliance.healthcare.medical_diagnosis_compliance import (
-        MedicalDiagnosisDataset,
-        DiagnosisModel,
-        MedicalDiagnosisCompliance
-    )
-    from examples.compliance.healthcare.patient_monitoring_compliance import (
-        PatientMonitoringDataset,
-        PatientMonitoringModel,
-        PatientMonitoringCompliance
-    )
-    from examples.compliance.healthcare.ehr_compliance import (
-        EHRDataset,
-        EHRModel,
-        EHRCompliance
-    )
-    from examples.compliance.healthcare.medical_imaging_compliance import (
-        MedicalImagingDataset,
-        MedicalImagingModel,
-        MedicalImagingCompliance
-    )
     from examples.compliance.healthcare.clinical_trial_compliance import (
+        ClinicalTrialCompliance,
         ClinicalTrialDataset,
         ClinicalTrialModel,
-        ClinicalTrialCompliance
     )
     from examples.compliance.healthcare.drug_discovery_compliance import (
+        DrugDiscoveryCompliance,
         DrugDiscoveryDataset,
         DrugDiscoveryModel,
-        DrugDiscoveryCompliance
     )
+    from examples.compliance.healthcare.ehr_compliance import EHRCompliance, EHRDataset, EHRModel
     from examples.compliance.healthcare.fraud_detection_compliance import (
+        FraudDetectionCompliance,
         FraudDetectionDataset,
         FraudDetectionModel,
-        FraudDetectionCompliance
     )
-    from multimind.compliance.model_training import (
-        ComplianceDataset,
-        ComplianceTrainer,
-        ComplianceMetrics
+    from examples.compliance.healthcare.medical_diagnosis_compliance import (
+        DiagnosisModel,
+        MedicalDiagnosisCompliance,
+        MedicalDiagnosisDataset,
+    )
+    from examples.compliance.healthcare.medical_imaging_compliance import (
+        MedicalImagingCompliance,
+        MedicalImagingDataset,
+        MedicalImagingModel,
+    )
+    from examples.compliance.healthcare.patient_monitoring_compliance import (
+        PatientMonitoringCompliance,
+        PatientMonitoringDataset,
+        PatientMonitoringModel,
+    )
+    from examples.compliance.healthcare_compliance_example import (
+        _make_json_serializable,
+        main,
+        run_healthcare_compliance_example,
     )
     from multimind.compliance import GovernanceConfig, Regulation
+    from multimind.compliance.model_training import (
+        ComplianceDataset,
+        ComplianceMetrics,
+        ComplianceTrainer,
+    )
 except ImportError as e:
     pytest.skip(f"Healthcare compliance example not available: {e}", allow_module_level=True)
 
@@ -161,7 +158,7 @@ async def test_run_healthcare_compliance_example_medical_diagnosis(
         compliance_class=MedicalDiagnosisCompliance,
         config=sample_config
     )
-    
+
     assert results is not None
     assert "metrics_history" in results
     assert "violations" in results
@@ -169,7 +166,7 @@ async def test_run_healthcare_compliance_example_medical_diagnosis(
     assert isinstance(results["metrics_history"], list)
     assert isinstance(results["violations"], list)
     assert isinstance(results["final_evaluation"], dict)
-    
+
     # Check final evaluation structure
     final_eval = results["final_evaluation"]
     assert "compliance_scores" in final_eval
@@ -188,14 +185,14 @@ async def test_run_healthcare_compliance_example_patient_monitoring(sample_confi
             "real_time_required": True
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=PatientMonitoringDataset,
         model_class=PatientMonitoringModel,
         compliance_class=PatientMonitoringCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "metrics_history" in results
     assert "violations" in results
@@ -212,14 +209,14 @@ async def test_run_healthcare_compliance_example_ehr(sample_config):
             "model_type": "ehr"
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=EHRDataset,
         model_class=EHRModel,
         compliance_class=EHRCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "metrics_history" in results
     assert "violations" in results
@@ -236,14 +233,14 @@ async def test_run_healthcare_compliance_example_medical_imaging(sample_config):
             "model_type": "medical_imaging"
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=MedicalImagingDataset,
         model_class=MedicalImagingModel,
         compliance_class=MedicalImagingCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "final_evaluation" in results
 
@@ -258,14 +255,14 @@ async def test_run_healthcare_compliance_example_clinical_trial(sample_config):
             "model_type": "clinical_trial"
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=ClinicalTrialDataset,
         model_class=ClinicalTrialModel,
         compliance_class=ClinicalTrialCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "final_evaluation" in results
 
@@ -282,14 +279,14 @@ async def test_run_healthcare_compliance_example_drug_discovery(sample_config):
             "fda_covered": True
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=DrugDiscoveryDataset,
         model_class=DrugDiscoveryModel,
         compliance_class=DrugDiscoveryCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "final_evaluation" in results
 
@@ -306,14 +303,14 @@ async def test_run_healthcare_compliance_example_fraud_detection(sample_config):
             "fraud_monitoring": True
         }
     }
-    
+
     results = await run_healthcare_compliance_example(
         dataset_class=FraudDetectionDataset,
         model_class=FraudDetectionModel,
         compliance_class=FraudDetectionCompliance,
         config=config
     )
-    
+
     assert results is not None
     assert "final_evaluation" in results
 
@@ -328,9 +325,9 @@ def test_make_json_serializable_compliance_metrics():
         transparency_score=0.85,
         fairness_score=0.88
     )
-    
+
     serialized = _make_json_serializable(metrics)
-    
+
     assert isinstance(serialized, dict)
     assert serialized["bias_score"] == 0.8
     assert serialized["privacy_score"] == 0.9
@@ -342,9 +339,9 @@ def test_make_json_serializable_compliance_metrics():
 def test_make_json_serializable_datetime():
     """Test _make_json_serializable with datetime."""
     dt = datetime.now()
-    
+
     serialized = _make_json_serializable(dt)
-    
+
     assert isinstance(serialized, str)
     assert "T" in serialized or "-" in serialized  # ISO format
 
@@ -369,9 +366,9 @@ def test_make_json_serializable_dict():
             )
         }
     }
-    
+
     serialized = _make_json_serializable(data)
-    
+
     assert isinstance(serialized, dict)
     assert isinstance(serialized["metrics"], dict)
     assert isinstance(serialized["timestamp"], str)
@@ -392,9 +389,9 @@ def test_make_json_serializable_list():
         42,
         [1, 2, 3]
     ]
-    
+
     serialized = _make_json_serializable(data)
-    
+
     assert isinstance(serialized, list)
     assert len(serialized) == 4
     assert isinstance(serialized[0], dict)
@@ -411,9 +408,9 @@ def test_make_json_serializable_numpy():
         "array": np.array([1, 2, 3]),
         "nested_array": np.array([[1, 2], [3, 4]])
     }
-    
+
     serialized = _make_json_serializable(data)
-    
+
     assert isinstance(serialized["int_value"], float)
     assert isinstance(serialized["float_value"], float)
     assert isinstance(serialized["array"], list)
@@ -432,9 +429,9 @@ def test_make_json_serializable_tuple():
         ),
         datetime.now()
     )
-    
+
     serialized = _make_json_serializable(data)
-    
+
     assert isinstance(serialized, list)
     assert len(serialized) == 2
 
@@ -448,9 +445,9 @@ def test_make_json_serializable_primitives():
         "bool": True,
         "none": None
     }
-    
+
     serialized = _make_json_serializable(data)
-    
+
     assert serialized == data  # Primitives should remain unchanged
 
 
@@ -464,7 +461,7 @@ def test_medical_diagnosis_dataset_creation(sample_medical_diagnosis_dataset):
 def test_medical_diagnosis_dataset_item_access(sample_medical_diagnosis_dataset):
     """Test that medical diagnosis dataset items can be accessed."""
     item = sample_medical_diagnosis_dataset[0]
-    
+
     assert "input" in item
     assert "target" in item
     assert "metadata" in item
@@ -477,7 +474,7 @@ def test_medical_diagnosis_model_forward(sample_medical_diagnosis_model):
     """Test that medical diagnosis model can perform forward pass."""
     x = torch.randn(5, 20)  # batch_size=5, input_size=20
     output = sample_medical_diagnosis_model(x)
-    
+
     assert "logits" in output
     assert "attention_weights" in output
     assert "features" in output
@@ -510,9 +507,9 @@ async def test_compliance_dataset_item_access(sample_medical_diagnosis_dataset):
         },
         data_categories=["health_data", "personal_data"]
     )
-    
+
     item = compliance_dataset[0]
-    
+
     assert "input" in item
     assert "target" in item
     assert "metadata" in item
@@ -532,7 +529,7 @@ async def test_compliance_dataset_length(sample_medical_diagnosis_dataset):
         },
         data_categories=["health_data", "personal_data"]
     )
-    
+
     assert len(compliance_dataset) == 100
 
 
@@ -550,7 +547,7 @@ async def test_compliance_trainer_initialization(
         compliance_rules=sample_compliance_rules,
         training_config=sample_training_config
     )
-    
+
     assert trainer.model == sample_medical_diagnosis_model
     assert trainer.compliance_rules == sample_compliance_rules
     assert trainer.training_config == sample_training_config
@@ -565,7 +562,7 @@ async def test_compliance_trainer_train(
 ):
     """Test that ComplianceTrainer can train a model."""
     from torch.utils.data import DataLoader
-    
+
     # Create a small dataset for testing
     dataset = MedicalDiagnosisDataset(size=50, input_size=20, num_classes=5)
     compliance_dataset = MedicalDiagnosisCompliance(
@@ -579,7 +576,7 @@ async def test_compliance_trainer_train(
         },
         data_categories=sample_config["data_categories"]
     )
-    
+
     # Custom collate function
     def custom_collate_fn(batch):
         inputs = torch.stack([item["input"] for item in batch])
@@ -590,22 +587,22 @@ async def test_compliance_trainer_train(
             "target": targets,
             "metadata": metadata
         }
-    
+
     train_loader = DataLoader(compliance_dataset, batch_size=16, shuffle=True, collate_fn=custom_collate_fn)
     val_loader = DataLoader(compliance_dataset, batch_size=16, shuffle=False, collate_fn=custom_collate_fn)
-    
+
     trainer = ComplianceTrainer(
         model=sample_medical_diagnosis_model,
         compliance_rules=sample_compliance_rules,
         training_config=sample_training_config
     )
-    
+
     results = await trainer.train(
         train_data=train_loader,
         val_data=val_loader,
         metadata=sample_config["metadata"]
     )
-    
+
     assert results is not None
     assert "metrics_history" in results
     assert "violations" in results
@@ -618,7 +615,7 @@ async def test_compliance_trainer_train(
 async def test_custom_collate_function():
     """Test that custom collate function works correctly."""
     from torch.utils.data import DataLoader
-    
+
     dataset = MedicalDiagnosisDataset(size=10, input_size=20, num_classes=5)
     compliance_dataset = MedicalDiagnosisCompliance(
         base_dataset=dataset,
@@ -631,7 +628,7 @@ async def test_custom_collate_function():
         },
         data_categories=["health_data", "personal_data"]
     )
-    
+
     # Custom collate function
     def custom_collate_fn(batch):
         inputs = torch.stack([item["input"] for item in batch])
@@ -642,12 +639,12 @@ async def test_custom_collate_function():
             "target": targets,
             "metadata": metadata
         }
-    
+
     loader = DataLoader(compliance_dataset, batch_size=4, shuffle=False, collate_fn=custom_collate_fn)
-    
+
     # Get a batch
     batch = next(iter(loader))
-    
+
     assert "input" in batch
     assert "target" in batch
     assert "metadata" in batch
@@ -668,15 +665,15 @@ async def test_json_serialization_of_results(sample_config):
         compliance_class=MedicalDiagnosisCompliance,
         config=sample_config
     )
-    
+
     # Try to serialize the results
     serialized = _make_json_serializable(results)
-    
+
     # Should be able to convert to JSON string
     json_str = json.dumps(serialized)
     assert isinstance(json_str, str)
     assert len(json_str) > 0
-    
+
     # Should be able to parse back
     parsed = json.loads(json_str)
     assert isinstance(parsed, dict)
@@ -695,7 +692,7 @@ def test_governance_config_initialization():
         dpo_email="dpo@test.com",
         enabled_regulations=[Regulation.HIPAA, Regulation.GDPR]
     )
-    
+
     assert config.organization_id == "test_org"
     assert config.organization_name == "Test Organization"
     assert config.dpo_email == "dpo@test.com"
@@ -725,7 +722,7 @@ async def test_main_function():
          patch('json.dump'), \
          patch('json.dumps', return_value='{}'), \
          patch('examples.compliance.healthcare_compliance_example.run_healthcare_compliance_example') as mock_run:
-        
+
         # Mock the run function to return a simple result
         mock_run.return_value = {
             "metrics_history": [],
@@ -736,7 +733,7 @@ async def test_main_function():
                 "recommendations": []
             }
         }
-        
+
         try:
             await main()
             # If we get here, the function ran without errors
@@ -758,7 +755,7 @@ async def test_multiple_use_cases():
         (MedicalDiagnosisDataset, DiagnosisModel, MedicalDiagnosisCompliance),
         (PatientMonitoringDataset, PatientMonitoringModel, PatientMonitoringCompliance),
     ]
-    
+
     for dataset_class, model_class, compliance_class in use_cases:
         config = {
             "data_categories": ["health_data", "personal_data"],
@@ -769,14 +766,14 @@ async def test_multiple_use_cases():
                 "hipaa_covered": True
             }
         }
-        
+
         results = await run_healthcare_compliance_example(
             dataset_class=dataset_class,
             model_class=model_class,
             compliance_class=compliance_class,
             config=config
         )
-        
+
         assert results is not None
         assert "final_evaluation" in results
 
@@ -791,7 +788,7 @@ async def test_error_handling_invalid_config():
         "data_categories": ["health_data"]
         # Missing metadata
     }
-    
+
     try:
         await run_healthcare_compliance_example(
             dataset_class=MedicalDiagnosisDataset,
@@ -813,10 +810,10 @@ def test_error_handling_invalid_serialization():
     # Test with unsupported type (should return as-is)
     class UnsupportedType:
         pass
-    
+
     obj = UnsupportedType()
     result = _make_json_serializable(obj)
-    
+
     # Should return the object as-is or handle gracefully
     assert result is not None
 

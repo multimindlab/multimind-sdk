@@ -3,13 +3,15 @@ CLI version of the cognitive scratchpad system, featuring complex use cases.
 This example demonstrates advanced reasoning capabilities in an interactive CLI environment.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import CognitiveScratchpadMemory
 from multimind.models import OllamaModel
+
 
 class CognitiveScratchpadCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "cognitive_scratchpad.json"):
@@ -79,7 +81,7 @@ class CognitiveScratchpadCLI:
 
         step = input("\nEnter reasoning step: ").strip()
         confidence = float(input("Confidence (0-1): ").strip())
-        
+
         self.memory.add_step(
             chain_id=self.current_chain,
             step=step,
@@ -92,7 +94,7 @@ class CognitiveScratchpadCLI:
         query = input("\nEnter your query: ").strip()
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Get related steps
         related = self.memory.get_related_steps(query)
         if related:
@@ -104,7 +106,7 @@ class CognitiveScratchpadCLI:
         """Process a natural language query."""
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Update current chain
         self.update_chain(query)
 
@@ -123,7 +125,7 @@ class CognitiveScratchpadCLI:
         print(f"Total steps: {stats['total_steps']}")
         print(f"Total chains: {stats['total_chains']}")
         print(f"Average confidence: {stats['average_confidence']}")
-        
+
         # Show chain distribution
         chains = self.memory.get_chain_distribution()
         if chains:
@@ -213,11 +215,11 @@ async def main():
     args = parser.parse_args()
 
     cs = CognitiveScratchpadCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Welcome to MultiMind Cognitive Scratchpad CLI!")
     print("Type /help for available commands.")
     print("Type /exit to quit.")
-    
+
     while True:
         try:
             command = input("\nCommand: ").strip()
@@ -230,4 +232,4 @@ async def main():
             print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

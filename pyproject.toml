@@ -10,7 +10,7 @@ readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.9"
 authors = [
-    {name = "MultimindLAB Team", email = "contact@multimind.dev"},
+    {name = "Ai2innovate SRL Team", email = "info@ai2innovate.io"},
 ]
 keywords = [
     "ai", "llm", "agents", "rag", "multi-model",

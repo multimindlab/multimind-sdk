@@ -3,9 +3,9 @@
 # See: https://huggingface.co/state-spaces/s4-small
 
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch.nn as nn
 
 MODEL_NAME = "state-spaces/s4-small"
 
@@ -87,4 +87,4 @@ for epoch in range(2):
 
 print("[INFO] Adapter fine-tuning complete. Save or evaluate your adapter as needed.")
 
-# For real use, insert adapters into all layers and use a PEFT library (e.g., peft, LoRA, etc.) 
+# For real use, insert adapters into all layers and use a PEFT library (e.g., peft, LoRA, etc.)

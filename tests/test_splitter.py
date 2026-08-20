@@ -1,5 +1,6 @@
 from multimind.splitter import TextSplitter
 
+
 def test_text_splitter_split_text():
     splitter = TextSplitter(chunk_size=5, overlap=2)
     chunks = splitter.split_text("abcdefghij")
@@ -14,4 +15,4 @@ def test_text_splitter_split_by_sentences():
 def test_text_splitter_split_by_paragraphs():
     splitter = TextSplitter()
     paragraphs = splitter.split_by_paragraphs("Para1\n\nPara2\n\nPara3")
-    assert paragraphs == ["Para1", "Para2", "Para3"] 
+    assert paragraphs == ["Para1", "Para2", "Para3"]

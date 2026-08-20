@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from statsmodels.tsa.arima.model import ARIMA
-import numpy as np
 import asyncio
+
+import numpy as np
+from statsmodels.tsa.arima.model import ARIMA
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy time series data
 y = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
@@ -38,4 +40,4 @@ async def main():
     print(f"Prompt: {prompt}\nForecasted next value: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

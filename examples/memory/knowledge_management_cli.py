@@ -3,13 +3,15 @@ CLI version of the knowledge management system, featuring complex use cases.
 This example demonstrates advanced knowledge graph capabilities in an interactive CLI environment.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class KnowledgeManagementCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "knowledge_graph.json"):
@@ -71,7 +73,7 @@ class KnowledgeManagementCLI:
         predicate = input("Predicate: ").strip()
         object_ = input("Object: ").strip()
         confidence = float(input("Confidence (0-1): ").strip())
-        
+
         self.memory.add_knowledge(
             subject=subject,
             predicate=predicate,
@@ -85,7 +87,7 @@ class KnowledgeManagementCLI:
         query = input("\nEnter your query: ").strip()
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Get related concepts
         related = self.memory.get_related_concepts(query)
         if related:
@@ -97,7 +99,7 @@ class KnowledgeManagementCLI:
         """Process a natural language query."""
         response = await self.mm.chat(query)
         print(f"\nResponse: {response}")
-        
+
         # Update current domain
         self.update_domain(query)
 
@@ -116,7 +118,7 @@ class KnowledgeManagementCLI:
         print(f"Total nodes: {stats['total_nodes']}")
         print(f"Total edges: {stats['total_edges']}")
         print(f"Average confidence: {stats['average_confidence']}")
-        
+
         # Show domain distribution
         domains = self.memory.get_domain_distribution()
         if domains:
@@ -199,11 +201,11 @@ async def main():
     args = parser.parse_args()
 
     km = KnowledgeManagementCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Welcome to MultiMind Knowledge Management CLI!")
     print("Type /help for available commands.")
     print("Type /exit to quit.")
-    
+
     while True:
         try:
             command = input("\nCommand: ").strip()
@@ -216,4 +218,4 @@ async def main():
             print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

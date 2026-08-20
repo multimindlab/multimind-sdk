@@ -105,4 +105,4 @@ def test_moe_model_client():
             return "dummy"
     client = MoEModelClient({"a": DummyClient(), "b": DummyClient()}, lambda p: "a")
     out = client.generate("test")
-    assert out == "dummy" 
+    assert out == "dummy"

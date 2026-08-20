@@ -1,8 +1,17 @@
 import torch
 import torch.nn as nn
+
 from multimind.client.model_client import (
-    LSTMModelClient, MoEModelClient, MambaClient, DiffusionTextClient, RWKVClient, SpaCyClient, S4Client, HyenaClient
+    DiffusionTextClient,
+    HyenaClient,
+    LSTMModelClient,
+    MambaClient,
+    MoEModelClient,
+    RWKVClient,
+    S4Client,
+    SpaCyClient,
 )
+
 
 # Dummy tokenizer for demonstration
 class DummyTokenizer:
@@ -74,4 +83,4 @@ class DummyHyena:
     def generate(self, input_ids):
         return input_ids
 hyena_client = HyenaClient(DummyHyena(), tokenizer)
-print("HyenaClient:", hyena_client.generate("test prompt")) 
+print("HyenaClient:", hyena_client.generate("test prompt"))

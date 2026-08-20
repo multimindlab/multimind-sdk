@@ -3,14 +3,12 @@ Multi-modal Memory Manager supporting various content types.
 """
 
 import asyncio
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
 from enum import Enum
-from multimind.memory import (
-    HybridMemory,
-    VectorStoreMemory,
-    FastWeightMemory
-)
+from typing import Any, Dict, List, Optional, Union
+
+from multimind.memory import FastWeightMemory, HybridMemory, VectorStoreMemory
+
 
 class ContentType(Enum):
     TEXT = "text"
@@ -46,7 +44,7 @@ class MultiModalMemoryManager:
             ContentType.CODE: self._process_code,
             ContentType.STRUCTURED: self._process_structured
         }
-    
+
     async def add_content(
         self,
         content_id: str,
@@ -55,7 +53,7 @@ class MultiModalMemoryManager:
         """Add multi-modal content to memory."""
         # Process content based on type
         processed_data = await self.content_processors[content.type](content.data)
-        
+
         # Add to memory system
         await self.memory_system.add_memory(
             memory_id=content_id,
@@ -65,7 +63,7 @@ class MultiModalMemoryManager:
                 **content.metadata
             }
         )
-    
+
     async def get_content(
         self,
         content_id: str,
@@ -73,17 +71,17 @@ class MultiModalMemoryManager:
     ) -> MultiModalContent:
         """Retrieve multi-modal content from memory."""
         memory = await self.memory_system.get_memory(content_id)
-        
+
         if content_type and memory["metadata"]["content_type"] != content_type.value:
             raise ValueError(f"Content type mismatch: expected {content_type.value}")
-        
+
         return MultiModalContent(
             content_type=ContentType(memory["metadata"]["content_type"]),
             data=memory["content"],
             metadata=memory["metadata"],
             embeddings=memory.get("embeddings")
         )
-    
+
     async def search_content(
         self,
         query: str,
@@ -96,7 +94,7 @@ class MultiModalMemoryManager:
                 "content_type": [ct.value for ct in content_types] if content_types else None
             }
         )
-        
+
         return [
             MultiModalContent(
                 content_type=ContentType(r["metadata"]["content_type"]),
@@ -106,7 +104,7 @@ class MultiModalMemoryManager:
             )
             for r in results
         ]
-    
+
     async def _process_text(self, data: str) -> Dict:
         """Process text content."""
         # Implement text processing (e.g., tokenization, embedding)
@@ -114,7 +112,7 @@ class MultiModalMemoryManager:
             "text": data,
             "embeddings": await self._get_text_embeddings(data)
         }
-    
+
     async def _process_image(self, data: bytes) -> Dict:
         """Process image content."""
         # Implement image processing (e.g., feature extraction, embedding)
@@ -122,7 +120,7 @@ class MultiModalMemoryManager:
             "image": data,
             "embeddings": await self._get_image_embeddings(data)
         }
-    
+
     async def _process_audio(self, data: bytes) -> Dict:
         """Process audio content."""
         # Implement audio processing (e.g., feature extraction, embedding)
@@ -130,7 +128,7 @@ class MultiModalMemoryManager:
             "audio": data,
             "embeddings": await self._get_audio_embeddings(data)
         }
-    
+
     async def _process_video(self, data: bytes) -> Dict:
         """Process video content."""
         # Implement video processing (e.g., frame extraction, embedding)
@@ -138,7 +136,7 @@ class MultiModalMemoryManager:
             "video": data,
             "embeddings": await self._get_video_embeddings(data)
         }
-    
+
     async def _process_code(self, data: str) -> Dict:
         """Process code content."""
         # Implement code processing (e.g., AST parsing, embedding)
@@ -146,7 +144,7 @@ class MultiModalMemoryManager:
             "code": data,
             "embeddings": await self._get_code_embeddings(data)
         }
-    
+
     async def _process_structured(self, data: Dict) -> Dict:
         """Process structured content."""
         # Implement structured data processing
@@ -154,32 +152,32 @@ class MultiModalMemoryManager:
             "structured": data,
             "embeddings": await self._get_structured_embeddings(data)
         }
-    
+
     async def _get_text_embeddings(self, text: str) -> List[float]:
         """Get embeddings for text content."""
         # Implement text embedding generation
         return []
-    
+
     async def _get_image_embeddings(self, image: bytes) -> List[float]:
         """Get embeddings for image content."""
         # Implement image embedding generation
         return []
-    
+
     async def _get_audio_embeddings(self, audio: bytes) -> List[float]:
         """Get embeddings for audio content."""
         # Implement audio embedding generation
         return []
-    
+
     async def _get_video_embeddings(self, video: bytes) -> List[float]:
         """Get embeddings for video content."""
         # Implement video embedding generation
         return []
-    
+
     async def _get_code_embeddings(self, code: str) -> List[float]:
         """Get embeddings for code content."""
         # Implement code embedding generation
         return []
-    
+
     async def _get_structured_embeddings(self, data: Dict) -> List[float]:
         """Get embeddings for structured content."""
         # Implement structured data embedding generation
@@ -189,7 +187,7 @@ async def example_usage():
     """Demonstrate multi-modal memory manager features."""
     # Create memory manager
     manager = MultiModalMemoryManager()
-    
+
     # Add text content
     await manager.add_content(
         content_id="text_1",
@@ -199,7 +197,7 @@ async def example_usage():
             metadata={"language": "en", "category": "documentation"}
         )
     )
-    
+
     # Add code content
     await manager.add_content(
         content_id="code_1",
@@ -209,29 +207,29 @@ async def example_usage():
             metadata={"language": "python", "category": "example"}
         )
     )
-    
+
     # Search for content
     results = await manager.search_content(
         query="documentation",
         content_types=[ContentType.TEXT]
     )
-    
+
     print("Search results:")
     for result in results:
         print(f"Type: {result.content_type.value}")
         print(f"Data: {result.data}")
         print(f"Metadata: {result.metadata}")
         print("---")
-    
+
     # Retrieve specific content
     code_content = await manager.get_content(
         content_id="code_1",
         content_type=ContentType.CODE
     )
-    
+
     print("Retrieved code content:")
     print(f"Data: {code_content.data}")
     print(f"Metadata: {code_content.metadata}")
 
 if __name__ == "__main__":
-    asyncio.run(example_usage()) 
+    asyncio.run(example_usage())

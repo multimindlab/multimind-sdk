@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from sklearn.cluster import KMeans
-import numpy as np
 import asyncio
+
+import numpy as np
+from sklearn.cluster import KMeans
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy data (2D points)
 X = np.array([[1, 2], [1, 4], [1, 0], [10, 2], [10, 4], [10, 0]])
@@ -35,4 +37,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted cluster: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

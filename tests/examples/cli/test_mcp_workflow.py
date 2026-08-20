@@ -2,13 +2,14 @@
 Tests for mcp_workflow.py CLI example.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+import json
 import os
 import sys
-import json
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -20,27 +21,27 @@ from examples.cli.mcp_workflow import main
 
 class MockOpenAIModel:
     """Mock OpenAI model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
-    
+
     async def generate(self, prompt: str, **kwargs):
         return f"Mock OpenAI response to: {prompt}"
-    
+
     async def generate_stream(self, prompt: str, **kwargs):
         async def stream():
             yield f"Mock OpenAI stream response to: {prompt}"
         return stream()
-    
+
     async def chat(self, messages, **kwargs):
         return "Mock OpenAI chat response"
-    
+
     async def chat_stream(self, messages, **kwargs):
         async def stream():
             yield "Mock OpenAI chat stream response"
         return stream()
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.1] * 384
@@ -49,27 +50,27 @@ class MockOpenAIModel:
 
 class MockClaudeModel:
     """Mock Claude model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
-    
+
     async def generate(self, prompt: str, **kwargs):
         return f"Mock Claude response to: {prompt}"
-    
+
     async def generate_stream(self, prompt: str, **kwargs):
         async def stream():
             yield f"Mock Claude stream response to: {prompt}"
         return stream()
-    
+
     async def chat(self, messages, **kwargs):
         return "Mock Claude chat response"
-    
+
     async def chat_stream(self, messages, **kwargs):
         async def stream():
             yield "Mock Claude chat stream response"
         return stream()
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.2] * 384
@@ -78,16 +79,16 @@ class MockClaudeModel:
 
 class MockMCPExecutor:
     """Mock MCP executor for testing."""
-    
+
     def __init__(self):
         self.model_registry = {}
         self.workflow_state = {}
         self.execute_calls = []
-    
+
     def register_model(self, name: str, model):
         """Register a model."""
         self.model_registry[name] = model
-    
+
     async def execute(self, workflow: dict, context: dict):
         """Execute a workflow."""
         self.execute_calls.append((workflow, context))
@@ -136,7 +137,7 @@ async def test_mcp_workflow_main_function_both_models():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value=""), \
          patch('builtins.open', create=True) as mock_open:
-        
+
         # Mock environment variables - both keys available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -144,9 +145,9 @@ async def test_mcp_workflow_main_function_both_models():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return "test-claude-key"
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -164,7 +165,7 @@ async def test_mcp_workflow_main_function_openai_only():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value=""), \
          patch('builtins.open', create=True) as mock_open:
-        
+
         # Mock environment variables - only OpenAI key available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -172,9 +173,9 @@ async def test_mcp_workflow_main_function_openai_only():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return None
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -192,7 +193,7 @@ async def test_mcp_workflow_main_function_claude_only():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value=""), \
          patch('builtins.open', create=True) as mock_open:
-        
+
         # Mock environment variables - only Claude key available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -200,9 +201,9 @@ async def test_mcp_workflow_main_function_claude_only():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return "test-claude-key"
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -215,13 +216,13 @@ async def test_mcp_workflow_no_api_keys():
     """Test main function with no API keys available."""
     with patch('examples.cli.mcp_workflow.load_dotenv'), \
          patch('examples.cli.mcp_workflow.os.getenv') as mock_getenv:
-        
+
         # Mock environment variables - no keys available
         def mock_getenv_side_effect(key, default=None):
             return None
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         # Should return early without error
         try:
             await main()
@@ -240,7 +241,7 @@ async def test_mcp_workflow_custom_topic():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value="Quantum Computing"), \
          patch('builtins.open', create=True) as mock_open:
-        
+
         # Mock environment variables - both keys available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -248,9 +249,9 @@ async def test_mcp_workflow_custom_topic():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return "test-claude-key"
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -264,10 +265,10 @@ async def test_model_registration():
     executor = MockMCPExecutor()
     openai_model = MockOpenAIModel("gpt-3.5-turbo", temperature=0.7)
     claude_model = MockClaudeModel("claude-3-sonnet-20240229", temperature=0.7)
-    
+
     executor.register_model("gpt-3.5", openai_model)
     executor.register_model("claude-3", claude_model)
-    
+
     assert "gpt-3.5" in executor.model_registry
     assert "claude-3" in executor.model_registry
     assert executor.model_registry["gpt-3.5"] == openai_model
@@ -280,7 +281,7 @@ async def test_workflow_execution():
     executor = MockMCPExecutor()
     openai_model = MockOpenAIModel("gpt-3.5-turbo")
     executor.register_model("gpt-3.5", openai_model)
-    
+
     workflow = {
         "version": "1.0.0",
         "models": [],
@@ -298,10 +299,10 @@ async def test_workflow_execution():
             "connections": []
         }
     }
-    
+
     context = {"topic": "Test Topic"}
     results = await executor.execute(workflow, context)
-    
+
     assert len(executor.execute_calls) == 1
     assert executor.execute_calls[0][1] == context
     assert "initial_analysis" in results
@@ -315,42 +316,42 @@ async def test_quality_check_word_extraction():
     topic_words = topic.lower().split()
     articles = ["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "but"]
     significant_words = [w for w in topic_words if w not in articles]
-    
+
     if len(significant_words) > 1:
         quality_check_word = significant_words[-1]
     elif significant_words:
         quality_check_word = significant_words[0]
     else:
         quality_check_word = "analysis"
-    
+
     assert quality_check_word == "intelligence"
-    
+
     # Test with single significant word
     topic = "Quantum Computing"
     topic_words = topic.lower().split()
     significant_words = [w for w in topic_words if w not in articles]
-    
+
     if len(significant_words) > 1:
         quality_check_word = significant_words[-1]
     elif significant_words:
         quality_check_word = significant_words[0]
     else:
         quality_check_word = "analysis"
-    
+
     assert quality_check_word == "computing"
-    
+
     # Test with only articles
     topic = "The Of And"
     topic_words = topic.lower().split()
     significant_words = [w for w in topic_words if w not in articles]
-    
+
     if len(significant_words) > 1:
         quality_check_word = significant_words[-1]
     elif significant_words:
         quality_check_word = significant_words[0]
     else:
         quality_check_word = "analysis"
-    
+
     assert quality_check_word == "analysis"
 
 
@@ -375,7 +376,7 @@ async def test_workflow_structure():
             }
         }
     ]
-    
+
     workflow = {
         "version": "1.0.0",
         "models": workflow_models,
@@ -434,7 +435,7 @@ async def test_workflow_structure():
             ]
         }
     }
-    
+
     assert workflow["version"] == "1.0.0"
     assert len(workflow["models"]) == 2
     assert len(workflow["workflow"]["steps"]) == 4
@@ -454,7 +455,7 @@ async def test_model_initialization_errors():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value=""), \
          patch('builtins.open', create=True):
-        
+
         # Mock environment variables - both keys available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -462,12 +463,12 @@ async def test_model_initialization_errors():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return "test-claude-key"
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         # Make OpenAI model initialization fail
         mock_openai.side_effect = Exception("OpenAI initialization failed")
-        
+
         try:
             await main()
             # Should continue with Claude only
@@ -487,7 +488,7 @@ async def test_workflow_file_saving():
          patch('examples.cli.mcp_workflow.MCPExecutor', MockMCPExecutor), \
          patch('builtins.input', return_value=""), \
          patch('builtins.open', create=True) as mock_open:
-        
+
         # Mock environment variables - both keys available
         def mock_getenv_side_effect(key, default=None):
             if key == "OPENAI_API_KEY":
@@ -495,9 +496,9 @@ async def test_workflow_file_saving():
             elif key in ["ANTHROPIC_API_KEY", "CLAUDE_API_KEY"]:
                 return "test-claude-key"
             return default
-        
+
         mock_getenv.side_effect = mock_getenv_side_effect
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -517,9 +518,9 @@ async def test_executor_results_format():
             "connections": []
         }
     }
-    
+
     results = await executor.execute(workflow, {"topic": "Test"})
-    
+
     assert isinstance(results, dict)
     assert "initial_analysis" in results
     assert "expert_review" in results
@@ -531,7 +532,7 @@ def test_example_structure():
     """Test that the example has the expected structure."""
     example_path = Path(__file__).parent.parent.parent.parent / "examples" / "cli" / "mcp_workflow.py"
     assert example_path.exists(), "mcp_workflow.py example should exist"
-    
+
     # Check that the file contains expected components
     with open(example_path, 'r') as f:
         content = f.read()

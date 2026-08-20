@@ -1,7 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from sklearn.linear_model import LinearRegression
-import numpy as np
 import asyncio
+
+import numpy as np
+from sklearn.linear_model import LinearRegression
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
 
 # Toy training data
 X = np.array([[1], [2], [3], [4], [5]])
@@ -39,4 +41,4 @@ async def main():
     print(f"Prompt: {prompt}\nPredicted value: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

@@ -4,11 +4,13 @@ Example demonstrating how to use multiple models simultaneously with the Multimi
 
 import asyncio
 import os
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from multimind.core.provider import ProviderConfig
-from multimind.core.router import Router, TaskType, TaskConfig, RoutingStrategy
-from multimind.providers.openai import OpenAIProvider
+from multimind.core.router import Router, RoutingStrategy, TaskConfig, TaskType
 from multimind.providers.claude import ClaudeProvider
+from multimind.providers.openai import OpenAIProvider
+
 
 async def main():
     # Initialize providers
@@ -20,15 +22,15 @@ async def main():
         api_key=os.getenv("ANTHROPIC_API_KEY"),
         base_url="https://api.anthropic.com"
     )
-    
+
     openai_provider = OpenAIProvider(openai_config)
     claude_provider = ClaudeProvider(claude_config)
-    
+
     # Initialize router
     router = Router()
     router.register_provider("openai", openai_provider)
     router.register_provider("claude", claude_provider)
-    
+
     # Configure tasks
     text_generation_config = TaskConfig(
         preferred_providers=["openai", "claude"],
@@ -43,7 +45,7 @@ async def main():
             "min_confidence": 0.7
         }
     )
-    
+
     chat_config = TaskConfig(
         preferred_providers=["claude", "openai"],
         fallback_providers=[],
@@ -53,10 +55,10 @@ async def main():
             "max_retries": 2
         }
     )
-    
+
     router.configure_task(TaskType.TEXT_GENERATION, text_generation_config)
     router.configure_task(TaskType.CHAT, chat_config)
-    
+
     # Example 1: Text generation with ensemble
     prompt = "Write a short story about a robot learning to paint."
     print("\nGenerating text with ensemble strategy...")
@@ -68,7 +70,7 @@ async def main():
     print(f"Ensemble result: {result.result}")
     print(f"Cost: ${result.cost_estimate_usd:.4f}")
     print(f"Latency: {result.latency_ms:.0f}ms")
-    
+
     # Example 2: Chat with cascade
     messages = [
         {"role": "user", "content": "What are the key differences between Python and JavaScript?"}
@@ -82,7 +84,7 @@ async def main():
     print(f"Cascade result: {result.result}")
     print(f"Cost: ${result.cost_estimate_usd:.4f}")
     print(f"Latency: {result.latency_ms:.0f}ms")
-    
+
     # Example 3: Custom ensemble with different models
     print("\nCustom ensemble with different models...")
     results = await asyncio.gather(*[
@@ -93,11 +95,11 @@ async def main():
         )
         for model in ["gpt-4", "claude-3-sonnet"]
     ])
-    
+
     # Combine results manually
     combined_result = await combine_results(results)
     print(f"Combined result: {combined_result}")
-    
+
     # Print usage statistics
     print("\nUsage Statistics:")
     for provider_name, stats in router.usage_stats.items():
@@ -116,4 +118,4 @@ async def combine_results(results: List[Any]) -> str:
     return results[0].result  # For now, just return the first result
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

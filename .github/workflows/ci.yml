@@ -215,11 +215,12 @@ jobs:
   # Full suite with everything installed, including the framework-interop
   # extras (langchain-core, llama-index-core) and the MCP SDK (already part
   # of `all`). This is the only job where tests that `importorskip` those
-  # packages actually execute instead of skipping. Acts as the historical
-  # "must reach 95% pass rate" gate.
+  # packages actually execute instead of skipping. Enforces two gates: a
+  # 95% pass-rate threshold (see the Python step below) and a 20% line
+  # coverage floor (--cov-fail-under=20) — NOT a 95% coverage gate.
   # ---------------------------------------------------------------------------
   test-full:
-    name: test-full (coverage + 95% gate)
+    name: test-full (95% pass-rate gate, 20% coverage floor)
     runs-on: ubuntu-latest
     needs: [test-core]
     steps:

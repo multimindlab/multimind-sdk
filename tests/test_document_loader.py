@@ -1,9 +1,16 @@
-import pytest
-from multimind.document_loader.document_loader import DefaultFileLoader, LoadedDocument, DocumentMetadata
-from multimind.document_loader.data_ingestion import DataIngestion
-import tempfile
-import os
 import asyncio
+import os
+import tempfile
+
+import pytest
+
+from multimind.document_loader.data_ingestion import DataIngestion
+from multimind.document_loader.document_loader import (
+    DefaultFileLoader,
+    DocumentMetadata,
+    LoadedDocument,
+)
+
 
 @pytest.mark.asyncio
 async def test_default_file_loader_loads_file():
@@ -32,8 +39,9 @@ def test_default_file_loader_init():
 def test_data_ingestion_init():
     """Test DataIngestion initialization with a mock model."""
     from unittest.mock import Mock
+
     from multimind.models.base import BaseLLM
-    
+
     # Create a mock model that inherits from BaseLLM
     mock_model = Mock(spec=BaseLLM)
     ingestion = DataIngestion(model=mock_model)
