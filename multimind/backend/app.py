@@ -22,6 +22,7 @@ their existing standalone launchers and ports unchanged.
 from __future__ import annotations
 
 import os
+from importlib import import_module
 from typing import Any, Dict, Optional
 
 from fastapi import FastAPI
@@ -73,10 +74,17 @@ def create_backend_app(settings: Optional[BackendSettings] = None) -> FastAPI:
     )
     app.state.settings = settings
 
+    # Each sub-app pulls in its own optional extras (e.g. the RAG API needs
+    # multimind-sdk[rag]); a partial install should degrade to fewer mounts,
+    # not crash the whole backend.
     services = []
+    unavailable = []
     for mount_path, module_path, attr, label in SERVICE_MOUNTS:
-        module = __import__(module_path, fromlist=[attr])
-        sub_app: FastAPI = getattr(module, attr)
+        try:
+            sub_app: FastAPI = getattr(import_module(module_path), attr)
+        except ImportError as exc:
+            unavailable.append({"label": label, "mount": mount_path, "reason": str(exc)})
+            continue
         app.mount(mount_path, sub_app)
         services.append(
             {
@@ -87,6 +95,8 @@ def create_backend_app(settings: Optional[BackendSettings] = None) -> FastAPI:
                 "health": f"{mount_path}/health",
             }
         )
+    app.state.services = services
+    app.state.unavailable = unavailable
 
     @app.get("/health", tags=["system"])
     async def health_check():
@@ -102,6 +112,7 @@ def create_backend_app(settings: Optional[BackendSettings] = None) -> FastAPI:
             "name": "MultiMind Backend",
             "version": __version__,
             "services": services,
+            "unavailable": unavailable,
             "not_mounted": [
                 {
                     "label": "Governance dashboard",
