@@ -16,13 +16,13 @@ def _backend():
     try:
         import uvicorn
 
-        from ..backend.app import SERVICE_MOUNTS, BackendSettings, create_backend_app
+        from ..backend.app import BackendSettings, create_backend_app
     except ImportError as exc:
         raise click.ClickException(
             "The backend command requires the gateway extras. "
             "Install with: pip install 'multimind-sdk[gateway]'"
         ) from exc
-    return uvicorn, BackendSettings, create_backend_app, SERVICE_MOUNTS
+    return uvicorn, BackendSettings, create_backend_app
 
 
 @click.command()
@@ -36,7 +36,7 @@ def backend(host: Optional[str], port: Optional[int]):
     dashboard (`multimind dashboard`) and guard proxy (`multimind serve`)
     remain separate processes.
     """
-    uvicorn, BackendSettings, create_backend_app, SERVICE_MOUNTS = _backend()
+    uvicorn, BackendSettings, create_backend_app = _backend()
     settings = BackendSettings.from_env(host=host, port=port)
     app = create_backend_app(settings)
 
@@ -44,8 +44,10 @@ def backend(host: Optional[str], port: Optional[int]):
     table = Table(show_header=True, header_style="bold")
     table.add_column("Service")
     table.add_column("Swagger")
-    for mount_path, _module_path, _attr, label in SERVICE_MOUNTS:
-        table.add_row(label, f"{base}{mount_path}/docs")
+    for service in app.state.services:
+        table.add_row(service["label"], f"{base}{service['docs']}")
+    for item in app.state.unavailable:
+        console.print(f"[yellow]Not mounted:[/yellow] {item['label']} — {item['reason']}")
 
     console.print(
         Panel.fit(
