@@ -8,13 +8,15 @@ These tests are intentionally offline-safe:
 
 import sys
 from pathlib import Path
+
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
-from multimind.router.multi_modal_router import MultiModalRouter
-from multimind.types import UnifiedRequest, ModalityInput
 from multimind.metrics.cost_tracker import CostTracker
 from multimind.metrics.performance import PerformanceTracker
+from multimind.router.multi_modal_router import MultiModalRouter
+from multimind.types import ModalityInput, UnifiedRequest
 
 # Import the example class under test
 REPO_ROOT = Path(__file__).resolve().parents[3]

@@ -2,12 +2,13 @@
 Tests for rag_client_example.py client example.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+import json
 import sys
 from pathlib import Path
-import json
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
+
+import pytest
 
 # Add project root to path
 project_root = Path(__file__).parent.parent.parent.parent
@@ -15,43 +16,43 @@ if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
 from examples.client.rag_client_example import example
-from multimind.client.rag_client import RAGClient, Document
+from multimind.client.rag_client import Document, RAGClient
 
 
 class MockResponse:
     """Mock aiohttp response for testing."""
-    
+
     def __init__(self, status=200, json_data=None, text_data=None):
         self.status = status
         self._json_data = json_data or {}
         self._text_data = text_data or json.dumps(json_data or {})
         self.headers = {}
-    
+
     async def json(self):
         return self._json_data
-    
+
     async def text(self):
         return self._text_data
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, *args):
         return None
 
 
 class MockClientSession:
     """Mock aiohttp ClientSession for testing."""
-    
+
     def __init__(self):
         self.responses = {}
         self.requests = []
-    
+
     def set_response(self, url, method, response):
         """Set a mock response for a URL and method."""
         key = (method.upper(), url)
         self.responses[key] = response
-    
+
     def post(self, url, **kwargs):
         """Mock POST request - returns context manager."""
         self.requests.append(("POST", url, kwargs))
@@ -59,7 +60,7 @@ class MockClientSession:
         if key in self.responses:
             return self.responses[key]
         return MockResponse(status=200, json_data={"status": "ok"})
-    
+
     def get(self, url, **kwargs):
         """Mock GET request - returns context manager."""
         self.requests.append(("GET", url, kwargs))
@@ -67,7 +68,7 @@ class MockClientSession:
         if key in self.responses:
             return self.responses[key]
         return MockResponse(status=200, json_data={"status": "ok"})
-    
+
     def delete(self, url, **kwargs):
         """Mock DELETE request - returns context manager."""
         self.requests.append(("DELETE", url, kwargs))
@@ -75,10 +76,10 @@ class MockClientSession:
         if key in self.responses:
             return self.responses[key]
         return MockResponse(status=200, json_data={"message": "deleted"})
-    
+
     async def __aenter__(self):
         return self
-    
+
     async def __aexit__(self, *args):
         return None
 
@@ -110,7 +111,7 @@ async def test_rag_client_example_add_documents(mock_client_session):
                 }
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         docs = [
             Document(
@@ -118,9 +119,9 @@ async def test_rag_client_example_add_documents(mock_client_session):
                 metadata={"type": "introduction"}
             )
         ]
-        
+
         result = await client.add_documents(docs)
-        
+
         assert result is not None
         assert "documents" in result
         assert result["total"] == 1
@@ -151,10 +152,10 @@ async def test_rag_client_example_query(mock_client_session):
                 }
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         result = await client.query("What is the RAG system?", top_k=3)
-        
+
         assert result is not None
         assert "documents" in result
         assert result["total"] == 1
@@ -187,13 +188,13 @@ async def test_rag_client_example_generate(mock_client_session):
                 }
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         result = await client.generate(
             "Explain the RAG system",
             temperature=0.7
         )
-        
+
         assert result is not None
         assert "text" in result
         assert "documents" in result
@@ -217,10 +218,10 @@ async def test_rag_client_example_get_document_count(mock_client_session):
                 json_data={"count": 5}
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         count = await client.get_document_count()
-        
+
         assert count == 5
         assert len(mock_client_session.requests) == 1
         assert mock_client_session.requests[0][0] == "GET"
@@ -243,10 +244,10 @@ async def test_rag_client_example_health_check(mock_client_session):
                 }
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         health = await client.health_check()
-        
+
         assert health is not None
         assert health["status"] == "healthy"
         assert health["document_count"] == 5
@@ -276,7 +277,7 @@ async def test_rag_client_example_full_flow(mock_client_session):
                 }
             )
         )
-        
+
         mock_client_session.set_response(
             "http://localhost:8000/query",
             "POST",
@@ -294,7 +295,7 @@ async def test_rag_client_example_full_flow(mock_client_session):
                 }
             )
         )
-        
+
         mock_client_session.set_response(
             "http://localhost:8000/generate",
             "POST",
@@ -312,13 +313,13 @@ async def test_rag_client_example_full_flow(mock_client_session):
                 }
             )
         )
-        
+
         mock_client_session.set_response(
             "http://localhost:8000/documents/count",
             "GET",
             MockResponse(status=200, json_data={"count": 1})
         )
-        
+
         mock_client_session.set_response(
             "http://localhost:8000/health",
             "GET",
@@ -330,27 +331,27 @@ async def test_rag_client_example_full_flow(mock_client_session):
                 }
             )
         )
-        
+
         # Run the example function
         with patch('builtins.print'):  # Suppress print output
             await example()
-        
+
         # Verify all requests were made
         assert len(mock_client_session.requests) == 5
-        
+
         # Check request order
         assert mock_client_session.requests[0][0] == "POST"
         assert "/documents" in mock_client_session.requests[0][1]
-        
+
         assert mock_client_session.requests[1][0] == "POST"
         assert "/query" in mock_client_session.requests[1][1]
-        
+
         assert mock_client_session.requests[2][0] == "POST"
         assert "/generate" in mock_client_session.requests[2][1]
-        
+
         assert mock_client_session.requests[3][0] == "GET"
         assert "/documents/count" in mock_client_session.requests[3][1]
-        
+
         assert mock_client_session.requests[4][0] == "GET"
         assert "/health" in mock_client_session.requests[4][1]
 
@@ -364,18 +365,18 @@ async def test_rag_client_example_with_api_key(mock_client_session):
             "POST",
             MockResponse(status=200, json_data={"documents": [], "total": 0})
         )
-        
+
         client = RAGClient(
             base_url="http://localhost:8000",
             api_key="test-api-key"
         )
-        
+
         assert "X-API-Key" in client.headers
         assert client.headers["X-API-Key"] == "test-api-key"
-        
+
         docs = [Document(text="Test", metadata={})]
         await client.add_documents(docs)
-        
+
         # Verify API key was sent in headers
         assert len(mock_client_session.requests) == 1
         request_kwargs = mock_client_session.requests[0][2]
@@ -397,13 +398,13 @@ async def test_rag_client_example_error_handling(mock_client_session):
                 text_data='{"detail": "Internal server error"}'
             )
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
         docs = [Document(text="Test", metadata={})]
-        
+
         with pytest.raises(Exception) as exc_info:
             await client.add_documents(docs)
-        
+
         assert "Failed to add documents" in str(exc_info.value) or "Internal server error" in str(exc_info.value)
 
 
@@ -423,27 +424,27 @@ async def test_rag_client_example_with_token(mock_client_session):
                 }
             )
         )
-        
+
         # Mock documents response
         mock_client_session.set_response(
             "http://localhost:8000/documents",
             "POST",
             MockResponse(status=200, json_data={"documents": [], "total": 0})
         )
-        
+
         client = RAGClient(base_url="http://localhost:8000")
-        
+
         # Login to get token
         token = await client.login("testuser", "secret")
-        
+
         assert token == "test-token-123"
         assert "Authorization" in client.headers
         assert client.headers["Authorization"] == "Bearer test-token-123"
-        
+
         # Use authenticated client
         docs = [Document(text="Test", metadata={})]
         await client.add_documents(docs)
-        
+
         # Verify token was sent in headers
         assert len(mock_client_session.requests) == 2
         request_kwargs = mock_client_session.requests[1][2]

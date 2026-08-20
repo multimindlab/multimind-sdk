@@ -5,16 +5,18 @@ to track and analyze sequences of events.
 """
 
 import asyncio
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import EventSourcedMemory
 from multimind.models import OllamaModel
 
+
 async def main():
     # Initialize the LLM
     llm = OllamaModel(model_name="mistral")
-    
+
     # Initialize EventSourcedMemory
     memory = EventSourcedMemory(
         llm=llm,
@@ -26,14 +28,14 @@ async def main():
         pattern_interval=3600,  # 1 hour
         storage_path="event_sourced.json"
     )
-    
+
     # Initialize MultiMind with event sourced memory
     mm = MultiMind(
         llm=llm,
         memory=memory,
         system_prompt="You are an event tracking system that analyzes sequences of events."
     )
-    
+
     # Example event sequence (user interaction flow)
     events = [
         {
@@ -70,45 +72,45 @@ async def main():
             "metadata": {"user_id": "user1", "device": "web"}
         }
     ]
-    
+
     # Add events to memory
     for event in events:
         memory.add_event(event)
-    
+
     # Example queries
     queries = [
         "What was the sequence of user actions?",
         "What patterns can you identify in the user behavior?",
         "What was the cause of the user's search action?"
     ]
-    
+
     # Process queries
     for query in queries:
         print(f"\nQuery: {query}")
         response = await mm.chat(query)
         print(f"Response: {response}")
-        
+
         # Get event statistics
         stats = memory.get_event_stats()
         print("\nEvent Statistics:")
         print(f"Total events: {stats['total_events']}")
         print(f"Event types: {stats['event_types']}")
         print(f"Time span: {stats['time_span']}")
-        
+
         # Get event patterns
         patterns = memory.get_event_patterns()
         if patterns:
             print("\nEvent Patterns:")
             for pattern in patterns:
                 print(f"- {pattern}")
-        
+
         # Get causality analysis
         causality = memory.get_causality_analysis()
         if causality:
             print("\nCausality Analysis:")
             for cause_effect in causality:
                 print(f"- {cause_effect}")
-        
+
         # Get event timeline
         timeline = memory.get_event_timeline()
         if timeline:
@@ -117,4 +119,4 @@ async def main():
                 print(f"- {event['timestamp']}: {event['type']} - {event['action']}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

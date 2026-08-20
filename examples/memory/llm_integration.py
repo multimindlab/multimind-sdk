@@ -3,15 +3,17 @@ LLM integration examples with MultiMind memory systems.
 """
 
 import asyncio
+
 from multimind.memory import (
-    HybridMemory,
-    BufferMemory,
-    VectorStoreMemory,
-    FastWeightMemory,
     AdapterMemory,
-    QuantumClassicalHybridMemory
+    BufferMemory,
+    FastWeightMemory,
+    HybridMemory,
+    QuantumClassicalHybridMemory,
+    VectorStoreMemory,
 )
 from multimind.models import OpenAIModel
+
 
 async def llm_memory_example():
     """Demonstrate LLM integration with memory systems."""
@@ -36,14 +38,14 @@ async def llm_memory_example():
             )
         ]
     )
-    
+
     # Example conversation
     conversation = [
         "What is quantum computing?",
         "How does it differ from classical computing?",
         "What are some potential applications?"
     ]
-    
+
     # Process conversation with memory
     for i, user_input in enumerate(conversation):
         # Store in memory
@@ -52,26 +54,26 @@ async def llm_memory_example():
             content=user_input,
             metadata={"type": "conversation", "turn": i}
         )
-        
+
         # Retrieve relevant context
         context = await memory_system.get_memory(
             memory_id=f"conversation_{i}",
             query=user_input
         )
-        
+
         # Generate response with context
         response = await llm.generate(
             prompt=user_input,
             context=context
         )
-        
+
         # Store response in memory
         await memory_system.add_memory(
             memory_id=f"response_{i}",
             content=response,
             metadata={"type": "response", "turn": i}
         )
-        
+
         print(f"Turn {i}:")
         print(f"User: {user_input}")
         print(f"Assistant: {response}")
@@ -90,14 +92,14 @@ async def llm_quantum_memory_example():
         quantum_threshold=0.7,
         classical_threshold=0.3
     )
-    
+
     # Example quantum computing questions
     questions = [
         "What is a quantum superposition?",
         "How does quantum entanglement work?",
         "What is quantum teleportation?"
     ]
-    
+
     # Process questions with quantum memory
     for i, question in enumerate(questions):
         # Store in hybrid memory
@@ -106,26 +108,26 @@ async def llm_quantum_memory_example():
             content=question,
             metadata={"type": "quantum_question", "turn": i}
         )
-        
+
         # Retrieve with quantum enhancement
         context = await hybrid_memory.get_memory(
             memory_id=f"question_{i}",
             use_quantum=True
         )
-        
+
         # Generate response with quantum-enhanced context
         response = await llm.generate(
             prompt=question,
             context=context
         )
-        
+
         # Store response in hybrid memory
         await hybrid_memory.add_memory(
             memory_id=f"quantum_response_{i}",
             content=response,
             metadata={"type": "quantum_response", "turn": i}
         )
-        
+
         print(f"Quantum Turn {i}:")
         print(f"User: {question}")
         print(f"Assistant: {response}")
@@ -133,4 +135,4 @@ async def llm_quantum_memory_example():
 
 if __name__ == "__main__":
     asyncio.run(llm_memory_example())
-    asyncio.run(llm_quantum_memory_example()) 
+    asyncio.run(llm_quantum_memory_example())

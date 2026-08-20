@@ -3,35 +3,37 @@ Tests for multi-modal examples.
 """
 
 import pytest
+
 pytest.skip("Skipping example test not structured as importable module.", allow_module_level=True)
 import asyncio
-from pathlib import Path
-import sys
-import os
 import base64
+import os
+import sys
+from pathlib import Path
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 
 from examples.multi_modal.basic.model_registration import register_models
 from examples.multi_modal.basic.process_request import (
-    process_image_caption,
     process_audio_transcription,
-    process_multi_modal_analysis
+    process_image_caption,
+    process_multi_modal_analysis,
 )
 from examples.multi_modal.workflows.workflows import run_workflow_example
+
 
 def create_test_files():
     """Create test image and audio files."""
     data_dir = Path(__file__).parent.parent.parent / "examples" / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
-    
+
     # Create a small test image
     image_path = data_dir / "sample_image.jpg"
     if not image_path.exists():
         with open(image_path, "wb") as f:
             f.write(b"fake image data")
-    
+
     # Create a small test audio file
     audio_path = data_dir / "sample_audio.mp3"
     if not audio_path.exists():
@@ -124,4 +126,4 @@ def test_run_workflow_example():
         result = run_workflow_example()
         assert result is not None
     except Exception:
-        pass 
+        pass

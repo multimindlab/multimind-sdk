@@ -4,9 +4,11 @@ Example demonstrating advanced intelligent model selection scenarios.
 
 import asyncio
 import time
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from multimind.models.factory import ModelFactory
 from multimind.models.multi_model import MultiModelWrapper
+
 
 async def run_advanced_selection_examples():
     # Initialize the model factory
@@ -95,7 +97,7 @@ async def run_advanced_selection_examples():
     # Example 3: Performance-based dynamic weighting
     print("\nExample 3: Performance-based dynamic weighting")
     print("Running performance test with different model configurations...")
-    
+
     # Test different model configurations
     configurations = [
         {"name": "balanced", "weights": {"openai": 0.4, "claude": 0.4, "ollama": 0.2}},
@@ -106,7 +108,7 @@ async def run_advanced_selection_examples():
     for config in configurations:
         print(f"\nTesting {config['name']} configuration:")
         multi_model.model_weights = config["weights"]
-        
+
         # Run multiple requests to build performance metrics
         for _ in range(3):
             await multi_model.generate(
@@ -160,7 +162,7 @@ async def run_advanced_selection_examples():
     # Example 5: Adaptive model selection
     print("\nExample 5: Adaptive model selection")
     print("Testing adaptive model selection with varying complexity...")
-    
+
     complexity_levels = [
         {
             "level": "simple",
@@ -200,4 +202,4 @@ async def run_advanced_selection_examples():
         print(f"  Error Rate: {metrics['error_rate']:.2f}")
 
 if __name__ == "__main__":
-    asyncio.run(run_advanced_selection_examples()) 
+    asyncio.run(run_advanced_selection_examples())

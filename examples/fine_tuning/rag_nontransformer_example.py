@@ -1,5 +1,6 @@
 from multimind.fine_tuning.unified_fine_tuner import RAGPipeline
 
+
 # Dummy retriever
 class DummyRetriever:
     def retrieve(self, query):
@@ -26,4 +27,4 @@ class RAGPipeline:
         self.generator = generator
 
     def generate(self, query):
-        return f"[RAGPipeline] Generated answer for query: {query}" 
+        return f"[RAGPipeline] Generated answer for query: {query}"

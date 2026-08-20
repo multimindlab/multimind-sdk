@@ -1,5 +1,6 @@
-from multimind.llm.non_transformer_llm import MLPOnlyLLM
 import asyncio
+
+from multimind.llm.non_transformer_llm import MLPOnlyLLM
 
 # --- MLP-Only Model Integration Stub ---
 # To use this stub:
@@ -45,4 +46,4 @@ async def main():
     print(f"Prompt: {prompt}\nGenerated: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

@@ -5,7 +5,15 @@ This script demonstrates how to use the CI/CD workflow API to automate continuou
 """
 
 import asyncio
-from multimind import CICDWorkflow, OpenAIModel, ClaudeModel, GitHubIntegrationHandler, SlackIntegrationHandler
+
+from multimind import (
+    CICDWorkflow,
+    ClaudeModel,
+    GitHubIntegrationHandler,
+    OpenAIModel,
+    SlackIntegrationHandler,
+)
+
 
 async def main():
     # Initialize models
@@ -59,4 +67,4 @@ async def main():
     print("Workflow result:", result)
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

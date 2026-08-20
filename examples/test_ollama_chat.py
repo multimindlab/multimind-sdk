@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
-import os
-import pytest
-import tempfile
 import json
+import os
+import tempfile
 from unittest.mock import patch
+
+import pytest
+
 # from chat_ollama_cli import OllamaChat
 
 pytest.skip("Skipping example test not structured as importable module.", allow_module_level=True)
@@ -41,13 +43,13 @@ def test_ollama_chat_with_history(mock_ollama_chat):
         ]
         json.dump(test_history, temp_file)
         temp_file.flush()
-        
+
         # Test loading history
         chat = mock_ollama_chat(history_file=temp_file.name)
         assert len(chat.chat_history) == 2
         assert chat.chat_history[0]["content"] == "Hello"
         assert chat.chat_history[1]["content"] == "Hi there!"
-        
+
         # Test saving history
         chat.chat_history.append({
             "role": "user",
@@ -55,13 +57,13 @@ def test_ollama_chat_with_history(mock_ollama_chat):
             "timestamp": "2024-01-01T00:00:02"
         })
         chat._save_history()
-        
+
         # Verify saved history
         with open(temp_file.name, 'r') as f:
             saved_history = json.load(f)
             assert len(saved_history) == 3
             assert saved_history[2]["content"] == "New message"
-    
+
     # Cleanup
     os.unlink(temp_file.name)
 
@@ -93,10 +95,10 @@ def test_show_history():
         {"role": "assistant", "content": "Response 1", "timestamp": "2024-01-01T00:00:01"},
         {"role": "user", "content": "Test 2", "timestamp": "2024-01-01T00:00:02"}
     ]
-    
+
     # Test showing all history
     chat.show_history()
-    
+
     # Test showing limited history
     chat.show_history(limit=2)
     # Note: This test only verifies that the method doesn't raise exceptions

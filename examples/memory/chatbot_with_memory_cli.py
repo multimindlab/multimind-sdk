@@ -3,20 +3,22 @@ CLI version of the chatbot with memory example, featuring complex use cases.
 This example demonstrates advanced memory capabilities in an interactive CLI environment.
 """
 
-import asyncio
 import argparse
-from typing import Dict, Any, List
+import asyncio
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import (
+    DNCMemory,
     HybridMemory,
-    VectorStoreMemory,
-    TimeWeightedMemory,
     KnowledgeGraphMemory,
+    TimeWeightedMemory,
     TokenBufferMemory,
-    DNCMemory
+    VectorStoreMemory,
 )
 from multimind.models import OllamaModel
+
 
 class ChatbotCLI:
     def __init__(self, model: str = "mistral", storage_path: str = "chatbot_memory.json"):
@@ -77,7 +79,7 @@ class ChatbotCLI:
 
         # Get response
         response = await self.mm.chat(message)
-        
+
         # Update conversation history
         self.conversation_history.append({
             "role": "assistant",
@@ -87,7 +89,7 @@ class ChatbotCLI:
 
         # Update current topic and context
         self.update_context(message, response)
-        
+
         # Display response
         print(f"\nAssistant: {response}")
 
@@ -107,7 +109,7 @@ class ChatbotCLI:
         print(f"Total items: {stats['total_items']}")
         print(f"Memory types used: {stats['memory_types_used']}")
         print(f"Routing performance: {stats['routing_performance']}")
-        
+
         # Show memory suggestions
         suggestions = self.memory.get_memory_suggestions()
         if suggestions:
@@ -158,11 +160,11 @@ async def main():
     args = parser.parse_args()
 
     chatbot = ChatbotCLI(model=args.model, storage_path=args.storage)
-    
+
     print("Welcome to MultiMind Chatbot CLI!")
     print("Type /help for available commands.")
     print("Type /exit to quit.")
-    
+
     while True:
         try:
             message = input("\nYou: ").strip()
@@ -175,4 +177,4 @@ async def main():
             print(f"\nError: {str(e)}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

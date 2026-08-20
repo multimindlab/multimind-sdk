@@ -1,6 +1,9 @@
-from multimind.llm.non_transformer_llm import NonTransformerLLM
-from textblob import TextBlob
 import asyncio
+
+from textblob import TextBlob
+
+from multimind.llm.non_transformer_llm import NonTransformerLLM
+
 
 # Custom wrapper for TextBlob
 class TextBlobSentimentLLM(NonTransformerLLM):
@@ -22,4 +25,4 @@ async def main():
     print(f"Prompt: {prompt}\nSentiment: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

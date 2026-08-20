@@ -115,3 +115,10 @@ multimind-docs/node_modules/
 multimind-docs/.next/
 multimind-docs/out/
 multimind-docs/build/
+
+# Runtime/generated artifacts — not source, shouldn't be tracked
+models/
+guardrails.json
+
+# Private frontend workspace — never push to this repo
+multimind-frontend/

@@ -5,20 +5,18 @@ combining active learning memory for student progress tracking and knowledge gra
 """
 
 import asyncio
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Any, Dict, List
+
 from multimind import MultiMind
-from multimind.memory import (
-    ActiveLearningMemory,
-    KnowledgeGraphMemory,
-    HybridMemory
-)
+from multimind.memory import ActiveLearningMemory, HybridMemory, KnowledgeGraphMemory
 from multimind.models import OllamaModel
+
 
 class EducationalTutor:
     def __init__(self, model: str = "mistral"):
         self.llm = OllamaModel(model_name=model)
-        
+
         # Initialize active learning memory for student progress
         self.student_progress = ActiveLearningMemory(
             llm=self.llm,
@@ -29,7 +27,7 @@ class EducationalTutor:
             enable_analysis=True,
             storage_path="student_progress.json"
         )
-        
+
         # Initialize knowledge graph memory for educational content
         self.educational_content = KnowledgeGraphMemory(
             llm=self.llm,
@@ -41,7 +39,7 @@ class EducationalTutor:
             validation_interval=3600,  # 1 hour
             storage_path="educational_content.json"
         )
-        
+
         # Initialize hybrid memory for overall context
         self.memory = HybridMemory(
             llm=self.llm,
@@ -54,7 +52,7 @@ class EducationalTutor:
             enable_analysis=True,
             storage_path="educational_memory.json"
         )
-        
+
         self.mm = MultiMind(
             llm=self.llm,
             memory=self.memory,
@@ -117,7 +115,7 @@ class EducationalTutor:
 async def main():
     # Initialize educational tutor
     tutor = EducationalTutor()
-    
+
     # Add some example educational content
     educational_facts = [
         ("Python", "is_a", "Programming Language", 0.95),
@@ -127,11 +125,11 @@ async def main():
         ("Functions", "concept_in", "Python", 0.95),
         ("Functions", "difficulty", "Intermediate", 0.85)
     ]
-    
+
     print("Adding educational content...")
     for subject, predicate, object_, confidence in educational_facts:
         await tutor.add_educational_content(subject, predicate, object_, confidence)
-    
+
     # Track student progress
     print("\nTracking student progress...")
     student_progress = [
@@ -154,7 +152,7 @@ async def main():
             "score": 0.95
         }
     ]
-    
+
     for progress in student_progress:
         await tutor.track_student_progress(
             progress["student_id"],
@@ -162,7 +160,7 @@ async def main():
             progress["feedback"],
             progress["score"]
         )
-    
+
     # Query educational content
     print("\nQuerying educational content...")
     query_result = await tutor.query_educational_content("What are the basic concepts in Python?")
@@ -173,18 +171,18 @@ async def main():
     print("\nInferences:")
     for inference in query_result['inferences']:
         print(f"- {inference}")
-    
+
     # Get student insights
     print("\nGetting student insights...")
     insights = await tutor.get_student_insights("student1")
     print("\nStudent Progress:")
     for topic, score in insights['progress'].items():
         print(f"{topic}: {score}")
-    
+
     print("\nLearning Patterns:")
     for pattern in insights['patterns']:
         print(f"- {pattern}")
-    
+
     # Get learning recommendations
     print("\nGetting learning recommendations...")
     recommendations = await tutor.get_learning_recommendations("student1")
@@ -193,4 +191,4 @@ async def main():
         print(f"{key}: {value}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

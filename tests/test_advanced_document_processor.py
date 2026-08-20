@@ -2,6 +2,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 
 import multimind.document_processing.advanced_document_processor as adp

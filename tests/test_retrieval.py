@@ -1,8 +1,9 @@
 import pytest
+
 pytest.importorskip("numpy")  # requires optional extras absent on core-only installs
 pytest.importorskip("networkx")  # requires optional extras absent on core-only installs
 
-from multimind.retrieval import EnhancedRetriever, HybridRetriever, Retriever, RetrievalConfig
+from multimind.retrieval import EnhancedRetriever, HybridRetriever, RetrievalConfig, Retriever
 
 
 class DummyVectorStore:

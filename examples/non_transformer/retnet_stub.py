@@ -1,5 +1,6 @@
-from multimind.llm.non_transformer_llm import RetNetLLM
 import asyncio
+
+from multimind.llm.non_transformer_llm import RetNetLLM
 
 # --- RetNet Model Integration Stub ---
 # To use this stub:
@@ -35,4 +36,4 @@ async def main():
     print(f"Prompt: {prompt}\nGenerated: {result}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

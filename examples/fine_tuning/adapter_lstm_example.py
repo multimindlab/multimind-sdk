@@ -1,6 +1,8 @@
-from multimind.fine_tuning.unified_fine_tuner import AdapterModule
 import torch
 import torch.nn as nn
+
+from multimind.fine_tuning.unified_fine_tuner import AdapterModule
+
 
 # Simple LSTM model
 def make_lstm(input_dim, hidden_dim, output_dim):
@@ -29,4 +31,4 @@ adapter = MyAdapter(input_dim, output_dim)
 # In practice, you would insert the adapter into the LSTM or after it
 x = torch.randn(4, 5, input_dim)
 output = adapter(model(x))
-print("Adapter output shape:", output.shape) 
+print("Adapter output shape:", output.shape)

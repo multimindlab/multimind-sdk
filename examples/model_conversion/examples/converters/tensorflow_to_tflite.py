@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-import os
 import argparse
+import os
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 import tensorflow as tf
+
 from multimind.model_conversion import ModelConversionManager
+
 
 def convert_tensorflow_to_tflite(
     model_path: str,
@@ -50,7 +53,7 @@ def convert_tensorflow_to_tflite(
             ]
         }
     )
-    
+
     return converter.convert(model_path, output_path)
 
 def main():
@@ -72,16 +75,16 @@ def main():
                       help="Supported operations")
     parser.add_argument("--allow-custom-ops", action="store_true",
                       help="Allow custom operations")
-    
+
     args = parser.parse_args()
-    
+
     config = {
         "quantization": args.quantization,
         "optimizations": args.optimizations,
         "supported_ops": args.supported_ops,
         "allow_custom_ops": args.allow_custom_ops
     }
-    
+
     try:
         output_path = convert_tensorflow_to_tflite(
             args.model_path,
@@ -89,19 +92,19 @@ def main():
             config
         )
         print(f"Model converted successfully to: {output_path}")
-        
+
         # Print model metadata
         converter = ModelConversionManager()
         metadata = converter.get_metadata(output_path)
         print("\nModel Metadata:")
         for key, value in metadata.items():
             print(f"{key}: {value}")
-            
+
     except Exception as e:
         print(f"Error during conversion: {str(e)}")
         return 1
-    
+
     return 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    exit(main())

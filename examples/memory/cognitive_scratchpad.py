@@ -5,15 +5,17 @@ for step-by-step reasoning and problem-solving.
 """
 
 import asyncio
-from typing import Dict, Any, List
+from typing import Any, Dict, List
+
 from multimind import MultiMind
 from multimind.memory import CognitiveScratchpadMemory
 from multimind.models import OllamaModel
 
+
 async def main():
     # Initialize the LLM
     llm = OllamaModel(model_name="mistral")
-    
+
     # Initialize CognitiveScratchpadMemory
     memory = CognitiveScratchpadMemory(
         llm=llm,
@@ -24,14 +26,14 @@ async def main():
         analysis_interval=3600,  # 1 hour
         storage_path="cognitive_scratchpad.json"
     )
-    
+
     # Initialize MultiMind with cognitive scratchpad memory
     mm = MultiMind(
         llm=llm,
         memory=memory,
         system_prompt="You are a problem-solving system that uses step-by-step reasoning."
     )
-    
+
     # Example problem-solving scenarios
     scenarios = [
         {
@@ -62,51 +64,51 @@ async def main():
             ]
         }
     ]
-    
+
     # Process each scenario
     for scenario in scenarios:
         print(f"\nProblem: {scenario['problem']}")
-        
+
         # Start reasoning process
         memory.start_reasoning_chain(scenario['problem'])
-        
+
         # Process each expected step
         for step in scenario['expected_steps']:
             print(f"\nStep: {step}")
             response = await mm.chat(f"Let's {step.lower()}")
             print(f"Reasoning: {response}")
-            
+
             # Add step to memory
             memory.add_reasoning_step(
                 step=step,
                 reasoning=response,
                 confidence=0.8
             )
-        
+
         # Complete the reasoning chain
         memory.complete_reasoning_chain()
-        
+
         # Get reasoning statistics
         stats = memory.get_reasoning_stats()
         print("\nReasoning Statistics:")
         print(f"Total steps: {stats['total_steps']}")
         print(f"Average confidence: {stats['average_confidence']}")
         print(f"Chain depth: {stats['chain_depth']}")
-        
+
         # Get reasoning analysis
         analysis = memory.get_reasoning_analysis()
         if analysis:
             print("\nReasoning Analysis:")
             for insight in analysis:
                 print(f"- {insight}")
-        
+
         # Get step dependencies
         dependencies = memory.get_step_dependencies()
         if dependencies:
             print("\nStep Dependencies:")
             for dep in dependencies:
                 print(f"- {dep}")
-        
+
         # Get reasoning suggestions
         suggestions = memory.get_reasoning_suggestions()
         if suggestions:
@@ -115,4 +117,4 @@ async def main():
                 print(f"- {suggestion}")
 
 if __name__ == "__main__":
-    asyncio.run(main()) 
+    asyncio.run(main())

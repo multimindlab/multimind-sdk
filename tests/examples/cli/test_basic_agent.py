@@ -2,12 +2,13 @@
 Tests for basic_agent.py CLI example.
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
 import os
 import sys
 from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Add examples directory to path
 sys.path.append(str(Path(__file__).parent.parent.parent))
@@ -17,27 +18,27 @@ from examples.cli.basic_agent import main
 
 class MockOpenAIModel:
     """Mock OpenAI model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
-    
+
     async def generate(self, prompt: str, **kwargs):
         return f"Mock OpenAI response to: {prompt}"
-    
+
     async def generate_stream(self, prompt: str, **kwargs):
         async def stream():
             yield f"Mock OpenAI stream response to: {prompt}"
         return stream()
-    
+
     async def chat(self, messages, **kwargs):
         return "Mock OpenAI chat response"
-    
+
     async def chat_stream(self, messages, **kwargs):
         async def stream():
             yield "Mock OpenAI chat stream response"
         return stream()
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.1] * 384
@@ -46,27 +47,27 @@ class MockOpenAIModel:
 
 class MockClaudeModel:
     """Mock Claude model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
-    
+
     async def generate(self, prompt: str, **kwargs):
         return f"Mock Claude response to: {prompt}"
-    
+
     async def generate_stream(self, prompt: str, **kwargs):
         async def stream():
             yield f"Mock Claude stream response to: {prompt}"
         return stream()
-    
+
     async def chat(self, messages, **kwargs):
         return "Mock Claude chat response"
-    
+
     async def chat_stream(self, messages, **kwargs):
         async def stream():
             yield "Mock Claude chat stream response"
         return stream()
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.2] * 384
@@ -75,27 +76,27 @@ class MockClaudeModel:
 
 class MockMistralModel:
     """Mock Mistral model for testing."""
-    
+
     def __init__(self, model_name: str, **kwargs):
         self.model_name = model_name
         self.kwargs = kwargs
-    
+
     async def generate(self, prompt: str, **kwargs):
         return f"Mock Mistral response to: {prompt}"
-    
+
     async def generate_stream(self, prompt: str, **kwargs):
         async def stream():
             yield f"Mock Mistral stream response to: {prompt}"
         return stream()
-    
+
     async def chat(self, messages, **kwargs):
         return "Mock Mistral chat response"
-    
+
     async def chat_stream(self, messages, **kwargs):
         async def stream():
             yield "Mock Mistral chat stream response"
         return stream()
-    
+
     async def embeddings(self, text, **kwargs):
         if isinstance(text, str):
             return [0.3] * 384
@@ -104,16 +105,16 @@ class MockMistralModel:
 
 class MockAgentMemory:
     """Mock agent memory for testing."""
-    
+
     def __init__(self, max_history: int = 50):
         self.max_history = max_history
         self.history = []
-    
+
     def get_history(self, n: int = None):
         if n is None:
             return self.history
         return self.history[-n:]
-    
+
     async def add_message(self, message):
         self.history.append(message)
         if len(self.history) > self.max_history:
@@ -122,28 +123,28 @@ class MockAgentMemory:
 
 class MockCalculatorTool:
     """Mock calculator tool for testing."""
-    
+
     def __init__(self):
         self.calls = 0
-    
+
     async def execute(self, *args, **kwargs):
         self.calls += 1
         return f"Mock calculator result: {args}"
-    
+
     def get_parameters(self):
         return []
 
 
 class MockAgent:
     """Mock agent for testing."""
-    
+
     def __init__(self, model, memory, tools, system_prompt):
         self.model = model
         self.memory = memory
         self.tools = tools
         self.system_prompt = system_prompt
         self.run_calls = 0
-    
+
     async def run(self, task):
         self.run_calls += 1
         # Simulate using the model to generate response
@@ -196,7 +197,7 @@ async def test_basic_agent_main_function():
          patch('examples.cli.basic_agent.AgentMemory', MockAgentMemory), \
          patch('examples.cli.basic_agent.CalculatorTool', MockCalculatorTool), \
          patch('examples.cli.basic_agent.load_dotenv'):
-        
+
         try:
             await main()
             assert True  # If we get here, the function ran without errors
@@ -211,12 +212,12 @@ async def test_model_initialization():
     openai_model = MockOpenAIModel("gpt-3.5-turbo", temperature=0.7)
     assert openai_model.model_name == "gpt-3.5-turbo"
     assert openai_model.kwargs["temperature"] == 0.7
-    
+
     # Test Claude model
     claude_model = MockClaudeModel("claude-3-sonnet-20240229", temperature=0.7)
     assert claude_model.model_name == "claude-3-sonnet-20240229"
     assert claude_model.kwargs["temperature"] == 0.7
-    
+
     # Test Mistral model
     mistral_model = MockMistralModel("mistral-medium", temperature=0.7)
     assert mistral_model.model_name == "mistral-medium"
@@ -229,14 +230,14 @@ async def test_agent_creation():
     model = MockOpenAIModel("gpt-3.5-turbo")
     memory = MockAgentMemory(max_history=50)
     tools = [MockCalculatorTool()]
-    
+
     agent = MockAgent(
         model=model,
         memory=memory,
         tools=tools,
         system_prompt="You are a helpful AI assistant that can perform calculations."
     )
-    
+
     assert agent.model == model
     assert agent.memory == memory
     assert agent.tools == tools
@@ -249,22 +250,22 @@ async def test_agent_execution():
     model = MockOpenAIModel("gpt-3.5-turbo")
     memory = MockAgentMemory(max_history=50)
     tools = [MockCalculatorTool()]
-    
+
     agent = MockAgent(
         model=model,
         memory=memory,
         tools=tools,
         system_prompt="You are a helpful AI assistant."
     )
-    
+
     # Test agent execution
     task = "What is 123 * 456?"
     response = await agent.run(task)
-    
+
     assert response is not None
     assert "Mock OpenAI response" in response
     assert agent.run_calls == 1
-    
+
     # Check that memory was updated
     history = memory.get_history()
     assert len(history) == 2  # User message and assistant response
@@ -279,19 +280,19 @@ async def test_model_generation():
     openai_model = MockOpenAIModel("gpt-3.5-turbo")
     claude_model = MockClaudeModel("claude-3-sonnet-20240229")
     mistral_model = MockMistralModel("mistral-medium")
-    
+
     prompt = "Explain quantum computing"
-    
+
     # Test OpenAI generation
     openai_response = await openai_model.generate(prompt)
     assert "Mock OpenAI response" in openai_response
     assert prompt in openai_response
-    
+
     # Test Claude generation
     claude_response = await claude_model.generate(prompt)
     assert "Mock Claude response" in claude_response
     assert prompt in claude_response
-    
+
     # Test Mistral generation
     mistral_response = await mistral_model.generate(prompt)
     assert "Mock Mistral response" in mistral_response
@@ -303,13 +304,13 @@ async def test_model_streaming():
     """Test that models can generate streaming responses."""
     model = MockOpenAIModel("gpt-3.5-turbo")
     prompt = "Explain quantum computing"
-    
+
     # Test streaming generation
     stream = await model.generate_stream(prompt)
     responses = []
     async for chunk in stream:
         responses.append(chunk)
-    
+
     assert len(responses) > 0
     assert any("Mock OpenAI stream response" in response for response in responses)
 
@@ -323,7 +324,7 @@ async def test_model_chat():
         {"role": "assistant", "content": "Hi there!"},
         {"role": "user", "content": "How are you?"}
     ]
-    
+
     response = await model.chat(messages)
     assert "Mock OpenAI chat response" in response
 
@@ -332,13 +333,13 @@ async def test_model_chat():
 async def test_model_embeddings():
     """Test that models can generate embeddings."""
     model = MockOpenAIModel("gpt-3.5-turbo")
-    
+
     # Test single text embedding
     text = "Hello world"
     embedding = await model.embeddings(text)
     assert len(embedding) == 384
     assert all(isinstance(x, float) for x in embedding)
-    
+
     # Test multiple text embeddings
     texts = ["Hello", "World", "Test"]
     embeddings = await model.embeddings(texts)
@@ -350,17 +351,17 @@ async def test_model_embeddings():
 async def test_memory_operations():
     """Test memory operations."""
     memory = MockAgentMemory(max_history=3)
-    
+
     # Add messages
     await memory.add_message({"role": "user", "content": "Message 1"})
     await memory.add_message({"role": "assistant", "content": "Response 1"})
     await memory.add_message({"role": "user", "content": "Message 2"})
     await memory.add_message({"role": "assistant", "content": "Response 2"})
-    
+
     # Test history retrieval
     history = memory.get_history()
     assert len(history) == 3  # Should be limited by max_history
-    
+
     # Test limited history
     recent = memory.get_history(n=2)
     assert len(recent) == 2
@@ -371,12 +372,12 @@ async def test_memory_operations():
 async def test_calculator_tool():
     """Test calculator tool functionality."""
     tool = MockCalculatorTool()
-    
+
     # Test tool execution
     result = await tool.execute("2 + 2")
     assert "Mock calculator result" in result
     assert tool.calls == 1
-    
+
     # Test parameters
     params = tool.get_parameters()
     assert isinstance(params, list)
@@ -393,7 +394,7 @@ async def test_environment_variables():
              patch('examples.cli.basic_agent.Agent', MockAgent), \
              patch('examples.cli.basic_agent.AgentMemory', MockAgentMemory), \
              patch('examples.cli.basic_agent.CalculatorTool', MockCalculatorTool):
-            
+
             await main()
             mock_load_dotenv.assert_called_once()
 
@@ -404,17 +405,17 @@ async def test_error_handling():
     # Test with failing model
     failing_model = MockOpenAIModel("gpt-3.5-turbo")
     failing_model.generate = AsyncMock(side_effect=Exception("API Error"))
-    
+
     memory = MockAgentMemory()
     tools = [MockCalculatorTool()]
-    
+
     agent = MockAgent(
         model=failing_model,
         memory=memory,
         tools=tools,
         system_prompt="You are a helpful AI assistant."
     )
-    
+
     # The agent should handle the error gracefully
     with pytest.raises(Exception, match="API Error"):
         await agent.run("Test task")
@@ -424,7 +425,7 @@ def test_example_structure():
     """Test that the example has the expected structure."""
     example_path = Path(__file__).parent.parent.parent.parent / "examples" / "cli" / "basic_agent.py"
     assert example_path.exists(), "basic_agent.py example should exist"
-    
+
     # Check that the file contains expected components
     with open(example_path, 'r') as f:
         content = f.read()
@@ -434,4 +435,4 @@ def test_example_structure():
         assert "MistralModel" in content
         assert "Agent" in content
         assert "AgentMemory" in content
-        assert "CalculatorTool" in content 
+        assert "CalculatorTool" in content
