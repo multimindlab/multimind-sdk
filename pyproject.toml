@@ -110,7 +110,7 @@ documents = [
 # Fine-tuning (CPU/general) — no GPU-only deps here so it installs on macOS/ARM
 finetune = [
     "torch>=2.0.0",
-    "transformers>=4.30.0",
+    "transformers>=5.13.0",
     "datasets>=2.14.0",
     "accelerate>=0.20.0",
     "peft>=0.5.0",
