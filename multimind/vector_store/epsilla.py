@@ -123,20 +123,3 @@ class EpsillaBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise
-
-    def add(self, vector, metadata=None):
-        raise NotImplementedError(
-            "EpsillaBackend.add is not implemented: the Epsilla backend is a stub. "
-            "Use an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, "
-            "Milvus, or Weaviate."
-        )
-
-    def search(self, *args, **kwargs):
-        raise NotImplementedError(
-            "EpsillaBackend.search is a placeholder. Integrate with Epsilla SDK."
-        )
-
-    def delete(self, *args, **kwargs):
-        raise NotImplementedError(
-            "EpsillaBackend.delete is a placeholder. Integrate with Epsilla SDK."
-        )
