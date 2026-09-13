@@ -139,10 +139,10 @@ class DocumentProcessor:
         """
         # Handle input types
         if isinstance(document, str):
-            text = documen
+            text = document
             doc_metadata = metadata or {}
         else:
-            text = document.tex
+            text = document.text
             doc_metadata = {**document.metadata, **(metadata or {})}
 
         # Clean tex

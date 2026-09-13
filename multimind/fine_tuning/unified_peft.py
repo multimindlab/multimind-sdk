@@ -250,7 +250,7 @@ class UniPELTTuner:
             tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
@@ -439,7 +439,7 @@ class MAMAdapterTuner:
             tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
