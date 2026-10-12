@@ -128,5 +128,5 @@ multimind compliance scan-text --file customer_notes.txt --redact mask
 
 - [Cookbook](/cookbook) — short task-oriented recipes: switch providers, structured output with Pydantic, hallucination detection, the gateway API, and more
 - [Compliance guide](/compliance) — the full GDPR/HIPAA compliance module
-- [Deployment guide](/deployment) — Docker and docker compose, including a fully local stack
+- [Deployment guide](/deployment) — `docker pull ghcr.io/multimindlab/multimind-sdk:latest`, docker compose, and a fully local stack
 - [Docs index](/index) — everything else

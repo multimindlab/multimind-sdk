@@ -35,7 +35,11 @@ RUN groupadd --gid 10001 multimind \
 # --build-arg MULTIMIND_EXTRAS=gateway,finetune
 ARG MULTIMIND_EXTRAS=gateway,rag
 
-# Core deps + selected extras only. No torch, no docs, no tests, no examples.
+# CPU-only torch first: sentence-transformers (in [rag]) needs torch, and the
+# default Linux wheel drags in ~4 GB of unused CUDA libraries on amd64 and arm64.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Core deps + selected extras only. No docs, no tests, no examples.
 # numpy: multimind.gateway.api imports multimind.compliance, whose eager
 # imports need numpy but nothing else from the heavy [compliance] extra.
 RUN --mount=from=builder,source=/wheels,target=/wheels \

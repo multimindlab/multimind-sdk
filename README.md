@@ -90,7 +90,7 @@ pip install multimind-sdk[all]           # rag, vector-stores, agents, memory, d
 | Context transfer between models                      | Stable   | core               |
 | CLI interface                                        | Stable   | core               |
 | REST gateway with Swagger UI (`/docs`)               | Stable   | `[gateway]`        |
-| Docker deployment (lean ~300 MB image)               | Stable   | —                  |
+| Docker image (`ghcr.io/multimindlab/multimind-sdk`, amd64 + arm64) | Stable   | —                  |
 | Vision/multimodal input (`images=`)                  | Stable   | core               |
 | AI Agents with native function-calling & memory      | Stable   | `[agents]`         |
 | Self-evolving agents (bounded exemplar learning)     | Stable   | `[agents]`         |
@@ -258,7 +258,7 @@ Hosted docs: [docs.multimind.dev](https://docs.multimind.dev). The same pages li
 - [Quickstart](docs/quickstart.md) — guarded, cost-tracked model calls in 5 minutes
 - [Cookbook](docs/cookbook.md) — task-oriented recipes (providers, structured output, budgets, hallucination checks, gateway, docker)
 - [Getting started without writing code](docs/getting-started-non-technical.md) — for analysts, compliance officers, and PMs
-- [Deployment Guide](docs/deployment.md) — Docker and docker compose, including a fully local stack
+- [Deployment Guide](docs/deployment.md) — `docker pull ghcr.io/multimindlab/multimind-sdk:latest`, docker compose, and a fully local stack
 - [Compliance Guide](docs/compliance.md)
 - [API Reference](docs/api_reference/)
 - [Architecture](docs/architecture.md)
