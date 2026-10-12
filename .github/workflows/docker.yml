@@ -1,0 +1,142 @@
+name: Docker image
+
+# Builds the production image (Dockerfile) and publishes it to GitHub
+# Container Registry as ghcr.io/multimindlab/multimind-sdk.
+#
+#   pull request      build + smoke test only, nothing is pushed
+#   push to develop   push :develop and :sha-<short>
+#   tag v1.2.3        push :1.2.3, :1.2, :latest
+#   release published same as the tag
+#   workflow_dispatch manual run; "push" decides whether to publish, and an
+#                     optional extra tag (e.g. "rc1") is added when given
+#
+# The first push creates the package private. Make it public once in the
+# repository's Packages settings so `docker pull` works without a login.
+
+on:
+  push:
+    branches: [develop]
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - Dockerfile
+      - pyproject.toml
+      - setup.py
+      - MANIFEST.in
+      - "multimind/**"
+      - ".github/workflows/docker.yml"
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      push:
+        description: "Push the image to ghcr.io"
+        type: boolean
+        default: true
+      extra_tag:
+        description: "Additional image tag (optional, e.g. rc1)"
+        type: string
+        default: ""
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: build, test, publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decide whether to push
+        id: decide
+        run: |
+          push=false
+          case "${{ github.event_name }}" in
+            push|release) push=true ;;
+            workflow_dispatch) push="${{ inputs.push }}" ;;
+          esac
+          echo "push=$push" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ghcr.io
+        if: steps.decide.outputs.push == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-,format=short
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=${{ inputs.extra_tag }},enable=${{ github.event_name == 'workflow_dispatch' && inputs.extra_tag != '' }}
+          labels: |
+            org.opencontainers.image.title=MultiMind SDK
+            org.opencontainers.image.description=Compliance-first AI agent framework: gateway, governance, guard proxy, and RAG API
+            org.opencontainers.image.licenses=Apache-2.0
+
+      # Native platform first so the smoke test runs before anything is pushed.
+      - name: Build amd64 for the smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ${{ env.IMAGE }}:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke test /health and the CLI
+        run: |
+          docker run -d --name smoke -p 8000:8000 "$IMAGE:smoke"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health; then ok=1; break; fi
+            sleep 2
+          done
+          echo
+          if [ -z "$ok" ]; then docker logs smoke; exit 1; fi
+          curl -fsS http://127.0.0.1:8000/openapi.json | python3 -c "import json,sys; p=json.load(sys.stdin)['paths']; assert '/v1/chat' in p and '/v1/compliance/monitor' in p, list(p)[:20]"
+          docker run --rm "$IMAGE:smoke" multimind --version
+          docker rm -f smoke
+
+      - name: Build amd64 + arm64 and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ steps.decide.outputs.push == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "### Docker image"
+            echo
+            echo "Pushed: ${{ steps.decide.outputs.push }}"
+            echo
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

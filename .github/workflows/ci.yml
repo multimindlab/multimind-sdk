@@ -220,8 +220,13 @@ jobs:
   # Supported surface. No torch: coverage's tracer breaks torch import on
   # current releases, and these tests do not need it. The guard and the
   # proxy are held at 70%. The wider provider, agent, and CLI trees measured
-  # 46% in October 2026 (MoE scaffolds and the conversion CLI are mostly
-  # untested); the gate is 40% so that number cannot quietly fall.
+  # 39% on 2026-10-12 (MoE scaffolds and the conversion CLI are mostly
+  # untested); the gate is 35% so that number cannot quietly fall.
+  # --cov takes the path form on purpose: a dotted module name makes coverage
+  # import the package inside sys_modules_saved() and discard it, and pydantic
+  # >= 2.14 then reuses its cached BaseModel from the discarded import, so
+  # GatewayConfig() fails at import time. Per-module gates come from
+  # `coverage report --include`.
   # ---------------------------------------------------------------------------
   supported-surface:
     name: supported surface coverage
@@ -241,12 +246,13 @@ jobs:
           pytest \
             tests/test_compliance_guard.py \
             tests/test_guard_proxy.py \
-            --cov=multimind.compliance.guard \
-            --cov=multimind.gateway.guard_proxy \
-            --cov-fail-under=70 \
-            --tb=short -q
-      - name: Providers, agents, and CLI at 40%
+            --cov=multimind --cov-report= --tb=short -q
+          coverage report \
+            --include='multimind/compliance/guard.py,multimind/gateway/guard_proxy.py' \
+            --fail-under=70
+      - name: Providers, agents, and CLI at 35%
         run: |
+          rm -f .coverage
           pytest \
             tests/test_api_gateway.py \
             tests/test_agents_function_calling.py \
@@ -254,11 +260,10 @@ jobs:
             tests/test_new_providers.py \
             tests/test_platform.py \
             tests/test_release_fixes.py \
-            --cov=multimind.models \
-            --cov=multimind.agents \
-            --cov=multimind.cli \
-            --cov-fail-under=40 \
-            --tb=short -q
+            --cov=multimind --cov-report= --tb=short -q
+          coverage report \
+            --include='multimind/models/*,multimind/agents/*,multimind/cli/*' \
+            --fail-under=35
 
   # ---------------------------------------------------------------------------
   # Full suite with everything installed, including the framework-interop

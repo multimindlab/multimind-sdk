@@ -4,9 +4,30 @@ title: "Deployment Guide"
 
 Containerized deployment of the MultiMind API.
 
-The image is a multi-stage build on `python:3.11-slim`: the builder stage wheels the package, the runtime stage installs the wheel plus the `gateway` and `rag` extras. The process serves `create_platform_app`: one Swagger UI at `/docs` for chat, sessions, compliance checks, governance, the guard proxy, and RAG. No torch, docs, tests, or examples are included. The image is larger than the old gateway-only build because RAG pulls FAISS, Chroma, and sentence-transformers.
+The image is a multi-stage build on `python:3.11-slim`: the builder stage wheels the package, the runtime stage installs the wheel plus the `gateway` and `rag` extras. The process serves `create_platform_app`: one Swagger UI at `/docs` for chat, sessions, compliance checks, governance, the guard proxy, and RAG. No docs, tests, or examples are included. RAG pulls FAISS, Chroma, and sentence-transformers, so the image carries a CPU-only torch; GPU libraries are left out on purpose.
 
-## Build
+## Pull the published image
+
+Every merge to `develop` and every release publishes the image to GitHub Container Registry for `linux/amd64` and `linux/arm64` (the `Docker image` workflow in `.github/workflows/docker.yml`). No login is needed.
+
+```bash
+docker pull ghcr.io/multimindlab/multimind-sdk:latest
+docker run -d --name multimind -p 8000:8000 --env-file .env ghcr.io/multimindlab/multimind-sdk:latest
+curl http://127.0.0.1:8000/health
+```
+
+| Tag | Built from |
+| --- | --- |
+| `latest` | the most recent release tag (`v1.0.0` and later) |
+| `1.0.0`, `1.0` | that release |
+| `develop` | the current `develop` branch, after the smoke test passes |
+| `sha-<short>` | one specific commit on `develop` |
+
+The workflow can also be run by hand from the Actions tab (`Docker image`, "Run workflow"); untick "Push" for a build-only run, or add an extra tag such as `rc1`. Pull requests that touch the Dockerfile or the package build the image and run the smoke test without pushing.
+
+`docker compose up` uses the published image; run `docker compose build` to build from the checkout instead.
+
+## Build locally
 
 ```bash
 docker build -t multimind-sdk:latest .

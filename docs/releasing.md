@@ -54,6 +54,13 @@ there is nothing else to bump — no version string in `pyproject.toml`,
 4. Create a GitHub Release from that tag (via the GitHub UI, or
    `gh release create v1.0.0 --generate-notes`). Publishing the release is
    what triggers the `publish` job and pushes to PyPI.
+5. The `v*` tag also runs the `Docker image` workflow
+   (`.github/workflows/docker.yml`), which publishes
+   `ghcr.io/multimindlab/multimind-sdk:1.0.0`, `:1.0`, and `:latest` for
+   amd64 and arm64 after a smoke test. Merges to `develop` publish
+   `:develop`; the workflow can also be run by hand from the Actions tab.
+   The first push creates the package private: set it to public once under
+   the repository's Packages settings.
 
 ## One-time trusted-publisher setup on pypi.org
 
