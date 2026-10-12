@@ -123,24 +123,3 @@ class DingoDBBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise
-
-    def add(self, vector, metadata=None):
-        raise NotImplementedError(
-            "DingoDBBackend.add is not implemented: the DingoDB backend is a stub. "
-            "Use an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, "
-            "Milvus, or Weaviate."
-        )
-
-    def search(self, query_vector, top_k=3):
-        raise NotImplementedError(
-            "DingoDBBackend.search is not implemented: the DingoDB backend is a stub. "
-            "Use an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, "
-            "Milvus, or Weaviate."
-        )
-
-    def delete(self, index):
-        raise NotImplementedError(
-            "DingoDBBackend.delete is not implemented: the DingoDB backend is a stub. "
-            "Use an implemented backend such as FAISS, Chroma, Qdrant, Pinecone, "
-            "Milvus, or Weaviate."
-        )

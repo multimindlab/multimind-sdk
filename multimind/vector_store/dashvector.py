@@ -123,24 +123,3 @@ class DashVectorBackend(VectorStoreBackend):
                 self.logger.error(f"Error: {e}, attempt {attempt + 1}/{retries}")
                 if attempt == retries - 1:
                     raise
-
-    def add(self, vector, metadata=None):
-        raise NotImplementedError(
-            "DashVectorBackend.add is not implemented: the DashVector backend is a "
-            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
-            "Pinecone, Milvus, or Weaviate."
-        )
-
-    def search(self, query_vector, top_k=3):
-        raise NotImplementedError(
-            "DashVectorBackend.search is not implemented: the DashVector backend is a "
-            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
-            "Pinecone, Milvus, or Weaviate."
-        )
-
-    def delete(self, index):
-        raise NotImplementedError(
-            "DashVectorBackend.delete is not implemented: the DashVector backend is a "
-            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
-            "Pinecone, Milvus, or Weaviate."
-        )
