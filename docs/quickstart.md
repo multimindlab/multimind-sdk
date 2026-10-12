@@ -1,8 +1,10 @@
-# Quickstart: MultiMind in 5 Minutes
+---
+title: "Quickstart: MultiMind in 5 Minutes"
+---
 
 Install, make your first model call, guard it against PII leaks, track what it costs, and scan text for sensitive data from the command line. Every snippet below is copy-paste runnable.
 
-Not a developer? Read the [plain-language getting started guide](getting-started-non-technical.md) instead.
+Not a developer? Read the [plain-language getting started guide](/getting-started-non-technical) instead.
 
 ## 1. Install (30 seconds)
 
@@ -10,7 +12,7 @@ Not a developer? Read the [plain-language getting started guide](getting-started
 pip install multimind-sdk
 ```
 
-That is the whole core install: multi-provider models, the PII guard, cost tracking, hallucination checks, and the CLI. Extras like `[rag]` or `[gateway]` are only needed for those features — see the [installation guide](../INSTALLATION.md).
+That is the whole core install: multi-provider models, the PII guard, cost tracking, hallucination checks, and the CLI. Extras like `[rag]` or `[gateway]` are only needed for those features — see the [installation guide](/installation).
 
 ## 2. Pick a model path
 
@@ -63,7 +65,7 @@ async def main():
 asyncio.run(main())
 ```
 
-The interface is identical for every provider — `ClaudeModel`, `GeminiModel`, `GroqModel`, `MistralAIModel`, `DeepSeekModel` all work the same way. Prefer plain functions over `asyncio`? Use `model.generate_sync(...)` — see the [cookbook](cookbook.md#sync-usage-no-asyncio).
+The interface is identical for every provider — `ClaudeModel`, `GeminiModel`, `GroqModel`, `MistralAIModel`, `DeepSeekModel` all work the same way. Prefer plain functions over `asyncio`? Use `model.generate_sync(...)` — see the [cookbook](/cookbook#sync-usage-no-asyncio).
 
 ## 4. Guard it against PII leaks
 
@@ -106,7 +108,7 @@ async def main():
 asyncio.run(main())
 ```
 
-Want a hard spending ceiling instead of just a report? Add `budget=Budget(max_cost=1.00)` — calls past the ceiling are blocked before dispatch. Recipe: [budget-capped calls](cookbook.md#budget-capped-calls).
+Want a hard spending ceiling instead of just a report? Add `budget=Budget(max_cost=1.00)` — calls past the ceiling are blocked before dispatch. Recipe: [budget-capped calls](/cookbook#budget-capped-calls).
 
 ## 6. Scan for PII from the command line
 
@@ -124,7 +126,7 @@ multimind compliance scan-text --file customer_notes.txt --redact mask
 
 ## Where to next
 
-- [Cookbook](cookbook.md) — short task-oriented recipes: switch providers, structured output with Pydantic, hallucination detection, the gateway API, and more
-- [Compliance guide](compliance.md) — the full GDPR/HIPAA compliance module
-- [Deployment guide](deployment.md) — Docker and docker compose, including a fully local stack
-- [Docs index](README.md) — everything else
+- [Cookbook](/cookbook) — short task-oriented recipes: switch providers, structured output with Pydantic, hallucination detection, the gateway API, and more
+- [Compliance guide](/compliance) — the full GDPR/HIPAA compliance module
+- [Deployment guide](/deployment) — `docker pull ghcr.io/multimindlab/multimind-sdk:latest`, docker compose, and a fully local stack
+- [Docs index](/index) — everything else

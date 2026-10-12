@@ -313,25 +313,35 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
         }
 
     @app.get("/api/costs", tags=["governance"])
-    async def costs():
+    async def costs(period: Optional[str] = None):
+        """Spend summary; ``period`` is an ISO timestamp prefix (``multimind audit costs --period``)."""
         tracker = _load_costs(settings.costs_log)
         if tracker is None:
             return {
                 "available": False,
-                "chargeback": {"period": None, "calls": 0, "total_cost": 0.0, "by_tag": {}},
+                "chargeback": {"period": period, "calls": 0, "total_cost": 0.0, "by_tag": {}},
                 "by_model": {},
                 "daily": [],
             }
         return {
             "available": True,
-            "chargeback": tracker.chargeback(),
+            "chargeback": tracker.chargeback(period=period),
             "by_model": tracker.by_model(),
             "daily": _daily_spend(tracker),
         }
 
     @app.get("/api/inventory", tags=["governance"])
-    async def inventory(refresh: bool = False):
+    async def inventory(refresh: bool = False, include_env: bool = False):
+        """Shadow-AI inventory; ``include_env`` mirrors ``multimind audit scan --include-env``."""
         try:
+            if include_env:
+                # Env-key names are per-request, so bypass the cache like the CLI does.
+                report = scan_project(settings.project_path, include_env=True).to_dict()
+                return {
+                    "scanned_at": datetime.now(timezone.utc).isoformat(),
+                    "cached": False,
+                    **report,
+                }
             cached = _cached_inventory(refresh)
         except NotADirectoryError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -358,20 +368,42 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
         }
 
     @app.get("/api/evidence-report", tags=["governance"])
-    async def evidence_report(format: str = "html"):
+    async def evidence_report(
+        format: str = "html",
+        period: Optional[str] = None,
+        organization: Optional[str] = None,
+        project: Optional[str] = None,
+        costs_log: Optional[str] = None,
+    ):
+        """Evidence report; params mirror ``multimind compliance report-evidence``."""
         if format not in _REPORT_FORMATS:
             raise HTTPException(
                 status_code=422,
                 detail=f"Unknown format: {format!r} (use one of {sorted(_REPORT_FORMATS)})",
             )
-        try:
-            inventory = _cached_inventory()["report"]
-        except NotADirectoryError:
-            inventory = None
+        if project is not None:
+            if not Path(project).is_dir():
+                raise HTTPException(
+                    status_code=400, detail=f"project is not a directory: {project}"
+                )
+            inventory = scan_project(project).to_dict()
+        else:
+            try:
+                inventory = _cached_inventory()["report"]
+            except NotADirectoryError:
+                inventory = None
+        if costs_log is not None:
+            if not Path(costs_log).is_file():
+                raise HTTPException(status_code=400, detail=f"costs_log not found: {costs_log}")
+            costs_path: Optional[str] = costs_log
+        else:
+            costs_path = settings.costs_log if Path(settings.costs_log).is_file() else None
         report = build_evidence_report(
             audit_log=settings.audit_log if Path(settings.audit_log).is_file() else None,
-            costs_log=settings.costs_log if Path(settings.costs_log).is_file() else None,
+            costs_log=costs_path,
             inventory=inventory,
+            period=period,
+            organization=organization,
         )
         body = report.to_markdown() if format == "md" else report.to_html()
         return Response(
@@ -404,8 +436,25 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
             "path": settings.guardrails_path,
             "exists": True,
             "config": config.model_dump(),
-            "apply_hint": f"multimind serve --config {settings.guardrails_path}",
+            "apply_hint": (
+                f"POST /v1/guardrails/reload on the API, or "
+                f"multimind serve --config {settings.guardrails_path}"
+            ),
         }
+
+    @app.get("/config.js", include_in_schema=False)
+    async def dashboard_config():
+        base = os.getenv("MULTIMIND_API_BASE", "")
+        key = os.getenv("MULTIMIND_API_KEY", "")
+        body = (
+            f"window.MULTIMIND_API_BASE={json.dumps(base)};\n"
+            f"window.MULTIMIND_API_KEY={json.dumps(key)};\n"
+        )
+        return Response(
+            content=body,
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-store"},
+        )
 
     app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="static")
     return app

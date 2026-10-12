@@ -1,7 +1,7 @@
 """MultiMind Compliance Module.
 
 Comprehensive compliance monitoring and evaluation: privacy, security, and
-regulatory features (GDPR, HIPAA, NIS2, …).
+regulatory features (GDPR, HIPAA, and the runtime PII guard).
 
 Requires the ``compliance`` extras (``cryptography``, ``bcrypt``, ``pycryptodome``):
 ``pip install 'multimind-sdk[compliance]'``.
@@ -176,4 +176,4 @@ except ImportError:
         "multimind.compliance.api legacy interface not found. If you rely on these functions, please update your code."
     )
 
-__version__ = "1.0.0"
+from multimind import __version__

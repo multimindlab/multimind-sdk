@@ -388,3 +388,22 @@ def test_serve_cli_help():
     result = CliRunner().invoke(serve, ["--help"])
     assert result.exit_code == 0
     assert "compliance proxy" in result.output
+
+
+def test_cors_is_off_by_default_and_env_gated(monkeypatch):
+    monkeypatch.delenv("MULTIMIND_CORS_ORIGINS", raising=False)
+    monkeypatch.delenv("MULTIMIND_ALLOWED_ORIGINS", raising=False)
+    client, _ = make_client()
+    plain = client.get("/health", headers={"Origin": "http://127.0.0.1:8501"})
+    assert "access-control-allow-origin" not in plain.headers
+
+    monkeypatch.setenv("MULTIMIND_CORS_ORIGINS", "http://127.0.0.1:8501")
+    client, _ = make_client()
+    allowed = client.options(
+        "/v1/guardrails/reload",
+        headers={
+            "Origin": "http://127.0.0.1:8501",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert allowed.headers.get("access-control-allow-origin") == "http://127.0.0.1:8501"

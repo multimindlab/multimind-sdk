@@ -42,6 +42,18 @@ def _compliance_backend():
 console = Console()
 
 
+def _print_results(results: dict) -> None:
+    print("\nCompliance Evaluation Results:")
+    print(json.dumps(results.get("final_evaluation", {}), indent=2))
+    recommendations = results.get("recommendations") or []
+    print("\nRecommendations:")
+    if not recommendations:
+        print("- none")
+    for rec in recommendations:
+        detail = rec.get("detail") or rec.get("priority")
+        print(f"- {rec.get('action', rec)}" + (f": {detail}" if detail else ""))
+
+
 @click.group()
 def compliance():
     """MultiMind compliance management commands."""
@@ -91,13 +103,7 @@ async def _run_compliance(config_path: str, output_path: str):
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
 
-    # Print results
-    print("\nCompliance Evaluation Results:")
-    print(json.dumps(results["final_evaluation"], indent=2))
-
-    print("\nRecommendations:")
-    for rec in results["final_evaluation"]["recommendations"]:
-        print(f"- {rec['action']} (Priority: {rec['priority']})")
+    _print_results(results)
 
 
 @compliance.command()
@@ -114,11 +120,18 @@ def run_example(type: str, use_case: str, output: str):
     """Run compliance example."""
     try:
         asyncio.run(_run_example(type, use_case, output))
-    except ImportError:
-        console.print(
-            "[red]Compliance examples are not available in this installation. "
-            "Run from a checkout of the multimind-sdk repository.[/red]"
-        )
+    except ImportError as exc:
+        missing = getattr(exc, "name", "") or ""
+        if missing.startswith("examples"):
+            console.print(
+                "[red]Compliance examples are not available in this installation. "
+                "Run from a checkout of the multimind-sdk repository.[/red]"
+            )
+        else:
+            console.print(
+                f"[red]The example needs the '{missing or 'unknown'}' package. "
+                "Install with: pip install 'multimind-sdk[finetune]'[/red]"
+            )
         sys.exit(1)
     except Exception as e:
         console.print(f"[red]Error: {str(e)}[/red]")
@@ -141,13 +154,7 @@ async def _run_example(type: str, use_case: str, output: str):
         with open(output, "w") as f:
             json.dump(results, f, indent=2)
 
-    # Print results
-    print("\nCompliance Evaluation Results:")
-    print(json.dumps(results["final_evaluation"], indent=2))
-
-    print("\nRecommendations:")
-    for rec in results["final_evaluation"]["recommendations"]:
-        print(f"- {rec['action']} (Priority: {rec['priority']})")
+    _print_results(results)
 
 
 @compliance.command()

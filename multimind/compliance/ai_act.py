@@ -91,10 +91,11 @@ class AIActCompliance(BaseModel):
             "validated_at": datetime.now(),
             "risk_level": assessment["risk_level"],
             "requirements": [],
-            "status": "compliant",
+            "status": "unverifiable",
         }
 
-        # Check requirements based on risk level
+        # High-risk systems are checked against stored evidence. Anything else
+        # stays unverifiable: this method does not invent a pass.
         if assessment["risk_level"] == RiskLevel.HIGH:
             requirements = [
                 "technical_documentation",
@@ -104,12 +105,15 @@ class AIActCompliance(BaseModel):
                 "human_oversight",
                 "logging_and_monitoring",
             ]
-
+            statuses = []
             for req in requirements:
                 status = self._check_requirement(system_id, req)
+                statuses.append(status)
                 validation["requirements"].append({"requirement": req, "status": status})
-                if status != "compliant":
-                    validation["status"] = "non_compliant"
+            if "non_compliant" in statuses:
+                validation["status"] = "non_compliant"
+            elif statuses and all(status == "compliant" for status in statuses):
+                validation["status"] = "compliant"
 
         return validation
 
@@ -186,6 +190,21 @@ class AIActCompliance(BaseModel):
         }
 
     def _check_requirement(self, system_id: str, requirement: str) -> str:
-        """Check if a specific requirement is met."""
-        # Implementation would check actual compliance status
-        return "compliant"
+        """Check stored evidence for a requirement.
+
+        Returns ``compliant`` only when technical docs for this system record
+        that requirement with ``status == "compliant"``. Missing evidence is
+        ``unverifiable``. A stored non-compliant status is returned as
+        ``non_compliant``.
+        """
+        docs = self.technical_docs.get(system_id) or {}
+        sections = docs.get("sections") if isinstance(docs, dict) else None
+        evidence = sections.get(requirement) if isinstance(sections, dict) else None
+        if not isinstance(evidence, dict):
+            return "unverifiable"
+        status = evidence.get("status")
+        if status == "compliant":
+            return "compliant"
+        if status == "non_compliant":
+            return "non_compliant"
+        return "unverifiable"

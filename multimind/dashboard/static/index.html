@@ -6,6 +6,20 @@
   <meta name="color-scheme" content="light dark">
   <title>MultiMind Governance</title>
   <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Form controls used by the Scan Text and Compliance views. */
+    textarea {
+      font: inherit; color: var(--ink); background: var(--surface);
+      border: 1px solid var(--border); border-radius: 7px; padding: 0.45rem 0.6rem;
+      width: 100%; max-width: 720px; resize: vertical;
+    }
+    pre.redacted {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+      padding: 0.6rem 0.85rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0;
+    }
+    .filters input[type="text"] { min-width: 14rem; }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -20,6 +34,9 @@
         <a href="#/costs" data-view="costs">Costs</a>
         <a href="#/inventory" data-view="inventory">Inventory</a>
         <a href="#/guardrails" data-view="guardrails">Guardrails</a>
+        <a href="#/scan" data-view="scan">Scan Text</a>
+        <a href="#/evidence" data-view="evidence">Evidence Report</a>
+        <a href="#/compliance" data-view="compliance">Compliance</a>
       </nav>
       <div class="sidebar-foot">
         Local artifacts only.<br>No data leaves this machine.
@@ -27,6 +44,7 @@
     </aside>
     <main id="view" class="content" tabindex="-1"></main>
   </div>
+  <script src="./config.js"></script>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

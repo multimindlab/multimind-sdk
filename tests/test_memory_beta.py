@@ -562,17 +562,14 @@ class TestVectorStoreMemory:
 
     @pytest.mark.asyncio
     async def test_get_by_id_single_entry(self):
-        # NOTE: the FAISS backend's search() ignores filter_criteria entirely,
-        # so VectorStoreMemory.get(memory_id) cannot reliably filter by ID once
-        # more than one vector is stored (known backend limitation, out of
-        # scope for memory/vector_store.py). With a single stored vector this
-        # still returns the right (only) result.
         mem = VectorStoreMemory(llm=VectorFakeLLM(), vector_store_config=_small_faiss_config())
         await mem.add("id_apple", "apple pie recipe")
+        await mem.add("id_car", "car engine repair")
 
         result = await mem.get("id_apple")
         assert result is not None
         assert result.id == "id_apple"
+        assert (await mem.get("missing")) is None
 
     @pytest.mark.asyncio
     async def test_clear_empties_store(self):

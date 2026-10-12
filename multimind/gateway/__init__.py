@@ -4,7 +4,7 @@ Requires the ``gateway`` extras (``fastapi``, ``uvicorn``, ``redis``, …):
 ``pip install 'multimind-sdk[gateway]'``.
 """
 
-__version__ = "1.0.0"
+from multimind import __version__
 
 try:
     from .api import MultiMindAPI, app, start

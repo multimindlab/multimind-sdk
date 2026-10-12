@@ -3,7 +3,7 @@
   "info": {
     "title": "MultiMind RAG API",
     "description": "RESTful API for the MultiMind RAG system: document ingestion, retrieval, and grounded generation. The RAG backend is initialized lazily on first use; provider API keys (OPENAI_API_KEY / ANTHROPIC_API_KEY) are read from the environment at request time. Requests fail with 503 when the backend cannot be initialized. Authentication uses `X-API-Key` (when `API_KEYS` is set) or a JWT bearer token (when `JWT_SECRET` is set).",
-    "version": "0.3.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/token": {

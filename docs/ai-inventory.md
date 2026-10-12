@@ -1,4 +1,6 @@
-# Shadow-AI Inventory & Cost Chargeback
+---
+title: "Shadow-AI Inventory & Cost Chargeback"
+---
 
 Static discovery of AI usage across a codebase, plus per-tag cost
 attribution for chargeback reports. Both features live in
@@ -13,7 +15,7 @@ similar) and reports:
 | Finding kind    | Source                                                       | Example evidence        |
 | --------------- | ------------------------------------------------------------ | ----------------------- |
 | `dependency`    | `requirements*.txt`, `pyproject.toml`, `package.json`, `Pipfile` matched against a curated AI package registry | `openai`, `langchain-core`, `@anthropic-ai/sdk` |
-| `api_url`       | AI API base URLs in `*.py` / `*.js` / `*.ts` source          | `api.openai.com`        |
+| `api_url`       | AI API base URLs in `*.py` and `*.js`/`*.jsx`/`*.ts`/`*.tsx`/`*.mjs`/`*.cjs` source (JS scanning off with `scan_js=False`) | `api.openai.com`        |
 | `env_read`      | Reads of known AI credential env-var names in source         | `OPENAI_API_KEY`        |
 | `hardcoded_key` | Hardcoded AI API keys (PIIDetector `api_key` patterns)       | `api_key (openai)`      |
 | `env_set`       | (only with `include_env=True`) known AI env keys set in the current environment | `ANTHROPIC_API_KEY` |
@@ -34,9 +36,9 @@ provider, a kind (`sdk` or `framework`), and a `data_flow` classification
   host, env-var name, key type) is retained.
 
 Scans are honest about coverage: files skipped due to the size cap
-(default 1 MB), the file-count cap (default 5000), or read errors are
-counted and surfaced as a `skipped N file(s)` note — never silently
-dropped.
+(`max_file_bytes`, default 1 MB), the file-count cap (`max_files`, default
+5000), or read errors are counted and surfaced as a `skipped N file(s)`
+note — never silently dropped. `skip_dirs` overrides the default skip list.
 
 ## Quickstart
 
@@ -94,7 +96,8 @@ A top-level `"note"` field appears when files were skipped.
 
 `CostTracker` (see `multimind.observability.cost_tracker`) already records
 per-call token/cost entries with optional tags. Chargeback groups those
-records per tag:
+records per tag (`chargeback()` returns `period`, `calls`, `total_cost`,
+and `by_tag`):
 
 ```python
 from multimind.observability import CostTracker, load_tracker, track_costs
@@ -119,7 +122,7 @@ to 100 when any cost was recorded).
 CLI:
 
 ```bash
-multimind audit costs                      # session tracker
+multimind audit costs                      # process-wide default tracker (empty in a fresh CLI process)
 multimind audit costs --log costs.jsonl    # historical JSONL log
 multimind audit costs --log costs.jsonl --period 2026-07
 ```

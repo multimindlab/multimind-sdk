@@ -7,6 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
+from .. import __version__
 from .audit import audit
 from .backend import backend
 from .chat import chat
@@ -21,6 +22,7 @@ console = Console()
 
 
 @click.group()
+@click.version_option(version=__version__, prog_name="multimind")
 def cli():
     """MultiMind CLI - Command Line Interface for MultiMind SDK"""
     pass

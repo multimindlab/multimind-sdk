@@ -1,4 +1,6 @@
-# Guard Proxy: `multimind serve`
+---
+title: "Guard Proxy: `multimind serve`"
+---
 
 A one-command, OpenAI-compatible compliance proxy. Point any existing app's
 OpenAI `base_url` at it and instantly get PII redaction, budget enforcement,
@@ -56,16 +58,20 @@ only, never the raw values.
 | `POST /v1/chat/completions` | Full pipeline: block check, budget check, request redaction, audit, forward, output scan. Supports `stream: true` (SSE passthrough with output scanning). |
 | `POST /v1/embeddings` | Block check, budget check, input redaction, audit, forward. |
 | `GET /v1/models` | Forwarded to the upstream. |
+| `POST /v1/guardrails/reload` | Re-reads the guardrails JSON file (path from `MULTIMIND_DASHBOARD_GUARDRAILS`, default `guardrails.json`) without a restart; 404 if the file is missing. Host, port, audit log, and cost log are kept. |
 | `GET /health`, `GET /ready` | Local probes; never touch the upstream. |
 
-Error bodies follow the OpenAI `{"error": {...}}` shape:
+Error bodies follow the OpenAI `{"error": {"message", "type", "code", ...}}` shape:
 
-- **400** `compliance_violation` / `pii_blocked` — a `--block-on` PII type was
-  found in the request (includes `blocked_types`).
-- **429** `budget_exceeded` — the session budget is spent (includes `spent`
-  and `max_cost`).
-- **502** `upstream_error` — the upstream could not be reached. Upstream 4xx/5xx
-  responses are passed through unchanged.
+- **400** type `compliance_violation`, code `pii_blocked` — a `--block-on` PII
+  type was found in the request (includes `blocked_types`).
+- **429** type/code `budget_exceeded` — the session budget is spent (includes
+  `spent` and `max_cost`).
+- **502** type `upstream_error`, code `upstream_unreachable` — the upstream
+  could not be reached. Upstream 4xx/5xx responses are passed through
+  unchanged. On a streaming request these errors arrive as an SSE `error`
+  event (code `upstream_unreachable` or `upstream_error`) followed by
+  `[DONE]`, since headers have already been sent.
 
 ## Configuration
 
@@ -82,9 +88,12 @@ flags win.
 | `--budget` | `MULTIMIND_PROXY_BUDGET` | unlimited | Max session spend in USD; requests past the ceiling get 429. |
 | — | `MULTIMIND_PROXY_COST_PER_TOKEN` | — | Blended USD/token used for budget math when the model is not in the built-in OpenAI pricing table. |
 | `--audit-log` | `MULTIMIND_PROXY_AUDIT_LOG` | disabled | JSONL audit-trail path. |
+| `--costs-log` | `MULTIMIND_PROXY_COSTS_LOG` | `costs.jsonl` (CLI) / in-memory (env, programmatic) | JSONL cost-log path; this is what `multimind dashboard --costs-log` reads. |
 | `--scan-output/--no-scan-output` | `MULTIMIND_PROXY_SCAN_OUTPUT` | on | Also redact PII in model output (including streams). |
 | `--host` | `MULTIMIND_PROXY_HOST` | `127.0.0.1` | Bind host. |
-| `--port` | `MULTIMIND_PROXY_PORT` | `8400` | Bind port. |
+| `--port` / `-p` | `MULTIMIND_PROXY_PORT` | `8400` | Bind port. |
+| — | `MULTIMIND_CORS_ORIGINS` | off | Comma-separated browser origins allowed to call the proxy, e.g. `http://127.0.0.1:8501` so the dashboard's **Reload proxy** button works. Same variable as the backend. |
+| `--config` | — | — | Guardrails JSON file written by `multimind dashboard` (`strategy`, `block_on`, `budget_max_cost`, `scan_output`). Loaded via `ProxySettings.from_file`: file values override env vars, explicit flags override the file. |
 
 Programmatic use:
 
@@ -93,6 +102,10 @@ from multimind.gateway.guard_proxy import ProxySettings, create_app
 
 app = create_app(ProxySettings(upstream="ollama", block_on=("ssn",), budget=5.0))
 # serve `app` with uvicorn, or mount it inside a larger FastAPI app
+
+# Other constructors: ProxySettings.from_env(**overrides) reads the
+# MULTIMIND_PROXY_* variables; ProxySettings.from_file("guardrails.json")
+# layers a dashboard-authored file on top of them.
 ```
 
 ## docker-compose

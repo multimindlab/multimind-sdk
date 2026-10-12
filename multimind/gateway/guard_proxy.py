@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import httpx
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, field_validator
 
@@ -62,6 +62,7 @@ class ProxySettings(BaseModel):
     strategy: str = "mask"
     block_on: Tuple[str, ...] = ()
     audit_log: Optional[str] = None
+    costs_log: Optional[str] = None
     budget: Optional[float] = None
     cost_per_token: Optional[float] = None
     scan_output: bool = True
@@ -97,6 +98,7 @@ class ProxySettings(BaseModel):
             "strategy": "MULTIMIND_PROXY_STRATEGY",
             "block_on": "MULTIMIND_PROXY_BLOCK_ON",
             "audit_log": "MULTIMIND_PROXY_AUDIT_LOG",
+            "costs_log": "MULTIMIND_PROXY_COSTS_LOG",
             "budget": "MULTIMIND_PROXY_BUDGET",
             "cost_per_token": "MULTIMIND_PROXY_COST_PER_TOKEN",
             "scan_output": "MULTIMIND_PROXY_SCAN_OUTPUT",
@@ -481,7 +483,7 @@ def create_app(settings: Optional[ProxySettings] = None) -> FastAPI:
         provider="custom" if settings.upstream_base_url else settings.upstream,
         detector=PIIDetector(),
         audit=AuditLog(settings.audit_log) if settings.audit_log else None,
-        tracker=CostTracker(),
+        tracker=CostTracker(settings.costs_log) if settings.costs_log else CostTracker(),
         budget=Budget(settings.budget) if settings.budget else None,
     )
 
@@ -495,6 +497,25 @@ def create_app(settings: Optional[ProxySettings] = None) -> FastAPI:
     )
     app.state.proxy = state
 
+    # Same switch as the gateway, so the dashboard's "Reload proxy" button works cross-origin.
+    origins = [
+        o.strip()
+        for o in (
+            os.getenv("MULTIMIND_CORS_ORIGINS") or os.getenv("MULTIMIND_ALLOWED_ORIGINS") or ""
+        ).split(",")
+        if o.strip()
+    ]
+    if origins:
+        from fastapi.middleware.cors import CORSMiddleware
+
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+
     @app.get("/health", tags=["system"])
     async def health_check():
         return {"status": "healthy", "version": __version__}
@@ -502,6 +523,35 @@ def create_app(settings: Optional[ProxySettings] = None) -> FastAPI:
     @app.get("/ready", tags=["system"])
     async def readiness_check():
         return {"status": "ready", "version": __version__, "upstream": state.base_url}
+
+    @app.post("/v1/guardrails/reload", tags=["governance"])
+    async def reload_guardrails():
+        """Re-read the guardrails file without restarting the process."""
+        path = os.getenv("MULTIMIND_DASHBOARD_GUARDRAILS", "guardrails.json")
+        if not os.path.isfile(path):
+            raise HTTPException(status_code=404, detail=f"No guardrails file at {path}")
+        updated = ProxySettings.from_file(
+            path,
+            host=state.settings.host,
+            port=state.settings.port,
+            costs_log=state.settings.costs_log,
+            audit_log=state.settings.audit_log,
+        )
+        base_url, api_key = resolve_upstream(updated)
+        state.settings = updated
+        state.base_url = base_url
+        state.api_key = api_key
+        state.provider = "custom" if updated.upstream_base_url else updated.upstream
+        if updated.budget is not None and state.budget is None:
+            state.budget = Budget(updated.budget)
+        elif state.budget is not None and updated.budget is not None:
+            state.budget.max_cost = updated.budget
+        return {
+            "status": "reloaded",
+            "strategy": updated.strategy,
+            "block_on": list(updated.block_on),
+            "budget": updated.budget,
+        }
 
     @app.get("/v1/models", tags=["models"])
     async def list_models(request: Request):

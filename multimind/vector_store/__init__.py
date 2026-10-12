@@ -18,6 +18,22 @@ from .vector_store import VectorStore
 # Configure logging
 logger = logging.getLogger(__name__)
 
+_EXPERIMENTAL_BACKENDS = frozenset(
+    {
+        "AwaDBBackend",
+        "BagelDBBackend",
+        "BaiduCloudVectorSearchBackend",
+        "ClarifaiBackend",
+        "ClickHouseBackend",
+        "DashVectorBackend",
+        "DatabricksVectorSearchBackend",
+        "DeepLakeBackend",
+        "DingoDBBackend",
+        "ElasticVectorSearchBackend",
+        "EpsillaBackend",
+    }
+)
+
 # Backend registry for lazy loading
 _backend_registry: Dict[str, Type[VectorStoreBackend]] = {}
 
@@ -38,17 +54,8 @@ def _load_backend(backend_name: str) -> Optional[Type[VectorStoreBackend]]:
         "ElasticsearchBackend": ".elasticsearch",
         "AlibabaCloudOpenSearchBackend": ".alibabacloud_opensearch",
         "AtlasBackend": ".atlas",
-        "AwaDBBackend": ".awadb",
         "AzureSearchBackend": ".azuresearch",
-        "BagelDBBackend": ".bageldb",
-        "BaiduCloudVectorSearchBackend": ".baiducloud_vector_search",
         "CassandraBackend": ".cassandra",
-        "ClarifaiBackend": ".clarifai",
-        "ClickHouseBackend": ".clickhouse",
-        "DatabricksVectorSearchBackend": ".databricks_vector_search",
-        "DashVectorBackend": ".dashvector",
-        "DingoDBBackend": ".dingo",
-        "ElasticVectorSearchBackend": ".elastic_vector_search",
         "HologresBackend": ".hologres",
         "LanceDBBackend": ".lancedb",
         "MarqoBackend": ".marqo",
@@ -65,8 +72,6 @@ def _load_backend(backend_name: str) -> Optional[Type[VectorStoreBackend]]:
         "MatchingEngineBackend": ".matching_engine",
         "LLMRailsBackend": ".llm_rails",
         "HippoBackend": ".hippo",
-        "EpsillaBackend": ".epsilla",
-        "DeepLakeBackend": ".deeplake",
         "AzureCosmosDBBackend": ".azure_cosmos_db",
         "AnnoyBackend": ".annoy",
         "AstraDBBackend": ".astradb",
@@ -90,6 +95,34 @@ def _load_backend(backend_name: str) -> Optional[Type[VectorStoreBackend]]:
         "ZepVectorStore": ".zep",
         "ZillizVectorStore": ".zilliz",
     }
+
+    # Unimplemented backends. Hidden unless MULTIMIND_EXPERIMENTAL_VECTOR_STORES=1.
+    experimental_modules = {
+        "AwaDBBackend": ".awadb",
+        "BagelDBBackend": ".bageldb",
+        "BaiduCloudVectorSearchBackend": ".baiducloud_vector_search",
+        "ClarifaiBackend": ".clarifai",
+        "ClickHouseBackend": ".clickhouse",
+        "DashVectorBackend": ".dashvector",
+        "DatabricksVectorSearchBackend": ".databricks_vector_search",
+        "DeepLakeBackend": ".deeplake",
+        "DingoDBBackend": ".dingo",
+        "ElasticVectorSearchBackend": ".elastic_vector_search",
+        "EpsillaBackend": ".epsilla",
+    }
+
+    if backend_name in experimental_modules:
+        enabled = os.getenv("MULTIMIND_EXPERIMENTAL_VECTOR_STORES", "").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if not enabled:
+            logger.debug(
+                "%s is an unimplemented backend and is not on the default path", backend_name
+            )
+            return None
+        backend_modules = experimental_modules
 
     if backend_name not in backend_modules:
         return None
@@ -131,7 +164,14 @@ def get_backend_class(backend_name: str):
     """Get a backend class by name, loading it if necessary."""
     if backend_name in _backend_registry:
         return _backend_registry[backend_name]
-    return _load_backend(backend_name)
+    loaded = _load_backend(backend_name)
+    if loaded is None and backend_name in _EXPERIMENTAL_BACKENDS:
+        raise NotImplementedError(
+            f"{backend_name} is not implemented and is not on the default backend path. "
+            "Set MULTIMIND_EXPERIMENTAL_VECTOR_STORES=1 to load the stub, which still "
+            "raises from every operation."
+        )
+    return loaded
 
 
 # Create __all__ list

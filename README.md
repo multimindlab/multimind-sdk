@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>The compliance-first AI agent framework.</strong><br>
-  Multi-model AI with built-in GDPR, HIPAA & NIS2 support. Works with any model. Runs anywhere.
+  Multi-model AI with built-in GDPR and HIPAA support. Works with any model. Runs anywhere.
 </p>
 
 <p align="center">
@@ -60,11 +60,12 @@ asyncio.run(main())
 pip install multimind-sdk                # Core (incl. Ollama via HTTP, no extra needed)
 pip install multimind-sdk[rag]           # + RAG & vector stores (FAISS, Chroma)
 pip install multimind-sdk[agents]        # + Agent framework with memory
-pip install multimind-sdk[compliance]    # + GDPR/HIPAA/NIS2 compliance + dashboards
+pip install multimind-sdk[compliance]    # + GDPR/HIPAA compliance + dashboards
 pip install multimind-sdk[finetune]      # + LoRA/QLoRA fine-tuning (CPU)
-pip install multimind-sdk[finetune-gpu]  # + 8-bit quantization (Linux/CUDA only)
+pip install multimind-sdk[finetune-gpu]  # + 4-bit QLoRA via bitsandbytes (Linux only)
 pip install multimind-sdk[gateway]       # + FastAPI gateway server
-pip install multimind-sdk[all]           # Everything
+pip install multimind-sdk[all]           # rag, vector-stores, agents, memory, documents, finetune, compliance, gateway, mcp
+# Framework adapters are separate: [langchain] [llamaindex] [crewai] [autogen]
 ```
 
 > **Ollama users**: no extra needed — `multimind.models.ollama` talks to a running Ollama instance over HTTP. Just `pip install multimind-sdk` and point at `http://localhost:11434`.
@@ -89,7 +90,7 @@ pip install multimind-sdk[all]           # Everything
 | Context transfer between models                      | Stable   | core               |
 | CLI interface                                        | Stable   | core               |
 | REST gateway with Swagger UI (`/docs`)               | Stable   | `[gateway]`        |
-| Docker deployment (lean ~300 MB image)               | Stable   | —                  |
+| Docker image (`ghcr.io/multimindlab/multimind-sdk`, amd64 + arm64) | Stable   | —                  |
 | Vision/multimodal input (`images=`)                  | Stable   | core               |
 | AI Agents with native function-calling & memory      | Stable   | `[agents]`         |
 | Self-evolving agents (bounded exemplar learning)     | Stable   | `[agents]`         |
@@ -102,7 +103,7 @@ pip install multimind-sdk[all]           # Everything
 
 > Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. Anthropic's Model Context Protocol is supported separately via `multimind.mcp_server` (see [docs/mcp-server.md](docs/mcp-server.md)).
 
-Full status: [FEATURES.md](FEATURES.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
+Full status: [docs/feature-status.md](docs/feature-status.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
 
 ## Examples
 
@@ -251,11 +252,13 @@ More examples: [`examples/`](examples/)
 
 ## Documentation
 
+Hosted docs: [docs.multimind.dev](https://docs.multimind.dev). The same pages live in [docs/](docs/).
+
 - [Docs index](docs/README.md) — everything in one place
 - [Quickstart](docs/quickstart.md) — guarded, cost-tracked model calls in 5 minutes
 - [Cookbook](docs/cookbook.md) — task-oriented recipes (providers, structured output, budgets, hallucination checks, gateway, docker)
 - [Getting started without writing code](docs/getting-started-non-technical.md) — for analysts, compliance officers, and PMs
-- [Deployment Guide](docs/deployment.md) — Docker and docker compose, including a fully local stack
+- [Deployment Guide](docs/deployment.md) — `docker pull ghcr.io/multimindlab/multimind-sdk:latest`, docker compose, and a fully local stack
 - [Compliance Guide](docs/compliance.md)
 - [API Reference](docs/api_reference/)
 - [Architecture](docs/architecture.md)
@@ -275,6 +278,20 @@ pytest
 ## License
 
 Apache 2.0 — see [LICENSE](LICENSE).
+
+## References
+
+Third-party places where MultiMind SDK is discussed, listed, or used as material. None of these is a customer deployment; they are linked so you can judge the project's footprint yourself.
+
+- [MultiMind architecture lessons](https://github.com/MarcoPWx/Portfolio/blob/main/docs/_devmentor/infrastructure/architecture/multimind-architecture-lessons.md) in the DevMentor portfolio: notes on adapting the model routing, hybrid retrieval, memory, and workflow ideas without using the package directly.
+- [agents-shipgate benchmark](https://github.com/ThreeMoonsLab/agents-shipgate/blob/main/benchmark/cold-start/cases/multimindlab__multimind-sdk__claude_settings.json/case.json): uses this repository's Claude Code settings as a cold-start benchmark case.
+- [Awesome-Agentic-Workflow](https://github.com/irfanfadhullah/Awesome-Agentic-Workflow/blob/main/Reflection%20_%20Adaptation/multimind-sdk_README.md): includes the README under its reflection and adaptation collection.
+- [agents-radar digest, 19 March 2026](https://github.com/duanyytop/agents-radar/blob/main/digests/2026-03-19/ai-trending-en.md): lists MultiMind among trending AI projects.
+- [AINews, 3 July 2025](https://news.smol.ai/issues/25-07-03-not-much/): the LM Studio Discord section covers MultiMind's model conversion, fine-tuning, and inference introduction.
+- Articles: [Introducing MultiMind SDK](https://dev.to/multimindsdk/introducing-multimind-sdk-your-all-in-one-toolkit-for-fine-tuning-rag-agents-more-2mh8) and [Ensuring compliance when fine-tuning](https://dev.to/multimindsdk/ensuring-compliance-when-fine-tuning-ai-models-with-multimindsdk-a3c) on DEV Community; listings on [Onegen](https://onegen.ai/project/multimind-sdk-unified-ai-framework-for-fine-tuning-rag-and-agent-orchestration/) and [AIxplore](https://aixplore.in/project_details?slug=multimind-sdk). Older articles describe the 0.2 API; the current reference is [docs.multimind.dev](https://docs.multimind.dev).
+
+
+Using MultiMind in a product or project? Open a [discussion](https://github.com/multimindlab/multimind-sdk/discussions) and we will link it here.
 
 <p align="center">
   <a href="https://discord.gg/K64U65je7h">Discord</a> ·

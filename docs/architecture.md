@@ -1,774 +1,317 @@
-# MultiMind Architecture
+---
+title: "MultiMind Architecture"
+---
 
-This document provides a comprehensive overview of the MultiMind SDK architecture, including its core components, interfaces, and data flow.
+This document gives an overview of how the MultiMind SDK is put together: the packages under `multimind/`, how they depend on each other, and how a request flows through them. Every component named here corresponds to a real module; status (stable / beta / planned) is tracked in [feature-status.md](/feature-status).
 
 ## System Overview
 
 ```mermaid
 graph TB
-    subgraph "MultiMind SDK"
-        Core[Core Components]
-        Ensemble[Ensemble System]
-        Pipeline[Pipeline System]
-        Compliance[Compliance & Governance]
-        Interfaces[Interfaces]
-        RAG[RAG System]
-        FineTuning[Fine-tuning System]
-        MCP[Model Control Plane]
-        Memory[Memory System]
-        Orchestration[Orchestration Engine]
-        Gateway[API Gateway]
-        Router[Model Router]
-        Tools[Tool System]
-        Monitoring[Monitoring System]
+    subgraph "Interfaces"
+        CLI["CLI (multimind.cli)"]
+        REST["REST APIs (multimind.gateway, multimind.api, multimind.server)"]
+        MCPS["MCP server (multimind.mcp_server)"]
+    end
+
+    subgraph "Core SDK"
+        Models["Model wrappers (multimind.models)"]
+        Router["Model router (multimind.router)"]
+        Agents["Agents (multimind.agents)"]
+        Memory["Memory (multimind.memory)"]
+        RAG["RAG (multimind.rag, retrieval, embeddings, vector_store)"]
+        Orch["Orchestration (multimind.orchestration)"]
+        MCP["Model Composition Protocol (multimind.mcp)"]
+        Ensemble["Ensemble (multimind.ensemble)"]
+        FineTune["Fine-tuning (multimind.fine_tuning)"]
+        Compliance["Compliance (multimind.compliance)"]
+        Observability["Observability (multimind.observability, multimind_logging)"]
+        Integrations["Integrations (multimind.integrations)"]
     end
 
     subgraph "Model Providers"
-        OpenAI[OpenAI]
-        Claude[Claude]
-        Mistral[Mistral]
-        Ollama[Ollama]
-        HuggingFace[HuggingFace]
-        Groq[Groq]
-        Local[Local Models]
+        OpenAI
+        Anthropic["Anthropic (Claude)"]
+        Ollama["Ollama (local)"]
+        HF["HuggingFace (API or local transformers)"]
+        Others["Groq, Gemini, Mistral AI, DeepSeek, OpenRouter, Together, xAI, Perplexity, Fireworks, Cerebras"]
     end
 
-    subgraph "Core Components"
-        Models[Model Wrappers]
-        Agents[Agent System]
-        Memory[Memory Management]
-        Tools[Tool System]
-        Config[Configuration]
-    end
+    CLI --> Models
+    CLI --> Compliance
+    REST --> Models
+    REST --> RAG
+    REST --> Compliance
+    MCPS --> Models
 
-    subgraph "Ensemble System"
-        Methods[Ensemble Methods]
-        Providers[Model Providers]
-        Voting[Voting System]
-    end
+    Agents --> Models
+    Agents --> Memory
+    Router --> Models
+    RAG --> Models
+    Orch --> Models
+    MCP --> Models
+    Ensemble --> Models
+    Memory --> Models
 
-    subgraph "Pipeline System"
-        Tasks[Task Management]
-        Chains[Prompt Chains]
-        Workflows[Workflow Engine]
-    end
-
-    subgraph "Compliance & Governance"
-        Privacy[Privacy Management]
-        Audit[Audit System]
-        Policy[Policy Engine]
-        Training[Compliance Training]
-        Risk[Risk Assessment]
-    end
-
-    subgraph "RAG System"
-        Indexing[Document Indexing]
-        Retrieval[Vector Retrieval]
-        Augmentation[Context Augmentation]
-        Storage[Vector Storage]
-        Embedding[Embedding Models]
-    end
-
-    subgraph "Fine-tuning System"
-        Training[Model Training]
-        Evaluation[Model Evaluation]
-        Versioning[Model Versioning]
-        Deployment[Model Deployment]
-        LoRA[LoRA Training]
-        QLoRA[QLoRA Training]
-    end
-
-    subgraph "Model Control Plane"
-        Monitoring[Model Monitoring]
-        Scaling[Auto Scaling]
-        Routing[Request Routing]
-        LoadBalancing[Load Balancing]
-        Executor[MCP Executor]
-        Parser[MCP Parser]
-    end
-
-    subgraph "Memory System"
-        ShortTerm[Short-term Memory]
-        LongTerm[Long-term Memory]
-        WorkingMemory[Working Memory]
-        Episodic[Episodic Memory]
-        Buffer[Memory Buffer]
-    end
-
-    subgraph "Orchestration Engine"
-        TaskScheduler[Task Scheduler]
-        ResourceManager[Resource Manager]
-        StateManager[State Manager]
-        EventBus[Event Bus]
-        WorkflowEngine[Workflow Engine]
-    end
-
-    subgraph "API Gateway"
-        Auth[Authentication]
-        RateLimit[Rate Limiting]
-        Routing[Request Routing]
-        Metrics[Metrics Collection]
-        Session[Session Management]
-    end
-
-    subgraph "Model Router"
-        Strategy[Routing Strategy]
-        Fallback[Fallback Handler]
-        LoadBalancer[Load Balancer]
-        Metrics[Performance Metrics]
-    end
-
-    subgraph "Tool System"
-        Calculator[Calculator Tool]
-        WebSearch[Web Search Tool]
-        FileOps[File Operations]
-        CustomTools[Custom Tools]
-    end
-
-    subgraph "Monitoring System"
-        Usage[Usage Tracker]
-        Trace[Trace Logger]
-        Metrics[Metrics Collector]
-        Alerts[Alert System]
-        Reports[Report Generator]
-    end
-
-    subgraph "Interfaces"
-        CLI[Command Line Interface]
-        API[REST API]
-        WS[WebSocket API]
-    end
-
-    Core --> Ensemble
-    Core --> Pipeline
-    Core --> Compliance
-    Core --> Interfaces
-    Core --> RAG
-    Core --> FineTuning
-    Core --> MCP
-    Core --> Memory
-    Core --> Orchestration
-    Core --> Gateway
-    Core --> Router
-    Core --> Tools
-    Core --> Monitoring
-
-    Models --> Providers
-    Agents --> Tools
-    Memory --> Agents
-    Tools --> Agents
-
-    Methods --> Voting
-    Providers --> Voting
-    Voting --> Ensemble
-
-    OpenAI --> Providers
-    Claude --> Providers
-    Mistral --> Providers
-    Ollama --> Providers
-    HuggingFace --> Providers
-    Groq --> Providers
-    Local --> Providers
-
-    Tasks --> Chains
-    Chains --> Workflows
-    Workflows --> Pipeline
-
-    Privacy --> Audit
-    Policy --> Privacy
-    Audit --> Compliance
-    Training --> Compliance
-    Risk --> Compliance
-
-    Indexing --> Storage
-    Retrieval --> Storage
-    Augmentation --> Retrieval
-    Embedding --> Indexing
-
-    Training --> Evaluation
-    Evaluation --> Versioning
-    Versioning --> Deployment
-    LoRA --> Training
-    QLoRA --> Training
-
-    Monitoring --> Scaling
-    Scaling --> Routing
-    Routing --> LoadBalancing
-    Executor --> MCP
-    Parser --> MCP
-
-    ShortTerm --> WorkingMemory
-    LongTerm --> WorkingMemory
-    Episodic --> WorkingMemory
-    Buffer --> WorkingMemory
-
-    TaskScheduler --> ResourceManager
-    ResourceManager --> StateManager
-    StateManager --> EventBus
-    WorkflowEngine --> TaskScheduler
-
-    Auth --> Gateway
-    RateLimit --> Gateway
-    Routing --> Gateway
-    Metrics --> Gateway
-    Session --> Gateway
-
-    Strategy --> Router
-    Fallback --> Router
-    LoadBalancer --> Router
-    Metrics --> Router
-
-    Calculator --> Tools
-    WebSearch --> Tools
-    FileOps --> Tools
-    CustomTools --> Tools
-
-    Usage --> Monitoring
-    Trace --> Monitoring
-    Metrics --> Monitoring
-    Alerts --> Monitoring
-    Reports --> Monitoring
-
-    CLI --> Core
-    API --> Core
-    WS --> Core
+    Models --> OpenAI
+    Models --> Anthropic
+    Models --> Ollama
+    Models --> HF
+    Models --> Others
 ```
 
 ## Model Providers
 
-The MultiMind SDK supports the following model providers:
+`multimind.models` ships one wrapper class per provider, all deriving from `BaseLLM`:
 
-### OpenAI
-- GPT-3.5 Turbo
-- GPT-4
-- GPT-4 Vision
-- Text Embedding Models
+| Wrapper | Provider | Notes |
+|---------|----------|-------|
+| `OpenAIModel` | OpenAI | chat, generate, embeddings, streaming |
+| `ClaudeModel` | Anthropic | chat, generate, streaming |
+| `OllamaModel` (`MistralModel` alias) | Ollama | local models over HTTP, no extra needed |
+| `HuggingFaceModel` | HuggingFace | Inference API, or local `transformers` when installed |
+| `GroqModel`, `GeminiModel`, `MistralAIModel`, `DeepSeekModel`, `OpenRouterModel`, `TogetherModel`, `XAIModel`, `PerplexityModel`, `FireworksModel`, `CerebrasModel` | respective APIs | OpenAI-compatible or native clients |
+| `MultiModelWrapper` | several | primary model with fallbacks and weights |
 
-### Claude
-- Claude 3 Opus
-- Claude 3 Sonnet
-- Claude 3 Haiku
-- Claude Instant
+Non-transformer architectures live in `multimind.llm.non_transformer_llm`; `MambaLLM` and `RWKVLLM` run real (HuggingFace-backed) inference, the other classes there (S4 variants, Hyena, RetNet, MLP-only, diffusion text, ...) are extension scaffolds that raise `NotImplementedError`.
 
-### Mistral
-- Mistral 7B
-- Mixtral 8x7B
-- Mistral Small
-- Mistral Medium
-
-### Ollama
-- Local model hosting
-- Custom model support
-- Model management
-- Inference API
-
-### HuggingFace
-- Open source models
-- Custom model hosting
-- Model fine-tuning
-- Model deployment
-
-### Groq
-- Mixtral 8x7B
-- High-performance inference
-- Low latency
-- Cost-effective
-
-### Local Models
-- Custom model support
-- Local deployment
-- Offline capabilities
-- Resource optimization
-
-Each provider is integrated through a standardized interface, allowing for:
-- Consistent API access
-- Unified error handling
-- Standardized response formats
-- Provider-specific optimizations
+`BaseLLM` defines the shared interface: `generate`, `generate_stream`, `chat`, `chat_stream`, plus `embeddings` where the provider supports it. Model-provider errors surface as `multimind.core.exceptions` types.
 
 ## Component Details
 
-### Core Components
+### Core: models, agents, tools
 
 ```mermaid
 classDiagram
-    class ModelWrapper {
-        +query_model()
-        +available_models()
-        +load_environment()
+    class BaseLLM {
+        +model_name
+        +generate(prompt, temperature, max_tokens)
+        +generate_stream(prompt, ...)
+        +chat(messages, temperature, max_tokens)
+        +chat_stream(messages, ...)
     }
-    
     class Agent {
-        +model
-        +memory
-        +tools
+        +model: BaseLLM
+        +memory: AgentMemory
+        +tools: List~BaseTool~
         +system_prompt
-        +run()
-        +chat()
+        +max_turns
+        +run(task) Dict
     }
-    
     class AgentMemory {
         +max_history
-        +add_message()
+        +add_task()
+        +add_response()
         +get_history()
         +clear()
     }
-    
-    class Tool {
+    class BaseTool {
         +name
         +description
-        +execute()
+        +run(**kwargs)
+        +get_parameters() Dict
     }
-    
-    ModelWrapper <|-- OpenAIModel
-    ModelWrapper <|-- ClaudeModel
-    ModelWrapper <|-- MistralModel
-    Agent --> ModelWrapper
+    BaseLLM <|-- OpenAIModel
+    BaseLLM <|-- ClaudeModel
+    BaseLLM <|-- OllamaModel
+    Agent --> BaseLLM
     Agent --> AgentMemory
-    Agent --> Tool
+    Agent --> BaseTool
+    BaseTool <|-- CalculatorTool
 ```
 
-### Ensemble System
+When the model exposes an OpenAI-compatible client, `Agent` offers tools as native function definitions and runs a bounded tool-call loop (`max_turns`); otherwise it falls back to keyword-based tool routing. `CalculatorTool` is the only built-in tool; other tools are `BaseTool` subclasses you provide. `multimind.agents` also exports `AgentOrchestrator` (with `AgentSpec`, `AgentNode`, `OrchestrationResult`), `SelfEvolvingAgent` and `AgentLoader` (agents configured from MCP workflow files); `multimind.agents.react_toolchain.ReasoningChain` runs ReAct-style reasoning steps.
+
+### Routing
+
+`multimind.router` provides `Router` with pluggable strategies (`strategy.py`: cost-aware, latency-aware, hybrid), a `fallback.py` chain, an `adaptive.py` router and a `multi_modal_router.py`. `multimind.client.FederatedRouter` routes between local and cloud models on input size, latency and privacy constraints, and `multimind.client.model_client` holds the `ModelClient` family (`LSTMModelClient`, `RNNModelClient`, `GRUModelClient`, `MoEModelClient`, `DynamicMoEModelClient`, `MultiModalClient`).
+
+### Ensemble
 
 ```mermaid
 classDiagram
-    class Ensemble {
-        +providers
-        +method
-        +weights
-        +combine_results()
+    class AdvancedEnsemble {
+        +router
+        +combine_results(method, weights)
     }
-    
     class EnsembleMethod {
-        +weighted_voting()
-        +confidence_cascade()
-        +parallel_voting()
-        +majority_voting()
-        +rank_based()
+        <<enum>>
+        WEIGHTED_VOTING
+        CONFIDENCE_CASCADE
+        PARALLEL_VOTING
+        MAJORITY_VOTING
+        RANK_BASED
     }
-    
-    class Provider {
-        +name
-        +weight
-        +confidence
-        +query()
-    }
-    
-    Ensemble --> EnsembleMethod
-    Ensemble --> Provider
-    Provider <|-- OpenAIProvider
-    Provider <|-- AnthropicProvider
-    Provider <|-- OllamaProvider
+    AdvancedEnsemble --> EnsembleMethod
 ```
 
-### Pipeline System
+`multimind.ensemble.advanced.AdvancedEnsemble` combines results from several providers registered on a router. The five methods above are the ones in the `EnsembleMethod` enum. [examples/api/ensemble_api.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/api/ensemble_api.py) wraps it in a FastAPI app.
+
+### Orchestration and the Model Composition Protocol
+
+`multimind.orchestration` has two pieces: `PromptChain` (multi-step prompts with variable substitution) and `TaskRunner` (task dependencies, retries, parallel execution). There is no separate scheduler, resource manager, state manager or event bus.
+
+`multimind.mcp` is MultiMind's own **Model Composition Protocol**: `parser.py` validates a JSON/YAML workflow against `schema.json`, and `executor.py` / `advanced_executor.py` run the steps against registered models. It is unrelated to Anthropic's Model Context Protocol, which is served separately by `multimind.mcp_server` (`python -m multimind.mcp_server`, `mcp` extra; see [mcp-server.md](/mcp-server)).
+
+### RAG
 
 ```mermaid
 classDiagram
-    class Pipeline {
-        +tasks
-        +chains
-        +workflows
-        +run()
+    class RAG {
+        +config: RAGConfig
+        +vector_store: VectorStore
+        +embedding_generator
+        +document_processor
+        +initialize()
+        +add_documents(documents, process)
+        +retrieve(query, k) List~RetrievalResult~
+        +clear()
     }
-    
-    class Task {
-        +name
-        +type
-        +config
-        +execute()
+    class RAGConfig {
+        +vector_store_config: VectorStoreConfig
+        +retrieval_config: Dict
+        +embedding_config: EmbeddingConfig
+        +document_config: Dict
     }
-    
-    class Chain {
-        +steps
-        +dependencies
-        +run()
+    class Retriever {
+        +retrieve(query, top_k)
     }
-    
-    class Workflow {
-        +name
-        +tasks
-        +schedule
-        +execute()
+    class VectorStore {
+        +add_vectors()
+        +search(query_vector, k, filter_criteria)
+        +clear()
     }
-    
-    Pipeline --> Task
-    Pipeline --> Chain
-    Pipeline --> Workflow
-    Chain --> Task
-    Workflow --> Task
+    RAG --> RAGConfig
+    RAG --> Retriever
+    RAG --> VectorStore
+    Retriever --> VectorStore
 ```
 
-### Compliance & Governance
+`VectorStore` dispatches to one of ~60 backends in `multimind.vector_store` (FAISS and Chroma are the most exercised; see [feature-status.md](/feature-status#vector-store-backends) for which backends are real, partial or `NotImplementedError` stubs). `multimind.retrieval` also provides `EnhancedRetriever` and `HybridRetriever`; `multimind.rag` adds `GraphRetriever`, `PostProcessor` and the fluent `RAGPipeline`. Details: [rag.md](/rag).
+
+### Fine-tuning
+
+`multimind.fine_tuning` contains `lora_trainer.py`, `qlora_trainer.py` (real 4-bit NF4 + LoRA when `[finetune-gpu]` deps are present), adapter/PEFT modules (`unified_peft.py`, `advanced_unified_peft.py`, `peft_methods.py`, `ia3_bitfit.py`, `mam_adapter.py`, ...), meta-learning modules and `rag_fine_tuner.py` / `synthetic_data.py` for generating instruction-tuning data from documents. There is no model registry, versioning or deployment subsystem; training outputs are plain checkpoints. Everything here needs the `finetune` extra (torch, transformers, peft, optuna).
+
+### Memory
+
+`multimind.memory` exports `BaseMemory` (five async methods: `add_message`, `get_messages`, `clear`, `save`, `load`) and about fifty implementations, from `BufferMemory` and `SummaryMemory` to `VectorStoreMemory`, `KnowledgeGraphMemory` and `HybridMemory`. A number of the more exotic classes (quantum simulations, HTM, spiking, Bayesian, fast-weight, adapter) are abstract scaffolds that cannot be instantiated. The full list with status is in [memory.md](/memory).
+
+### Compliance and governance
 
 ```mermaid
 classDiagram
-    class Compliance {
-        +privacy
-        +audit
-        +policy
-        +check_compliance()
+    class ComplianceGuard {
+        +scan(text)
+        +redact(text, strategy)
     }
-    
     class PrivacyCompliance {
-        +config
         +export_user_data()
         +erase_user_data()
         +request_model_approval()
     }
-    
-    class AuditSystem {
+    class AuditLog {
+        +append()
         +verify_log_chain()
-        +track_changes()
-        +generate_report()
     }
-    
-    class PolicyEngine {
-        +publish_policy()
-        +validate_compliance()
-        +enforce_rules()
+    class GuardProxy {
+        +/v1/chat/completions
+        +/v1/embeddings
+        +/v1/guardrails/reload
     }
-    
-    Compliance --> PrivacyCompliance
-    Compliance --> AuditSystem
-    Compliance --> PolicyEngine
+    GuardProxy --> ComplianceGuard
+    GuardProxy --> AuditLog
 ```
+
+`multimind.compliance` implements PII detection/redaction (`ComplianceGuard`), GDPR/HIPAA-style privacy models (`privacy.py`, including a `ComplianceTraining` record type), hash-chained audit logging, cost tracking and regulation checkers. `multimind.gateway.guard_proxy` exposes these as an OpenAI-compatible proxy (`multimind serve`), and `multimind.gateway.compliance_api` mounts the `/v1/compliance/*` routes. Dashboards need the `compliance` extra (plotly, dash).
+
+### Observability
+
+`multimind.multimind_logging` provides `trace_logger.py` and `usage_tracker.py` (token/cost accounting with JSON/CSV export); `multimind.observability` and `multimind.metrics` add tracing hooks and cost reports used by `multimind audit costs` and the governance dashboard (`multimind dashboard`). The gateway has its own in-process `ModelMonitor` (per-model request/latency/error metrics, health checks and rate limits) in `multimind.core.monitoring`.
 
 ### Interfaces
 
-```mermaid
-classDiagram
-    class Interface {
-        +cli
-        +api
-        +websocket
-    }
-    
-    class CLI {
-        +ensemble_commands()
-        +model_commands()
-        +compliance_commands()
-    }
-    
-    class API {
-        +rest_endpoints()
-        +websocket_endpoints()
-        +authentication()
-    }
-    
-    class WebSocket {
-        +connect()
-        +subscribe()
-        +publish()
-    }
-    
-    Interface --> CLI
-    Interface --> API
-    Interface --> WebSocket
-```
+- **CLI** (`multimind`): `chat`, `models`, `config`, `compliance`, `audit`, `serve` (guard proxy), `dashboard`, `backend` (the combined REST API) and `convert`. See [cli.md](/cli).
+- **REST**: `multimind.server.platform.create_platform_app()` ("MultiMind API", served by `multimind backend` on port 8080) merges the gateway, compliance, dashboard `/api/*`, guard-proxy and RAG routes behind one Swagger UI. The individual apps (`multimind.gateway.api`, `multimind.gateway.rag_api`, `multimind.api.multi_model_api`, `multimind.api.unified_api`) can still be run on their own. See [api_reference/overview.md](/api_reference/overview).
+- **MCP server** (`python -m multimind.mcp_server`): exposes MultiMind tools to Anthropic Model Context Protocol clients.
 
-### RAG System
-
-```mermaid
-classDiagram
-    class RAGSystem {
-        +index_documents()
-        +retrieve_context()
-        +augment_prompt()
-    }
-    
-    class DocumentIndexer {
-        +chunk_documents()
-        +create_embeddings()
-        +store_vectors()
-    }
-    
-    class VectorRetriever {
-        +search_vectors()
-        +rank_results()
-        +filter_results()
-    }
-    
-    class ContextAugmenter {
-        +combine_context()
-        +format_prompt()
-        +validate_context()
-    }
-    
-    RAGSystem --> DocumentIndexer
-    RAGSystem --> VectorRetriever
-    RAGSystem --> ContextAugmenter
-```
-
-### Fine-tuning System
-
-```mermaid
-classDiagram
-    class FineTuningSystem {
-        +prepare_data()
-        +train_model()
-        +evaluate_model()
-        +deploy_model()
-    }
-    
-    class ModelTrainer {
-        +train()
-        +validate()
-        +save_checkpoint()
-    }
-    
-    class ModelEvaluator {
-        +evaluate()
-        +compare_models()
-        +generate_metrics()
-    }
-    
-    class ModelDeployer {
-        +deploy()
-        +rollback()
-        +monitor()
-    }
-    
-    FineTuningSystem --> ModelTrainer
-    FineTuningSystem --> ModelEvaluator
-    FineTuningSystem --> ModelDeployer
-```
-
-### Model Control Plane
-
-```mermaid
-classDiagram
-    class ModelControlPlane {
-        +monitor_models()
-        +scale_resources()
-        +route_requests()
-        +balance_load()
-    }
-    
-    class ModelMonitor {
-        +track_metrics()
-        +detect_anomalies()
-        +generate_alerts()
-    }
-    
-    class ResourceScaler {
-        +scale_up()
-        +scale_down()
-        +optimize_resources()
-    }
-    
-    class RequestRouter {
-        +route_request()
-        +load_balance()
-        +failover()
-    }
-    
-    ModelControlPlane --> ModelMonitor
-    ModelControlPlane --> ResourceScaler
-    ModelControlPlane --> RequestRouter
-```
-
-### Memory System
-
-```mermaid
-classDiagram
-    class MemorySystem {
-        +store_memory()
-        +retrieve_memory()
-        +update_memory()
-    }
-    
-    class ShortTermMemory {
-        +buffer_size
-        +add_to_buffer()
-        +clear_buffer()
-    }
-    
-    class LongTermMemory {
-        +store_permanent()
-        +retrieve_permanent()
-        +update_permanent()
-    }
-    
-    class WorkingMemory {
-        +current_context
-        +update_context()
-        +clear_context()
-    }
-    
-    class EpisodicMemory {
-        +store_episode()
-        +retrieve_episode()
-        +link_episodes()
-    }
-    
-    MemorySystem --> ShortTermMemory
-    MemorySystem --> LongTermMemory
-    MemorySystem --> WorkingMemory
-    MemorySystem --> EpisodicMemory
-```
-
-### Orchestration Engine
-
-```mermaid
-classDiagram
-    class OrchestrationEngine {
-        +schedule_tasks()
-        +manage_resources()
-        +handle_events()
-    }
-    
-    class TaskScheduler {
-        +schedule()
-        +prioritize()
-        +reschedule()
-    }
-    
-    class ResourceManager {
-        +allocate()
-        +deallocate()
-        +optimize()
-    }
-    
-    class StateManager {
-        +track_state()
-        +update_state()
-        +recover_state()
-    }
-    
-    class EventBus {
-        +publish()
-        +subscribe()
-        +handle_event()
-    }
-    
-    OrchestrationEngine --> TaskScheduler
-    OrchestrationEngine --> ResourceManager
-    OrchestrationEngine --> StateManager
-    OrchestrationEngine --> EventBus
-```
-
-### Model Client Architecture and Routing
-
-The MultiMind SDK features an extensible model client system for advanced and flexible model management:
-
-- **ModelClient**: The base class for all model clients (transformer and non-transformer). Subclass to implement custom models.
-- **Prebuilt Clients**: Includes LSTMModelClient, RNNModelClient, GRUModelClient, MoEModelClient (Mixture-of-Experts), DynamicMoEModelClient (runtime metrics-based routing), MultiModalClient (unified text, image, audio, video, code), and more.
-- **Routing Logic**: MoE and DynamicMoE clients route requests to the best expert model based on prompt or runtime metrics. FederatedRouter enables routing between local and cloud models based on context (input size, latency, privacy, etc.).
-- **Extensibility**: Easily add new model types or routing strategies by subclassing ModelClient or implementing custom routers.
-
-This architecture enables dynamic model selection, multimodal workflows, and advanced routing for cost, latency, or quality optimization. See the Usage Guide for code examples.
+There is no WebSocket API; streaming is done through the async `*_stream` model methods in Python and through SSE on the OpenAI-compatible proxy.
 
 ## Data Flow
 
+A typical RAG-augmented request through the combined API:
+
 ```mermaid
 sequenceDiagram
-    participant User
-    participant Interface
-    participant Core
+    participant Client
+    participant API as MultiMind API (FastAPI)
     participant RAG
-    participant Ensemble
-    participant MCP
+    participant Handler as Model handler
     participant Provider
-    
-    User->>Interface: Request
-    Interface->>Core: Process Request
-    Core->>RAG: Get Context
-    RAG-->>Core: Context
-    Core->>Ensemble: Get Ensemble Result
-    Ensemble->>MCP: Route Request
-    MCP->>Provider: Query Providers
-    Provider-->>MCP: Provider Results
-    MCP-->>Ensemble: Routed Results
-    Ensemble-->>Core: Combined Result
-    Core-->>Interface: Processed Response
-    Interface-->>User: Final Response
+
+    Client->>API: POST /query or /generate (RAG) / POST /v1/chat
+    API->>API: API_KEYS check (X-API-Key) when configured
+    API->>RAG: retrieve(query, k)
+    RAG-->>API: RetrievalResult[]
+    API->>Handler: chat(messages) / generate(prompt)
+    Handler->>Provider: provider SDK call
+    Provider-->>Handler: completion
+    Handler-->>API: ModelResponse(content, model, usage)
+    API->>API: monitor.track_request(...)
+    API-->>Client: JSON response
 ```
 
 ## Deployment Architecture
 
 ```mermaid
 graph TB
-    subgraph "Client Layer"
-        CLI[CLI Client]
-        API[API Client]
-        WS[WebSocket Client]
+    subgraph "Clients"
+        CLI[CLI]
+        HTTP[HTTP clients / RAGClient]
+        OpenAISDK[OpenAI-compatible SDKs via guard proxy]
     end
-    
-    subgraph "Application Layer"
-        Server[MultiMind Server]
-        Redis[(Redis Cache)]
-        Chroma[(Chroma DB)]
+
+    subgraph "MultiMind process"
+        Backend["multimind backend (port 8080)"]
+        Proxy["multimind serve (port 8400)"]
     end
-    
-    subgraph "Model Layer"
-        OpenAI[OpenAI API]
-        Anthropic[Anthropic API]
-        Ollama[Ollama Service]
-        HF[HuggingFace API]
+
+    subgraph "Optional services"
+        Redis[(Redis - RedisMemory, gateway extra)]
+        VectorDB[(Vector DB - Chroma/Qdrant/... via vector-stores extra)]
+        Ollama[Ollama]
     end
-    
-    CLI --> Server
-    API --> Server
-    WS --> Server
-    
-    Server --> Redis
-    Server --> Chroma
-    
-    Server --> OpenAI
-    Server --> Anthropic
-    Server --> Ollama
-    Server --> HF
+
+    subgraph "Hosted providers"
+        OpenAI
+        Anthropic
+        HF[HuggingFace]
+    end
+
+    CLI --> Backend
+    HTTP --> Backend
+    OpenAISDK --> Proxy
+    Backend --> Redis
+    Backend --> VectorDB
+    Backend --> Ollama
+    Backend --> OpenAI
+    Backend --> Anthropic
+    Backend --> HF
+    Proxy --> OpenAI
+    Proxy --> Ollama
 ```
+
+The default vector store is in-process FAISS; Redis and external vector databases are opt-in. See [deployment.md](/deployment) for Docker and environment details.
 
 ## Configuration
 
-The architecture supports various configuration options through environment variables and configuration files:
-
-```mermaid
-graph LR
-    subgraph "Configuration Sources"
-        Env[Environment Variables]
-        Config[Config Files]
-        Secrets[Secret Management]
-    end
-    
-    subgraph "Configuration Types"
-        API[API Keys]
-        Model[Model Settings]
-        System[System Settings]
-        Compliance[Compliance Rules]
-    end
-    
-    Env --> API
-    Config --> Model
-    Config --> System
-    Secrets --> API
-    Config --> Compliance
-```
+Configuration is environment-first. `multimind.core.config.GatewayConfig` (re-exported as `multimind.gateway.config.config`) loads a `.env` file via `python-dotenv` and reads one `ModelConfig` section per provider from `*_API_KEY` / `*_MODEL_NAME` variables plus `DEFAULT_MODEL` and `LOG_LEVEL`. The guard proxy and dashboard read `MULTIMIND_PROXY_*` and `MULTIMIND_DASHBOARD_*`; the CLI stores its own defaults in `~/.multimind_cli_config`. `API_KEYS` turns on `X-API-Key` authentication for the HTTP apps and `MULTIMIND_CORS_ORIGINS` enables CORS. Full list: [configuration.md](/configuration).
 
 ## Security Architecture
 
-```mermaid
-graph TB
-    subgraph "Security Layers"
-        Auth[Authentication]
-        Authz[Authorization]
-        Audit[Audit Logging]
-        Privacy[Privacy Controls]
-    end
-    
-    subgraph "Security Features"
-        API[API Key Management]
-        RBAC[Role-Based Access]
-        Logging[Secure Logging]
-        Encryption[Data Encryption]
-    end
-    
-    Auth --> API
-    Authz --> RBAC
-    Audit --> Logging
-    Privacy --> Encryption
-```
+- **Authentication**: `API_KEYS` (comma-separated) gates every non-health route of the combined API, the multi-model API and the RAG API; the RAG API additionally supports JWT bearer tokens issued by `POST /token` when `JWT_SECRET` and `JWT_USERS_JSON` (bcrypt hashes) are set. When neither is configured the servers are open, which is intended for local development only.
+- **Audit logging**: hash-chained JSONL audit trails from the guard proxy and compliance modules (`verify_log_chain`).
+- **Privacy controls**: PII detection and redaction (`mask`, `hash`, `remove`) on requests and, optionally, responses.
+- **Secrets**: provider keys are read from the environment and never logged; the shadow-AI scan (`multimind audit scan`) flags hardcoded keys in a codebase.
 
-This architecture documentation provides a comprehensive overview of the MultiMind SDK's structure and components. Each diagram illustrates different aspects of the system, from high-level overview to detailed component interactions. 
+There is no built-in role-based access control or at-rest encryption layer; put the API behind your own gateway/TLS termination for production.

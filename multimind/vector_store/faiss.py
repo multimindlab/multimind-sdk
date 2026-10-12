@@ -91,26 +91,58 @@ class FAISSBackend(VectorStoreBackend):
         if not self.index:
             return []
 
+        def _matches(metadata: Dict[str, Any], criteria: Dict[str, Any]) -> bool:
+            for key, expected in criteria.items():
+                if key == "id":
+                    continue
+                if metadata.get(key) != expected:
+                    return False
+            return True
+
+        # Direct id lookup. FAISS search order is not an id index, so a filter
+        # on id must not depend on the query vector ranking.
+        if filter_criteria and "id" in filter_criteria:
+            wanted = str(filter_criteria["id"])
+            if wanted not in self.metadata or wanted not in self.documents:
+                return []
+            if not _matches(self.metadata[wanted], filter_criteria):
+                return []
+            stored = self._vectors.get(wanted)
+            vector = stored.tolist() if stored is not None else query_vector
+            return [
+                SearchResult(
+                    id=wanted,
+                    vector=vector,
+                    metadata=self.metadata[wanted],
+                    document=self.documents[wanted],
+                    score=1.0,
+                )
+            ]
+
+        ntotal = len(self._id_order)
+        search_k = ntotal if filter_criteria else k
+        search_k = max(search_k, 1)
         query_array = np.array([query_vector]).astype("float32")
-        distances, indices = self.index.search(query_array, k)
+        distances, indices = self.index.search(query_array, search_k)
 
         results = []
         for i, (distance, idx) in enumerate(zip(distances[0], indices[0])):
-            if idx >= 0 and idx < len(
-                self._id_order
-            ):  # Check idx >= 0 (FAISS returns -1 for invalid)
+            if idx >= 0 and idx < len(self._id_order):
                 id = self._id_order[idx]
-                # Check if metadata and document exist for this ID
                 if id in self.metadata and id in self.documents:
+                    if filter_criteria and not _matches(self.metadata[id], filter_criteria):
+                        continue
                     results.append(
                         SearchResult(
                             id=id,
-                            vector=query_vector,  # FAISS doesn't store vectors
+                            vector=query_vector,
                             metadata=self.metadata[id],
                             document=self.documents[id],
-                            score=float(1 / (1 + distance)),  # Convert distance to similarity
+                            score=float(1 / (1 + distance)),
                         )
                     )
+                    if len(results) >= k:
+                        break
 
         return results
 

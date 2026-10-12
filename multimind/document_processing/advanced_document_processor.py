@@ -5,7 +5,9 @@ Advanced document processing with multi-modal support, table extraction, and str
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
@@ -62,6 +64,25 @@ except ImportError:
     logger.warning("PyTorch not available. Deep learning features will be disabled.")
 
 from ..models.base import BaseLLM
+
+_JSON_LIST_RE = re.compile(r"\[.*\]", re.DOTALL)
+
+
+def _parse_model_json_list(response: Any, label: str) -> List[Dict[str, Any]]:
+    """Parse a JSON list from a model response. Raise if the model did not return one."""
+    text = response if isinstance(response, str) else getattr(response, "content", None)
+    if text is None:
+        text = str(response)
+    match = _JSON_LIST_RE.search(text)
+    if not match:
+        raise ValueError(f"{label}: model response did not contain a JSON list")
+    try:
+        data = json.loads(match.group())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label}: model response was not valid JSON") from exc
+    if not isinstance(data, list):
+        raise ValueError(f"{label}: expected a JSON list, got {type(data).__name__}")
+    return data
 
 
 @dataclass
@@ -271,9 +292,7 @@ class AdvancedDocumentProcessor:
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
-        # Parse response into sections
-        # This is a placeholder implementation
-        return []
+        return _parse_model_json_list(response, "section extraction")
 
     async def _detect_tables(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Detect and extract tables."""
@@ -286,11 +305,12 @@ class AdvancedDocumentProcessor:
         inputs = self.table_processor(images=document.get("images", []), return_tensors="pt")
 
         with torch.no_grad():
-            outputs = self.table_model(**inputs)
+            self.table_model(**inputs)
 
-        # Process outputs to get table locations
-        # This is a placeholder implementation
-        return tables
+        raise NotImplementedError(
+            "Decoding table-transformer outputs into table locations is not implemented. "
+            "Use _extract_table_data with pre-parsed rows or a pdf_path."
+        )
 
     async def _extract_images(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Extract and process images."""
@@ -332,9 +352,7 @@ class AdvancedDocumentProcessor:
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
-        # Parse response into headers
-        # This is a placeholder implementation
-        return []
+        return _parse_model_json_list(response, "header extraction")
 
     async def _extract_paragraphs(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Extract document paragraphs."""
@@ -351,9 +369,7 @@ class AdvancedDocumentProcessor:
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
-        # Parse response into paragraphs
-        # This is a placeholder implementation
-        return []
+        return _parse_model_json_list(response, "paragraph extraction")
 
     async def _identify_lists(self, document: Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
         """Identify document lists."""
@@ -370,9 +386,7 @@ class AdvancedDocumentProcessor:
         """
 
         response = await self.model.generate(prompt=prompt, **kwargs)
-        # Parse response into lists
-        # This is a placeholder implementation
-        return []
+        return _parse_model_json_list(response, "list extraction")
 
     async def _process_text_content(
         self, document: Dict[str, Any], structure: DocumentStructure, **kwargs

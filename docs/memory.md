@@ -1,424 +1,131 @@
-# Memory Implementations
+---
+title: "Memory Implementations"
+---
 
-This document provides an overview of all memory implementations in the MultiMind SDK, including their status and key features.
+This document lists the memory classes exported by `multimind.memory`, what state each one is actually in, and how to use the ones that work. Every class below is importable from `multimind.memory`; the lightweight ones are imported eagerly and the rest resolve lazily on first access.
+
+All memory classes derive from `BaseMemory`, whose contract is five async methods: `add_message(message)`, `get_messages()`, `clear()`, `save()` and `load()`. A class that does not implement all five is abstract and raises `TypeError: Can't instantiate abstract class ...` when constructed. Those classes are listed separately below as scaffolds; their constructor signatures and helper methods exist, but you cannot use them without subclassing.
+
+For the authoritative stable/beta/planned status, see [feature-status.md](/feature-status#memory-systems).
+
+## Extras
+
+| Extra | Needed for |
+|-------|------------|
+| none (core install) | `BufferMemory`, `BufferWindowMemory`, `SummaryMemory`, `SummaryBufferMemory`, `TokenAwareMemory`, `EntityMemory`, `TimeWeightedMemory`, `HierarchicalMemory`, `EpisodicMemory`, `SemanticMemory`, `ProceduralMemory`, `AssociativeMemory`, `EmotionalMemory`, `DeclarativeMemory`, `SpatialMemory`, `TemporalMemory`, `SensoryMemory`, `VersionedMemory`, `EventSourcedMemory`, `CognitiveScratchpadMemory`, `ActiveLearningMemory`, `ConsensusMemory`, `ReinforcementMemory`, `GenerativeMemory`, `ChatMemory`, `SimpleMemory`, `CombinedMemory`, `ReadOnlyMemory`, `SQLAlchemyMemory` |
+| `pip install "multimind-sdk[memory]"` (redis, numpy, networkx) | `VectorStoreMemory`, `KnowledgeGraphMemory`, `HybridMemory`, `ContextualMemory`, `WorkingMemory`, `ForgettingCurveMemory`, `NoveltyMemory`, `DNCMemory`, `ImplicitMemory`, `PlanningMemory`, `RedisMemory`, plus the scaffolds that need numpy |
+| `pip install "multimind-sdk[finetune]"` (torch) | `FastWeightMemory`, `AdapterMemory`, `FederatedMemory`, `BayesianMemory`, `AdvancedMemory` |
 
 ## Implemented Memory Types
 
-### Core Memory Types
-1. **Base Memory** (`BaseMemory`)
-   - Abstract base class for all memory implementations
-   - Defines core memory interface and common functionality
+These classes implement the full `BaseMemory` contract and can be instantiated directly. Most of the LLM-backed ones take a `BaseLLM` instance (for example `OpenAIModel`) as their first argument and call it for summarization, routing or extraction.
 
-2. **Conversation Memory**
-   - `BufferMemory`: Stores conversation history in a buffer
-   - `BufferWindowMemory`: Maintains a sliding window of conversation history
-   - `SummaryMemory` / `SummaryBufferMemory`: Maintain summarized conversation history
+### Conversation buffers (no LLM required)
 
-3. **Entity Memory** (`EntityMemory`)
-   - Stores and retrieves information about entities
-   - Maintains relationships between entities
+- `BufferMemory(memory_key="chat_history", max_tokens=2000, max_messages=None, strategy="sliding", ...)` - stores conversation history with sliding/FIFO/LRU pruning
+- `BufferWindowMemory(window_size=10, window_type="count", ...)` - sliding window of recent messages
+- `SummaryBufferMemory(max_messages=None, max_tokens=None, summary_interval=10, ...)` - buffer plus periodic summaries
+- `TokenAwareMemory` - token-budgeted history
+- `TimeWeightedMemory(decay_rate=0.1, ...)` - time-decayed relevance
+- `EntityMemory(entity_types=None, relationship_types=None, ...)` - entity and relationship tracking
+- `ChatMemory`, `SimpleMemory`, `CombinedMemory`, `ReadOnlyMemory` - small utility memories
+- `SQLAlchemyMemory`, `RedisMemory` - persistence-backed buffers (`RedisMemory` needs the `memory` extra)
 
-4. **Vector Store Memory** (`VectorStoreMemory`)
-   - Implements vector-based similarity search
-   - Uses embeddings for efficient memory retrieval
+### LLM-backed memories (`llm` is the first constructor argument)
 
-5. **Knowledge Graph Memory** (`KnowledgeGraphMemory`)
-   - Stores information in a graph structure
-   - Maintains relationships and semantic connections
+- `SummaryMemory(llm, ...)` - summarized conversation history
+- `VectorStoreMemory(llm, vector_store_config=None, similarity_threshold=0.7, ...)` - embedding-based similarity retrieval over a FAISS store by default
+- `KnowledgeGraphMemory(llm, ...)` - graph of entities and relations (needs networkx)
+- `HybridMemory(llm, memory_types=None, routing_threshold=0.7, ...)` - routes each message to the best of several child memories
+- `HierarchicalMemory(llm, ...)`, `ContextualMemory(llm, ...)`, `EpisodicMemory(llm, ...)`, `SemanticMemory(llm, ...)`, `ProceduralMemory(llm, ...)`, `WorkingMemory(llm, ...)`, `AssociativeMemory(llm, ...)`, `EmotionalMemory(llm, ...)`, `DeclarativeMemory(llm, ...)`, `SpatialMemory(llm, ...)`, `TemporalMemory(llm, ...)`, `SensoryMemory(llm, ...)`, `ForgettingCurveMemory(llm, ...)`, `NoveltyMemory(llm, ...)`, `VersionedMemory(llm, ...)`, `EventSourcedMemory(llm, ...)`, `CognitiveScratchpadMemory(llm, ...)`, `ActiveLearningMemory(llm, ...)`, `DNCMemory(llm, ...)`
 
-### Advanced Memory Types
+### Other implemented memories
 
-6. **Time-Weighted Memory** (`TimeWeightedMemory`)
-   - Implements time-based memory decay
-   - Prioritizes recent memories
+- `ImplicitMemory(skill_decay=0.95, max_skills=1000, ...)` - skill tracking with prerequisite graph
+- `ConsensusMemory(node_id, nodes=None, ...)` - local in-process replication with majority-vote reads; networked RAFT (elections, RPCs) is not implemented and raises `NotImplementedError`
+- `ReinforcementMemory(total_budget=1000, ...)` - tabular Q-learning for keep/evict/compress budgeting
+- `PlanningMemory(similarity_threshold=0.8, ...)` - plan-step recording with success-weighted next-step suggestions
+- `GenerativeMemory` - regeneration bookkeeping with a caller-supplied generator
 
-7. **Token Buffer Memory** (`TokenBufferMemory`)
-   - Manages memory based on token count
-   - Implements token-based memory limits
+## Scaffolds (abstract, cannot be instantiated)
 
-8. **Hybrid Memory** (`HybridMemory`)
-   - Combines multiple memory types
-   - Provides unified interface for different memory systems
+The following classes exist and expose their own methods (for example `add_memory` / `get_memory` on the quantum classes), but they do not implement `add_message`, `get_messages`, `clear`, `save` and/or `load` from `BaseMemory`. Constructing them raises `TypeError`. Treat them as starting points for a subclass, not as usable memories.
 
-9. **Hierarchical Memory** (`HierarchicalMemory`)
-   - Organizes memories in a hierarchical structure
-   - Supports multi-level memory access
+| Class | Notes |
+|-------|-------|
+| `TokenBufferMemory` | token-count buffer; missing `save`/`load` |
+| `MetaMemory(base_memory, ...)` | memory about memories |
+| `SketchMemory` | count-min sketch / bloom-filter approximate storage |
+| `CausalMemory` | causal relationship store |
+| `NeuroSymbolicMemory` | neural + symbolic hybrid |
+| `AutobiographicalMemory` | self-referential event memory |
+| `ProspectiveMemory` | reminders / intentions |
+| `ExplicitMemory` | fact store |
+| `AdaptiveMemory` | self-tuning context size |
+| `HTMMemory(input_size=1024, num_columns=2048, ...)` | hierarchical temporal memory |
+| `SpikingMemory` | neuromorphic spiking network with STDP |
+| `BayesianMemory` | nonparametric Bayesian clustering (needs torch) |
+| `QRAM`, `QAM`, `TopologicalMemory`, `QuantumClassicalHybridMemory` | classical simulations of quantum memory designs, not quantum hardware |
+| `FastWeightMemory`, `AdapterMemory`, `FederatedMemory` | torch-based (finetune extra); implement `add_memory`/`get_memory` only |
 
-10. **Contextual Memory** (`ContextualMemory`)
-    - Maintains context-aware memory retrieval
-    - Supports contextual relevance scoring
-
-11. **Episodic Memory** (`EpisodicMemory`)
-    - Stores event-based memories
-    - Maintains temporal sequence of events
-
-12. **Semantic Memory** (`SemanticMemory`)
-    - Stores conceptual knowledge
-    - Implements semantic similarity search
-
-13. **Procedural Memory** (`ProceduralMemory`)
-    - Stores action sequences and procedures
-    - Maintains skill-based knowledge
-
-14. **Working Memory** (`WorkingMemory`)
-    - Implements short-term memory processing
-    - Manages active cognitive tasks
-
-15. **Associative Memory** (`AssociativeMemory`)
-    - Implements pattern-based memory retrieval
-    - Maintains associative connections
-
-16. **Emotional Memory** (`EmotionalMemory`)
-    - Stores emotionally significant memories
-    - Implements emotional valence tracking
-
-17. **Declarative Memory** (`DeclarativeMemory`)
-    - Stores factual knowledge
-    - Implements explicit memory retrieval
-
-18. **Spatial Memory** (`SpatialMemory`)
-    - Stores spatial relationships
-    - Implements spatial reasoning
-
-19. **Temporal Memory** (`TemporalMemory`)
-    - Manages time-based memory organization
-    - Implements temporal reasoning
-
-20. **Sensory Memory** (`SensoryMemory`)
-    - Stores sensory information
-    - Implements sensory processing
-
-21. **Forgetting Curve Memory** (`ForgettingCurveMemory`)
-    - Implements Ebbinghaus forgetting curve
-    - Manages memory decay over time
-
-22. **Novelty Memory** (`NoveltyMemory`)
-    - Tracks novel information
-    - Implements novelty detection
-
-23. **Versioned Memory** (`VersionedMemory`)
-    - Maintains memory versions
-    - Implements version control for memories
-
-24. **Event-Sourced Memory** (`EventSourcedMemory`)
-    - Stores memory as event sequences
-    - Implements event-based memory reconstruction
-
-25. **Cognitive Scratchpad Memory** (`CognitiveScratchpadMemory`)
-    - Implements temporary working memory
-    - Manages active cognitive processing
-
-26. **Federated Memory** (`FederatedMemory`)
-    - Implements distributed memory storage
-    - Supports privacy-preserving memory sharing
-
-27. **Active Learning Memory** (`ActiveLearningMemory`)
-    - Implements active learning for memory
-    - Optimizes memory acquisition
-
-28. **Differentiable Neural Computer Memory** (`DNCMemory`)
-    - Implements DNC architecture
-    - Supports complex memory operations
-
-29. **Meta Memory** (`MetaMemory`)
-    - Manages memory about memories
-    - Implements memory self-awareness
-
-30. **Sketch Memory** (`SketchMemory`)
-    - Implements approximate memory storage
-    - Supports efficient memory compression
-
-31. **Causal Memory** (`CausalMemory`)
-    - Stores causal relationships
-    - Implements causal reasoning
-
-32. **Neuro-Symbolic Memory** (`NeuroSymbolicMemory`)
-    - Combines neural and symbolic memory
-    - Supports hybrid reasoning
-
-33. **Autobiographical Memory** (`AutobiographicalMemory`)
-    - Stores personal experiences
-    - Implements self-referential memory
-
-34. **Prospective Memory** (`ProspectiveMemory`)
-    - Manages future-oriented memory
-    - Implements intention memory
-
-35. **Implicit Memory** (`ImplicitMemory`)
-    - Stores unconscious memories
-    - Implements procedural learning
-
-36. **Explicit Memory** (`ExplicitMemory`)
-    - Stores conscious memories
-    - Implements declarative learning
-
-37. **Short-Term Memory** (`ShortTermMemory`)
-    - Manages temporary memory storage
-    - Implements working memory
-
-38. **Long-Term Memory** (`LongTermMemory`)
-    - Manages permanent memory storage
-    - Implements persistent memory
-
-39. **Consensus Memory** (`ConsensusMemory`)
-    - Implements distributed consensus
-    - Uses RAFT protocol for consistency
-
-40. **Reinforcement Memory** (`ReinforcementMemory`)
-    - Implements memory budgeting
-    - Uses reinforcement learning for optimization
-
-41. **Adaptive Memory** (`AdaptiveMemory`)
-    - Implements self-adapting memory
-    - Optimizes memory based on usage
-
-42. **Planning Memory** (`PlanningMemory`)
-    - Implements memory-based planning
-    - Supports action planning with rollouts
-
-43. **Fast-Weight Memory** (`FastWeightMemory`)
-    - Implements Hebbian learning
-    - Supports rapid in-context learning
-    - Uses weight matrix for memory storage
-
-44. **Adapter Memory** (`AdapterMemory`)
-    - Implements adapter-based session memory
-    - Supports fine-tuning per session
-    - Uses adapter layers for memory adaptation
-
-45. **Hierarchical Temporal Memory** (`HTMMemory`)
-    - Implements HTM architecture
-    - Supports sequence prediction
-    - Uses sparse distributed representations
-
-46. **Quantum Random-Access Memory** (`QRAM`)
-    - Implements quantum memory using bucket-brigade design
-    - Supports coherent memory access
-    - Uses quantum state for addressing
-    - Features error correction and coherence tracking
-
-47. **Quantum Associative Memory** (`QAM`)
-    - Implements quantum Hopfield network
-    - Supports pattern-based memory retrieval
-    - Uses quantum energy landscape
-    - Features pattern diversity tracking
-
-48. **Topological Quantum Memory** (`TopologicalMemory`)
-    - Implements topological quantum memory using anyons
-    - Supports braiding operations for memory access
-    - Uses logical qubits for error protection
-    - Features anyon-based encoding and decoding
-
-49. **Quantum-Classical Hybrid Memory** (`QuantumClassicalHybridMemory`)
-    - Implements hybrid quantum-classical memory
-    - Supports both quantum and classical storage
-    - Uses quantum enhancement for classical data
-    - Features adaptive encoding selection
-
-## Partially Implemented Memory Types
-
-1. **Neuromorphic Spiking Memory**
-   - Basic structure implemented
-   - Needs completion of spike-timing-dependent plasticity
-   - Requires integration with neuromorphic hardware
-
-2. **Nonparametric Bayesian Memory**
-   - Basic clustering implemented
-   - Needs completion of Bayesian inference
-   - Requires optimization of hyperparameters
-
-3. **Topological Quantum Memory**
-   - Basic structure implemented
-   - Needs completion of error protection
-   - Requires integration with quantum hardware
-
-4. **Neuromorphic Quantum Memory**
-   - Basic structure implemented
-   - Needs completion of quantum spike timing
-   - Requires integration with neuromorphic hardware
-
-## Memory Types To Be Implemented
-
-1. **Holographic Memory**
-   - Holographic storage
-   - Interference patterns
-   - Distributed memory representation
-
-2. **DNA Memory**
-   - DNA-based storage
-   - Molecular memory encoding
-   - Biological memory systems
-
-3. **Quantum-Classical Hybrid Memory**
-   - Quantum-classical interface
-   - Hybrid state storage
-   - Quantum-enhanced classical memory
-
-4. **Neuromorphic Quantum Memory**
-   - Quantum neuromorphic computing
-   - Quantum neural networks
-   - Quantum spike timing
+Nothing in the package implements holographic, DNA or neuromorphic-quantum memory. There are no `ShortTermMemory` or `LongTermMemory` classes; use `BufferMemory` / `BufferWindowMemory` for short-term history and `VectorStoreMemory` or `SQLAlchemyMemory` for durable storage.
 
 ## Usage Examples
 
-`FastWeightMemory` and `AdapterMemory` require the finetune extra: `pip install "multimind-sdk[finetune]"`.
-
 ```python
+import asyncio
 from multimind import OpenAIModel
-from multimind.memory import (
-    BufferMemory,
-    VectorStoreMemory,
-    HybridMemory,
-    FastWeightMemory,   # requires multimind-sdk[finetune]
-    AdapterMemory,      # requires multimind-sdk[finetune]
-    HTMMemory,
-    QRAM,
-    QAM,
-    TopologicalMemory,
-    QuantumClassicalHybridMemory
-)
+from multimind.memory import BufferMemory, VectorStoreMemory, HybridMemory, SummaryMemory
 
-model = OpenAIModel(model_name="gpt-4o-mini")
+model = OpenAIModel(model_name="gpt-4o-mini")   # reads OPENAI_API_KEY
 
-# Create a conversation memory
-conv_memory = BufferMemory()
+async def main():
+    # Plain conversation buffer (no LLM calls)
+    conv_memory = BufferMemory()
+    await conv_memory.add_message({"role": "user", "content": "This is an example memory"})
+    print(await conv_memory.get_messages())
 
-# Create a vector store memory (needs an LLM for embeddings/summaries)
-vector_memory = VectorStoreMemory(llm=model)
+    # Vector store memory (requires multimind-sdk[memory]; embeds via the model)
+    vector_memory = VectorStoreMemory(llm=model)
 
-# Create a hybrid memory (routes across memory types)
-hybrid_memory = HybridMemory(
-    llm=model,
-    memory_types=[BufferMemory, VectorStoreMemory]
-)
+    # Summary memory (calls the model to summarize older turns)
+    summary_memory = SummaryMemory(llm=model)
 
-# Create a fast-weight memory
-fast_memory = FastWeightMemory(
-    input_size=768,
-    memory_size=1024
-)
+    # Hybrid memory routes each message to the best child memory (uses the model)
+    hybrid_memory = HybridMemory(
+        llm=model,
+        memory_types=[BufferMemory, VectorStoreMemory],
+    )
+    await hybrid_memory.add_message({"role": "user", "content": "Remember that I prefer Python."})
+    print(await hybrid_memory.get_messages())
 
-# Create an adapter memory
-adapter_memory = AdapterMemory(
-    input_size=768,
-    adapter_size=64
-)
-
-# Create an HTM memory
-htm_memory = HTMMemory(
-    input_size=1024,
-    num_columns=2048
-)
-
-# Create a quantum random-access memory
-qram = QRAM(
-    num_qubits=8,
-    memory_size=256,
-    error_rate=0.01
-)
-
-# Create a quantum associative memory
-qam = QAM(
-    num_qubits=8,
-    num_patterns=16,
-    learning_rate=0.1
-)
-
-# Create a topological quantum memory
-topological_memory = TopologicalMemory(
-    num_qubits=8,
-    surface_size=32,
-    error_threshold=0.1
-)
-
-# Create a quantum-classical hybrid memory
-quantum_hybrid_memory = QuantumClassicalHybridMemory(
-    num_qubits=8,
-    classical_size=1024,
-    hybrid_threshold=0.5
-)
-
-# Add a message to the hybrid memory (routed to the best memory type)
-await hybrid_memory.add_message(
-    {"role": "user", "content": "This is an example memory"}
-)
-
-# Add memory to QRAM
-await qram.add_memory(
-    memory_id="quantum_example",
-    content="This is a quantum memory example",
-    metadata={"type": "quantum"}
-)
-
-# Add pattern to QAM
-await qam.add_memory(
-    memory_id="quantum_pattern",
-    content="This is a quantum pattern",
-    metadata={"type": "pattern"}
-)
-
-# Add memory to topological memory
-await topological_memory.add_memory(
-    memory_id="topological_example",
-    content="This is a topological memory example",
-    metadata={"type": "topological"}
-)
-
-# Add memory to hybrid memory
-await quantum_hybrid_memory.add_memory(
-    memory_id="hybrid_example",
-    content="This is a hybrid memory example",
-    metadata={"type": "hybrid"}
-)
-
-# Retrieve messages from the hybrid memory
-messages = await hybrid_memory.get_messages()
-
-# Retrieve from QRAM
-qram_memory = await qram.get_memory("quantum_example")
-
-# Retrieve from QAM
-qam_memory = await qam.get_memory("quantum_pattern")
-
-# Retrieve from topological memory
-topological_result = await topological_memory.get_memory("topological_example")
-
-# Retrieve from hybrid memory
-hybrid_result = await quantum_hybrid_memory.get_memory("hybrid_example")
+asyncio.run(main())
 ```
+
+Agents use a separate, simpler `multimind.agents.AgentMemory(max_history=100)` for task/response history; see [rag.md](/rag#agent-integration).
 
 ## Best Practices
 
 1. **Memory Selection**
-   - Choose memory type based on use case
-   - Consider memory requirements
-   - Evaluate performance needs
+   - Start with `BufferMemory`; add `SummaryMemory` or `VectorStoreMemory` only when history outgrows the context window
+   - Check the extras table above before importing a memory type
+   - Do not rely on the scaffold classes in production code
 
 2. **Memory Configuration**
-   - Configure memory parameters appropriately
-   - Monitor memory usage
-   - Optimize memory settings
+   - `VectorStoreMemory` defaults to a FAISS backend; the FAISS backend ignores `filter_criteria`, so `get(memory_id)` is not reliable once more than one vector is stored
+   - Set `storage_path` when you need `save()`/`load()` persistence
 
 3. **Memory Management**
-   - Implement proper cleanup
-   - Handle memory errors
-   - Monitor memory statistics
-
-4. **Quantum Memory Considerations**
-   - Monitor coherence times
-   - Track error rates
-   - Implement error correction
-   - Consider quantum-classical interfaces
-   - Handle anyon braiding operations
-   - Manage hybrid memory allocation
+   - Call `clear()` between unrelated conversations
+   - LLM-backed memories make model calls on `add_message`; budget for that cost
 
 ## Contributing
 
-To contribute new memory implementations:
+To contribute new memory implementations (or to finish one of the scaffolds):
 
-1. Create a new file in the `multimind/memory` directory
-2. Implement the memory class inheriting from `BaseMemory`
-3. Add necessary imports to `__init__.py`
-4. Update documentation
+1. Create or edit a file in the `multimind/memory` directory
+2. Implement all five `BaseMemory` methods: `add_message`, `get_messages`, `clear`, `save`, `load`
+3. Register the class in `multimind/memory/__init__.py` (`_LAZY_ATTRS`, with the extra it needs)
+4. Update this document and [feature-status.md](/feature-status)
 5. Add tests
 6. Submit a pull request
