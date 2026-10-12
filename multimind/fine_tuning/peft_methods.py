@@ -380,7 +380,7 @@ class PEFTTuner:
             tokenize_function, batched=True, remove_columns=dataset.column_names
         )
 
-        return tokenized_datase
+        return tokenized_dataset
 
     def train(
         self,
