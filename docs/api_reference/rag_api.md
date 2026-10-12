@@ -1,4 +1,6 @@
-# RAG System API Documentation
+---
+title: "RAG System API Documentation"
+---
 
 This document provides detailed documentation for the MultiMind SDK's RAG system API endpoints.
 
@@ -14,27 +16,33 @@ This document provides detailed documentation for the MultiMind SDK's RAG system
 
 ## Overview
 
-The RAG API provides RESTful endpoints for interacting with the MultiMind SDK's RAG system. It supports:
+The RAG API (`multimind.gateway.rag_api`, FastAPI) provides RESTful endpoints for interacting with the MultiMind SDK's RAG system. It supports:
 
 - Document management (add, query, delete)
 - File uploads
 - Semantic search
 - Response generation
 - Model management
-- Health monitoring
+- Health and readiness probes
+
+Run it standalone with `python -m multimind.gateway.rag_api` (port 8000) or `uvicorn multimind.gateway.rag_api:app`; the same routes are also mounted in the combined MultiMind API served by `multimind backend` (port 8080). Requires `pip install "multimind-sdk[gateway,rag]"`. Step-by-step setup: [rag_api_server_setup.md](/api_reference/rag_api_server_setup). Generated spec: [openapi-rag.json](https://github.com/multimindlab/multimind-sdk/blob/develop/docs/api/openapi-rag.json).
+
+The RAG backend (FAISS store, embedding model, text model) is initialized lazily on the first document/query request. If no provider can be set up the request fails with `503 "RAG backend is not available..."`.
 
 ## Authentication
 
-The API supports two authentication methods:
+The API supports two authentication methods, checked at request time:
 
 1. **API Key Authentication**
    - Set the `X-API-Key` header with your API key
    - API keys are configured via the `API_KEYS` environment variable (comma-separated list)
 
 2. **JWT Authentication**
-   - Get a token using the `/token` endpoint
+   - Get a token using the `/token` endpoint (requires `JWT_SECRET` and `JWT_USERS_JSON`, plus `pip install "passlib[bcrypt]"` for password verification)
    - Include the token in the `Authorization: Bearer <token>` header
-   - Tokens expire after 30 minutes
+   - Tokens are HS256 and expire after 30 minutes
+
+When neither `API_KEYS` nor `JWT_SECRET` is set the API runs in open (development) mode and accepts anonymous requests. `/health` and `/ready` never require authentication.
 
 ### Environment Variables
 
@@ -42,12 +50,16 @@ The API supports two authentication methods:
 # API Keys (comma-separated)
 export API_KEYS="key1,key2,key3"
 
-# JWT Secret (change in production)
-export JWT_SECRET="your-secret-key"
+# JWT (both required for /token)
+export JWT_SECRET="long-random-secret"
+export JWT_USERS_JSON='{"admin":"$2b$12$...bcrypt hash..."}'
 
-# Model API Keys
+# Model API Keys (optional; falls back to local HuggingFace models when both are unset)
 export OPENAI_API_KEY="your-openai-key"
 export ANTHROPIC_API_KEY="your-anthropic-key"
+
+# Optional
+export MULTIMIND_CORS_ORIGINS="http://localhost:3000"
 ```
 
 ### Getting a Token
@@ -67,12 +79,11 @@ Response:
 }
 ```
 
-### Required Permissions
+Errors: `503` when `JWT_SECRET` or `JWT_USERS_JSON` is not configured, `401` for a wrong username/password.
 
-The API uses scopes to control access:
+### Scopes
 
-- `rag:read`: Required for querying and generating
-- `rag:write`: Required for adding documents and managing models
+Issued tokens carry `"scopes": ["rag:read", "rag:write"]`, but the endpoints do not currently check scopes: any authenticated caller (API key or valid JWT) can use every endpoint.
 
 ## Client Library
 
@@ -87,19 +98,19 @@ pip install multimind-sdk
 ### Basic Usage
 
 ```python
-from multimind.client.rag_client import RAGClient, Document
+from multimind.client.rag_client import RAGClient, Document   # RAGClient is also exported from multimind
 import asyncio
 
 async def main():
     # Initialize client with API key
     client = RAGClient(
         base_url="http://localhost:8000",
-        api_key="your-api-key"
+        api_key="your-api-key"      # or token="<jwt>"; omit both in development mode
     )
     
     # Or use JWT authentication
     # client = RAGClient(base_url="http://localhost:8000")
-    # token = await client.login("username", "password")
+    # token = await client.login("username", "password")   # stores the bearer token on the client
     
     # Add documents
     docs = [
@@ -192,7 +203,7 @@ Add a file to the RAG system.
 - `file`: File to upload (required)
 - `metadata`: JSON string of metadata (optional)
 
-**Response:**
+**Response** (one entry per document the loader produced from the file; `filename` is always added to the metadata):
 ```json
 {
     "documents": [
@@ -200,7 +211,7 @@ Add a file to the RAG system.
             "text": "Added file: example.md",
             "metadata": {
                 "source": "file",
-                "type": "markdown"
+                "filename": "example.md"
             }
         }
     ],
@@ -316,8 +327,10 @@ POST /models/switch
 Switch the model used by the RAG system.
 
 **Form Data:**
-- `model_type`: "openai" or "anthropic"
+- `model_type`: "openai" or "anthropic" (the matching `*_API_KEY` must be set, otherwise `400`)
 - `model_name`: Model name (e.g., "gpt-3.5-turbo", "claude-3-sonnet-20240229")
+
+Only the text-generation model is switched; the embedding model and vector store are unchanged.
 
 **Response:**
 ```json
@@ -328,17 +341,34 @@ Switch the model used by the RAG system.
 
 ### Health Check
 
-#### Check Health
+#### Liveness
 ```http
 GET /health
 ```
 
-Check the health of the RAG system.
+Does not require authentication and does not initialize the RAG backend.
 
 **Response:**
 ```json
 {
     "status": "healthy",
+    "version": "1.0.0",
+    "rag_initialized": true
+}
+```
+
+#### Readiness
+```http
+GET /ready
+```
+
+Returns `503 "RAG backend not initialized"` until the first document/query request has initialized the backend.
+
+**Response:**
+```json
+{
+    "status": "ready",
+    "version": "1.0.0",
     "document_count": 42
 }
 ```
@@ -349,7 +379,10 @@ Check the health of the RAG system.
 ```python
 class DocumentRequest(BaseModel):
     text: str
-    metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class DocumentsRequest(BaseModel):          # body of POST /documents
+    documents: List[DocumentRequest]
 ```
 
 ### QueryRequest
@@ -494,18 +527,25 @@ The API uses standard HTTP status codes and returns error details in the respons
 Common error scenarios:
 
 1. **400 Bad Request**
-   - Invalid request body
-   - Missing required fields
-   - Invalid model type
+   - Unsupported `model_type`, or the matching provider key is not set
 
-2. **404 Not Found**
+2. **401 Unauthorized**
+   - Missing or invalid `X-API-Key` / bearer token when authentication is configured
+   - Expired token, wrong `/token` credentials
+
+3. **404 Not Found**
    - Endpoint not found
-   - Document not found
 
-3. **500 Internal Server Error**
-   - Model API errors
-   - Processing errors
-   - System errors
+4. **422 Unprocessable Entity**
+   - Invalid request body or missing required fields (FastAPI validation)
+
+5. **503 Service Unavailable**
+   - RAG backend could not be initialized (no provider keys and no local HuggingFace stack)
+   - `/token` called without `JWT_SECRET` / `JWT_USERS_JSON`
+   - `/ready` before initialization
+
+6. **500 Internal Server Error**
+   - Model API errors, processing errors (details are logged, a generic message is returned)
 
 Example error response:
 ```json

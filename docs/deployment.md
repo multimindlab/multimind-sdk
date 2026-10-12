@@ -1,8 +1,10 @@
-# Deployment Guide
+---
+title: "Deployment Guide"
+---
 
-Containerized deployment of the MultiMind gateway API.
+Containerized deployment of the MultiMind API.
 
-The image is a multi-stage build on `python:3.11-slim`: the builder stage wheels the package, the runtime stage installs only the wheel plus the `gateway` extra (FastAPI, uvicorn). No torch, docs, tests, or examples are included. Final size is roughly 300 MB.
+The image is a multi-stage build on `python:3.11-slim`: the builder stage wheels the package, the runtime stage installs the wheel plus the `gateway` and `rag` extras. The process serves `create_platform_app`: one Swagger UI at `/docs` for chat, sessions, compliance checks, governance, the guard proxy, and RAG. No torch, docs, tests, or examples are included. The image is larger than the old gateway-only build because RAG pulls FAISS, Chroma, and sentence-transformers.
 
 ## Build
 
@@ -38,10 +40,12 @@ docker run -d --name multimind -p 8000:8000 --env-file .env multimind-sdk:latest
 The gateway reads a `.env` file at the repo root automatically (optional).
 
 ```bash
-docker compose up -d               # gateway only
-docker compose --profile local up -d          # gateway + ollama (local models)
-docker compose --profile vector-store up -d   # gateway + chroma
+docker compose up -d               # API on :8000 and dashboard on :8501
+docker compose --profile local up -d          # plus ollama (local models)
+docker compose --profile vector-store up -d   # plus chroma
 ```
+
+The API and the dashboard share the `multimind_governance` volume (`/data`): audit log, cost log, and `guardrails.json`. `POST /v1/guardrails/reload` applies that file to the running proxy. Set `API_KEYS` when the API should require an `X-API-Key` header. `/health`, `/ready`, and `/docs` stay open. Compose allows the dashboard origin (`http://localhost:8501`) through `MULTIMIND_CORS_ORIGINS` so the browser can call the API.
 
 ### Fully local, no API keys
 
@@ -70,10 +74,11 @@ The healthcheck uses Python's `urllib`, so no curl is required inside the image.
 ## Running the CLI in the container
 
 ```bash
-docker run --rm -it --env-file .env multimind-sdk:latest multimind chat
+docker run --rm -it --env-file .env multimind-sdk:latest multimind chat start -m openai
 ```
 
-The CLI works torch-free: only the `convert` command needs torch, and it fails with a clear
+The CLI works torch-free: only the `convert` command (dispatched before the Click group, so
+not listed in `multimind --help`) needs torch, and it fails with a clear
 install hint in the lean image. For model conversion inside a container, build with the
 finetune extra (large image, several GB):
 
@@ -105,5 +110,5 @@ docker run --rm -it --env-file .env multimind-sdk:cli multimind convert --help
   ```
 
 - Never bake secrets into the image; `.env` is excluded by `.dockerignore`. Inject keys at runtime via env vars or your orchestrator's secret store.
-- Restrict CORS in production with `MULTIMIND_ALLOWED_ORIGINS` (comma-separated); the default allows localhost only.
+- CORS is off unless `MULTIMIND_CORS_ORIGINS` (comma-separated origins) is set; compose sets it to the dashboard origin only. `MULTIMIND_ALLOWED_ORIGINS` is accepted as a legacy alias.
 - Chat sessions in compose persist in the `multimind_sessions` volume; drop the volume mount if you want stateless containers.

@@ -214,6 +214,38 @@ def test_costs_chargeback_shape(client):
     assert daily[-1]["cost"] == pytest.approx(2.5)
 
 
+def test_costs_period_filter(client):
+    # same ISO-prefix semantics as `multimind audit costs --period`
+    year = COST_RECORDS[0]["timestamp"][:4]
+    data = client.get(f"/api/costs?period={year}").json()
+    assert data["chargeback"]["period"] == year
+    assert data["chargeback"]["calls"] == 3
+    none = client.get("/api/costs?period=1999").json()
+    assert none["chargeback"]["period"] == "1999"
+    assert none["chargeback"]["calls"] == 0
+    assert none["chargeback"]["total_cost"] == 0.0
+
+
+def test_costs_period_without_log(empty_client):
+    data = empty_client.get("/api/costs?period=2026").json()
+    assert data["available"] is False
+    assert data["chargeback"]["period"] == "2026"
+
+
+def test_inventory_include_env(client, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "not-a-real-key")
+    plain = client.get("/api/inventory").json()
+    assert not any(f["kind"] == "env_set" for f in plain["findings"])
+    data = client.get("/api/inventory?include_env=true").json()
+    assert data["cached"] is False
+    env_set = [f for f in data["findings"] if f["kind"] == "env_set"]
+    assert any(f["evidence"] == "ANTHROPIC_API_KEY" for f in env_set)
+    assert "not-a-real-key" not in json.dumps(data)
+    # include_env never pollutes the cached report
+    again = client.get("/api/inventory").json()
+    assert not any(f["kind"] == "env_set" for f in again["findings"])
+
+
 def test_inventory_scan_and_cache(client, project_dir):
     data = client.get("/api/inventory").json()
     kinds = {(f["kind"], f["provider"]) for f in data["findings"]}
@@ -425,13 +457,63 @@ def test_evidence_report_missing_artifacts(empty_client):
     assert "Costs log not provided" in resp.text
 
 
-def test_static_index_served(client):
+def test_evidence_report_period_and_organization(client):
+    resp = client.get(
+        "/api/evidence-report", params={"format": "md", "period": "1999", "organization": "Acme"}
+    )
+    assert resp.status_code == 200
+    assert "Acme" in resp.text
+    assert "1999" in resp.text
+    assert "No PII events recorded in the period." in resp.text
+    assert "No cost records in the period." in resp.text
+
+
+def test_evidence_report_project_override(client, tmp_path):
+    other = tmp_path / "other-project"
+    other.mkdir()
+    (other / "requirements.txt").write_text("mistralai\n")
+    resp = client.get("/api/evidence-report", params={"format": "md", "project": str(other)})
+    assert resp.status_code == 200
+    assert str(other) in resp.text
+    assert "mistral" in resp.text.lower()
+    missing = client.get(
+        "/api/evidence-report", params={"format": "md", "project": str(tmp_path / "nope")}
+    )
+    assert missing.status_code == 400
+    not_dir = client.get(
+        "/api/evidence-report", params={"format": "md", "project": str(tmp_path / "costs.jsonl")}
+    )
+    assert not_dir.status_code == 400
+
+
+def test_evidence_report_costs_log_override(client, tmp_path):
+    costs = tmp_path / "other-costs.jsonl"
+    costs.write_text(json.dumps({**COST_RECORDS[0], "model": "override-model"}) + "\n")
+    resp = client.get("/api/evidence-report", params={"format": "md", "costs_log": str(costs)})
+    assert resp.status_code == 200
+    assert str(costs) in resp.text
+    assert "override-model" in resp.text
+    missing = client.get(
+        "/api/evidence-report", params={"format": "md", "costs_log": str(tmp_path / "nope.jsonl")}
+    )
+    assert missing.status_code == 400
+
+
+def test_static_index_served(client, monkeypatch):
     resp = client.get("/")
     assert resp.status_code == 200
     assert "MultiMind" in resp.text
+    assert 'src="./config.js"' in resp.text
     assert 'src="./app.js"' in resp.text
     assert client.get("/app.js").status_code == 200
     assert client.get("/style.css").status_code == 200
+    monkeypatch.setenv("MULTIMIND_API_BASE", "http://127.0.0.1:8000")
+    monkeypatch.delenv("MULTIMIND_API_KEY", raising=False)
+    config = client.get("/config.js")
+    assert config.status_code == 200
+    assert config.headers["cache-control"] == "no-store"
+    assert 'window.MULTIMIND_API_BASE="http://127.0.0.1:8000"' in config.text
+    assert 'window.MULTIMIND_API_KEY=""' in config.text
 
 
 def test_static_assets_are_local_only():

@@ -2,7 +2,7 @@
 MultiMind Core - Shared functionality for the MultiMind project
 """
 
-__version__ = "0.1.0"
+from multimind import __version__
 
 from .base import BaseLLM
 from .chat import ChatManager, ChatMessage, ChatSession, chat_manager

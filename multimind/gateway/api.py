@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import uvicorn
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -89,6 +89,20 @@ def _model_status() -> Dict[str, bool]:
         "groq": bool(os.getenv("GROQ_API_KEY") or config.groq.api_key),
         "huggingface": bool(os.getenv("HUGGINGFACE_API_KEY") or config.huggingface.api_key)
         or importlib.util.find_spec("transformers") is not None,
+        "gemini": bool(os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")),
+        "mistral": bool(os.getenv("MISTRAL_API_KEY")),
+        "deepseek": bool(os.getenv("DEEPSEEK_API_KEY")),
+        "openrouter": bool(os.getenv("OPENROUTER_API_KEY")),
+        "together": bool(os.getenv("TOGETHER_API_KEY")),
+        "xai": bool(os.getenv("XAI_API_KEY")),
+        "perplexity": bool(os.getenv("PERPLEXITY_API_KEY")),
+        "fireworks": bool(os.getenv("FIREWORKS_API_KEY")),
+        "cerebras": bool(os.getenv("CEREBRAS_API_KEY")),
+        "claude": bool(
+            os.getenv("ANTHROPIC_API_KEY")
+            or os.getenv("CLAUDE_API_KEY")
+            or config.anthropic.api_key
+        ),
     }
 
 
@@ -181,6 +195,12 @@ class SessionResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     message_count: int
+
+
+class SessionLoad(BaseModel):
+    """Request model for loading a persisted chat session"""
+
+    session_id: str
 
 
 # Privacy Compliance Pydantic models
@@ -469,14 +489,13 @@ async def get_session(session_id: str):
         404: {"model": ErrorResponse, "description": "Session not found"},
     },
 )
-async def add_message(session_id: str, message: ChatMessage, background_tasks: BackgroundTasks):
-    """Add a message to a chat session"""
+async def add_message(session_id: str, message: ChatMessage):
+    """Add a message to a chat session and return the assistant reply."""
     try:
         session = chat_manager.get_session(session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
 
-        # Add user message
         session.add_message(
             role=message.role,
             content=message.content,
@@ -484,36 +503,90 @@ async def add_message(session_id: str, message: ChatMessage, background_tasks: B
             metadata=message.metadata,
         )
 
-        # Get model response in background
-        async def get_model_response():
-            try:
-                handler = get_model_handler(session.model)
-                response = await handler.chat(
-                    [{"role": msg.role, "content": msg.content} for msg in session.messages],
-                    temperature=0.7,
-                )
-                session.add_message(
-                    role="assistant",
-                    content=response.content,
-                    model=session.model,
-                    metadata={"usage": response.usage},
-                )
-            except Exception:
-                logger.exception("Error getting model response")
-                session.add_message(
-                    role="assistant",
-                    content="Sorry, I encountered an error while processing your request.",
-                    model=session.model,
-                    metadata={"error": "Internal server error"},
-                )
+        try:
+            handler = get_model_handler(session.model)
+            response = await handler.chat(
+                [{"role": msg.role, "content": msg.content} for msg in session.messages],
+                temperature=0.7,
+            )
+            session.add_message(
+                role="assistant",
+                content=response.content,
+                model=session.model,
+                metadata={"usage": response.usage},
+            )
+        except Exception:
+            logger.exception("Error getting model response")
+            raise HTTPException(status_code=502, detail="Model request failed")
 
-        background_tasks.add_task(get_model_response)
-        return {"status": "message added, processing response"}
+        return {
+            "status": "ok",
+            "role": "assistant",
+            "content": response.content,
+            "model": session.model,
+        }
 
     except HTTPException:
         raise
     except Exception:
         logger.exception("Error adding message")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post(
+    "/v1/sessions/{session_id}/save",
+    tags=["sessions"],
+    summary="Persist a session to disk (multimind chat save)",
+    responses={
+        **ERROR_RESPONSES,
+        404: {"model": ErrorResponse, "description": "Session not found"},
+    },
+)
+async def save_session(session_id: str):
+    """Write an active session to ``chat_sessions/chat_<id>.json`` and return the path."""
+    try:
+        if not chat_manager.get_session(session_id):
+            raise HTTPException(status_code=404, detail="Session not found")
+        path = chat_manager.save_session(session_id)
+        if path is None:
+            raise HTTPException(status_code=500, detail="Failed to save session")
+        return {"status": "session saved", "session_id": session_id, "path": str(path)}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error saving session")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@app.post(
+    "/v1/sessions/load",
+    response_model=SessionResponse,
+    tags=["sessions"],
+    summary="Load a persisted session into memory (multimind chat load)",
+    responses={
+        **ERROR_RESPONSES,
+        404: {"model": ErrorResponse, "description": "Session not found"},
+    },
+)
+async def load_session(request: SessionLoad):
+    """Return the active session if present, else load ``chat_<id>.json`` from the session store."""
+    try:
+        session = chat_manager.get_session(request.session_id) or chat_manager.load_session(
+            request.session_id
+        )
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return SessionResponse(
+            session_id=session.session_id,
+            model=session.model,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+            message_count=len(session.messages),
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("Error loading session")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 

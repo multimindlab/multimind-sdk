@@ -1,4 +1,6 @@
-# Configuration Guide
+---
+title: "Configuration Guide"
+---
 
 This guide covers all configuration options available in the MultiMind SDK.
 
@@ -25,7 +27,8 @@ GEMINI_API_KEY=your_gemini_api_key
 # Required for DeepSeek models
 DEEPSEEK_API_KEY=your_deepseek_api_key
 
-# Optional for Hugging Face models (falls back to local transformers)
+# Optional Hugging Face token for gated models. HuggingFaceModel always runs
+# locally via transformers; this is only read by multimind.Config and the gateway
 HUGGINGFACE_API_KEY=your_huggingface_api_key
 ```
 
@@ -44,8 +47,12 @@ MULTIMIND_LOG_LEVEL=WARNING
 # Path to a YAML config file loaded by multimind.Config
 MULTIMIND_CONFIG=config.yaml
 
-# Ollama server URL (default: http://localhost:11434)
+# Ollama server URL for OllamaModel / multimind.Config / the serve proxy (default: http://localhost:11434)
 OLLAMA_HOST=http://localhost:11434
+
+# Ollama settings read by the gateway API (multimind.core.config)
+OLLAMA_API_BASE=http://localhost:11434
+OLLAMA_MODEL_NAME=mistral
 ```
 
 ### Compliance Proxy (`multimind serve`)
@@ -60,6 +67,7 @@ MULTIMIND_UPSTREAM_API_KEY=            # explicit upstream key (else provider en
 MULTIMIND_PROXY_STRATEGY=mask          # mask, hash, remove
 MULTIMIND_PROXY_BLOCK_ON=ssn,credit_card
 MULTIMIND_PROXY_AUDIT_LOG=audit.jsonl
+MULTIMIND_PROXY_COSTS_LOG=costs.jsonl
 MULTIMIND_PROXY_BUDGET=10.0
 MULTIMIND_PROXY_COST_PER_TOKEN=
 MULTIMIND_PROXY_SCAN_OUTPUT=true
@@ -67,7 +75,26 @@ MULTIMIND_PROXY_HOST=127.0.0.1
 MULTIMIND_PROXY_PORT=8400
 ```
 
-See the [Guard Proxy guide](guard-proxy.md) for details.
+The guardrails file passed with `--config` defaults to `MULTIMIND_DASHBOARD_GUARDRAILS` (see below). See the [Guard Proxy guide](/guard-proxy) for details.
+
+### Governance Dashboard (`multimind dashboard`)
+
+Every `multimind dashboard` flag can also be set through an environment variable
+(CLI flags win):
+
+```bash
+MULTIMIND_DASHBOARD_AUDIT_LOG=audit.jsonl
+MULTIMIND_DASHBOARD_COSTS_LOG=costs.jsonl
+MULTIMIND_DASHBOARD_PROJECT=.
+MULTIMIND_DASHBOARD_GUARDRAILS=guardrails.json
+MULTIMIND_DASHBOARD_HOST=127.0.0.1
+MULTIMIND_DASHBOARD_PORT=8501
+MULTIMIND_DASHBOARD_API_KEY=          # when set, PUT /api/guardrails requires this X-API-Key header
+MULTIMIND_API_BASE=                   # API base URL the dashboard page calls (e.g. http://localhost:8000)
+MULTIMIND_API_KEY=                    # X-API-Key the dashboard page sends to that API
+```
+
+`multimind backend` reads `MULTIMIND_BACKEND_HOST` and `MULTIMIND_BACKEND_PORT` (default `127.0.0.1:8080`).
 
 ### API Servers and Misc
 
@@ -79,7 +106,9 @@ API_KEYS=key1,key2
 JWT_SECRET=your_jwt_secret
 JWT_USERS_JSON='{"user": "password_hash"}'
 
-# CORS is off unless this is set (comma-separated origins)
+# CORS is off unless this is set (comma-separated origins). Read by the
+# backend, the gateway, the RAG API, and the guard proxy (multimind serve).
+# The legacy name MULTIMIND_ALLOWED_ORIGINS is also accepted.
 MULTIMIND_CORS_ORIGINS=https://app.example.com
 
 # Audit log path for the MCP server
@@ -180,7 +209,9 @@ runner = TaskRunner(
 An MCP spec must contain `version`, `models` (a list of `{name, type, config}`
 entries; types: `openai`, `claude`, `mistral`, `huggingface`, `ollama`) and a
 `workflow` with `steps` (`{id, type, config}`; types: `model`, `transform`,
-`condition`) and `connections` (`{from, to}` between existing step ids):
+`condition`) and `connections` (`{from, to}` between existing step ids). A
+`model` step's config needs `model` (a registered model name) and
+`prompt_template`; the full schema is in `multimind/mcp/schema.json`:
 
 ```python
 workflow = {
@@ -197,12 +228,12 @@ workflow = {
             {
                 "id": "analysis",
                 "type": "model",
-                "config": {"model": "gpt", "prompt": "Analyze: {input}"}
+                "config": {"model": "gpt", "prompt_template": "Analyze: {input}"}
             },
             {
                 "id": "review",
                 "type": "model",
-                "config": {"model": "gpt", "prompt": "Review: {analysis}"}
+                "config": {"model": "gpt", "prompt_template": "Review: {analysis}"}
             }
         ],
         "connections": [
@@ -328,6 +359,6 @@ models:
 
 ### Getting Help
 
-- Check the [FAQ](multimind-sdk-faq.md)
+- Check the [feature status](/feature-status) and [installation guide](/installation)
 - Open an issue on [GitHub](https://github.com/multimindlab/multimind-sdk/issues)
 - Contact support at [contact@multimind.dev](mailto:contact@multimind.dev)

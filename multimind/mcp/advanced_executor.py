@@ -15,14 +15,6 @@ from multimind.observability.metrics import MetricsCollector
 logger = logging.getLogger(__name__)
 
 
-class DummyModel:
-    async def execute(self, prompt: str) -> str:
-        return "Dummy response"
-
-    async def generate(self, prompt: str) -> str:
-        return "Generated response for: " + prompt
-
-
 class AdvancedMCPExecutor:
     """Advanced MCP workflow executor with enhanced capabilities."""
 
@@ -34,14 +26,15 @@ class AdvancedMCPExecutor:
         max_retries: int = 3,
         retry_delay: float = 1.0,
     ):
+        if not model_registry:
+            raise ValueError(
+                "AdvancedMCPExecutor requires model_registry, a dict of real model "
+                "instances. There is no default provider, and canned echo models are "
+                "not substituted."
+            )
         self.parser = parser or MCPParser()
         self.metrics_collector = metrics_collector or self.MetricsCollector()
-        self.model_registry = model_registry or {
-            "ollama": OllamaModel(),
-            "openai": OpenAIModel(),
-            "claude": ClaudeModel(),
-            "gemini": GeminiModel(),
-        }
+        self.model_registry = model_registry
         self.max_retries = max_retries
         self.retry_delay = retry_delay
         self.workflow_state: Dict[str, Any] = {}
@@ -268,26 +261,3 @@ class AdvancedMCPExecutor:
             raise ValueError(f"Missing required inputs for step {step['id']}: {missing_inputs}")
 
         return inputs
-
-
-class OllamaModel:
-    def __init__(self):
-        self.name = "Ollama"
-
-    async def generate(self, prompt: str) -> str:
-        return f"Ollama response for: {prompt}"
-
-
-class OpenAIModel:
-    async def generate(self, prompt: str) -> str:
-        return f"OpenAI response for: {prompt}"
-
-
-class ClaudeModel:
-    async def generate(self, prompt: str) -> str:
-        return f"Claude response for: {prompt}"
-
-
-class GeminiModel:
-    async def generate(self, prompt: str) -> str:
-        return f"Gemini response for: {prompt}"

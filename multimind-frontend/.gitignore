@@ -1,0 +1,13 @@
+# Dependencies and build artifacts
+node_modules/
+dist/
+coverage/
+
+# Local secrets
+.env
+.env.*
+
+# Editor/OS
+.DS_Store
+.idea/
+.vscode/

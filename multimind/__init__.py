@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING, Any
 
 from multimind._lazy import lazy_attr
 
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 
 # ─── Logging / warning configuration ──────────────────────────────────────────
 

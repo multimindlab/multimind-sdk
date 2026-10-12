@@ -3,7 +3,7 @@
   "info": {
     "title": "MultiMind Multi-Model API",
     "description": "Text generation, chat, and embeddings backed by the MultiModelWrapper, with automatic fallback across providers (OpenAI, Anthropic, Ollama, ...). Provider API keys are read from the environment at request time; optional client authentication uses the `X-API-Key` header when the `API_KEYS` environment variable is set.",
-    "version": "0.3.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/generate": {

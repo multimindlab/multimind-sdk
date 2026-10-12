@@ -5,10 +5,38 @@ All notable changes to MultiMind SDK will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2026-10-12
 
-Targets `0.3.0` — first release after the packaging modernization, lazy-import,
-and test-stabilization passes.
+First stable release of the supported surface: providers, the PII guard,
+`multimind serve`, one Swagger API (`multimind backend` and the Docker image),
+GDPR and HIPAA checks that do not invent a pass, FAISS and Chroma RAG, and
+function-calling agents. Minimum Python is 3.10.
+
+### Fixed
+- Workflow executor no longer substitutes echo models for OpenAI, Claude, Gemini, or Ollama. A real `model_registry` is required.
+- EU AI Act checks return `unverifiable` when no evidence is stored.
+- Hyperparameter search runs Optuna or raises. It no longer returns a hardcoded best parameter.
+- Document structure extraction parses the model JSON or raises, instead of returning an empty document.
+- `POST /v1/sessions/{id}/messages` returns the assistant reply.
+- Compliance monitor uses implemented checkers. The example route, which imported a package that is not in the wheel, is removed.
+- Compliance monitor no longer calls unimplemented advanced classes. History and alerts still read the in-memory shard, which is empty until that process records a check.
+- The gateway API exposes the SDK providers (Gemini, Groq, Mistral, DeepSeek, OpenRouter, Together, xAI, Perplexity, Fireworks, Cerebras, Claude), not only OpenAI, Anthropic, Ollama, and HuggingFace.
+- FAISS search honors `filter_criteria`, including lookup by id.
+- Unimplemented vector backends are off the default load path.
+- Package version is `multimind.__version__` everywhere.
+- Guard proxy appends to a cost log when `costs_log` is set, and `POST /v1/guardrails/reload` applies a guardrails file without a restart.
+- `multimind backend` includes the compliance routes on FastAPI 0.130+, which stores an included router lazily; the route copier now descends into it.
+- `multimind compliance run-compliance` no longer exits 1 with `'recommendations'` after printing results; recommendations are read from the top level, where the API returns them.
+- `multimind --version` prints the package version.
+- Compliance dashboard and alerts (`/v1/compliance/dashboard`, `/v1/compliance/alerts`) now reflect every `POST /v1/compliance/monitor` recorded in the server process, with `unverifiable_checks` reported separately and no invented privacy, fairness, or transparency scores. Previously a fresh shard was built per request, so both were always empty.
+- `multimind compliance run-example` says whether the `examples` package or `torch` is the missing import.
+- Backend API parity with the CLI: `GET /api/costs?period`, `GET /api/inventory?include_env`, `GET /api/evidence-report?period&organization&project&costs_log`, `POST /v1/sessions/{id}/save`, `POST /v1/sessions/load`.
+- Governance dashboard gained Scan text, Evidence report, and Compliance views and a "Reload proxy" button after saving guardrails. The guard proxy reads `MULTIMIND_CORS_ORIGINS` so that button works cross-origin.
+- Docs: new `tracing` page, full `convert` and `context-transfer` references, eleven feature-status rows, a feature parity matrix under maintainers, and a CI check (`scripts/check_docs_parity.py`) that fails when a CLI command or backend route is not mentioned in `docs/`.
+- Docs: every page under `docs/` was verified against the code (memory, architecture, gateway, RAG, and compliance pages rewritten where they described classes or endpoints that do not exist), 26 stale redirect stubs and the Docusaurus site in `multimind-docs/` were removed, and `docs/` is now a Mintlify site (`docs/docs.json`) hosted at docs.multimind.dev. `INSTALLATION.md` and `FEATURES.md` moved to `docs/installation.md` and `docs/feature-status.md`.
+- CI holds the PII guard and the guard proxy at 70% line coverage. Providers, agents, and the CLI are held at 40% (measured at 46%; MoE scaffolds and the conversion CLI are still thin). Nightly `requires_api_key` tests run when provider secrets are configured.
+
+The notes below were collected for an unreleased 0.3.0 and ship in 1.0.0.
 
 ### Added
 - Guard proxy: `multimind serve` — an OpenAI-compatible reverse proxy that
@@ -37,7 +65,7 @@ and test-stabilization passes.
   compliance visualization dashboards)
 - `optuna` added to `[finetune]` extra (was eagerly imported but undeclared)
 - Multi-job CI workflow (`.github/workflows/ci.yml`): `lint`, `test-core`
-  (Python 3.9 / 3.10 / 3.11 / 3.12 / 3.13 matrix), `test-rag`,
+  (Python 3.10 / 3.11 / 3.12 / 3.13 matrix), `test-rag`,
   `test-compliance`, `test-finetune`, `test-gateway`, `test-full`
   (coverage + 95% pass-rate gate)
 - `CHANGELOG.md` (this file)
@@ -45,8 +73,8 @@ and test-stabilization passes.
   `multimind.integrations`
 
 ### Changed
-- Minimum Python version raised to **3.9**
-- Version bumped to **0.3.0**
+- Minimum Python version is **3.10** (1.0.0). The modernization pass had used 3.9.
+- Version is **1.0.0**
 - Complete README rewrite (660 → ~180 lines): single Quick Start,
   honest feature table, working code examples verified against the actual
   API surface
@@ -115,11 +143,8 @@ and test-stabilization passes.
   `aiohttp`)
 
 ### Security
-- `cryptography.zkp` ZeroKnowledgeProof falls back to a clearly-named
-  `_DummyZKP` with a `UserWarning` when the optional dependency is not
-  installed. **This is not a production-grade ZKP** — install the real
-  dependency or use a different compliance pathway for any guarantee
-  that needs to survive audit.
+- Zero-knowledge proof helpers raise `NotImplementedError`. They do not
+  report a successful proof.
 
 ## [0.2.2] - 2025-08-18
 
