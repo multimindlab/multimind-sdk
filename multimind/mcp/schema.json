@@ -1,0 +1,81 @@
+{
+    "version": "1.0.0",
+    "model_types": [
+        "openai",
+        "claude",
+        "mistral",
+        "huggingface",
+        "ollama"
+    ],
+    "step_types": [
+        "model",
+        "transform",
+        "condition"
+    ],
+    "transform_types": [
+        "join",
+        "extract"
+    ],
+    "condition_types": [
+        "equals",
+        "contains",
+        "greater_than",
+        "less_than"
+    ],
+    "model_config_schema": {
+        "type": "object",
+        "required": ["model", "prompt_template"],
+        "properties": {
+            "model": {
+                "type": "string",
+                "description": "Name of the registered model to use"
+            },
+            "prompt_template": {
+                "type": "string",
+                "description": "Template for model prompt with {input} placeholders"
+            },
+            "temperature": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 2,
+                "default": 0.7
+            },
+            "max_tokens": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1000
+            }
+        }
+    },
+    "transform_config_schema": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": ["join", "extract"]
+            },
+            "separator": {
+                "type": "string",
+                "description": "Separator for join transform"
+            },
+            "field": {
+                "type": "string",
+                "description": "Field to extract for extract transform"
+            }
+        }
+    },
+    "condition_config_schema": {
+        "type": "object",
+        "required": ["type", "value"],
+        "properties": {
+            "type": {
+                "type": "string",
+                "enum": ["equals", "contains", "greater_than", "less_than"]
+            },
+            "value": {
+                "description": "Value to compare against"
+            }
+        }
+    }
+} 

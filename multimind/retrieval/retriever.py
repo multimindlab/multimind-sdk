@@ -1,0 +1,182 @@
+"""
+Base retriever implementation.
+
+Canonical source (per ``multimind/retrieval/__init__.py``) for
+``Retriever``, ``RetrievalConfig``, and ``RetrievalResult`` — the classes
+importable as ``from multimind.retrieval import ...``. See ``base.py`` for a
+note on the unused, non-canonical classes of the same name kept there, and
+``retrieval.py`` for ``HybridRetriever`` (whose own ``RetrievalResult`` is a
+distinct, internal-only shape — see that module's docstring).
+"""
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+
+from ..core.exceptions import RetrievalError
+from ..document_processing import DocumentProcessor
+from ..embeddings import EmbeddingGenerator
+from ..vector_store import VectorStore
+
+
+@dataclass
+class RetrievalResult:
+    """Represents a retrieval result with metadata."""
+
+    content: str
+    score: float
+    metadata: Dict[str, Any]
+    document_id: Optional[str] = None
+    source: Optional[str] = None
+    chunk_id: Optional[str] = None
+
+    def __post_init__(self):
+        """Validate retrieval result after initialization."""
+        if not isinstance(self.content, str):
+            raise ValueError("Retrieval result content must be a string")
+        if not isinstance(self.score, (int, float)):
+            raise ValueError("Retrieval result score must be a number")
+        if not isinstance(self.metadata, dict):
+            raise ValueError("Retrieval result metadata must be a dictionary")
+
+
+@dataclass
+class RetrievalConfig:
+    """Configuration for retriever."""
+
+    vector_store: VectorStore
+    document_processor: DocumentProcessor
+    embedding_generator: EmbeddingGenerator
+    top_k: int = 5
+    similarity_threshold: float = 0.7
+
+
+class Retriever:
+    """Base retriever implementation."""
+
+    def __init__(self, config: RetrievalConfig):
+        self.config = config
+        self.vector_store = config.vector_store
+        self.document_processor = config.document_processor
+        self.embedding_generator = config.embedding_generator
+
+    async def initialize(self) -> None:
+        """Initialize the retriever."""
+        pass
+
+    async def retrieve(
+        self, query: str, top_k: Optional[int] = None, **kwargs
+    ) -> List[RetrievalResult]:
+        """Retrieve documents for a query."""
+        try:
+            # Generate embedding for query
+            query_embedding = await self.embedding_generator.generate_embedding(query)
+
+            # Search vector store
+            results = await self.vector_store.search(
+                query_embedding, k=top_k or self.config.top_k, **kwargs
+            )
+
+            # Convert to RetrievalResult objects
+            retrieval_results = []
+            for result in results:
+                if result.score >= self.config.similarity_threshold:
+                    # Extract content using get_content() method for consistent extraction
+                    content = result.get_content()
+
+                    # Extract source and chunk_id from metadata if available
+                    source = (
+                        result.metadata.get("source") if isinstance(result.metadata, dict) else None
+                    )
+                    chunk_id = (
+                        result.metadata.get("chunk_id")
+                        if isinstance(result.metadata, dict)
+                        else None
+                    )
+
+                    retrieval_results.append(
+                        RetrievalResult(
+                            content=content,
+                            score=result.score,
+                            metadata=result.metadata if isinstance(result.metadata, dict) else {},
+                            document_id=result.id,
+                            source=source,
+                            chunk_id=chunk_id,
+                        )
+                    )
+
+            return retrieval_results
+
+        except Exception as e:
+            raise RetrievalError(f"Retrieval failed: {str(e)}")
+
+    async def add_documents(self, documents: List[Dict[str, Any]], **kwargs) -> None:
+        """Add documents to the retriever."""
+        try:
+            # Process documents
+            processed_docs = []
+            for doc in documents:
+                processed_doc = await self.document_processor.process(doc)
+                processed_docs.append(processed_doc)
+
+            # Generate embeddings
+            embeddings = []
+            for doc in processed_docs:
+                embedding = await self.embedding_generator.generate_embedding(
+                    doc.get("content", "")
+                )
+                embeddings.append(embedding)
+
+            # Add to vector store
+            await self.vector_store.add_documents(processed_docs, embeddings, **kwargs)
+
+        except Exception as e:
+            raise RetrievalError(f"Failed to add documents: {str(e)}")
+
+    async def delete_documents(self, document_ids: List[str], **kwargs) -> None:
+        """Delete documents from the retriever."""
+        try:
+            await self.vector_store.delete_documents(document_ids, **kwargs)
+        except Exception as e:
+            raise RetrievalError(f"Failed to delete documents: {str(e)}")
+
+    async def update_documents(self, documents: List[Dict[str, Any]], **kwargs) -> None:
+        """Update documents in the retriever."""
+        try:
+            # Process documents
+            processed_docs = []
+            for doc in documents:
+                processed_doc = await self.document_processor.process(doc)
+                processed_docs.append(processed_doc)
+
+            # Generate embeddings
+            embeddings = []
+            for doc in processed_docs:
+                embedding = await self.embedding_generator.generate_embedding(
+                    doc.get("content", "")
+                )
+                embeddings.append(embedding)
+
+            # Update in vector store
+            await self.vector_store.update_documents(processed_docs, embeddings, **kwargs)
+
+        except Exception as e:
+            raise RetrievalError(f"Failed to update documents: {str(e)}")
+
+    async def clear(self) -> None:
+        """Clear all documents from the retriever."""
+        try:
+            await self.vector_store.clear()
+        except Exception as e:
+            raise RetrievalError(f"Failed to clear documents: {str(e)}")
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get retriever statistics."""
+        return {
+            "vector_store_stats": self.vector_store.get_stats(),
+            "document_processor_stats": self.document_processor.get_stats(),
+            "embedding_generator_stats": self.embedding_generator.get_stats(),
+            "config": {
+                "top_k": self.config.top_k,
+                "similarity_threshold": self.config.similarity_threshold,
+            },
+        }

@@ -1,0 +1,38 @@
+# See https://pre-commit.com for details. Run `pre-commit install` once after
+# cloning to wire these hooks into `git commit`. Run `pre-commit run --all-files`
+# to apply them to the whole repo.
+#
+# Mypy is deliberately *not* in this config. Type-annotation migration is still
+# in progress (see [tool.ruff.lint] "TODO(phase-3-followup)" note in
+# pyproject.toml); running mypy on every commit would block contributors. Use
+# `make typecheck` instead, and we'll move mypy into pre-commit (or a CI job)
+# once the codebase passes cleanly.
+
+default_language_version:
+  python: python3.11
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: debug-statements
+      - id: detect-private-key
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      # Lint — `--fix` auto-applies safe corrections (whitespace, isort, etc.).
+      # The first commit after a clean checkout may fail; re-run `git add` +
+      # `git commit` after the hook stages its fixes.
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      # Formatter — replaces black. Settings live in [tool.ruff.format] of
+      # pyproject.toml so CI / pre-commit / `make format` stay in sync.
+      - id: ruff-format

@@ -1,0 +1,121 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+.installed.cfg
+
+# Distribution / packaging
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.tar.gz
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env/
+
+# Environment files (keep .env.example tracked)
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*~.nib
+.settings/
+.loadpath
+.recommenders
+local.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing / coverage
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+test-results.xml
+.hypothesis/
+pytest-summary.txt
+
+# Type checking / linting caches
+.mypy_cache/
+.ruff_cache/
+
+# Logs
+*.log
+logs/
+multimind.log
+
+# Model files and caches
+.cache/
+*.bin
+*.pt
+*.pth
+*.onnx
+*.gguf
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+db.sqlite3
+db.sqlite3-journal
+usage.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Docker
+docker-compose.override.yml
+
+# Local development
+*.local
+*.tmp
+*.bak
+local_settings.py
+chat_sessions/
+
+# Documentation builds
+docs/_build/
+site/
+
+# Project-specific
+multimind-docs/node_modules/
+multimind-docs/.next/
+multimind-docs/out/
+multimind-docs/build/
+
+# Runtime/generated artifacts — not source, shouldn't be tracked
+models/
+guardrails.json

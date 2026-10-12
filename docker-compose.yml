@@ -1,0 +1,94 @@
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/multimindlab/multimind-sdk:latest
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Provider API keys — all optional; configure only the ones you use
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY:-}
+      # Local models via the optional ollama service (profile: local)
+      - OLLAMA_API_BASE=${OLLAMA_API_BASE:-http://ollama:11434}
+      - OLLAMA_MODEL_NAME=${OLLAMA_MODEL_NAME:-mistral}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-openai}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MULTIMIND_PROXY_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_PROXY_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_DASHBOARD_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_GUARDRAILS=/data/guardrails.json
+      - MULTIMIND_CORS_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
+    volumes:
+      - multimind_sessions:/app
+      - multimind_governance:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  dashboard:
+    image: ghcr.io/multimindlab/multimind-sdk:latest
+    depends_on:
+      - gateway
+    command: ["multimind", "dashboard", "--host", "0.0.0.0", "--port", "8501"]
+    ports:
+      - "8501:8501"
+    environment:
+      - MULTIMIND_API_BASE=http://localhost:8000
+      - MULTIMIND_DASHBOARD_HOST=0.0.0.0
+      - MULTIMIND_DASHBOARD_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_DASHBOARD_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_GUARDRAILS=/data/guardrails.json
+    volumes:
+      - multimind_governance:/data
+    restart: unless-stopped
+
+  # Optional: local models, no API keys needed.
+  # Start with: docker compose --profile local up
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  # Optional: Chroma vector store for RAG workloads.
+  # Start with: docker compose --profile vector-store up
+  chroma:
+    image: chromadb/chroma:latest
+    profiles: ["vector-store"]
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - ANONYMIZED_TELEMETRY=false
+    restart: unless-stopped
+
+volumes:
+  multimind_sessions:
+  multimind_governance:
+  ollama_models:
+  chroma_data:

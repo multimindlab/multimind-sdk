@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:api.github.com)",
+      "WebSearch",
+      "Bash(/private/tmp/claude-501/-Users-darshankumar-Daemongodwiz-Ai2innovate-multimind-sdk/5c3561ca-6846-4472-9f6f-897fe573ecb9/scratchpad/simvenv/bin/python -m pytest /Users/darshankumar/Daemongodwiz/Ai2innovate/multimind-sdk/tests/ -q -p no:cacheprovider)",
+      "Bash(.venv/bin/python -)"
+    ]
+  }
+}

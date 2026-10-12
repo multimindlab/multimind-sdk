@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/multimindlab/multimind-sdk/security/policy
+    about: Please report security issues privately — do NOT open a public issue. See our Security Policy.
+  - name: Questions & community chat
+    url: https://discord.gg/K64U65je7h
+    about: For usage questions and general discussion, join us on Discord.

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>MultiMind Governance</title>
+  <link rel="stylesheet" href="./style.css">
+  <style>
+    /* Form controls used by the Scan Text and Compliance views. */
+    textarea {
+      font: inherit; color: var(--ink); background: var(--surface);
+      border: 1px solid var(--border); border-radius: 7px; padding: 0.45rem 0.6rem;
+      width: 100%; max-width: 720px; resize: vertical;
+    }
+    pre.redacted {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+      padding: 0.6rem 0.85rem; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0;
+    }
+    .filters input[type="text"] { min-width: 14rem; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>MultiMind<br><small>Governance</small></span>
+      </div>
+      <nav aria-label="Sections">
+        <a href="#/overview" data-view="overview">Overview</a>
+        <a href="#/audit" data-view="audit">Audit Trail</a>
+        <a href="#/costs" data-view="costs">Costs</a>
+        <a href="#/inventory" data-view="inventory">Inventory</a>
+        <a href="#/guardrails" data-view="guardrails">Guardrails</a>
+        <a href="#/scan" data-view="scan">Scan Text</a>
+        <a href="#/evidence" data-view="evidence">Evidence Report</a>
+        <a href="#/compliance" data-view="compliance">Compliance</a>
+      </nav>
+      <div class="sidebar-foot">
+        Local artifacts only.<br>No data leaves this machine.
+      </div>
+    </aside>
+    <main id="view" class="content" tabindex="-1"></main>
+  </div>
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

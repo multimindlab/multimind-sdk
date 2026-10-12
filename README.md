@@ -1,269 +1,300 @@
-<!-- Logo -->
 <p align="center">
-  <img src="https://raw.githubusercontent.com/multimind-dev/multimind-sdk/main/assets/logo.png" alt="MultiMind SDK Logo" width="120"/>
+  <img src="https://raw.githubusercontent.com/multimindlab/multimind-sdk/develop/assets/Logo-with-name-final2.png" alt="MultiMind SDK" />
 </p>
 
-# MultiMind SDK
+<p align="center">
+  <strong>The compliance-first AI agent framework.</strong><br>
+  Multi-model AI with built-in GDPR and HIPAA support. Works with any model. Runs anywhere.
+</p>
 
-MultiMind SDK is a powerful and flexible library for fine-tuning and adapting large language models using Parameter-Efficient Fine-Tuning (PEFT) methods. It provides advanced features for meta-learning, few-shot learning, and transfer learning, making it easier to adapt models to new tasks with minimal data.
+<p align="center">
+  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/v/multimind-sdk.svg" alt="PyPI"></a>
+  <a href="https://github.com/multimindlab/multimind-sdk/actions/workflows/ci.yml"><img src="https://github.com/multimindlab/multimind-sdk/actions/workflows/ci.yml/badge.svg?branch=develop" alt="CI"></a>
+  <a href="https://pypi.org/project/multimind-sdk/"><img src="https://img.shields.io/pypi/pyversions/multimind-sdk.svg" alt="Python versions"></a>
+  <a href="https://github.com/multimindlab/multimind-sdk/blob/develop/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="https://discord.gg/K64U65je7h"><img src="https://img.shields.io/badge/chat-Discord-5865F2?logo=discord&logoColor=white" alt="Discord"></a>
+</p>
+
+---
+
+> **New to AI?** Start with the [plain-language getting started guide](docs/getting-started-non-technical.md) — no coding required.
+
+## Why MultiMind?
+
+Most AI frameworks assume you'll handle compliance yourself. MultiMind doesn't.
+
+- **One API for all models** — OpenAI, Anthropic Claude, Google Gemini, Mistral, Groq, DeepSeek, xAI, Together, Perplexity, Fireworks, Cerebras, 300+ models via OpenRouter, and local models via Ollama through a single async interface with streaming
+- **Built-in compliance** — a drop-in PII guard that detects, redacts, and audits sensitive data on every model call, plus GDPR & HIPAA policy modeling and compliance dashboards as a first-class module, not an afterthought
+- **Govern the stack you already have** — don't migrate off LangChain, LlamaIndex, or CrewAI; wrap them. Run `multimind serve` and point any OpenAI-compatible app at it to add PII redaction, budgets, and audit with one line changed
+- **Governed by default** — cost budgets that stop overspending before the call, hallucination detection with sentence-level evidence, and audit trails — each a one-line wrapper around any model
+- **Switch models without losing knowledge** — move a live conversation from GPT to Claude to a local model; the context travels with you
+- **Adaptive routing** — route requests across providers by cost, latency, or fallback strategy
+- **RAG that works** — FAISS and Chroma with document processing out of the box; 40+ client-backed vector stores including Pinecone, Qdrant, Weaviate, Milvus, pgvector, and LanceDB
+- **Beyond transformers** — run Mamba and RWKV models through the same interface
+- **Runs anywhere** — Cloud, on-prem, air-gapped with local models
+
+## Quick Start
+
+```bash
+pip install multimind-sdk
+```
+
+```python
+import asyncio
+from multimind import OpenAIModel
+
+async def main():
+    model = OpenAIModel(model_name="gpt-4o-mini")
+    response = await model.generate("Explain quantum computing simply")
+    print(response)
+
+asyncio.run(main())
+```
+
+> Requires `OPENAI_API_KEY` in your environment. The same pattern works for `ClaudeModel` (Anthropic, `ANTHROPIC_API_KEY`), `GeminiModel` (Google, `GEMINI_API_KEY`), `MistralAIModel` (`MISTRAL_API_KEY`), `GroqModel` (`GROQ_API_KEY`), `DeepSeekModel` (`DEEPSEEK_API_KEY`), and `OllamaModel` (local models — Mistral, Llama, and anything else Ollama serves).
+> Also: `OpenRouterModel` (`OPENROUTER_API_KEY` — 300+ models via one key), `TogetherModel` (`TOGETHER_API_KEY`), `XAIModel` (`XAI_API_KEY`), `PerplexityModel` (`PERPLEXITY_API_KEY`), `FireworksModel` (`FIREWORKS_API_KEY`), and `CerebrasModel` (`CEREBRAS_API_KEY`).
+
+### Install what you need
+
+```bash
+pip install multimind-sdk                # Core (incl. Ollama via HTTP, no extra needed)
+pip install multimind-sdk[rag]           # + RAG & vector stores (FAISS, Chroma)
+pip install multimind-sdk[agents]        # + Agent framework with memory
+pip install multimind-sdk[compliance]    # + GDPR/HIPAA compliance + dashboards
+pip install multimind-sdk[finetune]      # + LoRA/QLoRA fine-tuning (CPU)
+pip install multimind-sdk[finetune-gpu]  # + 4-bit QLoRA via bitsandbytes (Linux only)
+pip install multimind-sdk[gateway]       # + FastAPI gateway server
+pip install multimind-sdk[all]           # rag, vector-stores, agents, memory, documents, finetune, compliance, gateway, mcp
+# Framework adapters are separate: [langchain] [llamaindex] [crewai] [autogen]
+```
+
+> **Ollama users**: no extra needed — `multimind.models.ollama` talks to a running Ollama instance over HTTP. Just `pip install multimind-sdk` and point at `http://localhost:11434`.
 
 ## Features
 
-- **Unified PEFT Framework:** LoRA, Adapters, Prefix/Prompt Tuning, IA³, and more
-- **Meta-Learning:** MAML, Reptile, prototype-based few-shot learning
-- **Transfer & Multi-Task Learning:** Layer transfer, dynamic task weighting, cross-task distillation
-- **Adaptive Methods:** Resource-aware, performance-based, model-agnostic
-- **Framework Integrations:** LangChain, CrewAI, LiteLLM, SuperAGI, and more
+| Feature                                              | Status   | Install Extra      |
+| ---------------------------------------------------- | -------- | ------------------ |
+| Multi-model chat (OpenAI, Claude, Gemini, Groq, ...) | Stable   | core               |
+| Streaming responses                                  | Stable   | core               |
+| Runtime PII guard (detect, redact, block, audit)     | Stable   | core               |
+| Cost tracking & budgets                              | Stable   | core               |
+| Hallucination detection (grounding checks)           | Stable   | core               |
+| Mid-conversation model switching (`ModelSession`)    | Stable   | core               |
+| Compliance proxy (`multimind serve`, OpenAI-compat)  | Stable   | `[gateway]`        |
+| Governance dashboard UI (`multimind dashboard`)      | Stable   | `[gateway]`        |
+| Compliance evidence reports (md/HTML)                | Stable   | core               |
+| Framework adapters (LangChain, LlamaIndex, CrewAI)   | Stable   | `[langchain]` etc. |
+| AI usage audit & cost chargeback (`multimind audit`) | Stable   | core               |
+| Anthropic MCP compliance server                      | Stable   | `[mcp]`            |
+| RAG pipeline (FAISS, Chroma)                         | Stable   | `[rag]`            |
+| Context transfer between models                      | Stable   | core               |
+| CLI interface                                        | Stable   | core               |
+| REST gateway with Swagger UI (`/docs`)               | Stable   | `[gateway]`        |
+| Docker image (`ghcr.io/multimindlab/multimind-sdk`, amd64 + arm64) | Stable   | —                  |
+| Vision/multimodal input (`images=`)                  | Stable   | core               |
+| AI Agents with native function-calling & memory      | Stable   | `[agents]`         |
+| Self-evolving agents (bounded exemplar learning)     | Stable   | `[agents]`         |
+| GDPR & HIPAA compliance (runtime enforcement)        | Stable   | `[compliance]`     |
+| Vector stores, core set (FAISS, Chroma, Pinecone, Qdrant, Weaviate, Milvus, ...) | Stable | `[rag]`/`[vector-stores]` |
+| Self-orchestrating agents (bounded spawning)         | Beta     | `[agents]`         |
+| Non-transformer models (Mamba, RWKV)                 | Beta     | `[finetune]`       |
+| Vector stores, extended set (26 client-backed, less battle-tested) | Beta | `[vector-stores]` |
+| Fine-tuning (LoRA, real QLoRA)                       | Beta     | `[finetune]`       |
 
----
+> Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. Anthropic's Model Context Protocol is supported separately via `multimind.mcp_server` (see [docs/mcp-server.md](docs/mcp-server.md)).
 
-## 🚀 Installation
+Full status: [docs/feature-status.md](docs/feature-status.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
 
-```bash
-# Basic installation
-pip install multimind-sdk
+## Examples
 
-# With development dependencies
-pip install multimind-sdk[dev]
+> Snippets using `await` assume an async context — wrap them in `asyncio.run(main())` as shown in the Quick Start. Full runnable versions live in [`examples/`](examples/) and the [cookbook](docs/cookbook.md).
 
-# With specific framework support
-pip install multimind-sdk[langchain,lite-llm,superagi]
-```
+### Govern an app you already have — change one line
 
----
-
-## 🛠️ Usage Examples
-
-### Basic PEFT Fine-Tuning
-```python
-from multimind.fine_tuning import UniPELTPlusTuner
-from datasets import load_dataset
-
-dataset = load_dataset("glue", "mrpc")
-tuner = UniPELTPlusTuner(
-    base_model_name="bert-base-uncased",
-    output_dir="./output",
-    available_methods=["lora", "adapter"],
-    model_type="causal_lm"
-)
-tuner.train(
-    train_dataset=dataset["train"],
-    eval_dataset=dataset["validation"]
-)
-```
-
-### Few-Shot Learning (MAML)
-```python
-from multimind.fine_tuning import FewShotMetaTuner
-from datasets import load_dataset
-
-dataset = load_dataset("tweet_eval", "sentiment")
-tuner = FewShotMetaTuner(
-    base_model_name="bert-base-uncased",
-    output_dir="./output",
-    tasks=["sentiment", "emotion"],
-    available_methods=["lora"],
-    few_shot_strategy="maml"
-)
-tuner.train(
-    train_datasets={"sentiment": dataset["train"]},
-    few_shot_tasks=["sentiment"]
-)
-```
-
-### Framework Integration (LangChain)
-```python
-from multimind.integrations import create_adapter
-from langchain.llms import LLMChain
-from langchain.prompts import PromptTemplate
-
-adapter = create_adapter(
-    framework="langchain",
-    model_path="./output/fine_tuned_model"
-)
-prompt = PromptTemplate(input_variables=["text"], template="Analyze sentiment: {text}")
-chain = LLMChain(llm=adapter, prompt=prompt)
-result = chain.run("I love this product!")
-print(result)
-```
-
----
-
-## 📚 Documentation
-
-- [Full Documentation](https://multimind-sdk.readthedocs.io/)
-- [API Reference](https://multimind-sdk.readthedocs.io/en/latest/api.html)
-- [Architecture Overview](docs/architecture.md)
-- [Development Guide](docs/development.md)
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-- [Report bugs or request features](https://github.com/multimind-dev/multimind-sdk/issues)
-
----
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## 📣 About
-
-Your SDK solves all of this. One interface. Unified logic. Local + hosted models. Fine-tuning. Agent tools. No switching headaches.
-
-[www.multimind.dev](https://www.multimind.dev)
-
----
-
-## 🖥️ Command-Line Interface
-
-MultiMind SDK provides a powerful CLI for training, evaluation, inference, and model management.
-
-### Basic Usage
+Start the compliance proxy, then point any OpenAI-compatible client (LangChain, LlamaIndex, the raw `openai` SDK, anything) at it:
 
 ```bash
-multimind train --config configs/train_config.yaml
-# or (alias)
-multimind finetune --config configs/train_config.yaml
+multimind serve --port 8400 --upstream openai --block-on ssn,credit_card --budget 25.00 --audit-log audit.jsonl
 ```
 
-### Example Config (YAML or JSON)
+```python
+from openai import OpenAI
 
-<details>
-<summary>train_config.yaml</summary>
-
-```yaml
-base_model_name: "bert-base-uncased"
-output_dir: "./output"
-methods:
-  - lora
-  - adapter
-method_configs:
-  lora:
-    r: 8
-    lora_alpha: 32
-    target_modules: ["q_proj", "v_proj"]
-    lora_dropout: 0.05
-    bias: "none"
-  adapter:
-    adapter_type: "houlsby"
-    adapter_size: 64
-    adapter_non_linearity: "relu"
-    adapter_dropout: 0.1
-    target_modules: ["k_proj", "o_proj"]
-training_args:
-  num_train_epochs: 3
-  per_device_train_batch_size: 4
-  learning_rate: 1e-3
-  fp16: true
-  logging_steps: 10
-  save_strategy: "epoch"
-  warmup_ratio: 0.1
-  lr_scheduler_type: "cosine"
-train_dataset: "path/to/train_dataset.json"
-eval_dataset: "path/to/eval_dataset.json"
-model_type: "causal_lm"
-```
-</details>
-
-- You can use either YAML or JSON for the config file.
-- Both `multimind train` and `multimind finetune` work identically.
-- The CLI will prompt for missing arguments interactively.
-
-### More CLI Commands
-
-- `multimind evaluate --model ./output/model --dataset data.json`
-- `multimind infer --model ./output/model --input "What is PEFT?"`
-- `multimind list-models`
-- `multimind download --model bert-base-uncased`
-- `multimind export --model ./output/model --format onnx --output ./output/model.onnx`
-- `multimind delete --model ./output/model`
-- `multimind config --set default_dir ./models`
-- `multimind info`
-- `multimind completion bash`
-
-See `multimind --help` for all options.
-
----
-
-## 🗂️ Project Structure (Current & Planned)
-
-Below is the planned modular structure for MultiMind SDK. **Modules marked as [implemented] are available now; others are planned for future releases.**
-
-```
-multimind-sdk/
-├── multimind/
-│   ├── __init__.py
-│   ├── config.py                   # [implemented] Central config loader
-│
-│   ├── models/                    # [implemented] Unified model wrappers
-│   │   ├── base.py                # [implemented]
-│   │   ├── openai.py              # [implemented]
-│   │   ├── claude.py              # [planned]
-│   │   ├── mistral.py             # [planned]
-│   │   ├── huggingface.py         # [implemented]
-│   │   └── ollama.py              # [implemented]
-│
-│   ├── router/                    # [implemented] Fallback, latency-aware, cost-aware logic
-│   │   ├── strategy.py            # [implemented]
-│   │   ├── fallback.py            # [implemented]
-│   │   └── router.py              # [implemented]
-│
-│   ├── rag/                       # [implemented] Retrieval-Augmented Generation support
-│   │   ├── base.py                # [implemented]
-│   │   ├── embedder.py            # [implemented]
-│   │   └── vector_store.py        # [implemented]
-│
-│   ├── fine_tuning/              # [implemented] Training logic
-│   │   ├── lora_trainer.py        # [implemented]
-│   │   ├── qlora_trainer.py       # [implemented]
-│   │   └── dataset_loader.py      # [implemented]
-│
-│   ├── agents/                   # [planned] Agent abstraction
-│   │   ├── agent.py               # [planned]
-│   │   ├── memory.py              # [planned]
-│   │   ├── agent_loader.py        # [planned]
-│   │   └── tools/
-│   │       ├── web_search.py      # [planned]
-│   │       ├── calculator.py      # [planned]
-│   │       └── file_reader.py     # [planned]
-│
-│   ├── orchestration/           # [planned] Prompt chaining and flow control
-│   │   ├── prompt_chain.py        # [planned]
-│   │   └── task_runner.py         # [planned]
-│
-│   ├── mcp/                     # [planned] Model Composition Protocol
-│   │   ├── parser.py             # [planned]
-│   │   ├── executor.py           # [planned]
-│   │   └── schema.json           # [planned]
-│
-│   ├── integrations/           # [implemented] Compatibility with LangChain, CrewAI, etc.
-│   │   ├── langchain_adapter.py   # [implemented]
-│   │   ├── crewai_adapter.py      # [implemented]
-│   │   └── lite_llm.py           # [implemented]
-│
-│   ├── logging/
-│   │   ├── trace_logger.py        # [planned]
-│   │   └── usage_tracker.py       # [planned]
-│
-│   ├── cli/
-│   │   ├── main.py                # [implemented] multimind CLI entry
-│   │   └── commands/
-│   │       ├── agent.py           # [planned]
-│   │       ├── run_mcp.py         # [planned]
-│   │       └── finetune.py        # [planned]
-│
-├── examples/
-├── configs/                    # [implemented] Sample config files (e.g., train_config.yaml)
-├── tests/                      # [implemented]
-├── README.md
-├── LICENSE
-├── pyproject.toml
-├── setup.py
+# The ONLY change: base_url. Every call now gets PII redaction, budgets, and an audit trail.
+client = OpenAI(base_url="http://localhost:8400/v1", api_key="unused-upstream-key-is-server-side")
+client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "user", "content": "..."}])
 ```
 
-> **Note:** This structure is forward-looking. All [implemented] modules are available now; [planned] modules will be added in future releases. Current functionality is not impacted.
+Prefer to stay in code? Wrap your existing framework objects instead — see [docs/integrations.md](docs/integrations.md) for LangChain, LlamaIndex, CrewAI, and OpenAI-SDK adapters.
+
+### Guard any model against PII leaks
+
+```python
+from multimind import OpenAIModel
+from multimind.compliance import guard
+
+model = guard(
+    OpenAIModel(model_name="gpt-4o-mini"),
+    strategy="mask",                    # emails become [EMAIL], SSNs [SSN], ...
+    block_on=("credit_card", "ssn"),    # refuse these outright
+    audit_log="compliance_audit.jsonl", # types & counts only — never raw PII
+)
+
+response = await model.generate("Email jane.doe@corp.com about the invoice")
+# The provider only ever saw: "Email [EMAIL] about the invoice"
+```
+
+Detects emails, phone numbers, SSNs, credit cards (Luhn-validated), IPs, IBANs,
+API keys (entropy-checked), and more — including across streaming chunk boundaries.
+Works with any model object that has `generate`/`chat`, so you can wrap
+non-MultiMind clients too. No extra dependencies. Runnable demo:
+[`examples/compliance/guarded_model.py`](examples/compliance/guarded_model.py)
+
+### Multi-model chat
+
+```python
+from multimind import OpenAIModel, ClaudeModel, GeminiModel, GroqModel
+
+gpt = OpenAIModel(model_name="gpt-4o-mini")
+claude = ClaudeModel(model_name="claude-3-5-sonnet-20241022")
+gemini = GeminiModel(model_name="gemini-2.0-flash")
+groq = GroqModel(model_name="llama-3.3-70b-versatile")
+
+# Same interface, different providers
+response = await gpt.generate("Hello!")
+response = await claude.generate("Hello!")
+response = await gemini.generate("Hello!")
+```
+
+`MistralAIModel` and `DeepSeekModel` work the same way.
+
+### Sync usage (no asyncio needed)
+
+```python
+from multimind import OpenAIModel
+
+model = OpenAIModel(model_name="gpt-4o-mini")
+response = model.generate_sync("Explain quantum computing simply")
+```
+
+`chat_sync` and `embeddings_sync` are also available. Inside a running event loop, use the async methods instead.
+
+### Structured output
+
+```python
+from pydantic import BaseModel
+from multimind import OpenAIModel
+
+class City(BaseModel):
+    name: str
+    population: int
+
+model = OpenAIModel(model_name="gpt-4o-mini")
+city = await model.generate("Largest city in France?", response_format=City)
+print(city.name, city.population)  # a City instance, not a string
+```
+
+Works with `OpenAIModel`, `ClaudeModel`, `GeminiModel`, `MistralAIModel`, `GroqModel`, and `DeepSeekModel`.
+
+### RAG over your documents
+
+```python
+from multimind.rag.fluent import RAGPipeline, RAGConfig
+from multimind.vector_store.base import VectorStoreConfig, VectorStoreFactory
+from multimind.core.router import Router
+
+router = Router()  # register your providers with router.register_provider(...)
+
+vector_store = VectorStoreFactory.create_store(
+    "faiss",
+    VectorStoreConfig.create_faiss_config(dimension=1536, metric="cosine"),
+)
+
+pipeline = RAGPipeline(router, RAGConfig(
+    vector_store=vector_store,
+    embedding_provider="openai",
+    embedding_model="text-embedding-ada-002",
+    generation_provider="openai",
+    generation_model="gpt-4o-mini",
+))
+
+result = await (
+    pipeline
+    .load_documents(["Your documents here"])
+    .query("What does this say?")
+    .generate()
+    .execute()
+)
+print(result.answer)
+```
+
+Full working example: [`examples/rag/fluent_rag_example.py`](examples/rag/fluent_rag_example.py)
+
+### Agent with tools
+
+```python
+from multimind import OpenAIModel
+from multimind.agents import Agent
+from multimind.agents.tools import CalculatorTool
+
+agent = Agent(
+    model=OpenAIModel(model_name="gpt-4o-mini"),
+    tools=[CalculatorTool()],
+)
+
+# The task should mention the tool by name to route to it.
+# Required parameters for the tool are passed as kwargs to agent.run().
+response = await agent.run("Use the calculator", expression="42 * 17")
+print(response)
+```
+
+More examples: [`examples/`](examples/)
+
+## Documentation
+
+Hosted docs: [docs.multimind.dev](https://docs.multimind.dev). The same pages live in [docs/](docs/).
+
+- [Docs index](docs/README.md) — everything in one place
+- [Quickstart](docs/quickstart.md) — guarded, cost-tracked model calls in 5 minutes
+- [Cookbook](docs/cookbook.md) — task-oriented recipes (providers, structured output, budgets, hallucination checks, gateway, docker)
+- [Getting started without writing code](docs/getting-started-non-technical.md) — for analysts, compliance officers, and PMs
+- [Deployment Guide](docs/deployment.md) — `docker pull ghcr.io/multimindlab/multimind-sdk:latest`, docker compose, and a fully local stack
+- [Compliance Guide](docs/compliance.md)
+- [API Reference](docs/api_reference/)
+- [Architecture](docs/architecture.md)
+- [Contributing](CONTRIBUTING.md)
+
+## Contributing
+
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+
+```bash
+git clone https://github.com/multimindlab/multimind-sdk.git
+cd multimind-sdk
+pip install -e ".[dev]"
+pytest
+```
+
+## License
+
+Apache 2.0 — see [LICENSE](LICENSE).
+
+## References
+
+Third-party places where MultiMind SDK is discussed, listed, or used as material. None of these is a customer deployment; they are linked so you can judge the project's footprint yourself.
+
+- [MultiMind architecture lessons](https://github.com/MarcoPWx/Portfolio/blob/main/docs/_devmentor/infrastructure/architecture/multimind-architecture-lessons.md) in the DevMentor portfolio: notes on adapting the model routing, hybrid retrieval, memory, and workflow ideas without using the package directly.
+- [agents-shipgate benchmark](https://github.com/ThreeMoonsLab/agents-shipgate/blob/main/benchmark/cold-start/cases/multimindlab__multimind-sdk__claude_settings.json/case.json): uses this repository's Claude Code settings as a cold-start benchmark case.
+- [Awesome-Agentic-Workflow](https://github.com/irfanfadhullah/Awesome-Agentic-Workflow/blob/main/Reflection%20_%20Adaptation/multimind-sdk_README.md): includes the README under its reflection and adaptation collection.
+- [agents-radar digest, 19 March 2026](https://github.com/duanyytop/agents-radar/blob/main/digests/2026-03-19/ai-trending-en.md): lists MultiMind among trending AI projects.
+- [AINews, 3 July 2025](https://news.smol.ai/issues/25-07-03-not-much/): the LM Studio Discord section covers MultiMind's model conversion, fine-tuning, and inference introduction.
+- Articles: [Introducing MultiMind SDK](https://dev.to/multimindsdk/introducing-multimind-sdk-your-all-in-one-toolkit-for-fine-tuning-rag-agents-more-2mh8) and [Ensuring compliance when fine-tuning](https://dev.to/multimindsdk/ensuring-compliance-when-fine-tuning-ai-models-with-multimindsdk-a3c) on DEV Community; listings on [Onegen](https://onegen.ai/project/multimind-sdk-unified-ai-framework-for-fine-tuning-rag-and-agent-orchestration/) and [AIxplore](https://aixplore.in/project_details?slug=multimind-sdk). Older articles describe the 0.2 API; the current reference is [docs.multimind.dev](https://docs.multimind.dev).
+
+
+Using MultiMind in a product or project? Open a [discussion](https://github.com/multimindlab/multimind-sdk/discussions) and we will link it here.
+
+<p align="center">
+  <a href="https://discord.gg/K64U65je7h">Discord</a> ·
+  <a href="https://x.com/multimindsdk">Twitter</a> ·
+  <a href="https://opencollective.com/multimind-sdk">Support</a>
+</p>

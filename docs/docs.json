@@ -1,0 +1,93 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "MultiMind SDK",
+  "description": "The compliance-first AI agent framework. Multi-model AI, PII guard, RAG, agents, and governance.",
+  "colors": {
+    "primary": "#2563EB",
+    "light": "#60A5FA",
+    "dark": "#1D4ED8"
+  },
+  "logo": {
+    "light": "/logo/multimind.png",
+    "dark": "/logo/multimind.png",
+    "href": "https://www.multimind.dev"
+  },
+  "favicon": "/logo/multimind.png",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Start",
+        "pages": [
+          "index",
+          "quickstart",
+          "installation",
+          "getting-started-non-technical",
+          "cookbook"
+        ]
+      },
+      {
+        "group": "Guides",
+        "pages": [
+          "compliance",
+          "compliance_quickstart",
+          "guard-proxy",
+          "dashboard",
+          "integrations",
+          "mcp-server",
+          "ai-inventory",
+          "tracing",
+          "rag",
+          "memory",
+          "configuration",
+          "cli",
+          "deployment"
+        ]
+      },
+      {
+        "group": "REST API",
+        "pages": [
+          "api_reference/overview",
+          "api_reference/gateway",
+          "api_reference/rag_api",
+          "api_reference/rag_api_server_setup"
+        ]
+      },
+      {
+        "group": "Reference",
+        "pages": [
+          "architecture",
+          "features_and_functions",
+          "feature-status",
+          "backward_compatibility",
+          "releasing",
+          "maintainers/feature-parity",
+          "maintainers/github-labels-and-issues"
+        ]
+      }
+    ]
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "PyPI",
+        "href": "https://pypi.org/project/multimind-sdk/"
+      },
+      {
+        "label": "Discord",
+        "href": "https://discord.gg/K64U65je7h"
+      }
+    ],
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/multimindlab/multimind-sdk"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/multimindlab/multimind-sdk",
+      "discord": "https://discord.gg/K64U65je7h",
+      "website": "https://www.multimind.dev"
+    }
+  }
+}
