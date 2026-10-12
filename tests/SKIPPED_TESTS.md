@@ -1,5 +1,8 @@
 # Skipped Tests Documentation
 
+> **Superseded (October 2026).** Pass-rate figures in this file are from an
+> older suite. See CI and [FEATURES.md](../FEATURES.md).
+
 This document explains why certain tests are skipped and whether they can be fixed in the future.
 
 ## Legitimately Skipped Tests (Abstract Classes / Unimplemented Features)

@@ -318,7 +318,6 @@ pytest --cov=multimind
 
 - [Project Roadmap](ROADMAP.md)
 - [Architecture Overview](docs/architecture.md)
-- [Development Guidelines](docs/development.md)
 - [Docs Index](docs/README.md)
 
 ## CLI Testing Guidelines

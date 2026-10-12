@@ -1,13 +1,18 @@
-# Compliance Framework Quickstart Guide
+---
+title: "Compliance Framework Quickstart Guide"
+---
 
-This guide provides a quick introduction to using the MultiMind Compliance Framework. For detailed documentation, see the [Compliance Framework Guide](compliance.md).
+This guide provides a quick introduction to using the MultiMind Compliance Framework. For detailed documentation, see the [Compliance Framework Guide](/compliance).
 
 ## Installation
 
-The compliance framework is included in the MultiMind SDK. Install it using pip:
+The regulation managers used below (`GovernanceConfig`, `PrivacyCompliance`,
+the domain managers, and the advanced classes) are gated behind the
+`compliance` extra; the runtime PII guard and evidence reporting work on a
+core install. Install with pip (Python 3.10+):
 
 ```bash
-pip install multimind-sdk
+pip install "multimind-sdk[compliance]"
 ```
 
 ## Basic Setup
@@ -144,87 +149,106 @@ async def assess_sox(system_id: str):
 
 ## Advanced Compliance Features
 
-The MultiMind SDK includes cutting-edge compliance features that set it apart from other frameworks. Here's how to use them:
+The classes in `multimind.compliance.advanced` (re-exported from
+`multimind.compliance`) each take a plain `dict` configuration, but most of
+them are **fail-closed stubs in 1.0.0**: rather than fabricate a proof,
+patch, watermark, or explanation, they raise `NotImplementedError` until a
+real backend is integrated. The status below was verified by calling each
+method; see [compliance.md](/compliance#advanced-features) for the full
+table.
 
-These classes live in `multimind.compliance` and each takes a plain `dict` configuration.
+### 1. Federated Compliance — unavailable
 
-### 1. Federated Compliance
+`FederatedCompliance(config).verify_global_compliance(data)` always raises
+`NotImplementedError` (no coordinator or consensus backend ships), and
+`ComplianceShard.verify_compliance` raises because local rule evaluation is
+not implemented. Do not build on these yet.
+
+### 2. Regulatory Change Detection — use `RegulatoryWatcher`
+
+`RegulatoryChangeDetector(config={})` fails on construction in 1.0.0
+(`AttributeError: '_initialize_regulatory_sources'`), and its patch
+validation is unimplemented. The working alternative is the hash-based
+watcher, which needs no extras and makes no legal interpretation:
 
 ```python
-from multimind.compliance import FederatedCompliance
+from multimind.compliance import RegulatoryWatcher
 
-# Verify compliance across jurisdiction-specific shards
-federated = FederatedCompliance(config={"jurisdictions": ["EU", "US"]})
-result = await federated.verify_global_compliance(
-    data={"data_categories": ["personal_data", "health_data"], "operation": "process"}
+watcher = RegulatoryWatcher(
+    sources=[{"name": "eu-ai-act", "url": "https://example.org/ai-act"}],
+    state_path="regwatch_state.json",   # persists last-seen hashes between runs
 )
+events = await watcher.check()        # HTTP fetch of each source
+for e in events:                      # ChangeEvent: name, url, changed, diff, checked_at, previous_hash, current_hash
+    if e.changed:
+        print(e.name, e.diff)
+
+# Dry run from local copies instead of the network:
+events = watcher.check_offline({"eu-ai-act": "local_copy.html"})
 ```
 
-### 2. Regulatory Change Detection
+### 3. Zero-Knowledge Compliance Proofs — unavailable
 
-```python
-from multimind.compliance import RegulatoryChangeDetector
+`multimind.compliance.advanced.ZeroKnowledgeProof` is a fail-closed stub: without a real ZKP backend installed, `prove` and `verify` raise `NotImplementedError` rather than fabricating a proof. `HomomorphicEncryption.encrypt` likewise raises. Treat these as unavailable until a backend integration ships.
 
-detector = RegulatoryChangeDetector(config={})
-changes = await detector.detect_changes()
-patches = await detector.generate_patches(changes)
-```
-
-### 3. Zero-Knowledge Compliance Proofs
-
-`multimind.compliance.advanced.ZeroKnowledgeProof` is currently a fail-closed stub: without a real ZKP backend installed, `prove` and `verify` raise `NotImplementedError` rather than fabricating a proof. Treat this feature as unavailable until a backend integration ships.
-
-### 4. Differential Privacy
+### 4. Differential Privacy — works
 
 ```python
 from multimind.compliance import AdaptivePrivacy
+from multimind.compliance.advanced import DPMechanism
 
-# Adapt privacy parameters from usage feedback
-privacy_loop = AdaptivePrivacy(config={"epsilon": 1.0})
-await privacy_loop.adapt_privacy(
-    feedback={"document_views": 100, "search_queries": 50}
-)
+# Adapt epsilon from feedback. Recognised config keys: initial_epsilon (1.0),
+# min_epsilon (0.1), max_epsilon (10.0), adaptation_rate (0.1), dp_sensitivity (1.0).
+privacy_loop = AdaptivePrivacy(config={"initial_epsilon": 1.0})
+# Recognised feedback keys: compliance_score (drives adaptation) and loss.
+await privacy_loop.adapt_privacy(feedback={"compliance_score": 0.65})
+print(privacy_loop.dp_mechanism.epsilon)   # 0.2: stepped up by adaptation_rate because compliance < 0.7
+# Caveat: the walk starts from the internal HomomorphicEncryption stub's
+# epsilon (0.1), not from initial_epsilon, so the first step lands near
+# min_epsilon regardless of the configured starting value.
+
+# Laplace noise for numeric values / lists of numbers (strings and bools raise NotImplementedError)
+noisy = DPMechanism(epsilon=1.0, sensitivity=1.0).privatize(42.0)
 ```
 
-### 5. Model Watermarking and Fingerprinting
+### 5. Model Fingerprinting — partial
 
 ```python
 from multimind.compliance import ModelWatermarking
 
 watermarking = ModelWatermarking(config={})
-model = await watermarking.watermark_model(model)
-fingerprint = await watermarking.track_fingerprint(model)
-verification = await watermarking.verify_watermark(model)
+info = await watermarking.track_fingerprint(model)
+# {"fingerprint": "fingerprint_<sha256>", "timestamp": ..., "model_id": ...}
+# The fingerprint hashes the model's type name and repr(); it identifies the
+# object, not the weights.
 ```
 
-### 6. Self-Healing Policies
+`watermark_model` and `verify_watermark` raise `NotImplementedError` (no
+watermarking backend), so there is no actual watermark embedding or
+verification in 1.0.0.
 
-```python
-from multimind.compliance import SelfHealingCompliance
+### 6. Self-Healing Policies — unavailable
 
-healer = SelfHealingCompliance(config={})
-result = await healer.check_and_heal(
-    compliance_state={"type": "data_leak", "severity": "high"}
-)
-```
+`SelfHealingCompliance(config).check_and_heal(state)` returns the state
+unchanged (with `patches_applied: []`) when it detects nothing, and raises
+`NotImplementedError` as soon as a vulnerability is detected (for example
+`{"status": "needs_healing"}`), because automatic patch application is not
+implemented.
 
-### 7. Explainable Compliance
+### 7. Explainable Compliance — unavailable
 
-```python
-from multimind.compliance import ExplainableDTO
-
-explainer = ExplainableDTO(config={})
-dto = await explainer.explain_decision(
-    decision={
-        "response_id": "resp_123",
-        "rules_applied": ["gdpr.data_minimization", "eu_ai_act.transparency"],
-    }
-)
-```
+`ExplainableDTO(config).explain_decision(decision)` raises
+`NotImplementedError` (no explanation model backend is configured).
 
 ## Model Training with Compliance
 
-The MultiMind SDK provides tools for training models while ensuring regulatory compliance. Here's how to use them:
+`multimind.compliance.model_training` wraps a PyTorch training loop with
+compliance metrics. It needs `torch` (not part of the `compliance` extra;
+install `multimind-sdk[finetune]` or `torch` directly): `train()` iterates
+`DataLoader` batches and expects each batch to be a dict with `"input"` and
+`"target"` keys. The bias/privacy/transparency/fairness scores are
+heuristic and the trainer never stops training on a violation
+(`_should_stop_training` always returns `False`).
 
 ### 1. Basic Setup
 
@@ -332,40 +356,21 @@ trainer.save_training_results(
 
 ## Best Practices for Advanced Features
 
-1. **Federated Compliance**
-   - Keep policy shards up to date
-   - Monitor jurisdiction changes
-   - Test with different locales
+1. **Regulatory Monitoring** (`RegulatoryWatcher`)
+   - Keep `state_path` on durable storage so diffs span runs
+   - Review raw diffs yourself; the watcher does not interpret them
 
-2. **Regulatory Monitoring**
-   - Configure appropriate sources
-   - Set up change notifications
-   - Review changes regularly
+2. **Differential Privacy** (`AdaptivePrivacy`, `DPMechanism`, `PrivacyBudget`)
+   - Choose epsilon deliberately and track spend with `PrivacyBudget`
+   - Validate that the noise scale fits your data's sensitivity
 
-3. **Zero-Knowledge Proofs**
-   - Use appropriate proof types
-   - Maintain verification keys
-   - Document proof generation
+3. **Model Fingerprinting** (`ModelWatermarking.track_fingerprint`)
+   - Remember the fingerprint is derived from `repr(model)`, not weights
+   - Store fingerprint records alongside your audit trail
 
-4. **Differential Privacy**
-   - Choose appropriate epsilon values
-   - Monitor privacy budget
-   - Validate noise addition
-
-5. **Model Fingerprinting**
-   - Generate fingerprints consistently
-   - Store fingerprint data securely
-   - Use for audit trails
-
-6. **Self-Healing Policies**
-   - Define clear violation thresholds
-   - Set up notification channels
-   - Test rollback procedures
-
-7. **Compliance DTOs**
-   - Include relevant metadata
-   - Maintain audit trails
-   - Use for transparency
+The federated, zero-knowledge, self-healing, and explainable-DTO classes are
+fail-closed stubs in 1.0.0 (see above); there is nothing to configure for
+them yet.
 
 ## Best Practices for Model Training
 
@@ -391,7 +396,7 @@ trainer.save_training_results(
 
 ## Next Steps
 
-1. Review the [Compliance Framework Guide](compliance.md) for detailed documentation
+1. Review the [Compliance Framework Guide](/compliance) for detailed documentation
 2. Explore specific compliance modules based on your needs
 3. Set up monitoring and alerting
 4. Implement regular compliance checks
@@ -399,7 +404,7 @@ trainer.save_training_results(
 ## Support
 
 For help:
-- Check the [Compliance Framework Guide](compliance.md)
+- Check the [Compliance Framework Guide](/compliance)
 - Open a GitHub issue
 - Contact the development team
 - Join the community forum 

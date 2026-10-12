@@ -1,4 +1,6 @@
-# Releasing multimind-sdk
+---
+title: "Releasing multimind-sdk"
+---
 
 This document describes how to cut a release of `multimind-sdk` to PyPI using
 the `.github/workflows/release.yml` pipeline.
@@ -28,7 +30,7 @@ The package version is defined in one place:
 
 ```python
 # multimind/__init__.py
-__version__ = "0.3.0"
+__version__ = "1.0.0"
 ```
 
 `pyproject.toml` reads it dynamically (`dynamic = ["version"]`,
@@ -43,15 +45,22 @@ there is nothing else to bump — no version string in `pyproject.toml`,
 2. Update `CHANGELOG.md` with the new version's notes.
 3. Tag the merge commit and push the tag:
    ```bash
-   git tag v0.3.1
-   git push origin v0.3.1
+   git tag v1.0.0
+   git push origin v1.0.0
    ```
    This alone triggers `build` + `test-wheel` (not `publish`) — a good
    opportunity to confirm the wheel installs and imports cleanly before
    committing to a public release.
 4. Create a GitHub Release from that tag (via the GitHub UI, or
-   `gh release create v0.3.1 --generate-notes`). Publishing the release is
+   `gh release create v1.0.0 --generate-notes`). Publishing the release is
    what triggers the `publish` job and pushes to PyPI.
+5. The `v*` tag also runs the `Docker image` workflow
+   (`.github/workflows/docker.yml`), which publishes
+   `ghcr.io/multimindlab/multimind-sdk:1.0.0`, `:1.0`, and `:latest` for
+   amd64 and arm64 after a smoke test. Merges to `develop` publish
+   `:develop`; the workflow can also be run by hand from the Actions tab.
+   The first push creates the package private: set it to public once under
+   the repository's Packages settings.
 
 ## One-time trusted-publisher setup on pypi.org
 
@@ -59,7 +68,7 @@ Trusted publishing must be registered once per PyPI project before the
 `publish` job can authenticate. As a maintainer with access to the
 `multimind-sdk` project on PyPI:
 
-1. Log in to <https://pypi.org> and go to the project's
+1. Log in to [https://pypi.org](https://pypi.org) and go to the project's
    **Publishing** settings (Account settings → Publishing, or directly at
    `https://pypi.org/manage/project/multimind-sdk/settings/publishing/`).
 2. Add a new **GitHub** trusted publisher with:
@@ -78,7 +87,7 @@ Trusted publishing must be registered once per PyPI project before the
 ### TestPyPI (optional)
 
 For dry-running the whole pipeline against TestPyPI before it's wired to the
-real index, repeat the same steps on <https://test.pypi.org> with:
+real index, repeat the same steps on [https://test.pypi.org](https://test.pypi.org) with:
 
 - **Environment name**: `testpypi`
 
@@ -96,6 +105,6 @@ environment.
 - [ ] `build` + `test-wheel` jobs green for that tag
 - [ ] GitHub Release created from the tag (this triggers `publish`)
 - [ ] `publish` job green — confirm the new version appears on
-      <https://pypi.org/project/multimind-sdk/>
+      [https://pypi.org/project/multimind-sdk/](https://pypi.org/project/multimind-sdk/)
 - [ ] Smoke-install from PyPI in a scratch venv:
       `pip install multimind-sdk==X.Y.Z && python -c "import multimind; print(multimind.__version__)"`

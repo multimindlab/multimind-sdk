@@ -1,6 +1,13 @@
 # MultiMind SDK - Development Roadmap
 
-This roadmap outlines our development priorities and future features. For current feature status, see [FEATURES.md](FEATURES.md).
+> **Status (October 2026):** The supported product is the governance core
+> shipped in 1.0.0: providers, the PII guard, `multimind serve`, the single
+> Swagger API, GDPR and HIPAA runtime checks, FAISS and Chroma RAG, and
+> function-calling agents. Items below that docs/feature-status.md marks done are done.
+> NIS2, zero-knowledge proofs, and the unimplemented vector backends are not
+> on the stable surface.
+
+This roadmap outlines our development priorities and future features. For current feature status, see [docs/feature-status.md](docs/feature-status.md).
 
 ---
 
@@ -22,7 +29,7 @@ This roadmap outlines our development priorities and future features. For curren
 - Fine-tuning improvements
 
 ### ⚠️ Honest Status Note
-A July 2026 audit found ~44 of the ~60 vector-store backends are real client-library-backed implementations; the 11 remaining stubs now raise NotImplementedError instead of silently failing (see [FEATURES.md](FEATURES.md) for the full breakdown).
+A July 2026 audit found ~44 of the ~60 vector-store backends are real client-library-backed implementations; the 11 remaining stubs now raise NotImplementedError instead of silently failing (see [docs/feature-status.md](docs/feature-status.md) for the full breakdown).
 
 ---
 
@@ -180,7 +187,7 @@ These features were claimed in the README but are not feasible or will not be im
 
 We welcome contributions! If you'd like to work on any of these features:
 
-1. Check [FEATURES.md](FEATURES.md) for current status
+1. Check [docs/feature-status.md](docs/feature-status.md) for current status
 2. Review [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 3. Open an issue or discussion to coordinate
 4. Submit a pull request

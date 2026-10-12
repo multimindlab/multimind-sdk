@@ -1,6 +1,8 @@
-# Cookbook
+---
+title: "Cookbook"
+---
 
-Task-oriented recipes. Each one is self-contained and copy-paste runnable. New here? Do the [quickstart](quickstart.md) first.
+Task-oriented recipes. Each one is self-contained and copy-paste runnable. New here? Do the [quickstart](/quickstart) first.
 
 Contents:
 
@@ -153,7 +155,7 @@ async def main():
 asyncio.run(main())
 ```
 
-A warning is logged at 80% of the ceiling (tune with `warn_ratio`). Offline demo that runs with no API key: [examples/observability/cost_tracking.py](../examples/observability/cost_tracking.py).
+A warning is logged at 80% of the ceiling (tune with `warn_ratio`). Offline demo that runs with no API key: [examples/observability/cost_tracking.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/observability/cost_tracking.py).
 
 ## Detect hallucinations in RAG answers
 
@@ -195,7 +197,7 @@ report = HallucinationDetector().check_grounding(
 print(report.summary())   # 1 supported, 1 unsupported
 ```
 
-Offline end-to-end demo: [examples/evaluation/hallucination_detection.py](../examples/evaluation/hallucination_detection.py).
+Offline end-to-end demo: [examples/evaluation/hallucination_detection.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/evaluation/hallucination_detection.py).
 
 ## Switch models mid-conversation without losing knowledge
 
@@ -224,7 +226,7 @@ Strategies: `"full"` (replay raw history, zero loss), `"summary"` (compact — b
 long chats crossing context limits), `"adapted"` (provider-specific formatting).
 With `max_history_tokens=...` long conversations are compacted automatically.
 Composes with `guard(...)` and `track_costs(...)` wrappers.
-Runnable demo: [examples/context_transfer/model_switching.py](../examples/context_transfer/model_switching.py)
+Runnable demo: [examples/context_transfer/model_switching.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/context_transfer/model_switching.py)
 
 ## Agents that spawn sub-agents (bounded)
 
@@ -253,7 +255,7 @@ asyncio.run(main())
 
 Pass `budget_tracker=` (a `multimind.observability` Budget-backed tracker) to cap
 spend across the whole agent tree, and `audit_hook=` to log every spawn/delegate
-event. Runnable demo: [examples/agents/self_orchestrating_agent.py](../examples/agents/self_orchestrating_agent.py)
+event. Runnable demo: [examples/agents/self_orchestrating_agent.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/agents/self_orchestrating_agent.py)
 
 ## Run the gateway API
 
@@ -293,4 +295,4 @@ curl -X POST http://localhost:8000/v1/chat \
   -d '{"model": "ollama", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
-Swagger UI is at http://localhost:8000/docs. Models persist in the `ollama_models` volume. Full container reference (env vars, health checks, production notes): [deployment guide](deployment.md).
+Swagger UI is at http://localhost:8000/docs. Models persist in the `ollama_models` volume. Full container reference (env vars, health checks, production notes): [deployment guide](/deployment).

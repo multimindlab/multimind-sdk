@@ -33,6 +33,10 @@ jobs:
         run: ruff check multimind/
       - name: ruff format --check (formatter)
         run: ruff format --check multimind/
+      - name: Install package for docs parity check
+        run: pip install -e ".[gateway]"
+      - name: Docs parity (CLI commands and routes mentioned in docs/)
+        run: python scripts/check_docs_parity.py
 
   # ---------------------------------------------------------------------------
   # Security scanning.
@@ -81,7 +85,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -129,7 +133,8 @@ jobs:
             -m "not integration and not slow and not requires_api_key" \
             tests/test_retrieval.py \
             tests/test_vector_store.py \
-            tests/test_document_loader.py
+            tests/test_document_loader.py \
+            tests/test_release_fixes.py
 
   # ---------------------------------------------------------------------------
   # Compliance extras (cryptography, plotly, dash, pandas)
@@ -212,12 +217,63 @@ jobs:
             -k "gateway or api or mcp"
 
   # ---------------------------------------------------------------------------
+  # Supported surface. No torch: coverage's tracer breaks torch import on
+  # current releases, and these tests do not need it. The guard and the
+  # proxy are held at 70%. The wider provider, agent, and CLI trees measured
+  # 39% on 2026-10-12 (MoE scaffolds and the conversion CLI are mostly
+  # untested); the gate is 35% so that number cannot quietly fall.
+  # --cov takes the path form on purpose: a dotted module name makes coverage
+  # import the package inside sys_modules_saved() and discard it, and pydantic
+  # >= 2.14 then reuses its cached BaseModel from the discarded import, so
+  # GatewayConfig() fails at import time. Per-module gates come from
+  # `coverage report --include`.
+  # ---------------------------------------------------------------------------
+  supported-surface:
+    name: supported surface coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install gateway + dev
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[gateway,dev]"
+      - name: Guard and proxy at 70%
+        run: |
+          pytest \
+            tests/test_compliance_guard.py \
+            tests/test_guard_proxy.py \
+            --cov=multimind --cov-report= --tb=short -q
+          coverage report \
+            --include='multimind/compliance/guard.py,multimind/gateway/guard_proxy.py' \
+            --fail-under=70
+      - name: Providers, agents, and CLI at 35%
+        run: |
+          rm -f .coverage
+          pytest \
+            tests/test_api_gateway.py \
+            tests/test_agents_function_calling.py \
+            tests/test_cli.py \
+            tests/test_new_providers.py \
+            tests/test_platform.py \
+            tests/test_release_fixes.py \
+            --cov=multimind --cov-report= --tb=short -q
+          coverage report \
+            --include='multimind/models/*,multimind/agents/*,multimind/cli/*' \
+            --fail-under=35
+
+  # ---------------------------------------------------------------------------
   # Full suite with everything installed, including the framework-interop
   # extras (langchain-core, llama-index-core) and the MCP SDK (already part
   # of `all`). This is the only job where tests that `importorskip` those
   # packages actually execute instead of skipping. Enforces two gates: a
   # 95% pass-rate threshold (see the Python step below) and a 20% line
   # coverage floor (--cov-fail-under=20) — NOT a 95% coverage gate.
+  # The supported-surface job measures the guard, the proxy, and the
+  # provider/agent/CLI trees separately.
   # ---------------------------------------------------------------------------
   test-full:
     name: test-full (95% pass-rate gate, 20% coverage floor)

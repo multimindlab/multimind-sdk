@@ -1,4 +1,6 @@
-# Backward Compatibility for Transformers
+---
+title: "Backward Compatibility for Transformers"
+---
 
 ## Overview
 
@@ -42,7 +44,7 @@ The implementation includes a three-tier fallback strategy:
 
 1. **Current Transformers**: Uses `AutoModelForSeq2SeqLM` (preferred)
 2. **Old Transformers**: Falls back to `AutoModelForSeq2SeqGeneration`
-3. **Very Old Transformers**: Falls back to `BartForConditionalGeneration` or raises a helpful error
+3. **Very Old Transformers**: Sets the class to `None`; `multimind/fine_tuning/peft_methods.py` additionally tries `BartForConditionalGeneration` before raising an `ImportError` with a helpful message
 
 ## Affected Modules
 
@@ -56,9 +58,9 @@ The backward compatibility has been implemented in the following modules:
 
 ## Testing
 
-We've created comprehensive tests to verify backward compatibility:
+The compatibility logic is covered by:
 
-- `tests/test_transformers_compatibility.py`: Complete compatibility test suite
+- `tests/test_transformers_compatibility.py` (four tests: current, old and very-old transformers plus class-selection logic, using mocked imports so no real `transformers` install is needed)
 
 Run the tests to verify compatibility:
 
@@ -93,17 +95,19 @@ The SDK is now more robust and will work with a wider range of Transformers vers
 |---------------------|------------|--------|
 | 4.x (current) | `AutoModelForSeq2SeqLM` | ✅ Preferred |
 | 3.x (old) | `AutoModelForSeq2SeqGeneration` | ✅ Fallback |
-| 2.x (very old) | `BartForConditionalGeneration` | ✅ Fallback |
+| 2.x (very old) | `BartForConditionalGeneration` (fine-tuning only) | ⚠️ Fallback |
 | < 2.x | Error with helpful message | ❌ Not supported |
+
+Note that the package's own `finetune` extra pins `transformers>=4.30.0`, so the older tiers only matter if you install `transformers` yourself.
 
 ## Troubleshooting
 
 ### Import Errors
 
-If you encounter import errors related to Transformers classes, ensure you have a compatible version installed:
+If you encounter import errors related to Transformers classes, install the supported version through the extra:
 
 ```bash
-pip install transformers>=2.0.0
+pip install "multimind-sdk[finetune]"   # transformers>=4.30.0
 ```
 
 ### Model Loading Issues

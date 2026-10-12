@@ -78,9 +78,14 @@ import types
 class DummyPrompting:
     def __init__(self, llm=None, model=None):
         pass
+
     async def analyze_prompt(self, prompt):
         return {}
-sys.modules['multimind.prompts.advanced_prompting'] = types.SimpleNamespace(AdvancedPrompting=DummyPrompting, PromptType=None, PromptStrategy=None)
+
+
+sys.modules["multimind.prompts.advanced_prompting"] = types.SimpleNamespace(
+    AdvancedPrompting=DummyPrompting, PromptType=None, PromptStrategy=None
+)
 
 
 class MockLLM(BaseLLM):
@@ -92,23 +97,39 @@ class MockLLM(BaseLLM):
         self.chat_calls = 0
         self.embedding_calls = 0
 
-    async def generate(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def generate(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> str:
         self.generate_calls += 1
         if "error" in prompt.lower():
             raise Exception("Mock generation error")
         return f"Mock response to: {prompt}"
 
-    async def generate_stream(self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+    async def generate_stream(
+        self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
+    ) -> AsyncGenerator[str, None]:
         self.generate_calls += 1
         yield f"Mock stream response to: {prompt}"
 
-    async def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> str:
+    async def chat(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> str:
         self.chat_calls += 1
         if any("error" in msg.get("content", "").lower() for msg in messages):
             raise Exception("Mock chat error")
         return "Mock chat response"
 
-    async def chat_stream(self, messages: List[Dict[str, str]], temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs) -> AsyncGenerator[str, None]:
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        **kwargs,
+    ) -> AsyncGenerator[str, None]:
         self.chat_calls += 1
         yield "Mock chat stream response"
 
@@ -178,35 +199,43 @@ class MockTool(BaseTool):
 # 1. Skip tests that instantiate abstract classes or test unimplemented features
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
+
 # Fix for SummaryMemory (abstract)
 @pytest.mark.skip(reason="SummaryMemory is abstract and cannot be instantiated directly.")
 class TestSummaryMemoryCompression:
     def test_summary_memory_compression(self):
         pass
 
+
 # Fix for BaseDocumentProcessor (abstract)
 @pytest.mark.skip(reason="BaseDocumentProcessor is abstract and cannot be instantiated directly.")
 class TestAdvancedDocumentProcessing:
     def test_document_processor_validation(self):
         pass
+
     def test_document_processing_error_handling(self):
         pass
+
 
 # Fix for MockTool (abstract)
 @pytest.mark.skip(reason="MockTool is abstract and cannot be instantiated directly.")
 class TestAgentToolRegistry:
     def test_agent_tool_registry(self):
         pass
+
     def test_agent_error_handling(self):
         pass
+
 
 # Fix for PipelineBuilder (missing router argument)
 @pytest.mark.skip(reason="PipelineBuilder requires a router argument.")
 class TestAdvancedPipelineFeatures:
     def test_pipeline_builder_validation(self):
         pass
+
     def test_pipeline_error_handling(self):
         pass
+
 
 # Fix for EnhancedRetriever (KeyError: 'id')
 @pytest.mark.skip(reason="EnhancedRetriever expects documents with 'id' field.")
@@ -214,19 +243,23 @@ class TestAdvancedRetrievalFeatures:
     def test_enhanced_retriever_fusion(self):
         pass
 
+
 # Fix for ProviderPerformanceTracker (missing record_outcome)
 @pytest.mark.skip(reason="ProviderPerformanceTracker missing record_outcome method.")
 class TestAdvancedEnsemblePerformanceTracking:
     def test_ensemble_performance_tracking(self):
         pass
 
+
 # Fix for LLMInterface (ErrorHandlingConfig signature mismatch)
 @pytest.mark.skip(reason="ErrorHandlingConfig signature mismatch.")
 class TestAdvancedLLMInterfaceFeatures:
     def test_llm_interface_error_strategies(self):
         pass
+
     def test_llm_interface_fallback(self):
         pass
+
 
 # Fix for MCP spec (missing required keys)
 @pytest.mark.skip(reason="MCP spec must contain required keys.")
@@ -234,25 +267,34 @@ class TestAdvancedMCPParallelExecution:
     def test_mcp_parallel_execution(self):
         pass
 
+
 # Fix for IntegrationScenarios (MockTool abstract, VectorStoreConfig missing args, etc.)
-@pytest.mark.skip(reason="Integration scenario tests require concrete implementations and correct arguments.")
+@pytest.mark.skip(
+    reason="Integration scenario tests require concrete implementations and correct arguments."
+)
 class TestIntegrationScenarios:
     def test_full_rag_pipeline(self):
         pass
+
     def test_agent_with_tools_and_memory(self):
         pass
+
     def test_ensemble_with_multiple_models(self):
         pass
+
 
 # Fix for EdgeCasesAndStressTests (async/sync mismatch)
 @pytest.mark.skip(reason="Edge case tests need async/sync refactor.")
 class TestEdgeCasesAndStressTests:
     def test_large_data_handling(self):
         pass
+
     def test_concurrent_access(self):
         pass
+
     def test_model_rate_limiting(self):
         pass
+
 
 # --- End of fixes ---
 
@@ -298,7 +340,7 @@ class TestAdvancedMemoryFeatures:
     @pytest.mark.asyncio
     async def test_memory_persistence(self):
         """Test memory persistence across sessions."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
             temp_path = f.name
 
         try:
@@ -343,19 +385,16 @@ class TestAdvancedAgentFeatures:
         tool = MockTool()
 
         agent = Agent(
-            model=model,
-            memory=memory,
-            tools=[tool],
-            system_prompt="You are a helpful assistant."
+            model=model, memory=memory, tools=[tool], system_prompt="You are a helpful assistant."
         )
 
         # Test agent with failing tool
-        with patch.object(tool, 'execute', side_effect=Exception("Tool failed")):
+        with patch.object(tool, "execute", side_effect=Exception("Tool failed")):
             result = await agent.run("Use failing tool")
             assert result is not None
 
         # Test agent with failing model
-        with patch.object(model, 'generate', side_effect=Exception("Model failed")):
+        with patch.object(model, "generate", side_effect=Exception("Model failed")):
             result = await agent.run("Generate response")
             assert result is not None
 
@@ -382,18 +421,16 @@ class TestAdvancedAgentFeatures:
         memory = AgentMemory()
         tools = [MockTool("tool1"), MockTool("tool2")]
 
-        agent = Agent(
-            model=model,
-            memory=memory,
-            tools=tools
-        )
+        agent = Agent(model=model, memory=memory, tools=tools)
 
         # Test tool execution
         result = await agent.run("Use tool1")
         assert result is not None
 
 
-@pytest.mark.skip(reason="Fails due to Pydantic model type validation; requires code refactor to support runtime-patched provider attribute.")
+@pytest.mark.skip(
+    reason="Fails due to Pydantic model type validation; requires code refactor to support runtime-patched provider attribute."
+)
 @pytest.mark.skipif(AdvancedEnsemble is None, reason="AdvancedEnsemble not available")
 class TestAdvancedEnsembleFeatures:
     """Test advanced ensemble features."""
@@ -439,20 +476,27 @@ class TestAdvancedMCPFeatures:
     @pytest.mark.asyncio
     async def test_mcp_executor_error_handling(self):
         """Test MCP executor error handling."""
-        executor = AdvancedMCPExecutor(max_retries=2, retry_delay=0.1)
+
+        class _Model:
+            async def generate(self, prompt):
+                return "ok"
+
+        executor = AdvancedMCPExecutor(
+            model_registry={"ollama": _Model()}, max_retries=2, retry_delay=0.1
+        )
 
         # Test workflow with failing steps
         spec = {
             "workflow": {
                 "steps": [
                     {"id": "step1", "type": "model", "config": {}},
-                    {"id": "step2", "type": "transform", "config": {}}
+                    {"id": "step2", "type": "transform", "config": {}},
                 ],
-                "connections": [{"from": "step1", "to": "step2"}]
+                "connections": [{"from": "step1", "to": "step2"}],
             }
         }
 
-        with patch.object(executor, '_execute_step', side_effect=Exception("Step failed")):
+        with patch.object(executor, "_execute_step", side_effect=Exception("Step failed")):
             with pytest.raises(Exception):
                 await executor.execute(spec)
 
@@ -461,23 +505,30 @@ class TestAdvancedMCPFeatures:
         """Test MCP parallel execution."""
         import os
         from pathlib import Path
+
         # Use relative path to schema.json
         schema_path = Path(__file__).parent.parent / "multimind" / "mcp" / "schema.json"
-        executor = AdvancedMCPExecutor(parser=MCPParser(schema_path=str(schema_path)))
+
+        class _Model:
+            async def generate(self, prompt):
+                return "ok"
+
+        executor = AdvancedMCPExecutor(
+            parser=MCPParser(schema_path=str(schema_path)),
+            model_registry={"ollama": _Model()},
+        )
 
         spec = {
             "version": "1.0.0",
-            "models": [
-                {"id": "ollama", "name": "ollama", "type": "ollama", "config": {}}
-            ],
+            "models": [{"id": "ollama", "name": "ollama", "type": "ollama", "config": {}}],
             "workflow": {
                 "parallel": True,
                 "steps": [
                     {"id": "step1", "type": "model", "config": {"model": "ollama"}},
-                    {"id": "step2", "type": "model", "config": {"model": "ollama"}}
+                    {"id": "step2", "type": "model", "config": {"model": "ollama"}},
                 ],
-                "connections": []
-            }
+                "connections": [],
+            },
         }
 
         # Test parallel execution
@@ -548,10 +599,10 @@ class TestAdvancedEvaluationFeatures:
         result = await evaluator.evaluate(
             query=query,
             retrieved_documents=retrieved_documents,
-            generated_response=generated_response
+            generated_response=generated_response,
         )
 
-        assert hasattr(result, 'metrics')
+        assert hasattr(result, "metrics")
         assert result.metrics.retrieval_precision >= 0
         assert result.metrics.generation_bleu >= 0
 
@@ -562,14 +613,12 @@ class TestAdvancedEvaluationFeatures:
         evaluator = AdvancedEvaluator(model)
 
         # Test evaluation with failing model
-        with patch.object(model, 'generate', side_effect=Exception("Model failed")):
+        with patch.object(model, "generate", side_effect=Exception("Model failed")):
             result = await evaluator.evaluate(
-                query="test",
-                retrieved_documents=[],
-                generated_response="test"
+                query="test", retrieved_documents=[], generated_response="test"
             )
             # Should handle errors gracefully
-            assert hasattr(result, 'metrics')
+            assert hasattr(result, "metrics")
 
 
 @pytest.mark.skipif(LLMInterface is None, reason="LLMInterface not available")
@@ -585,19 +634,17 @@ class TestAdvancedLLMInterfaceFeatures:
             max_retries=2,
             retry_delay=0.1,
             fallback_model=None,
-            custom_params={}
+            custom_params={},
         )
         with patch.object(
-            __import__('multimind.llm.llm_interface').llm.llm_interface,
-            'AdvancedPrompting',
-            side_effect=lambda *a, **kw: Mock()
+            __import__("multimind.llm.llm_interface").llm.llm_interface,
+            "AdvancedPrompting",
+            side_effect=lambda *a, **kw: Mock(),
         ):
             interface = LLMInterface(
-                models=models,
-                default_model="model1",
-                error_config=error_config
+                models=models, default_model="model1", error_config=error_config
             )
-            with patch.object(models["model1"], 'generate', side_effect=Exception("Failed")):
+            with patch.object(models["model1"], "generate", side_effect=Exception("Failed")):
                 with pytest.raises(Exception):
                     await interface.generate("test prompt")
 
@@ -610,20 +657,24 @@ class TestAdvancedLLMInterfaceFeatures:
             max_retries=1,
             retry_delay=0.1,
             fallback_model="model2",
-            custom_params={}
+            custom_params={},
         )
         with patch.object(
-            __import__('multimind.llm.llm_interface').llm.llm_interface,
-            'AdvancedPrompting',
-            side_effect=lambda *a, **kw: Mock()
+            __import__("multimind.llm.llm_interface").llm.llm_interface,
+            "AdvancedPrompting",
+            side_effect=lambda *a, **kw: Mock(),
         ):
             interface = LLMInterface(
-                models=models,
-                default_model="model1",
-                error_config=error_config
+                models=models, default_model="model1", error_config=error_config
             )
-            with patch.object(models["model1"], 'generate', side_effect=Exception("Failed")):
-                with patch.object(models["model2"], 'generate', return_value=Mock(text="fallback", metadata={}, usage={}, model="model2", latency=0.1)):
+            with patch.object(models["model1"], "generate", side_effect=Exception("Failed")):
+                with patch.object(
+                    models["model2"],
+                    "generate",
+                    return_value=Mock(
+                        text="fallback", metadata={}, usage={}, model="model2", latency=0.1
+                    ),
+                ):
                     result = await interface.generate("test prompt")
                     assert result is not None
 
@@ -639,10 +690,7 @@ class TestAdvancedRetrievalFeatures:
         base_retriever = Mock()
         base_retriever.retrieve = AsyncMock(return_value=[{"id": "doc1", "content": "test"}])
 
-        retriever = EnhancedRetriever(
-            model=model,
-            base_retriever=base_retriever
-        )
+        retriever = EnhancedRetriever(model=model, base_retriever=base_retriever)
 
         # Test retrieval with fusion
         results = await retriever.retrieve("test query")
@@ -656,25 +704,25 @@ class TestAdvancedRetrievalFeatures:
         retriever = EnhancedRetriever(model=model, base_retriever=base_retriever)
 
         # Test feedback recording
-        retriever.record_feedback(
-            strategy='hierarchical',
-            success=True,
-            feedback=0.9
-        )
+        retriever.record_feedback(strategy="hierarchical", success=True, feedback=0.9)
 
-        assert len(retriever.feedback_history['hierarchical']) == 1
+        assert len(retriever.feedback_history["hierarchical"]) == 1
 
 
 @pytest.mark.skipif(PipelineBuilder is None, reason="PipelineBuilder not available")
 class TestAdvancedPipelineFeatures:
     """Test advanced pipeline features."""
 
-    @pytest.mark.skip(reason="PipelineBuilder does not support add_step/build; only pre-built pipelines are available.")
+    @pytest.mark.skip(
+        reason="PipelineBuilder does not support add_step/build; only pre-built pipelines are available."
+    )
     @pytest.mark.asyncio
     async def test_pipeline_builder_validation(self):
         pass
 
-    @pytest.mark.skip(reason="PipelineBuilder does not support add_step/build; only pre-built pipelines are available.")
+    @pytest.mark.skip(
+        reason="PipelineBuilder does not support add_step/build; only pre-built pipelines are available."
+    )
     @pytest.mark.asyncio
     async def test_pipeline_error_handling(self):
         pass
@@ -690,10 +738,7 @@ class TestEdgeCasesAndStressTests:
 
         # Add many messages
         for i in range(1000):
-            await memory.add_message({
-                "role": "user",
-                "content": f"Message {i}"
-            })
+            await memory.add_message({"role": "user", "content": f"Message {i}"})
 
         messages = await memory.get_messages()
         assert len(messages) == 1000
@@ -707,10 +752,7 @@ class TestEdgeCasesAndStressTests:
         async def add_message(msg):
             await memory.add_message(msg)
 
-        tasks = [
-            add_message({"role": "user", "content": f"msg{i}"})
-            for i in range(10)
-        ]
+        tasks = [add_message({"role": "user", "content": f"msg{i}"}) for i in range(10)]
 
         await asyncio.gather(*tasks)
 
@@ -736,7 +778,7 @@ class TestEdgeCasesAndStressTests:
         model.generate = rate_limited_generate
 
         # Test with retry logic
-        with patch('asyncio.sleep', return_value=None):
+        with patch("asyncio.sleep", return_value=None):
             try:
                 result = await model.generate("test", max_retries=5)
             except Exception:
@@ -761,7 +803,7 @@ class TestIntegrationScenarios:
         await vector_store.add_vectors(
             vectors=[[0.1] * 384],
             metadatas=[{"source": "test"}],
-            documents=[{"content": "test document"}]
+            documents=[{"content": "test document"}],
         )
 
         results = await vector_store.search([0.1] * 384, k=1)
@@ -776,11 +818,7 @@ class TestIntegrationScenarios:
         memory = AgentMemory()
         tool = MockTool()
 
-        agent = Agent(
-            model=model,
-            memory=memory,
-            tools=[tool]
-        )
+        agent = Agent(model=model, memory=memory, tools=[tool])
 
         # Test agent execution
         result = await agent.run("Use tool to process data")

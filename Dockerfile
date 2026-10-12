@@ -31,28 +31,26 @@ ENV PYTHONUNBUFFERED=1 \
 RUN groupadd --gid 10001 multimind \
     && useradd --uid 10001 --gid multimind --create-home --shell /usr/sbin/nologin multimind
 
-# Extras installed into the image. Default is gateway-only (lean, no torch).
-# Override for a CLI-capable image: --build-arg MULTIMIND_EXTRAS=gateway,finetune
-ARG MULTIMIND_EXTRAS=gateway
+# Default extras are the API and RAG. Override for a CLI-capable image:
+# --build-arg MULTIMIND_EXTRAS=gateway,finetune
+ARG MULTIMIND_EXTRAS=gateway,rag
 
-# Core deps + selected extras only. No torch, no docs, no tests, no examples.
+# CPU-only torch first: sentence-transformers (in [rag]) needs torch, and the
+# default Linux wheel drags in ~4 GB of unused CUDA libraries on amd64 and arm64.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# Core deps + selected extras only. No docs, no tests, no examples.
 # numpy: multimind.gateway.api imports multimind.compliance, whose eager
 # imports need numpy but nothing else from the heavy [compliance] extra.
 RUN --mount=from=builder,source=/wheels,target=/wheels \
     pip install --no-cache-dir "$(ls /wheels/multimind_sdk-*.whl)[${MULTIMIND_EXTRAS}]" "numpy>=1.21.0"
 
-# Launcher: some versions of the gateway only register GET /health inside
-# MultiMindAPI().configure_routes(), so call it when present (no-op otherwise).
+# One FastAPI app: gateway, governance, guard proxy, and RAG when installed.
 RUN printf '%s\n' \
       'import os' \
       'import uvicorn' \
-      'from multimind.gateway.api import app' \
-      'try:' \
-      '    from multimind.gateway.api import MultiMindAPI' \
-      '    MultiMindAPI().configure_routes()' \
-      'except Exception:' \
-      '    pass' \
-      'uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("MULTIMIND_PORT", "8000")))' \
+      'from multimind.server.platform import create_platform_app' \
+      'uvicorn.run(create_platform_app(), host="0.0.0.0", port=int(os.environ.get("MULTIMIND_PORT", "8000")))' \
       > /usr/local/bin/multimind-serve.py
 
 # Writable app dir (chat sessions are stored under the working directory)

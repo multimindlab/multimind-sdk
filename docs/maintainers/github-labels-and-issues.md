@@ -1,4 +1,6 @@
-# GitHub labels & issue triage (maintainer checklist)
+---
+title: "GitHub labels & issue triage (maintainer checklist)"
+---
 
 Phase 5 Task 5.2 — onboarding funnel setup. Run these steps once with a
 maintainer-permissions account. Anything tagged "manual" needs the GitHub
@@ -20,7 +22,7 @@ web UI; everything else has a copy-pasteable `gh` command.
 
 > The GitHub "good first issue" and "help wanted" colors above are the
 > conventional ones documented at
-> <https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/encouraging-helpful-contributions-to-your-project-with-labels>.
+> [https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/encouraging-helpful-contributions-to-your-project-with-labels](https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/encouraging-helpful-contributions-to-your-project-with-labels).
 
 Run:
 
@@ -59,20 +61,20 @@ The spec called for 5–7 new `good first issue` tickets. Below are
 ready-to-create drafts. Run each `gh issue create` to file them, or
 adapt the bodies in the web UI.
 
-### Issue 1 — Add type hints to `multimind/models/openai_model.py`
+### Issue 1 — Add type hints to `multimind/models/openai.py`
 
 ```bash
 gh issue create \
-  --title "Add type hints to multimind/models/openai_model.py" \
+  --title "Add type hints to multimind/models/openai.py" \
   --label "good first issue,priority: low" \
   --body "$(cat <<'EOF'
 **Background.** Most of `multimind/models/` is partially typed. As a first step
 toward enabling mypy in pre-commit, we'd like every public method in
-`openai_model.py` to have full type hints on parameters and return values.
+`openai.py` to have full type hints on parameters and return values.
 
 **Acceptance criteria.**
 - [ ] Every public method (no leading `_`) has type hints on all params + return.
-- [ ] `mypy multimind/models/openai_model.py --ignore-missing-imports` is clean.
+- [ ] `mypy multimind/models/openai.py --ignore-missing-imports` is clean.
 - [ ] `make test` still passes.
 
 **Pointer.** See `multimind/_lazy.py` for the in-house style we're aiming for.
@@ -98,20 +100,24 @@ EOF
 )"
 ```
 
-### Issue 3 — Add example: Using MultiMind with Ollama for local AI chat
+### Issue 3 — Polish the Ollama local-chat example
+
+> **NOTE:** `examples/cli/chat_ollama_cli.py` and `examples/test_ollama_chat.py`
+> already exist. File this only if they are missing something concrete (README
+> link, default endpoint, error message when Ollama is down); otherwise skip it.
 
 ```bash
 gh issue create \
-  --title "Add example: Using MultiMind with Ollama for local AI chat" \
+  --title "Polish example: Using MultiMind with Ollama for local AI chat" \
   --label "good first issue,priority: medium" \
   --body "$(cat <<'EOF'
 **Background.** Ollama works out of the box via HTTP (see README "Ollama users"
-callout), but we don't have a dedicated example demonstrating it.
+callout). `examples/cli/chat_ollama_cli.py` demonstrates it, but it is not linked
+from the README and does not explain what to do when Ollama is not running.
 
 **Acceptance criteria.**
-- [ ] New file: `examples/cli/ollama_chat.py` that demonstrates point-and-chat
-      against a local Ollama instance.
-- [ ] README snippet linking to the example.
+- [ ] README snippet linking to `examples/cli/chat_ollama_cli.py`.
+- [ ] Clear error message when `http://localhost:11434` is unreachable.
 - [ ] Works against the default `http://localhost:11434` endpoint.
 EOF
 )"
@@ -151,53 +157,55 @@ where to set the key.
 **Acceptance criteria.**
 - [ ] All `*Model` classes raise a friendly error referencing the env-var
       name and a doc link when the API key is missing.
-- [ ] Test in `tests/test_models.py` (or equivalent) covering the new
-      error message.
+- [ ] Test (e.g. a new `tests/test_models.py`) covering the new error message.
 EOF
 )"
 ```
 
+> Note: `ClaudeModel` already raises `ConfigurationError` when no key is found;
+> check the other wrappers before filing.
+
 ### Issue 6 — Add `--version` flag to CLI
+
+Verified still open: `multimind --version` currently fails with
+`Error: No such option '--version'`. The click group is `cli` in
+`multimind/cli/__init__.py` (`main()` is the entry point); `tests/test_cli.py`
+already exists.
 
 ```bash
 gh issue create \
   --title "Add --version flag to CLI" \
   --label "good first issue,priority: low" \
   --body "$(cat <<'EOF'
-**Background.** Today \`multimind --version\` doesn't work. The CLI lives in
-\`multimind/cli/__main__.py\`.
+**Background.** Today \`multimind --version\` fails with "No such option". The
+click group lives in \`multimind/cli/__init__.py\`.
 
 **Acceptance criteria.**
 - [ ] \`multimind --version\` prints \`multimind-sdk X.Y.Z\` (read from
       \`multimind.__version__\`) and exits 0.
-- [ ] Test added to \`tests/test_cli.py\` (create if missing).
+- [ ] Test added to \`tests/test_cli.py\`.
 EOF
 )"
 ```
 
 ### Issue 7 — Add Python 3.13 to CI test matrix
 
-> **NOTE:** This was already done in Phase 3. Verify in
-> `.github/workflows/ci.yml` (`test-core.strategy.matrix.python-version`).
-> If 3.13 is in the matrix and passing, **close this issue with a comment
-> pointing at the relevant CI run**. If it's still missing, file the issue
-> for real.
-
-```bash
-gh issue create \
-  --title "Add Python 3.13 to CI test matrix" \
-  --label "good first issue,priority: low" \
-  --body "Python 3.13 was released October 2024. Add it to the matrix in .github/workflows/ci.yml and confirm the suite passes."
-```
+> **Already done.** `.github/workflows/ci.yml` runs `test-core` on
+> `["3.10", "3.11", "3.12", "3.13"]`, and `pyproject.toml` declares
+> `requires-python = ">=3.10"` with a 3.13 classifier. Do not file this
+> issue; if one already exists, close it with a comment pointing at a
+> passing CI run.
 
 ## 4. Wire labels into the issue templates (optional, recommended)
 
-If you use issue templates (`.github/ISSUE_TEMPLATE/*.yml`), set sensible
-defaults so reporters land on the right priority bucket:
+The templates in `.github/ISSUE_TEMPLATE/` are `bug_report.yml`
+(`labels: ["bug"]`), `feature_request.yml` (`labels: ["enhancement"]`) and
+the legacy `ISSUE_TEMPLATE.md`. Add a priority default so reporters land on
+the right bucket:
 
-- `bug.yml` → default `labels: [bug, priority: medium]`
-- `feature.yml` → default `labels: [enhancement, priority: low]`
-- `docs.yml` → default `labels: [documentation, priority: low]`
+- `bug_report.yml` → `labels: ["bug", "priority: medium"]`
+- `feature_request.yml` → `labels: ["enhancement", "priority: low"]`
+- optionally add a `docs.yml` → `labels: ["documentation", "priority: low"]`
 
 ## Done — verify
 

@@ -3,7 +3,7 @@
   "info": {
     "title": "MultiMind API Gateway",
     "description": "Unified gateway for MultiMind services: chat, generation, model comparison, chat sessions, monitoring, and compliance. Provider API keys are read from the environment at request time; requests fail with 503 when no provider is configured and 400 when the requested model is unavailable.",
-    "version": "0.3.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/v1/compliance/monitor": {
@@ -12,7 +12,7 @@
           "compliance"
         ],
         "summary": "Monitor Compliance",
-        "description": "Run compliance monitoring.",
+        "description": "Run compliance monitoring against implemented checkers only.",
         "operationId": "monitor_compliance_v1_compliance_monitor_post",
         "requestBody": {
           "content": {
@@ -43,68 +43,6 @@
           },
           "500": {
             "description": "Internal error"
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/v1/compliance/example/{type}": {
-      "post": {
-        "tags": [
-          "compliance"
-        ],
-        "summary": "Run Example",
-        "description": "Run compliance example.",
-        "operationId": "run_example_v1_compliance_example__type__post",
-        "parameters": [
-          {
-            "name": "type",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Type"
-            }
-          },
-          {
-            "name": "use_case",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Use Case"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ComplianceResult"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found"
           },
           "422": {
             "description": "Validation Error",
@@ -1091,7 +1029,7 @@
           "sessions"
         ],
         "summary": "Add Message",
-        "description": "Add a message to a chat session",
+        "description": "Add a message to a chat session and return the assistant reply.",
         "operationId": "add_message_v1_sessions__session_id__messages_post",
         "parameters": [
           {
@@ -1120,6 +1058,155 @@
             "content": {
               "application/json": {
                 "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Requested model is not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No models configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/save": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Persist a session to disk (multimind chat save)",
+        "description": "Write an active session to ``chat_sessions/chat_<id>.json`` and return the path.",
+        "operationId": "save_session_v1_sessions__session_id__save_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "description": "Requested model is not available",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No models configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/load": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Load a persisted session into memory (multimind chat load)",
+        "description": "Return the active session if present, else load ``chat_<id>.json`` from the session store.",
+        "operationId": "load_session_v1_sessions_load_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionLoad"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
               }
             }
           },
@@ -1542,10 +1629,16 @@
             "title": "Failed Checks",
             "description": "Number of failed checks"
           },
+          "unverifiable_checks": {
+            "type": "integer",
+            "title": "Unverifiable Checks",
+            "description": "Checks that had no runtime evidence; neither passed nor failed",
+            "default": 0
+          },
           "compliance_score": {
             "type": "number",
             "title": "Compliance Score",
-            "description": "Overall compliance score"
+            "description": "passed / (passed + failed); 0 when nothing was recorded"
           },
           "recent_issues": {
             "items": {
@@ -1814,6 +1907,20 @@
         ],
         "title": "SessionCreate",
         "description": "Request model for creating a chat session"
+      },
+      "SessionLoad": {
+        "properties": {
+          "session_id": {
+            "type": "string",
+            "title": "Session Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "session_id"
+        ],
+        "title": "SessionLoad",
+        "description": "Request model for loading a persisted chat session"
       },
       "SessionResponse": {
         "properties": {

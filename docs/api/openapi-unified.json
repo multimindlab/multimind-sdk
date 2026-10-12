@@ -3,7 +3,7 @@
   "info": {
     "title": "MultiMind Unified Multi-Modal API",
     "description": "Multi-modal processing (text, image, audio) via Mixture-of-Experts or the multi-modal router. Provider API keys are read from the environment at request time; optional client authentication uses the `X-API-Key` header when the `API_KEYS` environment variable is set.",
-    "version": "0.3.0"
+    "version": "1.0.0"
   },
   "paths": {
     "/v1/process": {

@@ -9,8 +9,12 @@ const esc = (s) =>
   String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-async function api(path) {
-  const resp = await fetch(path);
+const API_BASE = String(window.MULTIMIND_API_BASE || "").replace(/\/$/, "");
+
+async function api(path, options) {
+  const headers = { ...(options && options.headers) };
+  if (window.MULTIMIND_API_KEY) headers["X-API-Key"] = window.MULTIMIND_API_KEY;
+  const resp = await fetch(API_BASE + path, { ...options, headers });
   if (!resp.ok) throw new Error(`${path} -> HTTP ${resp.status}`);
   return resp.json();
 }
@@ -19,9 +23,45 @@ function errorCard(err) {
   return `<div class="card"><span class="badge danger">error</span> ${esc(err.message || err)}</div>`;
 }
 
+// Other local services the UI talks to directly (not via the dashboard server).
+// Built from the page's scheme so the static bundle carries no absolute URLs.
+const localUrl = (port) => `${location.protocol}//127.0.0.1:${port}`;
+const DEFAULT_PROXY_BASE = localUrl(8400);
+const DEFAULT_BACKEND_BASE = API_BASE || localUrl(8080);
+
+function remembered(key, fallback) {
+  try { return localStorage.getItem(key) || fallback; } catch { return fallback; }
+}
+function remember(key, value) {
+  try { localStorage.setItem(key, value); } catch { /* private mode: ignore */ }
+}
+
+async function externalApi(base, path, options) {
+  // Direct browser call to another origin; a CORS or connection failure surfaces as TypeError.
+  const headers = { ...(options && options.headers) };
+  if (window.MULTIMIND_API_KEY) headers["X-API-Key"] = window.MULTIMIND_API_KEY;
+  let resp;
+  try {
+    resp = await fetch(base.replace(/\/$/, "") + path, { ...options, headers });
+  } catch (err) {
+    throw new Error(`Could not reach ${base}: ${err.message || err}`);
+  }
+  if (!resp.ok) {
+    const detail = await resp.json().catch(() => ({}));
+    const msg = detail.detail?.[0]?.msg || detail.detail || `HTTP ${resp.status}`;
+    throw new Error(`${path} -> ${typeof msg === "string" ? msg : JSON.stringify(msg)}`);
+  }
+  return resp.json();
+}
+
+function setMsg(el, kind, text) {
+  el.className = "form-msg " + kind;
+  el.textContent = text;
+}
+
 /* ---------- charts (hand-rolled SVG, single accent series) ---------- */
 
-function lineChart(points, { valueKey = "cost", labelKey = "date" } = {}) {
+function lineChart(points, { valueKey = "cost", labelKey = "date", fmt = fmtUsd, label = "Daily spend, last 30 days" } = {}) {
   if (!points.length) return `<div class="empty">No spend recorded yet.</div>`;
   const W = 640, H = 220, m = { t: 14, r: 16, b: 26, l: 52 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -34,16 +74,16 @@ function lineChart(points, { valueKey = "cost", labelKey = "date" } = {}) {
   const ticks = [0, 0.5, 1].map((f) => {
     const v = max * f, ty = y(v);
     return `<line class="gridline" x1="${m.l}" x2="${W - m.r}" y1="${ty}" y2="${ty}"></line>
-      <text class="axis-label" x="${m.l - 6}" y="${ty + 3}" text-anchor="end">${esc(fmtUsd(v))}</text>`;
+      <text class="axis-label" x="${m.l - 6}" y="${ty + 3}" text-anchor="end">${esc(fmt(v))}</text>`;
   }).join("");
   const first = points[0][labelKey], last = points[points.length - 1][labelKey];
   const dots = points.map((p, i) => {
     const [px, py] = coords[i];
-    const tip = `${p[labelKey]}: ${fmtUsd(p[valueKey])} (${fmtInt(p.calls)} calls)`;
+    const tip = `${p[labelKey]}: ${fmt(p[valueKey])}` + (p.calls === undefined ? "" : ` (${fmtInt(p.calls)} calls)`);
     return `<g><circle class="hover-target" cx="${px}" cy="${py}" r="12"><title>${esc(tip)}</title></circle>
       <circle class="series-dot" cx="${px}" cy="${py}" r="3.5" pointer-events="none"></circle></g>`;
   }).join("");
-  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily spend, last 30 days">
+  return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(label)}">
     ${ticks}
     <path class="series-area" d="${area}"></path>
     <path class="series-line" d="${path}"></path>
@@ -110,7 +150,83 @@ async function renderOverview() {
     <div class="grid-2">
       <div class="card"><h2>Spend, last 30 days</h2>${lineChart(daily)}</div>
       <div class="card"><h2>PII detections by type</h2>${barChart(byType)}</div>
+    </div>
+    <div class="toolbar">
+      <span class="muted">Need an auditor-ready snapshot of these artifacts?</span>
+      <a href="#/evidence"><button type="button">Evidence report</button></a>
     </div>`;
+}
+
+function evidenceLinks() {
+  // Plain links: the report endpoint is a download, so no fetch/JSON here.
+  return ["html", "md"].map((f) =>
+    `<a id="ev-${f}" href="${esc(API_BASE)}/api/evidence-report?format=${f}" target="_blank" rel="noopener">
+      <button type="button" class="${f === "html" ? "primary" : ""}">Download ${f === "html" ? "HTML" : "Markdown"}</button></a>`
+  ).join(" ");
+}
+
+async function renderEvidence() {
+  view.innerHTML = `
+    <h1>Evidence Report</h1>
+    <p class="page-sub">A compliance evidence report built from the audit log, cost log, and the cached
+      inventory scan. Artifacts that are missing are stated as missing; it is not a legal determination.</p>
+    <div class="card">
+      <h2>Download</h2>
+      <div class="toolbar">${evidenceLinks()}</div>
+      <div class="note">Served by <code>GET /api/evidence-report?format=html|md</code> on this dashboard.
+        Opens in a new tab; most browsers save it as <code>evidence-report.html</code> / <code>.md</code>.</div>
+    </div>`;
+}
+
+async function renderScan() {
+  const strategies = ["", "mask", "hash", "remove"].map((s) =>
+    `<option value="${s}">${s || "detect only"}</option>`).join("");
+  view.innerHTML = `
+    <h1>Scan Text</h1>
+    <p class="page-sub">Ad-hoc PII check. The text is scanned in memory by this dashboard and never logged.</p>
+    <div class="card"><form id="scan-form">
+      <div class="form-row"><label class="row-label" for="scan-text">Text to scan</label>
+        <textarea id="scan-text" rows="8" required placeholder="Paste a prompt, log line, or document&hellip;"></textarea></div>
+      <div class="form-row"><label class="row-label" for="scan-strategy">Redaction strategy</label>
+        <select id="scan-strategy">${strategies}</select></div>
+      <button type="submit" class="primary">Scan</button>
+      <span id="scan-msg" class="form-msg" role="status"></span>
+    </form></div>
+    <div id="scan-result"></div>`;
+  document.getElementById("scan-form").onsubmit = async (e) => {
+    e.preventDefault();
+    const msg = document.getElementById("scan-msg");
+    const out = document.getElementById("scan-result");
+    const strategy = document.getElementById("scan-strategy").value;
+    const body = { text: document.getElementById("scan-text").value };
+    if (strategy) body.strategy = strategy;
+    setMsg(msg, "", "Scanning…");
+    try {
+      const data = await externalApi(API_BASE, "/api/scan-text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      setMsg(msg, "ok", `${fmtInt(data.total)} finding(s)`);
+      const rows = data.findings.map((f) => `<tr>
+          <td>${esc(f.type)}</td><td class="num">${esc(f.start)}</td><td class="num">${esc(f.end)}</td>
+          <td><code>${esc(f.text)}</code></td></tr>`).join("");
+      const counts = Object.entries(data.counts)
+        .map(([t, n]) => `<span class="chip">${esc(t)}&times;${esc(n)}</span>`).join("") || "&mdash;";
+      out.innerHTML = `
+        <div class="card"><h2>Findings</h2>
+          <p class="muted">By type: ${counts}</p>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Type</th><th class="num">Start</th><th class="num">End</th><th>Text</th></tr></thead>
+            <tbody>${rows || `<tr><td colspan="4"><div class="empty">No PII detected.</div></td></tr>`}</tbody>
+          </table></div></div>
+        ${data.redacted === null ? "" : `<div class="card"><h2>Redacted (${esc(strategy)})</h2>
+          <pre class="redacted">${esc(data.redacted)}</pre></div>`}`;
+    } catch (err) {
+      setMsg(msg, "error", "Scan failed: " + (err.message || err));
+      out.innerHTML = "";
+    }
+  };
 }
 
 const auditState = { offset: 0, limit: 25, type: "", blocked: "" };
@@ -269,8 +385,18 @@ async function renderGuardrails() {
       <button type="submit" class="primary">Save guardrails</button>
       <span id="gr-msg" class="form-msg" role="status"></span>
     </form></div>
-    <div class="note">Applying changes: the proxy reads this file at startup, so restart it with
-      <code>multimind serve --config ${esc(data.path)}</code> after saving.</div>`;
+    <div class="card" id="gr-apply">
+      <h2>Apply to the running proxy</h2>
+      <div class="note" id="gr-hint">Save writes the guardrails file. Then call
+        <code>POST /v1/guardrails/reload</code> on the proxy, or restart
+        <code>multimind serve --config ${esc(data.path)}</code>.</div>
+      <div class="form-row" style="margin-top:1rem"><label class="row-label" for="gr-proxy-url">Proxy URL (<code>multimind serve</code>)</label>
+        <input id="gr-proxy-url" type="text" value="${esc(remembered("multimind.proxyBase", DEFAULT_PROXY_BASE))}"></div>
+      <button type="button" id="gr-reload">Reload proxy</button>
+      <span id="gr-reload-msg" class="form-msg" role="status"></span>
+    </div>`;
+  const proxyInput = document.getElementById("gr-proxy-url");
+  proxyInput.onchange = () => remember("multimind.proxyBase", proxyInput.value.trim());
   document.getElementById("gr-form").onsubmit = async (e) => {
     e.preventDefault();
     const msg = document.getElementById("gr-msg");
@@ -282,22 +408,181 @@ async function renderGuardrails() {
       scan_output: document.getElementById("gr-scan-output").checked,
     };
     try {
-      const resp = await fetch("/api/guardrails", {
+      const saved = await externalApi(API_BASE, "/api/guardrails", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!resp.ok) {
-        const detail = await resp.json().catch(() => ({}));
-        throw new Error(detail.detail?.[0]?.msg || detail.detail || `HTTP ${resp.status}`);
+      setMsg(msg, "ok", "Saved.");
+      if (saved.apply_hint) {
+        document.getElementById("gr-hint").innerHTML =
+          `Saved to <code>${esc(saved.path)}</code>. To apply: ${esc(saved.apply_hint)}`;
       }
-      msg.className = "form-msg ok";
-      msg.textContent = "Saved. Restart the proxy with --config to apply.";
     } catch (err) {
-      msg.className = "form-msg error";
-      msg.textContent = "Not saved: " + (err.message || err);
+      setMsg(msg, "error", "Not saved: " + (err.message || err));
     }
   };
+  document.getElementById("gr-reload").onclick = async () => {
+    const msg = document.getElementById("gr-reload-msg");
+    const base = proxyInput.value.trim() || DEFAULT_PROXY_BASE;
+    remember("multimind.proxyBase", base);
+    setMsg(msg, "", "Reloading…");
+    try {
+      const r = await externalApi(base, "/v1/guardrails/reload", { method: "POST" });
+      setMsg(msg, "ok", `Proxy reloaded: strategy=${r.strategy}, block_on=[${(r.block_on || []).join(", ")}], budget=${r.budget ?? "none"}`);
+    } catch (err) {
+      setMsg(msg, "error", `Reload failed: ${err.message || err}. Is multimind serve running at ${base}? ` +
+        "A browser-blocked (CORS) call also fails here; then run: curl -X POST " + base + "/v1/guardrails/reload");
+    }
+  };
+}
+
+/* ---------- compliance (lives on `multimind backend`, not this server) ---------- */
+
+const complianceState = {
+  base: remembered("multimind.backendBase", DEFAULT_BACKEND_BASE),
+  org: remembered("multimind.orgId", "org-123"),
+};
+
+function pct(v) { return (Number(v || 0) * 100).toFixed(1) + "%"; }
+
+function severityBadge(sev) {
+  const s = String(sev || "").toLowerCase();
+  const cls = s === "critical" || s === "high" ? "danger" : "";
+  return `<span class="badge ${cls}">${esc(s || "unknown")}</span>`;
+}
+
+function complianceUnreachable(err) {
+  return `<div class="banner">Compliance API unreachable at <code>${esc(complianceState.base)}</code>:
+      ${esc(err.message || err)}.<br>
+      Start it with <code>multimind backend</code> (default port 8080) and allow this page's origin with
+      <code>MULTIMIND_CORS_ORIGINS=${esc(location.origin)}</code>, then reload.</div>`;
+}
+
+async function loadComplianceMetrics() {
+  const out = document.getElementById("cp-metrics");
+  out.innerHTML = `<p class="page-sub">Loading&hellip;</p>`;
+  const q = `organization_id=${encodeURIComponent(complianceState.org)}`;
+  let m, alerts;
+  try {
+    [m, alerts] = await Promise.all([
+      externalApi(complianceState.base, `/v1/compliance/dashboard?${q}`),
+      externalApi(complianceState.base, `/v1/compliance/alerts?${q}`),
+    ]);
+  } catch (err) {
+    out.innerHTML = complianceUnreachable(err);
+    return;
+  }
+  const trend = (m.trend_data && m.trend_data.compliance_score) || [];
+  const trendPoints = trend.map((v, i) => ({ label: `check ${i + 1}`, score: v }));
+  const issueRows = (m.recent_issues || []).map((i) => `<tr class="blocked-row">
+      <td>${esc((i.timestamp || "").replace("T", " ").slice(0, 19))}</td>
+      <td>${severityBadge(i.severity)}</td><td>${esc(i.description || JSON.stringify(i))}</td></tr>`).join("");
+  const alertList = Array.isArray(alerts) ? alerts : (alerts && alerts.alerts) || m.alerts || [];
+  const alertRows = alertList.map((a) => `<tr>
+      <td>${esc(a.id || "")}</td><td>${severityBadge(a.severity)}</td>
+      <td>${esc(a.status || "")}</td><td>${esc((a.created_at || "").replace("T", " ").slice(0, 19))}</td>
+      <td>${esc(a.description || "")}</td></tr>`).join("");
+  out.innerHTML = `
+    <div class="tiles">
+      <div class="tile"><div class="label">Compliance score</div>
+        <div class="value">${esc(pct(m.compliance_score))}</div>
+        <div class="delta">passed / (passed + failed)</div></div>
+      <div class="tile"><div class="label">Checks</div>
+        <div class="value">${esc(fmtInt(m.total_checks))}</div>
+        <div class="delta">${esc(fmtInt(m.passed_checks))} passed, ${esc(fmtInt(m.failed_checks))} failed</div></div>
+      <div class="tile ${m.unverifiable_checks ? "danger" : ""}"><div class="label">Unverifiable</div>
+        <div class="value">${esc(fmtInt(m.unverifiable_checks))}</div>
+        <div class="delta">no runtime evidence</div></div>
+      <div class="tile ${alertList.length ? "danger" : ""}"><div class="label">Active alerts</div>
+        <div class="value">${esc(fmtInt(alertList.length))}</div>
+        <div class="delta">org ${esc(complianceState.org)}</div></div>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h2>Score trend (1 = passed, 0 = failed)</h2>
+        ${trendPoints.length
+          ? lineChart(trendPoints, { valueKey: "score", labelKey: "label", fmt: (v) => v.toFixed(1), label: "Compliance score per check" })
+          : `<div class="empty">No pass/fail checks recorded yet.</div>`}</div>
+      <div class="card"><h2>Recent issues</h2><div class="table-wrap"><table>
+        <thead><tr><th>Time</th><th>Severity</th><th>Description</th></tr></thead>
+        <tbody>${issueRows || `<tr><td colspan="3"><div class="empty">No failed checks.</div></td></tr>`}</tbody>
+      </table></div></div>
+    </div>
+    <div class="card"><h2>Alerts</h2><div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Severity</th><th>Status</th><th>Created</th><th>Description</th></tr></thead>
+      <tbody>${alertRows || `<tr><td colspan="5"><div class="empty">No active alerts.</div></td></tr>`}</tbody>
+    </table></div></div>`;
+}
+
+async function renderCompliance() {
+  view.innerHTML = `
+    <h1>Compliance</h1>
+    <p class="page-sub">Regulation checks recorded by the MultiMind API (<code>multimind backend</code>),
+      read live from its <code>/v1/compliance</code> routes. This is a separate process from the dashboard.</p>
+    <div class="filters">
+      <label>Backend URL <input id="cp-base" type="text" value="${esc(complianceState.base)}"></label>
+      <label>Organization id <input id="cp-org" type="text" value="${esc(complianceState.org)}"></label>
+      <button id="cp-load" type="button">Load</button>
+    </div>
+    <div id="cp-metrics"></div>
+    <div class="card"><h2>Record a check</h2>
+      <p class="muted">Posts to <code>POST /v1/compliance/monitor</code>; the text is PII-scanned and the
+        outcome is appended to the organization's history above.</p>
+      <form id="cp-form">
+        <div class="filters">
+          <label>Organization name <input id="cp-org-name" type="text" value="${esc(remembered("multimind.orgName", "Acme Corp"))}"></label>
+          <label>DPO email <input id="cp-dpo" type="text" value="${esc(remembered("multimind.dpoEmail", "dpo@example.com"))}"></label>
+          <label>Regulations (comma-separated) <input id="cp-regs" type="text" value="GDPR"></label>
+        </div>
+        <div class="form-row"><label class="row-label" for="cp-text">Text to check (metadata.text)</label>
+          <textarea id="cp-text" rows="5" placeholder="Prompt or document to evaluate&hellip;"></textarea></div>
+        <button type="submit" class="primary">Run check</button>
+        <span id="cp-msg" class="form-msg" role="status"></span>
+      </form>
+      <div id="cp-result"></div>
+    </div>`;
+  const syncInputs = () => {
+    complianceState.base = document.getElementById("cp-base").value.trim() || DEFAULT_BACKEND_BASE;
+    complianceState.org = document.getElementById("cp-org").value.trim() || "org-123";
+    remember("multimind.backendBase", complianceState.base);
+    remember("multimind.orgId", complianceState.org);
+  };
+  document.getElementById("cp-load").onclick = () => { syncInputs(); loadComplianceMetrics(); };
+  document.getElementById("cp-form").onsubmit = async (e) => {
+    e.preventDefault();
+    syncInputs();
+    const msg = document.getElementById("cp-msg");
+    const out = document.getElementById("cp-result");
+    const orgName = document.getElementById("cp-org-name").value.trim();
+    const dpo = document.getElementById("cp-dpo").value.trim();
+    remember("multimind.orgName", orgName);
+    remember("multimind.dpoEmail", dpo);
+    const body = {
+      organization_id: complianceState.org,
+      organization_name: orgName,
+      dpo_email: dpo,
+      enabled_regulations: document.getElementById("cp-regs").value.split(",").map((s) => s.trim()).filter(Boolean),
+      compliance_rules: {},
+      metadata: { text: document.getElementById("cp-text").value },
+    };
+    setMsg(msg, "", "Running…");
+    try {
+      const r = await externalApi(complianceState.base, "/v1/compliance/monitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const fe = r.final_evaluation || {};
+      // Backend statuses: checked (all clear), attention (findings), unverifiable (no evidence).
+      setMsg(msg, fe.status === "checked" ? "ok" : "error", `Result: ${fe.status || "recorded"}`);
+      out.innerHTML = `<pre class="redacted">${esc(JSON.stringify(r, null, 2))}</pre>`;
+      loadComplianceMetrics();
+    } catch (err) {
+      setMsg(msg, "error", "Check failed: " + (err.message || err));
+      out.innerHTML = "";
+    }
+  };
+  loadComplianceMetrics();
 }
 
 /* ---------- router ---------- */
@@ -308,6 +593,9 @@ const routes = {
   costs: renderCosts,
   inventory: renderInventory,
   guardrails: renderGuardrails,
+  scan: renderScan,
+  evidence: renderEvidence,
+  compliance: renderCompliance,
 };
 
 function showError(err) {
