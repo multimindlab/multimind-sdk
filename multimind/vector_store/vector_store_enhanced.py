@@ -9,6 +9,7 @@ Enhanced vector store module with advanced features:
 """
 
 import asyncio
+import importlib.util
 import json
 import logging
 import sqlite3

@@ -3,6 +3,7 @@ Enhanced document loading with support for multiple formats and sources.
 """
 
 import asyncio
+import io
 import json
 import logging
 from dataclasses import dataclass
