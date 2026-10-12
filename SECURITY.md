@@ -6,7 +6,8 @@ Thank you for helping keep MultiMind SDK and its users safe!
 
 | Version | Supported           |
 | ------- | ------------------- |
-| 0.3.x   | Yes                 |
+| 1.0.x   | Yes                 |
+| 0.3.x   | Security fixes only |
 | 0.2.x   | Security fixes only |
 | < 0.2   | No                  |
 
@@ -45,11 +46,10 @@ You can run the same scans locally with `make security`.
 > and SQL-string construction in vector-store backends (B608). These are
 > tracked for a dedicated hardening pass and do not block CI today.
 
-> **Note on cryptographic features:** when the optional `cryptography.zkp`
-> dependency is not installed, zero-knowledge-proof functionality falls back
-> to a clearly-named dummy implementation that emits a `UserWarning`. This
-> fallback is **not** production-grade — install the real dependency for any
-> guarantee that must survive an audit.
+> **Note on cryptographic features:** zero-knowledge proofs and homomorphic
+> encryption raise `NotImplementedError`. There is no dummy proof that reports
+> success. Do not use those entry points for any guarantee that must survive
+> an audit.
 
 ## Responsible Disclosure
 

@@ -1,4 +1,6 @@
-# MultiMind CLI Interface
+---
+title: "MultiMind CLI Interface"
+---
 
 The MultiMind CLI provides a comprehensive command-line interface for using the MultiMind SDK. This interface allows you to perform various AI tasks using multiple providers, ensemble methods, and specialized tools.
 
@@ -18,7 +20,9 @@ Installing the package adds a `multimind` entry point with the following command
 multimind --help
 ```
 
-Commands: `audit`, `chat`, `compliance`, `config`, `models`, `serve`.
+Commands: `audit`, `backend`, `chat`, `compliance`, `config`, `dashboard`, `models`, `serve`.
+
+Two extra commands are dispatched before the Click group and therefore do not appear in `multimind --help`: `multimind convert` and `multimind context-transfer`. Both are documented under Model Conversion and Context Transfer below.
 
 ### Model Management
 
@@ -46,6 +50,8 @@ multimind models export -m ./finetuned/my-model -f onnx -o my-model.onnx
 # Delete a local fine-tuned model
 multimind models delete -m ./finetuned/my-model
 ```
+
+`models metrics` reads the gateway's `ModelMonitor` (`multimind.core.monitoring`), which is an in-memory, per-process object fed by `/v1/chat` and `/v1/generate` requests. A fresh CLI process has its own empty monitor, so the command prints empty tables unless it runs inside the same process as the server; to see live gateway numbers query `GET /v1/metrics` on the running server instead.
 
 ### Chat Sessions
 
@@ -118,7 +124,13 @@ multimind compliance configure-alerts -o my-org -c alert_rules.json
 
 # Run a bundled compliance example (healthcare or general)
 multimind compliance run-example -t healthcare -u diagnosis
+
+# Evidence report (md or html) from the guard audit log, cost log, and an inventory scan
+multimind compliance report-evidence --audit-log audit.jsonl --costs-log costs.jsonl \
+    --project . --period 2026-07 --organization "Acme" --format md -o evidence.md
 ```
+
+`compliance dashboard` and `compliance alerts` read the same in-process store as the `/v1/compliance/dashboard` and `/v1/compliance/alerts` routes: one `ComplianceShard` per organization, held for the life of the backend process and filled by `POST /v1/compliance/monitor` calls (`multimind/gateway/compliance_api.py`). Nothing is persisted to disk, so a CLI invocation in its own process reports zero checks and no alerts; use the routes on the running server (`multimind backend`) to see what that process recorded.
 
 ### Compliance Proxy Server
 
@@ -142,9 +154,30 @@ Options:
 - `--block-on`: Comma-separated PII types that reject the request, e.g. `ssn,credit_card`
 - `--budget`: Max session spend in USD
 - `--audit-log`: Path for the JSONL audit trail
+- `--costs-log`: Path for the JSONL cost log (default `costs.jsonl`)
 - `--scan-output` / `--no-scan-output`: Also redact PII in model output (default on)
+- `--config`: Guardrails JSON file authored via `multimind dashboard`
 
-The proxy can also be configured through `MULTIMIND_PROXY_*` environment variables; see the [Configuration Guide](configuration.md).
+The proxy can also be configured through `MULTIMIND_PROXY_*` environment variables; see the [Configuration Guide](/configuration).
+
+### Governance Dashboard
+
+Serve a read-only local web UI over the guard audit trail, cost log, shadow-AI inventory, and a no-code guardrails editor whose output feeds `multimind serve --config`:
+
+```bash
+multimind dashboard --port 8501 --audit-log audit.jsonl --costs-log costs.jsonl \
+    --project . --guardrails guardrails.json
+```
+
+See the [dashboard guide](/dashboard).
+
+### Backend API Server
+
+Serve every supported REST route (gateway, governance, guard proxy, RAG when installed) from one process with one Swagger UI at `/docs`:
+
+```bash
+multimind backend --host 127.0.0.1 --port 8080
+```
 
 ### AI Usage Audit
 
@@ -173,6 +206,90 @@ Options:
 
 - `--log`: Rebuild the tracker from a persisted JSONL cost log (e.g. `costs.jsonl`)
 - `--period`: Filter by ISO timestamp prefix, e.g. `2026-07`
+
+### Model Conversion
+
+`multimind convert` wraps `ModelConversionManager` (`multimind/model_conversion`). It is dispatched before the Click group, so it is absent from `multimind --help`, and it imports torch, so it needs the `finetune` extra:
+
+```bash
+pip install "multimind-sdk[finetune]"
+```
+
+Without torch the command exits with code 1 and a message pointing at that extra.
+
+```bash
+# HuggingFace model to GGUF
+multimind convert --source huggingface --target gguf --model-path Qwen/Qwen1.5-7B --output-dir ./models
+
+# PyTorch to Safetensors with compression
+multimind convert --source pytorch --target safetensors --model-path ./model.pt --output-dir ./out --compression lz4
+
+# ONNX to ONNX Runtime
+multimind convert --source onnx --target ort --model-path ./model.onnx --output-dir ./out --optimization-level all
+```
+
+Required options:
+
+- `--source`: Source format: `huggingface`, `pytorch`, `tensorflow`, `onnx`, or `ollama`
+- `--target`: Target format: `gguf`, `safetensors`, `tflite`, `ort`, or `onnx`
+- `--model-path`: Path to the source model or a HuggingFace model ID
+- `--output-dir`: Directory for the converted model (created if missing)
+
+Optional:
+
+- `--quantization`: `q4_k_m`, `q4_0`, `q5_k_m`, `q8_0`, `int8`, or `fp16`
+- `--compression`: `lz4` or `zstd` (Safetensors); `--compression-level` 1-9 (default 9)
+- `--optimizations`: One or more optimization names, e.g. `DEFAULT OPTIMIZE_FOR_LATENCY` (TFLite)
+- `--optimization-level`: `basic`, `all`, or `extreme` (ONNX Runtime)
+- `--device`: `cpu` (default) or `cuda`
+- `--context-length`: Context length for GGUF output
+- `--metadata`: One or more `key=value` pairs attached to the output
+- `--validate`: Validate the model before and after conversion (a failed validation exits 1)
+- `--test`: Run the converted model; implemented for `gguf` only, other targets print "not implemented"
+- `--verbose`: Print source and converted model metadata, and a traceback on error
+
+### Context Transfer
+
+`multimind context-transfer` reformats a saved conversation from one provider into a prompt for another (`multimind.context_transfer`). It is dispatched before the Click group, needs no extras, and uses argparse-style underscore options.
+
+```bash
+# List supported models with context length and capability flags
+multimind context-transfer --list_models
+
+# Capabilities of one model
+multimind context-transfer --model_info deepseek
+
+# Basic transfer
+multimind context-transfer --from_model chatgpt --to_model deepseek \
+    --input_file conversation.json --output_file deepseek_prompt.txt
+
+# Detailed summary, smart extraction, JSON output
+multimind context-transfer --from_model claude --to_model gemini \
+    --input_file chat.json --output_file gemini_prompt.txt \
+    --last_n 10 --summary_type detailed --smart_extraction \
+    --output_format json --include_code_context
+```
+
+Transfer options (`--from_model`, `--to_model`, `--input_file`, and `--output_file` are all required for a transfer; the command exits 2 if one is missing):
+
+- `--from_model`, `--to_model`: Source and target model names, e.g. `chatgpt`, `claude`, `deepseek`, `gemini`, `mistral`; see `--list_models`
+- `--input_file`: Conversation history file (the output directory is created if needed)
+- `--output_file`: Where the formatted prompt is written
+- `--last_n`: Number of recent turns to extract (default 5)
+- `--no_summary`: Skip summarization and use only the last message
+- `--summary_type`: `concise` (default), `detailed`, or `structured`
+- `--smart_extraction`: Importance-based context extraction
+- `--output_format`: `txt` (default), `json`, or `markdown`
+
+Formatting flags, each adding instructions to the generated prompt: `--include_code_context`, `--include_reasoning`, `--include_safety`, `--include_creativity`, `--include_examples`, `--include_step_by_step`, `--include_multimodal`, `--include_web_search`.
+
+Information and general options:
+
+- `--list_models`: List supported models and exit
+- `--model_info MODEL`: Show one model's capabilities and exit
+- `--verbose`, `-v`: Debug logging and a traceback on unexpected errors
+
+Exit codes: 0 on success, 1 for a missing input file, unsupported model, or any other error.
 
 ## Example CLI Scripts
 
@@ -409,10 +526,12 @@ The CLI uses the following environment variables (should be set in your `.env` f
 - `ANTHROPIC_API_KEY`: Your Anthropic API key (`CLAUDE_API_KEY` is also accepted)
 - `MISTRAL_API_KEY`: Your Mistral API key (if using Mistral AI)
 - `GROQ_API_KEY`: Your Groq API key (if using Groq)
-- `HUGGINGFACE_API_KEY`: Your Hugging Face API key (if using Hugging Face)
+- `GEMINI_API_KEY`: Your Gemini API key (`GOOGLE_API_KEY` is also accepted)
+- `DEEPSEEK_API_KEY`: Your DeepSeek API key
+- `HUGGINGFACE_API_KEY`: Hugging Face token for gated models (optional)
 - `OLLAMA_HOST`: Ollama server URL (default: `http://localhost:11434`)
 
-See the [Configuration Guide](configuration.md) for the full list, including the `MULTIMIND_PROXY_*` variables read by `multimind serve`.
+See the [Configuration Guide](/configuration) for the full list, including the `MULTIMIND_PROXY_*` variables read by `multimind serve`.
 
 ## Error Handling
 

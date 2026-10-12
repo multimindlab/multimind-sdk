@@ -23,14 +23,38 @@ services:
       - OLLAMA_MODEL_NAME=${OLLAMA_MODEL_NAME:-mistral}
       - DEFAULT_MODEL=${DEFAULT_MODEL:-openai}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MULTIMIND_PROXY_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_PROXY_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_DASHBOARD_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_GUARDRAILS=/data/guardrails.json
+      - MULTIMIND_CORS_ORIGINS=http://localhost:8501,http://127.0.0.1:8501
     volumes:
       - multimind_sessions:/app
+      - multimind_governance:/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+
+  dashboard:
+    image: multimind-sdk:latest
+    depends_on:
+      - gateway
+    command: ["multimind", "dashboard", "--host", "0.0.0.0", "--port", "8501"]
+    ports:
+      - "8501:8501"
+    environment:
+      - MULTIMIND_API_BASE=http://localhost:8000
+      - MULTIMIND_DASHBOARD_HOST=0.0.0.0
+      - MULTIMIND_DASHBOARD_AUDIT_LOG=/data/audit.jsonl
+      - MULTIMIND_DASHBOARD_COSTS_LOG=/data/costs.jsonl
+      - MULTIMIND_DASHBOARD_GUARDRAILS=/data/guardrails.json
+    volumes:
+      - multimind_governance:/data
     restart: unless-stopped
 
   # Optional: local models, no API keys needed.
@@ -65,5 +89,6 @@ services:
 
 volumes:
   multimind_sessions:
+  multimind_governance:
   ollama_models:
   chroma_data:

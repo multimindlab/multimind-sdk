@@ -4,7 +4,7 @@
 
 <p align="center">
   <strong>The compliance-first AI agent framework.</strong><br>
-  Multi-model AI with built-in GDPR, HIPAA & NIS2 support. Works with any model. Runs anywhere.
+  Multi-model AI with built-in GDPR and HIPAA support. Works with any model. Runs anywhere.
 </p>
 
 <p align="center">
@@ -60,11 +60,12 @@ asyncio.run(main())
 pip install multimind-sdk                # Core (incl. Ollama via HTTP, no extra needed)
 pip install multimind-sdk[rag]           # + RAG & vector stores (FAISS, Chroma)
 pip install multimind-sdk[agents]        # + Agent framework with memory
-pip install multimind-sdk[compliance]    # + GDPR/HIPAA/NIS2 compliance + dashboards
+pip install multimind-sdk[compliance]    # + GDPR/HIPAA compliance + dashboards
 pip install multimind-sdk[finetune]      # + LoRA/QLoRA fine-tuning (CPU)
-pip install multimind-sdk[finetune-gpu]  # + 8-bit quantization (Linux/CUDA only)
+pip install multimind-sdk[finetune-gpu]  # + 4-bit QLoRA via bitsandbytes (Linux only)
 pip install multimind-sdk[gateway]       # + FastAPI gateway server
-pip install multimind-sdk[all]           # Everything
+pip install multimind-sdk[all]           # rag, vector-stores, agents, memory, documents, finetune, compliance, gateway, mcp
+# Framework adapters are separate: [langchain] [llamaindex] [crewai] [autogen]
 ```
 
 > **Ollama users**: no extra needed — `multimind.models.ollama` talks to a running Ollama instance over HTTP. Just `pip install multimind-sdk` and point at `http://localhost:11434`.
@@ -102,7 +103,7 @@ pip install multimind-sdk[all]           # Everything
 
 > Note: `multimind.mcp` is MultiMind's internal **Model Composition Protocol** — a workflow executor for chaining models. Anthropic's Model Context Protocol is supported separately via `multimind.mcp_server` (see [docs/mcp-server.md](docs/mcp-server.md)).
 
-Full status: [FEATURES.md](FEATURES.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
+Full status: [docs/feature-status.md](docs/feature-status.md) · Roadmap: [ROADMAP.md](ROADMAP.md)
 
 ## Examples
 
@@ -250,6 +251,8 @@ print(response)
 More examples: [`examples/`](examples/)
 
 ## Documentation
+
+Hosted docs: [docs.multimind.dev](https://docs.multimind.dev). The same pages live in [docs/](docs/).
 
 - [Docs index](docs/README.md) — everything in one place
 - [Quickstart](docs/quickstart.md) — guarded, cost-tracked model calls in 5 minutes

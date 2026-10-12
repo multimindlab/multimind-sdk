@@ -1,4 +1,6 @@
-# Getting Started Without Writing Code
+---
+title: "Getting Started Without Writing Code"
+---
 
 A guide for analysts, compliance officers, project managers, and anyone else who wants to see what MultiMind does without being a programmer. No Python knowledge assumed. Every command in this guide can be copied and pasted exactly as written.
 
@@ -35,7 +37,7 @@ Python is the language MultiMind is written in. Check whether you already have i
 python3 --version
 ```
 
-If you see something like `Python 3.11.6` (any number from 3.9 up), you are done with this step. If you get an error instead, download Python from [python.org/downloads](https://www.python.org/downloads/) and run the installer, accepting the defaults. On Windows, tick the box that says "Add Python to PATH" during installation, then close and reopen the terminal.
+If you see something like `Python 3.11.6` (any number from 3.10 up), you are done with this step. If you get an error instead, download Python from [python.org/downloads](https://www.python.org/downloads/) and run the installer, accepting the defaults. On Windows, tick the box that says "Add Python to PATH" during installation, then close and reopen the terminal.
 
 ## Step 2: Install MultiMind
 
@@ -51,7 +53,7 @@ Lines of progress text will scroll by for a minute; that is normal. When the pro
 multimind --help
 ```
 
-You should see a short list of available commands (`audit`, `chat`, `compliance`, `config`, `models`, `serve`). If `multimind` is reported as "command not found", close and reopen the terminal and try again.
+You should see a short list of available commands (`audit`, `backend`, `chat`, `compliance`, `config`, `dashboard`, `models`, `serve`). If `multimind` is reported as "command not found", close and reopen the terminal and try again.
 
 ## Step 3: Scan a file for sensitive data
 
@@ -68,8 +70,8 @@ You will see a table like this:
 ┏━━━━━━━┳━━━━━━━┳━━━━━┳━━━━━━━━━━━━━━━━━━━┓
 ┃ Type  ┃ Start ┃ End ┃ Match             ┃
 ┡━━━━━━━╇━━━━━━━╇━━━━━╇━━━━━━━━━━━━━━━━━━━┩
-│ email │    16 │  34 │ jane.doe@corp.com │
-│ phone │    38 │  50 │ 555-123-4567      │
+│ email │    16 │  33 │ jane.doe@corp.com │
+│ phone │    37 │  49 │ 555-123-4567      │
 └───────┴───────┴─────┴───────────────────┘
 ```
 
@@ -162,6 +164,6 @@ The third seatbelt — the **budget** — is wired in by developers; it meters e
 
 ## Where to go next
 
-- Hand your developers the [quickstart](quickstart.md) — the same features, wired into code, in five minutes.
-- The [compliance guide](compliance.md) covers the full GDPR/HIPAA compliance module.
+- Hand your developers the [quickstart](/quickstart) — the same features, wired into code, in five minutes.
+- The [compliance guide](/compliance) covers the full GDPR/HIPAA compliance module.
 - Questions? Join the [Discord community](https://discord.gg/K64U65je7h) — non-technical questions are welcome.

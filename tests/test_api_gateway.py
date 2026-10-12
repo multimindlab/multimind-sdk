@@ -129,6 +129,8 @@ def test_session_lifecycle(client):
         json={"role": "user", "content": "hello"},
     )
     assert r.status_code == 200
+    assert r.json()["content"] == "fake chat"
+    assert r.json()["role"] == "assistant"
 
     r = client.delete(f"/v1/sessions/{session_id}")
     assert r.status_code == 200
@@ -139,6 +141,39 @@ def test_session_lifecycle(client):
 def test_session_validation_error(client):
     r = client.post("/v1/sessions", json={})
     assert r.status_code == 422
+
+
+def test_session_save_and_load(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(gw.chat_manager, "storage_dir", tmp_path)
+    session_id = client.post("/v1/sessions", json={"model": "openai"}).json()["session_id"]
+
+    r = client.post(f"/v1/sessions/{session_id}/save")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["status"] == "session saved"
+    assert body["session_id"] == session_id
+    assert body["path"] == str(tmp_path / f"chat_{session_id}.json")
+    assert (tmp_path / f"chat_{session_id}.json").is_file()
+
+    # delete removes it from memory and disk; re-create the file to exercise load
+    saved = (tmp_path / f"chat_{session_id}.json").read_text()
+    assert client.delete(f"/v1/sessions/{session_id}").status_code == 200
+    assert client.get(f"/v1/sessions/{session_id}").status_code == 404
+    (tmp_path / f"chat_{session_id}.json").write_text(saved)
+
+    r = client.post("/v1/sessions/load", json={"session_id": session_id})
+    assert r.status_code == 200
+    assert r.json()["session_id"] == session_id
+    assert r.json()["model"] == "openai"
+    assert client.get(f"/v1/sessions/{session_id}").status_code == 200
+    client.delete(f"/v1/sessions/{session_id}")
+
+
+def test_session_save_and_load_unknown(client, tmp_path, monkeypatch):
+    monkeypatch.setattr(gw.chat_manager, "storage_dir", tmp_path)
+    assert client.post("/v1/sessions/does-not-exist/save").status_code == 404
+    assert client.post("/v1/sessions/load", json={"session_id": "does-not-exist"}).status_code == 404
+    assert client.post("/v1/sessions/load", json={}).status_code == 422
 
 
 def test_compliance_regulations(client):

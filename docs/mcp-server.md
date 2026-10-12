@@ -1,4 +1,6 @@
-# MCP Server
+---
+title: "MCP Server"
+---
 
 MultiMind ships an [Anthropic Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that exposes the compliance toolkit — PII scanning, redaction, grounding checks, policy gating, and audit logging — as tools any MCP client can call: Claude Desktop, Claude Code, Cursor, or your own agent.
 
@@ -38,7 +40,7 @@ Environment:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `MULTIMIND_AUDIT_LOG` | `./multimind_audit.jsonl` | Destination JSONL file for the `audit_log` tool |
+| `MULTIMIND_AUDIT_LOG` | `multimind_audit.jsonl` (relative to the server's working directory) | Destination JSONL file for the `audit_log` tool |
 
 ## Tools
 
@@ -120,4 +122,4 @@ Pre-send gate: call before pushing content to an external service. Returns wheth
 
 ## Positioning
 
-These are agent-invocable compliance tools: the agent decides when to scan, redact, or gate. For transparent interception of *all* traffic — every prompt and response, no cooperation required — put the compliance guard in the request path instead with `multimind serve` (see [compliance.md](compliance.md)), or wrap a model in-process with `multimind.compliance.guard`.
+These are agent-invocable compliance tools: the agent decides when to scan, redact, or gate. For transparent interception of *all* traffic — every prompt and response, no cooperation required — put the compliance guard in the request path instead with `multimind serve` (see [guard-proxy.md](/guard-proxy)), or wrap a model in-process with `multimind.compliance.guard` (`guard(model, block_on=("ssn",))` returns a `ComplianceGuard`).

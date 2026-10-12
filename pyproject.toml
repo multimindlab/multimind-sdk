@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "The compliance-first AI agent framework. Multi-model AI, RAG, agents, and enterprise readiness."
 readme = "README.md"
 license = {text = "Apache-2.0"}
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
     {name = "Ai2innovate SRL Team", email = "info@ai2innovate.io"},
 ]
@@ -19,13 +19,12 @@ keywords = [
     "vector-database", "fine-tuning", "enterprise-ai",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -42,12 +41,7 @@ dependencies = [
     "httpx>=0.24.0",
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
-    # CVE-2026-28684 is a symlink-following path traversal in set_key()/unset_key();
-    # multimind only ever calls the read-only load_dotenv(), so it's unaffected either
-    # way. >=1.2.2 has the fix but dropped Python 3.9 support, so 3.9 stays on the
-    # last compatible pre-fix release.
-    "python-dotenv>=1.2.2; python_version >= '3.10'",
-    "python-dotenv>=1.0.0,<1.2.2; python_version < '3.10'",
+    "python-dotenv>=1.2.2",
     "click>=8.0.0",
     "rich>=13.0.0",
     "PyYAML>=6.0",
@@ -64,6 +58,7 @@ dependencies = [
 # RAG and basic vector store support
 rag = [
     "faiss-cpu>=1.7.0",
+    "chromadb>=0.4.0",
     "sentence-transformers>=2.2.0",
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
@@ -187,13 +182,7 @@ haystack = [
 
 # Development tools
 dev = [
-    # CVE-2025-71176 is a local /tmp symlink attack requiring another user on a
-    # shared machine to race pytest's temp-dir creation; irrelevant on ephemeral
-    # CI runners and moot for a dev-only dependency never shipped to users.
-    # >=9.0.3 has the fix but dropped Python 3.9 support, so 3.9 stays on the
-    # last compatible pre-fix release.
-    "pytest>=9.0.3; python_version >= '3.10'",
-    "pytest>=8.3.0,<9.0.0; python_version < '3.10'",
+    "pytest>=9.0.3",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
@@ -220,7 +209,7 @@ all = [
 
 [project.urls]
 Homepage = "https://www.multimind.dev"
-Documentation = "https://github.com/multimindlab/multimind-sdk/tree/develop/docs"
+Documentation = "https://docs.multimind.dev"
 Repository = "https://github.com/multimindlab/multimind-sdk"
 Issues = "https://github.com/multimindlab/multimind-sdk/issues"
 Changelog = "https://github.com/multimindlab/multimind-sdk/releases"
@@ -243,7 +232,7 @@ multimind = ["py.typed"]
 # ── Linting & Formatting ─────────────────────────────────────────────
 
 [tool.ruff]
-target-version = "py39"
+target-version = "py310"
 line-length = 100
 exclude = [".git", "__pycache__", "build", "dist", "venv", ".venv"]
 

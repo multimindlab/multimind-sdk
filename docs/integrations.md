@@ -1,4 +1,6 @@
-# Framework Integrations: Govern Your Existing Stack
+---
+title: "Framework Integrations: Govern Your Existing Stack"
+---
 
 **Don't migrate off LangChain — govern it.** MultiMind's governance features
 (PII redaction and blocking, spend budgets, cost tracking, JSONL audit
@@ -12,6 +14,9 @@ All adapters live in `multimind.integrations.frameworks` and resolve
 lazily: importing the package never requires any framework, and a missing
 framework raises a clear `pip install ...` hint only when its adapter is
 actually used (the Haystack adapter is the one exception — see below).
+Matching pip extras exist for convenience: `multimind-sdk[langchain]`,
+`[llamaindex]`, `[crewai]`, `[autogen]`, `[haystack]` — each pins only that
+framework's core package.
 
 Shared governance kwargs (all adapters):
 
@@ -291,7 +296,7 @@ Honest notes:
   helper are still untouched.
 - Streaming output (both APIs) is passthrough + post-scan, not redacted
   mid-stream. If you need output held back until scanned, use the
-  non-streaming call — or run the [guard proxy](guard-proxy.md) in front of
+  non-streaming call — or run the [guard proxy](/guard-proxy) in front of
   the API instead.
 - Tool-call arguments in chat-completions/responses output are not scanned.
 
@@ -407,6 +412,6 @@ Honest notes:
 ## Alternative: the zero-code option
 
 If you would rather not touch application code at all, `multimind serve`
-(see [guard-proxy.md](guard-proxy.md)) provides the same redaction, budget,
+(see [guard-proxy.md](/guard-proxy)) provides the same redaction, budget,
 and audit controls as an OpenAI-compatible HTTP proxy — point any
 framework's `base_url` at it.

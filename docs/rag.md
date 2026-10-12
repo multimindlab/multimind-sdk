@@ -1,4 +1,6 @@
-# RAG System Documentation
+---
+title: "RAG System Documentation"
+---
 
 The MultiMind SDK's RAG (Retrieval Augmented Generation) system combines document processing, embeddings, and vector storage so you can retrieve relevant context and feed it to any MultiMind model. This document covers the system's components, configuration, and usage.
 
@@ -42,13 +44,14 @@ doc = Document(
 )
 ```
 
-Chunking behavior is controlled by the `document_config` dict on `RAGConfig` (`min_chunk_size`, `max_chunk_size`, `chunk_overlap`).
+Chunking behavior is controlled by the `document_config` dict on `RAGConfig` (`min_chunk_size`, `max_chunk_size`, `chunk_overlap`). Note that `RAG.add_documents(process=True)` only re-chunks when the document processor has a model attached; with the default configuration documents are embedded as-is.
 
 ### 2. Embeddings
 
-Embedding behavior is configured with `EmbeddingConfig`. Supported `model_type` values include `"openai"` (e.g. `text-embedding-ada-002`, 1536 dimensions) and `"huggingface"` (e.g. `sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions, fully local):
+Embedding behavior is configured with `EmbeddingConfig`. Supported `model_type` values include `"openai"` (e.g. `text-embedding-ada-002`, 1536 dimensions) and `"huggingface"` (e.g. `sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions, fully local). The OpenAI embedding client does not read `OPENAI_API_KEY` itself; pass the key through `custom_params`:
 
 ```python
+import os
 from multimind.embeddings.embedding import EmbeddingConfig
 
 embedding_config = EmbeddingConfig(
@@ -59,7 +62,7 @@ embedding_config = EmbeddingConfig(
     normalize=True,
     device="cpu",
     cache_dir=None,
-    custom_params={},
+    custom_params={"api_key": os.environ["OPENAI_API_KEY"]},
 )
 ```
 
@@ -77,7 +80,7 @@ vector_store_config = VectorStoreConfig.create_faiss_config(
 )
 ```
 
-Other backends (Chroma, Qdrant, and more) are available via the `vector-stores` extra; see `multimind.vector_store` for the factory and per-backend configs.
+Other backends (Chroma, Qdrant, Weaviate, Pinecone, Milvus, Elasticsearch, and more) are available via the `vector-stores` extra; see `multimind.vector_store` for the factory and per-backend configs. Not every backend in `VectorStoreType` is implemented: AwaDB, BagelDB, BaiduCloud, Clarifai, ClickHouse, DashVector, Databricks Vector Search, DeepLake, DingoDB, Elastic Vector Search (legacy) and Epsilla are stubs that raise `NotImplementedError`, and Cassandra, Azure AI Search, Azure Cosmos DB, LLMRails and TileDB are only partially implemented. The per-backend status is in [feature-status.md](/feature-status#vector-store-backends).
 
 ## Installation
 
@@ -102,6 +105,7 @@ HuggingFace embeddings run locally and need no API key.
 
 ```python
 import asyncio
+import os
 from multimind import RAG, RAGConfig, OpenAIModel
 from multimind.vector_store import VectorStoreConfig
 from multimind.embeddings.embedding import EmbeddingConfig
@@ -122,7 +126,7 @@ config = RAGConfig(
         normalize=True,
         device="cpu",
         cache_dir=None,
-        custom_params={},
+        custom_params={"api_key": os.environ["OPENAI_API_KEY"]},
     ),
     document_config={"min_chunk_size": 100, "max_chunk_size": 1000, "chunk_overlap": 200},
 )
@@ -141,37 +145,36 @@ async def add_docs():
         Document(id="doc_1", content="RAG combines retrieval with generation.",
                  metadata={"source": "direct"}, source="example"),
     ]
-    await rag.add_documents(docs, process=True)   # process=True applies chunking
+    await rag.add_documents(docs, process=True)
 
 asyncio.run(add_docs())
 ```
 
 ### 3. Retrieve and Generate
 
-`RAG.retrieve` returns the most relevant documents; you build the prompt and generate with any model:
+`RAG.retrieve` returns a list of `multimind.retrieval.RetrievalResult` objects (`content`, `score`, `metadata`, `document_id`, `source`, `chunk_id`) whose score is at or above `similarity_threshold`; you build the prompt and generate with any model:
 
 ```python
 async def answer(question: str) -> str:
     retrieved = await rag.retrieve(question, k=3)
-    context = "\n\n".join(doc.content for doc in retrieved)
+    context = "\n\n".join(result.content for result in retrieved)
     prompt = f"Context:\n{context}\n\nQuestion: {question}\n\nAnswer:"
     return await model.generate(prompt, temperature=0.7)
 
 print(asyncio.run(answer("What is the MultiMind SDK?")))
 ```
 
-A complete runnable version of this flow (with similarity-threshold guard rails and a local no-API-key fallback) is in [examples/rag/example_rag.py](../examples/rag/example_rag.py).
+A complete runnable version of this flow (with similarity-threshold guard rails and a local no-API-key fallback) is in [examples/rag/example_rag.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/rag/example_rag.py).
 
 ## Advanced Features
 
 ### 1. Metadata Filtering
 
+`RAG.retrieve` accepts a `filter_criteria` dict, but in 1.0.0 its entries are forwarded to the vector store as keyword arguments, so `filter_criteria={"category": "documentation"}` raises `RetrievalError` (`VectorStore.search() got an unexpected keyword argument 'category'`). Until that is fixed, over-fetch and filter on the result metadata:
+
 ```python
-results = await rag.retrieve(
-    "deployment steps",
-    k=5,
-    filter_criteria={"category": "documentation"},
-)
+results = await rag.retrieve("deployment steps", k=20)
+results = [r for r in results if r.metadata.get("category") == "documentation"][:5]
 ```
 
 ### 2. Batch Queries
@@ -197,7 +200,7 @@ mini = OpenAIModel(model_name="gpt-4o-mini")
 simple_answer = await mini.generate(prompt, temperature=0.3)
 ```
 
-For switching models mid-conversation with context transfer, see `ModelSession` in the [cookbook](cookbook.md#switch-models-mid-conversation-without-losing-knowledge).
+For switching models mid-conversation with context transfer, see `ModelSession` in the [cookbook](/cookbook#switch-models-mid-conversation-without-losing-knowledge).
 
 ### 4. Clearing the Store
 
@@ -232,8 +235,8 @@ class RAGTool(BaseTool):
         }
 
     async def run(self, query: str, top_k: int = 3):
-        docs = await self.rag.retrieve(query, k=top_k)
-        return "\n\n".join(doc.content for doc in docs)
+        results = await self.rag.retrieve(query, k=top_k)
+        return "\n\n".join(r.content for r in results)
 
 agent = Agent(
     model=model,
@@ -241,8 +244,10 @@ agent = Agent(
     tools=[RAGTool(rag), CalculatorTool()],
 )
 
-response = await agent.run("What are the main features of the MultiMind SDK?")
+response = await agent.run("What are the main features of the MultiMind SDK?")  # returns a dict
 ```
+
+`CalculatorTool` is the only tool shipped in `multimind.agents.tools`; anything else is a `BaseTool` subclass you write.
 
 ## Best Practices
 
@@ -263,7 +268,7 @@ response = await agent.run("What are the main features of the MultiMind SDK?")
 
 4. **Retrieval Quality**
    - Set a `similarity_threshold` and refuse to answer when nothing relevant is retrieved
-   - Consider grounding-checking generated answers — see [hallucination detection](cookbook.md#detect-hallucinations-in-rag-answers)
+   - Consider grounding-checking generated answers — see [hallucination detection](/cookbook#detect-hallucinations-in-rag-answers)
 
 5. **Agent Integration**
    - Combine RAG with other tools for comprehensive solutions
@@ -290,24 +295,26 @@ class RAG:
         self,
         query: str,
         k: int = 5,
-        filter_criteria: Optional[Dict[str, Any]] = None,
-    ) -> List[Document]
+        filter_criteria: Optional[Dict[str, Any]] = None,   # see "Metadata Filtering" above
+    ) -> List[RetrievalResult]
 
     async def clear(self) -> None
 ```
 
 ### RAGConfig
 
+`RAGConfig` is a dataclass:
+
 ```python
+@dataclass
 class RAGConfig:
-    def __init__(
-        self,
-        vector_store_config: VectorStoreConfig,
-        retrieval_config: Dict[str, Any],     # e.g. {"top_k": 3, "similarity_threshold": 0.5}
-        embedding_config: EmbeddingConfig,
-        document_config: Dict[str, Any],      # e.g. {"min_chunk_size": 100, "max_chunk_size": 1000, "chunk_overlap": 200}
-        custom_params: Dict[str, Any] = None,
-    )
+    vector_store_config: VectorStoreConfig
+    retrieval_config: Dict[str, Any]     # e.g. {"top_k": 3, "similarity_threshold": 0.5} (defaults: 5, 0.7)
+    embedding_config: EmbeddingConfig
+    document_config: Dict[str, Any]      # e.g. {"min_chunk_size": 100, "max_chunk_size": 1000, "chunk_overlap": 200}
+    custom_params: Dict[str, Any] = None
 ```
 
-For the HTTP RAG service, see [rag_api.md](api_reference/rag_api.md) and the generated [openapi-rag.json](api/openapi-rag.json).
+`multimind.rag` also exports `BaseRAG`, `RAGError`, `GraphRetriever`, `PostProcessor` and `PostProcessingConfig`; a fluent `RAGPipeline` lives in `multimind.rag.fluent` (see [examples/rag/fluent_rag_example.py](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/rag/fluent_rag_example.py)).
+
+For the HTTP RAG service, see [rag_api.md](/api_reference/rag_api) and the generated [openapi-rag.json](https://github.com/multimindlab/multimind-sdk/blob/develop/docs/api/openapi-rag.json).

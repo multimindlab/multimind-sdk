@@ -388,7 +388,12 @@ def test_compliance_run_compliance_mocked(runner, tmp_path, monkeypatch):
     config_path.write_text(json.dumps(config))
 
     async def fake_monitoring(cfg):
-        return {"final_evaluation": {"score": 1.0, "recommendations": []}}
+        # Same shape as gateway.compliance_api.run_compliance_monitoring
+        return {
+            "final_evaluation": {"status": "attention", "checks": []},
+            "recommendations": [{"action": "redact_or_block", "detail": "PII types: email"}],
+            "metrics": {},
+        }
 
     monkeypatch.setattr(
         compliance_module,
@@ -396,8 +401,17 @@ def test_compliance_run_compliance_mocked(runner, tmp_path, monkeypatch):
         lambda: _fake_backend(run_compliance_monitoring=fake_monitoring),
     )
     result = runner.invoke(cli, ["compliance", "run-compliance", "-c", str(config_path)])
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "Compliance Evaluation Results" in result.output
+    assert "- redact_or_block: PII types: email" in result.output
+
+
+def test_cli_version_flag(runner):
+    from multimind import __version__
+
+    result = runner.invoke(cli, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
 
 
 def test_compliance_configure_alerts_mocked(runner, tmp_path, monkeypatch):

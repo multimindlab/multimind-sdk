@@ -31,12 +31,43 @@ class HyperparameterTuner:
         Run hyperparameter search.
         train_func: function that takes a model and returns a score (higher is better)
         """
-        logger.info(
-            "[HyperparameterTuner] Running %s trials with backend %s.",
-            n_trials,
-            self.backend,
-        )
-        return {"best_param": 42}
+        if self.backend != "optuna":
+            raise NotImplementedError(
+                f"HyperparameterTuner backend {self.backend!r} is not implemented. "
+                "Use backend='optuna'."
+            )
+        try:
+            import optuna
+        except ImportError as exc:
+            raise NotImplementedError(
+                "HyperparameterTuner requires optuna. "
+                "Install with: pip install 'multimind-sdk[finetune]'"
+            ) from exc
+
+        def objective(trial: "optuna.Trial") -> float:
+            params: Dict[str, Any] = {}
+            for name, spec in self.search_space.items():
+                if not isinstance(spec, (list, tuple)) or not spec:
+                    raise ValueError(
+                        f"search_space[{name!r}] must be "
+                        "('float', low, high), ('int', low, high), "
+                        "or ('categorical', [choices])"
+                    )
+                kind = spec[0]
+                if kind == "float":
+                    params[name] = trial.suggest_float(name, float(spec[1]), float(spec[2]))
+                elif kind == "int":
+                    params[name] = trial.suggest_int(name, int(spec[1]), int(spec[2]))
+                elif kind == "categorical":
+                    params[name] = trial.suggest_categorical(name, list(spec[1]))
+                else:
+                    raise ValueError(f"Unknown search space kind {kind!r} for {name}")
+            model = self.model_builder(params)
+            return float(train_func(model))
+
+        study = optuna.create_study(direction="maximize")
+        study.optimize(objective, n_trials=n_trials)
+        return {"best_params": study.best_params, "best_value": study.best_value}
 
 
 # --- 2. Parameter-Efficient Adaptation (Adapters/PEFT) ---

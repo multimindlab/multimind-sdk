@@ -82,6 +82,71 @@ class GatewayConfig(BaseSettings):
         )
     )
 
+    gemini: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
+            model_name=os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash"),
+        )
+    )
+    mistral: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("MISTRAL_API_KEY"),
+            model_name=os.getenv("MISTRAL_MODEL_NAME", "mistral-small-latest"),
+        )
+    )
+    deepseek: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("DEEPSEEK_API_KEY"),
+            model_name=os.getenv("DEEPSEEK_MODEL_NAME", "deepseek-chat"),
+        )
+    )
+    openrouter: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            model_name=os.getenv("OPENROUTER_MODEL_NAME", "openai/gpt-4o-mini"),
+        )
+    )
+    together: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("TOGETHER_API_KEY"),
+            model_name=os.getenv(
+                "TOGETHER_MODEL_NAME", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
+            ),
+        )
+    )
+    xai: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("XAI_API_KEY"),
+            model_name=os.getenv("XAI_MODEL_NAME", "grok-2-latest"),
+        )
+    )
+    perplexity: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("PERPLEXITY_API_KEY"),
+            model_name=os.getenv("PERPLEXITY_MODEL_NAME", "sonar"),
+        )
+    )
+    fireworks: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("FIREWORKS_API_KEY"),
+            model_name=os.getenv(
+                "FIREWORKS_MODEL_NAME", "accounts/fireworks/models/llama-v3p1-8b-instruct"
+            ),
+        )
+    )
+    cerebras: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("CEREBRAS_API_KEY"),
+            model_name=os.getenv("CEREBRAS_MODEL_NAME", "llama3.1-8b"),
+        )
+    )
+    claude: ModelConfig = Field(
+        default_factory=lambda: ModelConfig(
+            api_key=os.getenv("ANTHROPIC_API_KEY") or os.getenv("CLAUDE_API_KEY"),
+            model_name=os.getenv("ANTHROPIC_MODEL_NAME", "claude-3-5-sonnet-20241022"),
+        )
+    )
+
     # General Settings
     default_model: str = Field(
         default=os.getenv("DEFAULT_MODEL", "openai"),
@@ -99,9 +164,19 @@ class GatewayConfig(BaseSettings):
         model_map = {
             "openai": self.openai,
             "anthropic": self.anthropic,
+            "claude": self.claude,
             "ollama": self.ollama,
             "groq": self.groq,
             "huggingface": self.huggingface,
+            "gemini": self.gemini,
+            "mistral": self.mistral,
+            "deepseek": self.deepseek,
+            "openrouter": self.openrouter,
+            "together": self.together,
+            "xai": self.xai,
+            "perplexity": self.perplexity,
+            "fireworks": self.fireworks,
+            "cerebras": self.cerebras,
         }
         normalized_name = model_name.lower()
         if normalized_name not in model_map:
@@ -117,7 +192,23 @@ class GatewayConfig(BaseSettings):
         Pydantic hook to validate the full GatewayConfig instance.
         Ensures that the configured default_model refers to a known model section.
         """
-        allowed_models = {"openai", "anthropic", "ollama", "groq", "huggingface"}
+        allowed_models = {
+            "openai",
+            "anthropic",
+            "claude",
+            "ollama",
+            "groq",
+            "huggingface",
+            "gemini",
+            "mistral",
+            "deepseek",
+            "openrouter",
+            "together",
+            "xai",
+            "perplexity",
+            "fireworks",
+            "cerebras",
+        }
         normalized_default = (value.default_model or "").lower()
         if normalized_default not in allowed_models:
             available = ", ".join(sorted(allowed_models))

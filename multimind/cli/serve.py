@@ -51,6 +51,11 @@ def _proxy():
 @click.option("--budget", type=float, default=None, help="Max session spend in USD")
 @click.option("--audit-log", default=None, help="Path for the JSONL audit trail")
 @click.option(
+    "--costs-log",
+    default=None,
+    help="Path for the JSONL cost log (default costs.jsonl when omitted on the CLI)",
+)
+@click.option(
     "--scan-output/--no-scan-output",
     default=None,
     help="Also redact PII in model output (default on)",
@@ -69,6 +74,7 @@ def serve(
     audit_log: Optional[str],
     scan_output: Optional[bool],
     config: Optional[str],
+    costs_log: Optional[str],
 ):
     """Start the OpenAI-compatible compliance proxy.
 
@@ -87,6 +93,7 @@ def serve(
             budget=budget,
             audit_log=audit_log,
             scan_output=scan_output,
+            costs_log=costs_log if costs_log is not None else "costs.jsonl",
         )
         if config:
             settings = ProxySettings.from_file(config, **kwargs)
@@ -107,6 +114,7 @@ def serve(
         f"[bold]Budget:[/bold]          "
         f"{f'${settings.budget:.2f}' if settings.budget else 'unlimited'}",
         f"[bold]Audit log:[/bold]       {settings.audit_log or 'disabled'}",
+        f"[bold]Costs log:[/bold]       {settings.costs_log or 'disabled'}",
         "",
         "Point your existing OpenAI client here (no other code changes):",
         f'[green]client = OpenAI(base_url="{base_url}", api_key="unused")[/green]',

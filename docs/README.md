@@ -27,7 +27,7 @@ Start here and pick the path that fits you.
 
 ## Reference
 
-- [API reference](api_reference/README.md) — REST and Python APIs
+- [API reference](api_reference/overview.md) — REST and Python APIs
 - [Architecture](architecture.md) — how the pieces fit together
 - [Feature status](../FEATURES.md) — what is stable, beta, and planned
 - [Roadmap](../ROADMAP.md) and [Changelog](../CHANGELOG.md)

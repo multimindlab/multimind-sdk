@@ -1,5 +1,9 @@
 # MultiMind SDK Test Status Summary
 
+> **Superseded (October 2026).** The numbers below are from July 2025.
+> Current status is in [FEATURES.md](../FEATURES.md) and the CI workflow.
+> Do not treat this file as a release signal.
+
 ## 📊 Overall Test Results
 
 **Date**: July 26, 2025  

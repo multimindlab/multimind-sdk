@@ -276,18 +276,90 @@ class HuggingFaceHandler(ModelHandler):
         return await self.chat(messages, **kwargs)
 
 
+class SDKModelHandler(ModelHandler):
+    """Handler that delegates to a multimind.models BaseLLM implementation."""
+
+    def __init__(self, model_config, model_cls):
+        super().__init__(model_config)
+        kwargs = {}
+        if getattr(model_config, "api_key", None):
+            kwargs["api_key"] = model_config.api_key
+        if getattr(model_config, "api_base", None):
+            kwargs["base_url"] = model_config.api_base
+        try:
+            self._llm = model_cls(model_config.model_name, **kwargs)
+        except TypeError:
+            kwargs.pop("base_url", None)
+            self._llm = model_cls(model_config.model_name, **kwargs)
+
+    async def chat(self, messages: List[Dict[str, str]], **kwargs) -> ModelResponse:
+        content = await self._llm.chat(
+            messages,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+        )
+        return ModelResponse(content=str(content), model=self.config.model_name)
+
+    async def generate(self, prompt: str, **kwargs) -> ModelResponse:
+        content = await self._llm.generate(
+            prompt,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+        )
+        return ModelResponse(content=str(content), model=self.config.model_name)
+
+
 def get_model_handler(model_name: str) -> ModelHandler:
     """Factory function to get the appropriate model handler"""
-    model_map = {
+    name = model_name.lower()
+    legacy = {
         "openai": OpenAIHandler,
         "anthropic": AnthropicHandler,
         "ollama": OllamaHandler,
         "huggingface": HuggingFaceHandler,
     }
+    if name in legacy:
+        return legacy[name](config.get_model_config(name))
 
-    handler_class = model_map.get(model_name.lower())
-    if not handler_class:
+    sdk_models = {
+        "claude": ("claude", "ClaudeModel"),
+        "groq": ("groq", "GroqModel"),
+        "gemini": ("gemini", "GeminiModel"),
+        "mistral": ("mistral", "MistralAIModel"),
+        "deepseek": ("deepseek", "DeepSeekModel"),
+        "openrouter": ("openrouter", "OpenRouterModel"),
+        "together": ("together", "TogetherModel"),
+        "xai": ("xai", "XAIModel"),
+        "perplexity": ("perplexity", "PerplexityModel"),
+        "fireworks": ("fireworks", "FireworksModel"),
+        "cerebras": ("cerebras", "CerebrasModel"),
+    }
+    if name not in sdk_models:
         raise ValueError(f"Unsupported model: {model_name}")
+    from ..models.cerebras import CerebrasModel
+    from ..models.claude import ClaudeModel
+    from ..models.deepseek import DeepSeekModel
+    from ..models.fireworks import FireworksModel
+    from ..models.gemini import GeminiModel
+    from ..models.groq import GroqModel
+    from ..models.mistral import MistralAIModel
+    from ..models.openrouter import OpenRouterModel
+    from ..models.perplexity import PerplexityModel
+    from ..models.together import TogetherModel
+    from ..models.xai import XAIModel
 
-    model_config = config.get_model_config(model_name)
-    return handler_class(model_config)
+    sdk_classes = {
+        "ClaudeModel": ClaudeModel,
+        "GroqModel": GroqModel,
+        "GeminiModel": GeminiModel,
+        "MistralAIModel": MistralAIModel,
+        "DeepSeekModel": DeepSeekModel,
+        "OpenRouterModel": OpenRouterModel,
+        "TogetherModel": TogetherModel,
+        "XAIModel": XAIModel,
+        "PerplexityModel": PerplexityModel,
+        "FireworksModel": FireworksModel,
+        "CerebrasModel": CerebrasModel,
+    }
+    config_name, class_name = sdk_models[name]
+    return SDKModelHandler(config.get_model_config(config_name), sdk_classes[class_name])
