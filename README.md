@@ -279,6 +279,20 @@ pytest
 
 Apache 2.0 — see [LICENSE](LICENSE).
 
+## References
+
+Third-party places where MultiMind SDK is discussed, listed, or used as material. None of these is a customer deployment; they are linked so you can judge the project's footprint yourself.
+
+- [MultiMind architecture lessons](https://github.com/MarcoPWx/Portfolio/blob/main/docs/_devmentor/infrastructure/architecture/multimind-architecture-lessons.md) in the DevMentor portfolio: notes on adapting the model routing, hybrid retrieval, memory, and workflow ideas without using the package directly.
+- [agents-shipgate benchmark](https://github.com/ThreeMoonsLab/agents-shipgate/blob/main/benchmark/cold-start/cases/multimindlab__multimind-sdk__claude_settings.json/case.json): uses this repository's Claude Code settings as a cold-start benchmark case.
+- [Awesome-Agentic-Workflow](https://github.com/irfanfadhullah/Awesome-Agentic-Workflow/blob/main/Reflection%20_%20Adaptation/multimind-sdk_README.md): includes the README under its reflection and adaptation collection.
+- [agents-radar digest, 19 March 2026](https://github.com/duanyytop/agents-radar/blob/main/digests/2026-03-19/ai-trending-en.md): lists MultiMind among trending AI projects.
+- [AINews, 3 July 2025](https://news.smol.ai/issues/25-07-03-not-much/): the LM Studio Discord section covers MultiMind's model conversion, fine-tuning, and inference introduction.
+- Articles: [Introducing MultiMind SDK](https://dev.to/multimindsdk/introducing-multimind-sdk-your-all-in-one-toolkit-for-fine-tuning-rag-agents-more-2mh8) and [Ensuring compliance when fine-tuning](https://dev.to/multimindsdk/ensuring-compliance-when-fine-tuning-ai-models-with-multimindsdk-a3c) on DEV Community; listings on [Onegen](https://onegen.ai/project/multimind-sdk-unified-ai-framework-for-fine-tuning-rag-and-agent-orchestration/) and [AIxplore](https://aixplore.in/project_details?slug=multimind-sdk). Older articles describe the 0.2 API; the current reference is [docs.multimind.dev](https://docs.multimind.dev).
+
+
+Using MultiMind in a product or project? Open a [discussion](https://github.com/multimindlab/multimind-sdk/discussions) and we will link it here.
+
 <p align="center">
   <a href="https://discord.gg/K64U65je7h">Discord</a> ·
   <a href="https://x.com/multimindsdk">Twitter</a> ·
