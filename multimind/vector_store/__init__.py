@@ -37,81 +37,82 @@ _EXPERIMENTAL_BACKENDS = frozenset(
 # Backend registry for lazy loading
 _backend_registry: Dict[str, Type[VectorStoreBackend]] = {}
 
+# Map backend names to their module paths
+_BACKEND_MODULES = {
+    "FAISSBackend": ".faiss",
+    "ChromaBackend": ".chroma",
+    "WeaviateVectorStore": ".weaviate",
+    "QdrantBackend": ".qdrant",
+    "MilvusBackend": ".milvus",
+    "PineconeBackend": ".pinecone",
+    "ElasticsearchBackend": ".elasticsearch",
+    "AlibabaCloudOpenSearchBackend": ".alibabacloud_opensearch",
+    "AtlasBackend": ".atlas",
+    "AzureSearchBackend": ".azuresearch",
+    "CassandraBackend": ".cassandra",
+    "HologresBackend": ".hologres",
+    "LanceDBBackend": ".lancedb",
+    "MarqoBackend": ".marqo",
+    "MeiliSearchBackend": ".meilisearch",
+    "MongoDBAtlasBackend": ".mongodb_atlas",
+    "MomentoVectorIndexBackend": ".momento_vector_index",
+    "Neo4jVectorBackend": ".neo4j_vector",
+    "OpenSearchVectorBackend": ".opensearch_vector_search",
+    "PGVectorBackend": ".pgvector",
+    "PGVectoRSBackend": ".pgvecto_rs",
+    "PGEmbeddingBackend": ".pgembedding",
+    "NucliaDBBackend": ".nucliadb",
+    "MyScaleBackend": ".myscale",
+    "MatchingEngineBackend": ".matching_engine",
+    "LLMRailsBackend": ".llm_rails",
+    "HippoBackend": ".hippo",
+    "AzureCosmosDBBackend": ".azure_cosmos_db",
+    "AnnoyBackend": ".annoy",
+    "AstraDBBackend": ".astradb",
+    "AnalyticDBBackend": ".analyticdb",
+    "SklearnBackend": ".sklearn",
+    "SingleStoreDBBackend": ".singlestoredb",
+    "RocksetDBBackend": ".rocksetdb",
+    "SQLiteVSSBackend": ".sqlitevss",
+    "StarRocksBackend": ".starrocks",
+    "SupabaseVectorStore": ".supabase",
+    "TairVectorStore": ".tair",
+    "TigrisVectorStore": ".tigris",
+    "TileDBVectorStore": ".tiledb",
+    "TimescaleVectorStore": ".timescalevector",
+    "TencentVectorDBVectorStore": ".tencentvectordb",
+    "USearchVectorStore": ".usearch",
+    "ValdVectorStore": ".vald",
+    "VectaraVectorStore": ".vectara",
+    "TypesenseVectorStore": ".typesense",
+    "XataVectorStore": ".xata",
+    "ZepVectorStore": ".zep",
+    "ZillizVectorStore": ".zilliz",
+}
+
+# Unimplemented backends. Hidden unless MULTIMIND_EXPERIMENTAL_VECTOR_STORES=1.
+_EXPERIMENTAL_MODULES = {
+    "AwaDBBackend": ".awadb",
+    "BagelDBBackend": ".bageldb",
+    "BaiduCloudVectorSearchBackend": ".baiducloud_vector_search",
+    "ClarifaiBackend": ".clarifai",
+    "ClickHouseBackend": ".clickhouse",
+    "DashVectorBackend": ".dashvector",
+    "DatabricksVectorSearchBackend": ".databricks_vector_search",
+    "DeepLakeBackend": ".deeplake",
+    "DingoDBBackend": ".dingo",
+    "ElasticVectorSearchBackend": ".elastic_vector_search",
+    "EpsillaBackend": ".epsilla",
+}
+
 
 def _load_backend(backend_name: str) -> Optional[Type[VectorStoreBackend]]:
     """Lazily load a backend only when requested."""
     if backend_name in _backend_registry:
         return _backend_registry[backend_name]
 
-    # Map backend names to their module paths
-    backend_modules = {
-        "FAISSBackend": ".faiss",
-        "ChromaBackend": ".chroma",
-        "WeaviateVectorStore": ".weaviate",
-        "QdrantBackend": ".qdrant",
-        "MilvusBackend": ".milvus",
-        "PineconeBackend": ".pinecone",
-        "ElasticsearchBackend": ".elasticsearch",
-        "AlibabaCloudOpenSearchBackend": ".alibabacloud_opensearch",
-        "AtlasBackend": ".atlas",
-        "AzureSearchBackend": ".azuresearch",
-        "CassandraBackend": ".cassandra",
-        "HologresBackend": ".hologres",
-        "LanceDBBackend": ".lancedb",
-        "MarqoBackend": ".marqo",
-        "MeiliSearchBackend": ".meilisearch",
-        "MongoDBAtlasBackend": ".mongodb_atlas",
-        "MomentoVectorIndexBackend": ".momento_vector_index",
-        "Neo4jVectorBackend": ".neo4j_vector",
-        "OpenSearchVectorBackend": ".opensearch_vector_search",
-        "PGVectorBackend": ".pgvector",
-        "PGVectoRSBackend": ".pgvecto_rs",
-        "PGEmbeddingBackend": ".pgembedding",
-        "NucliaDBBackend": ".nucliadb",
-        "MyScaleBackend": ".myscale",
-        "MatchingEngineBackend": ".matching_engine",
-        "LLMRailsBackend": ".llm_rails",
-        "HippoBackend": ".hippo",
-        "AzureCosmosDBBackend": ".azure_cosmos_db",
-        "AnnoyBackend": ".annoy",
-        "AstraDBBackend": ".astradb",
-        "AnalyticDBBackend": ".analyticdb",
-        "SklearnBackend": ".sklearn",
-        "SingleStoreDBBackend": ".singlestoredb",
-        "RocksetDBBackend": ".rocksetdb",
-        "SQLiteVSSBackend": ".sqlitevss",
-        "StarRocksBackend": ".starrocks",
-        "SupabaseVectorStore": ".supabase",
-        "TairVectorStore": ".tair",
-        "TigrisVectorStore": ".tigris",
-        "TileDBVectorStore": ".tiledb",
-        "TimescaleVectorStore": ".timescalevector",
-        "TencentVectorDBVectorStore": ".tencentvectordb",
-        "USearchVectorStore": ".usearch",
-        "ValdVectorStore": ".vald",
-        "VectaraVectorStore": ".vectara",
-        "TypesenseVectorStore": ".typesense",
-        "XataVectorStore": ".xata",
-        "ZepVectorStore": ".zep",
-        "ZillizVectorStore": ".zilliz",
-    }
-
-    # Unimplemented backends. Hidden unless MULTIMIND_EXPERIMENTAL_VECTOR_STORES=1.
-    experimental_modules = {
-        "AwaDBBackend": ".awadb",
-        "BagelDBBackend": ".bageldb",
-        "BaiduCloudVectorSearchBackend": ".baiducloud_vector_search",
-        "ClarifaiBackend": ".clarifai",
-        "ClickHouseBackend": ".clickhouse",
-        "DashVectorBackend": ".dashvector",
-        "DatabricksVectorSearchBackend": ".databricks_vector_search",
-        "DeepLakeBackend": ".deeplake",
-        "DingoDBBackend": ".dingo",
-        "ElasticVectorSearchBackend": ".elastic_vector_search",
-        "EpsillaBackend": ".epsilla",
-    }
-
-    if backend_name in experimental_modules:
+    backend_modules = _BACKEND_MODULES
+    if backend_name in _EXPERIMENTAL_MODULES:
         enabled = os.getenv("MULTIMIND_EXPERIMENTAL_VECTOR_STORES", "").lower() in (
             "1",
             "true",
@@ -122,7 +123,7 @@ def _load_backend(backend_name: str) -> Optional[Type[VectorStoreBackend]]:
                 "%s is an unimplemented backend and is not on the default path", backend_name
             )
             return None
-        backend_modules = experimental_modules
+        backend_modules = _EXPERIMENTAL_MODULES
 
     if backend_name not in backend_modules:
         return None

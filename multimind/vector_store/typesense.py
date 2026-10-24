@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import typesense
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import typesense
+except ImportError:
+    typesense = None
 
 
 class TypesenseVectorStore(VectorStoreBackend):
@@ -30,6 +33,16 @@ class TypesenseVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Typesense and create the collection if needed."""
+        if self.client is not None:
+            return
+        if typesense is None:
+            raise ImportError(
+                "typesense is required for TypesenseVectorStore: pip install typesense"
+            )
         self.client = typesense.Client(
             {
                 "nodes": [{"host": self.host, "port": self.port, "protocol": "http"}],
@@ -58,6 +71,7 @@ class TypesenseVectorStore(VectorStoreBackend):
             self.logger.warning(f"Collection ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -92,6 +106,7 @@ class TypesenseVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -130,6 +145,7 @@ class TypesenseVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -140,6 +156,7 @@ class TypesenseVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

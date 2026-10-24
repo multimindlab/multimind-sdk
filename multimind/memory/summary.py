@@ -316,7 +316,7 @@ Summary:"""
         return [
             {
                 "role": "system",
-                "content": summary.get("summary", ""),
+                "content": summary.get("content", ""),
             }
             for summary in self.summaries
         ]

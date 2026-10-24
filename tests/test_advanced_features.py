@@ -200,11 +200,22 @@ class MockTool(BaseTool):
 pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 
-# Fix for SummaryMemory (abstract)
-@pytest.mark.skip(reason="SummaryMemory is abstract and cannot be instantiated directly.")
 class TestSummaryMemoryCompression:
-    def test_summary_memory_compression(self):
-        pass
+    @pytest.mark.asyncio
+    async def test_summary_memory_compression(self):
+        llm = MockLLM()
+        # max_summaries=4 with threshold 0.5 triggers compression once 3 summaries exist.
+        memory = SummaryMemory(
+            llm=llm, summary_interval=1, max_summaries=4, compression_threshold=0.5
+        )
+        for i in range(3):
+            await memory.add_message({"role": "user", "content": f"Message {i}"})
+
+        summaries = memory.get_summaries()
+        # The oldest half (1 of 3) was folded into a trailing combined summary.
+        assert summaries[-1]["content"].startswith("Combined summary:")
+        assert summaries[-1]["method"] == "concat_default"
+        assert len(summaries) == 3
 
 
 # Fix for BaseDocumentProcessor (abstract)
@@ -357,7 +368,6 @@ class TestAdvancedMemoryFeatures:
         finally:
             os.unlink(temp_path)
 
-    @pytest.mark.skip(reason="SummaryMemory is abstract and cannot be instantiated directly.")
     @pytest.mark.asyncio
     async def test_summary_memory_compression(self):
         """Test summary memory compression."""
@@ -369,9 +379,12 @@ class TestAdvancedMemoryFeatures:
             await memory.add_message({"role": "user", "content": f"Message {i}"})
 
         # Test summary generation
-        summary = await memory.get_summary()
-        assert summary is not None
-        assert len(summary) > 0
+        summaries = memory.get_summaries()
+        assert summaries
+        assert all(s["content"].startswith("Mock response to:") for s in summaries)
+        assert llm.generate_calls == len(summaries)
+        messages = await memory.get_messages()
+        assert [m["content"] for m in messages] == [s["content"] for s in summaries]
 
 
 class TestAdvancedAgentFeatures:

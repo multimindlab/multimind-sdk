@@ -374,6 +374,728 @@
         }
       }
     },
+    "/v1/evaluation/hallucination": {
+      "post": {
+        "tags": [
+          "evaluation"
+        ],
+        "summary": "Hallucination Check",
+        "description": "Grounding check via ``HallucinationDetector.check_grounding``; with\n``judge_model`` it also runs ``check_claims`` through that model.",
+        "operationId": "hallucination_check_v1_evaluation_hallucination_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HallucinationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HallucinationResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/sessions/{session_id}/switch": {
+      "post": {
+        "tags": [
+          "sessions"
+        ],
+        "summary": "Switch Session Model",
+        "description": "Move a gateway chat session to another model with ``ModelSession.switch``.\n\nThe gateway session is a plain record (``ChatSession``), so this builds a\n``ModelSession`` seeded with its history, calls ``switch`` with the\nrequested strategy, writes the resulting history back, re-targets\n``session.model`` and appends the transfer entry to ``session.metadata``.\n``summary`` calls the session's current model to compact the history;\n``full`` and ``adapted`` make no model call.",
+        "operationId": "switch_session_model_v1_sessions__session_id__switch_post",
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSwitchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "404": {
+            "description": "Session not found"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/context-transfer": {
+      "post": {
+        "tags": [
+          "context-transfer"
+        ],
+        "summary": "Transfer Context",
+        "description": "``ContextTransferAPI.transfer_context_api`` over ``ContextTransferManager``:\nextract the last N turns, summarize, and format for the target provider.",
+        "operationId": "transfer_context_v1_context_transfer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContextTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/agents/run": {
+      "post": {
+        "tags": [
+          "agents"
+        ],
+        "summary": "Run Agent",
+        "description": "``multimind.agents.Agent.run`` with the requested tools. Returns the\nfinal answer and the tool-call trace (native function calling when the\nmodel client is OpenAI-shaped, keyword routing otherwise).",
+        "operationId": "run_agent_v1_agents_run_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentRunRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/memory": {
+      "get": {
+        "tags": [
+          "memory"
+        ],
+        "summary": "List Memory Kinds",
+        "description": "Every demo kind with its class, whether it constructs here, and whether\nthis process currently holds an instance.",
+        "operationId": "list_memory_kinds_v1_memory_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/memory/{kind}/messages": {
+      "post": {
+        "tags": [
+          "memory"
+        ],
+        "summary": "Add Memory Message",
+        "description": "``add_message`` on the real memory class; the instance is created on\nfirst use and lives for the process.",
+        "operationId": "add_memory_message_v1_memory__kind__messages_post",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryMessage"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "memory"
+        ],
+        "summary": "Get Memory Messages",
+        "description": "``get_messages`` on the stored instance; empty when none was created.",
+        "operationId": "get_memory_messages_v1_memory__kind__messages_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/memory/{kind}": {
+      "delete": {
+        "tags": [
+          "memory"
+        ],
+        "summary": "Clear Memory",
+        "description": "``clear`` on the stored instance and drop it.",
+        "operationId": "clear_memory_v1_memory__kind__delete",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/vector-stores": {
+      "get": {
+        "tags": [
+          "vector-stores"
+        ],
+        "summary": "List Vector Stores",
+        "description": "Inventory of every backend in the ``multimind.vector_store`` registry,\nprobed once per process: constructible with a minimal config, client\npackage installed, local or client-backed, experimental stub.",
+        "operationId": "list_vector_stores_v1_vector_stores_get",
+        "parameters": [
+          {
+            "name": "refresh",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Refresh"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/finetune/synthetic-qa": {
+      "post": {
+        "tags": [
+          "fine-tuning"
+        ],
+        "summary": "Synthetic Qa",
+        "description": "``SyntheticQAGenerator.generate``: grounded Q/A pairs plus their\nAlpaca-style instruction records.",
+        "operationId": "synthetic_qa_v1_finetune_synthetic_qa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyntheticQARequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/finetune/capabilities": {
+      "get": {
+        "tags": [
+          "fine-tuning"
+        ],
+        "summary": "Finetune Capabilities",
+        "description": "Which fine-tuning entry points import in this process (torch-gated ones\nsay why they do not), with the install hint.",
+        "operationId": "finetune_capabilities_v1_finetune_capabilities_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/convert/formats": {
+      "get": {
+        "tags": [
+          "conversion"
+        ],
+        "summary": "Conversion Formats",
+        "description": "Source and target formats from ``multimind.model_conversion`` when it\nimports (needs torch); otherwise an honest ``available: false`` report.",
+        "operationId": "conversion_formats_v1_convert_formats_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/regulatory-check": {
+      "post": {
+        "tags": [
+          "compliance"
+        ],
+        "summary": "Regulatory Check",
+        "description": "``RegulatoryWatcher``: hash each source and report ``ChangeEvent``s.\nOffline mode runs ``check_offline`` on the supplied content; online mode\nruns ``check`` and fetches every ``url``.",
+        "operationId": "regulatory_check_v1_compliance_regulatory_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegulatoryCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/dp/privatize": {
+      "post": {
+        "tags": [
+          "compliance"
+        ],
+        "summary": "Privatize",
+        "description": "``DPMechanism.privatize`` with optional ``PrivacyBudget`` accounting;\n400 with the SDK message once the budget is exhausted.",
+        "operationId": "privatize_v1_compliance_dp_privatize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PrivatizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mcp/tools": {
+      "get": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "List Mcp Tools",
+        "description": "The tool functions ``multimind.mcp_server`` registers, read without\nstarting the server; ``server_startable`` says whether the ``mcp`` package is here.",
+        "operationId": "list_mcp_tools_v1_mcp_tools_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/mcp/tools/{name}": {
+      "post": {
+        "tags": [
+          "mcp"
+        ],
+        "summary": "Invoke Mcp Tool",
+        "description": "Call one MCP tool function in-process (``audit_log`` appends to\n``MULTIMIND_AUDIT_LOG``).",
+        "operationId": "invoke_mcp_tool_v1_mcp_tools__name__post",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Name"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/McpInvokeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/integrations": {
+      "get": {
+        "tags": [
+          "integrations"
+        ],
+        "summary": "List Integrations",
+        "description": "Each adapter in ``multimind.integrations.frameworks``: whether the\nframework is installed and the adapter entry points it exports.",
+        "operationId": "list_integrations_v1_integrations_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/traces": {
+      "get": {
+        "tags": [
+          "tracing"
+        ],
+        "summary": "List Traces",
+        "description": "Recent root runs from the ``RunTracer`` SQLite sink at ``MULTIMIND_TRACING_DB``.\nHashes and lengths only, as the tracer records by default.",
+        "operationId": "list_traces_v1_traces_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/traces/demo": {
+      "post": {
+        "tags": [
+          "tracing"
+        ],
+        "summary": "Trace Demo",
+        "description": "One ``trace_model`` call on a stub model through the default tracer so\nthe UI can show a run; persisted when ``MULTIMIND_TRACING_DB`` is set.",
+        "operationId": "trace_demo_v1_traces_demo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TraceDemoRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/features": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "List Features",
+        "description": "Machine-readable registry: every feature with its SDK module, routes,\nand ``available`` computed by importing the module in this process.",
+        "operationId": "list_features_v1_features_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -1330,6 +2052,50 @@
   },
   "components": {
     "schemas": {
+      "AgentRunRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "/v1/chat model name"
+          },
+          "task": {
+            "type": "string",
+            "title": "Task",
+            "description": "Task for the agent"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools",
+            "description": "Tool names"
+          },
+          "max_turns": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Max Turns",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "model",
+          "task"
+        ],
+        "title": "AgentRunRequest",
+        "examples": [
+          {
+            "model": "openai",
+            "task": "What is 17 * 23?",
+            "tools": [
+              "calculator"
+            ]
+          }
+        ]
+      },
       "ChatMessage": {
         "properties": {
           "role": {
@@ -1612,6 +2378,67 @@
         "title": "ComplianceResult",
         "description": "Compliance result model."
       },
+      "ContextTransferRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Messages",
+            "description": "role/content message dicts"
+          },
+          "source_model": {
+            "type": "string",
+            "title": "Source Model",
+            "description": "Provider the conversation came from"
+          },
+          "target_model": {
+            "type": "string",
+            "title": "Target Model",
+            "description": "Provider the prompt is formatted for"
+          },
+          "strategy": {
+            "type": "string",
+            "title": "Strategy",
+            "description": "Summary style: concise | detailed | structured",
+            "default": "concise"
+          },
+          "last_n": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Last N",
+            "description": "Recent turns to keep",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "messages",
+          "source_model",
+          "target_model"
+        ],
+        "title": "ContextTransferRequest",
+        "examples": [
+          {
+            "last_n": 5,
+            "messages": [
+              {
+                "content": "Plan a 3-day trip to Rome.",
+                "role": "user"
+              },
+              {
+                "content": "Day 1: Colosseum...",
+                "role": "assistant"
+              }
+            ],
+            "source_model": "chatgpt",
+            "strategy": "concise",
+            "target_model": "claude"
+          }
+        ]
+      },
       "DashboardMetrics": {
         "properties": {
           "total_checks": {
@@ -1760,6 +2587,147 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
+      "HallucinationRequest": {
+        "properties": {
+          "response": {
+            "type": "string",
+            "title": "Response",
+            "description": "Model output to check"
+          },
+          "sources": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sources",
+            "description": "Source texts the response must be grounded in"
+          },
+          "judge_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Model",
+            "description": "Optional /v1/chat model name; adds an LLM-judge claim check"
+          }
+        },
+        "type": "object",
+        "required": [
+          "response",
+          "sources"
+        ],
+        "title": "HallucinationRequest",
+        "examples": [
+          {
+            "response": "Paris is the capital of France. It has 80 million people.",
+            "sources": [
+              "Paris is the capital and largest city of France."
+            ]
+          }
+        ]
+      },
+      "HallucinationResponse": {
+        "properties": {
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "unsupported_count": {
+            "type": "integer",
+            "title": "Unsupported Count"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "sentences": {
+            "items": {
+              "$ref": "#/components/schemas/SentenceVerdict"
+            },
+            "type": "array",
+            "title": "Sentences"
+          },
+          "claims": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claims",
+            "description": "Claim-level verdicts; present only when judge_model is set"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "unsupported_count",
+          "summary",
+          "sentences"
+        ],
+        "title": "HallucinationResponse"
+      },
+      "McpInvokeRequest": {
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Arguments"
+          }
+        },
+        "type": "object",
+        "title": "McpInvokeRequest",
+        "examples": [
+          {
+            "arguments": {
+              "text": "Mail me at jane@example.com"
+            }
+          }
+        ]
+      },
+      "MemoryMessage": {
+        "properties": {
+          "role": {
+            "type": "string",
+            "title": "Role",
+            "default": "user"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "/v1/chat model name; required for model-backed kinds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "content"
+        ],
+        "title": "MemoryMessage",
+        "examples": [
+          {
+            "content": "Remember that my meeting is at 3pm.",
+            "role": "user"
+          }
+        ]
+      },
       "MetricsResponse": {
         "properties": {
           "metrics": {
@@ -1877,6 +2845,203 @@
         ],
         "title": "ModelResponse"
       },
+      "PrivatizeRequest": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value",
+            "description": "One numeric value"
+          },
+          "values": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Values",
+            "description": "Several numeric values"
+          },
+          "epsilon": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Epsilon",
+            "description": "Privacy parameter spent by this call"
+          },
+          "sensitivity": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Sensitivity",
+            "default": 1.0
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget",
+            "description": "Total epsilon budget"
+          },
+          "budget_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Id",
+            "description": "Name a budget to carry it across calls in this process"
+          }
+        },
+        "type": "object",
+        "required": [
+          "epsilon"
+        ],
+        "title": "PrivatizeRequest",
+        "examples": [
+          {
+            "budget": 1.0,
+            "budget_id": "demo",
+            "epsilon": 0.5,
+            "value": 42
+          }
+        ]
+      },
+      "RegulatoryCheckRequest": {
+        "properties": {
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RegulatorySource"
+            },
+            "type": "array",
+            "title": "Sources"
+          },
+          "offline": {
+            "type": "boolean",
+            "title": "Offline",
+            "description": "Use supplied content; no network",
+            "default": true
+          },
+          "state_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "State Path",
+            "description": "JSON file keeping last-seen hashes (per-process temp file by default)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sources"
+        ],
+        "title": "RegulatoryCheckRequest",
+        "examples": [
+          {
+            "offline": true,
+            "sources": [
+              {
+                "content": "Article 1 ...",
+                "name": "eu-ai-act"
+              }
+            ]
+          }
+        ]
+      },
+      "RegulatorySource": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url",
+            "description": "Page to fetch in online mode"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content",
+            "description": "Page text for offline mode"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "RegulatorySource"
+      },
+      "SentenceVerdict": {
+        "properties": {
+          "sentence": {
+            "type": "string",
+            "title": "Sentence"
+          },
+          "verdict": {
+            "type": "string",
+            "title": "Verdict"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "best_source_snippet": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Source Snippet"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sentence",
+          "verdict",
+          "score"
+        ],
+        "title": "SentenceVerdict"
+      },
       "SessionCreate": {
         "properties": {
           "model": {
@@ -1958,6 +3123,95 @@
         "title": "SessionResponse",
         "description": "Response model for chat session"
       },
+      "SessionSwitchRequest": {
+        "properties": {
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "Target /v1/chat model name"
+          },
+          "strategy": {
+            "type": "string",
+            "title": "Strategy",
+            "description": "full | summary | adapted",
+            "default": "full"
+          }
+        },
+        "type": "object",
+        "required": [
+          "model"
+        ],
+        "title": "SessionSwitchRequest",
+        "examples": [
+          {
+            "model": "claude",
+            "strategy": "summary"
+          }
+        ]
+      },
+      "SyntheticQARequest": {
+        "properties": {
+          "chunks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Chunks",
+            "description": "Document chunks to generate Q/A pairs from"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "description": "/v1/chat model name"
+          },
+          "max_pairs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Pairs",
+            "description": "Cap on returned pairs"
+          },
+          "questions_per_chunk": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Questions Per Chunk",
+            "default": 3
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunks",
+          "model"
+        ],
+        "title": "SyntheticQARequest",
+        "examples": [
+          {
+            "chunks": [
+              "MultiMind SDK ships a PII guard that masks emails and phone numbers."
+            ],
+            "max_pairs": 5,
+            "model": "openai"
+          }
+        ]
+      },
+      "TraceDemoRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "default": "Hello from the trace demo"
+          }
+        },
+        "type": "object",
+        "title": "TraceDemoRequest"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -2024,6 +3278,46 @@
     {
       "name": "system",
       "description": "Health and readiness probes"
+    },
+    {
+      "name": "evaluation",
+      "description": "Hallucination and grounding checks"
+    },
+    {
+      "name": "context-transfer",
+      "description": "Reformat a conversation for another provider"
+    },
+    {
+      "name": "agents",
+      "description": "Tool-using agents"
+    },
+    {
+      "name": "memory",
+      "description": "Per-process memory demo store"
+    },
+    {
+      "name": "vector-stores",
+      "description": "Vector store backend inventory"
+    },
+    {
+      "name": "fine-tuning",
+      "description": "Synthetic data and fine-tuning capabilities"
+    },
+    {
+      "name": "conversion",
+      "description": "Model conversion capability report"
+    },
+    {
+      "name": "mcp",
+      "description": "MCP compliance tools in-process"
+    },
+    {
+      "name": "integrations",
+      "description": "Framework adapter availability"
+    },
+    {
+      "name": "tracing",
+      "description": "Run tracer sink and demo"
     }
   ]
 }

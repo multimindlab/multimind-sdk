@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-from tigrisdb import TigrisClient
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from tigrisdb import TigrisClient
+except ImportError:
+    TigrisClient = None
 
 
 class TigrisVectorStore(VectorStoreBackend):
@@ -29,6 +33,14 @@ class TigrisVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Tigris and create the collection if needed."""
+        if self.client is not None:
+            return
+        if TigrisClient is None:
+            raise ImportError("tigrisdb is required for TigrisVectorStore: pip install tigrisdb")
         self.client = TigrisClient(project=self.project)
         self._ensure_collection()
 
@@ -50,6 +62,7 @@ class TigrisVectorStore(VectorStoreBackend):
             self.logger.warning(f"Collection ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -81,6 +94,7 @@ class TigrisVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -112,6 +126,7 @@ class TigrisVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -124,6 +139,7 @@ class TigrisVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

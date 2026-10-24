@@ -9,9 +9,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import psycopg2
-
 from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
 
 
 class AnalyticDBBackend(VectorStoreBackend):
@@ -52,6 +55,17 @@ class AnalyticDBBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not all([self.host, self.user, self.password, self.database]):
             raise ValueError("All connection parameters must be provided for AnalyticDB.")
+        self.conn = None
+        self.cur = None
+
+    async def initialize(self) -> None:
+        """Connect to AnalyticDB."""
+        if self.conn is not None:
+            return
+        if psycopg2 is None:
+            raise ImportError(
+                "psycopg2 is required for AnalyticDBBackend: pip install psycopg2-binary"
+            )
         self.conn = psycopg2.connect(
             host=self.host,
             port=self.port,
@@ -69,6 +83,7 @@ class AnalyticDBBackend(VectorStoreBackend):
         ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             self.cur.execute(
@@ -91,6 +106,7 @@ class AnalyticDBBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         self.cur.execute(f"SELECT id, vector, metadata, document FROM {self.table}")
         results = []
@@ -134,6 +150,7 @@ class AnalyticDBBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids: List[str]) -> None:
         """Delete vectors by ID (batch supported)."""
+        await self.initialize()
         for doc_id in ids:
             self.cur.execute(f"DELETE FROM {self.table} WHERE id = %s", (doc_id,))
         self.conn.commit()
@@ -141,6 +158,7 @@ class AnalyticDBBackend(VectorStoreBackend):
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
+        await self.initialize()
         self.cur.execute(f"DELETE FROM {self.table}")
         self.conn.commit()
         self.log_metrics("clear", 1)
@@ -166,11 +184,6 @@ class AnalyticDBBackend(VectorStoreBackend):
         """Log or export metrics for monitoring (optional)."""
         if self.metrics_enabled:
             self.logger.info(f"[METRIC] {metric_name}: {value}")
-
-    async def initialize(self) -> None:
-        """Connect to AnalyticDB and create index if needed."""
-        self.logger.info("Initializing AnalyticDB backend...")
-        pass
 
     async def _run_plugin(self, name: str, *args, **kwargs):
         if name in self.plugin_registry:

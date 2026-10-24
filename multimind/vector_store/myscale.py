@@ -3,10 +3,14 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import clickhouse_connect
 import numpy as np
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import clickhouse_connect
+except ImportError:
+    clickhouse_connect = None
 
 
 class MyScaleBackend(VectorStoreBackend):
@@ -35,6 +39,16 @@ class MyScaleBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Connect to MyScale and create the vector table if needed."""
+        if self._client is not None:
+            return
+        if clickhouse_connect is None:
+            raise ImportError(
+                "clickhouse-connect is required for MyScaleBackend: pip install clickhouse-connect"
+            )
         self._client = clickhouse_connect.get_client(
             host=self.host,
             port=self.port,
@@ -54,6 +68,7 @@ class MyScaleBackend(VectorStoreBackend):
         self._client.command(create_table_sql)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -82,6 +97,7 @@ class MyScaleBackend(VectorStoreBackend):
     ) -> List[SearchResult]:
         # MyScale supports vector search using cosineDistance or L2Distance
         # We'll use cosine similarity by default
+        await self.initialize()
         query_vec = np.array(query_vector, dtype=np.float32)
         filter_sql = ""
         if filter_criteria:
@@ -108,6 +124,7 @@ class MyScaleBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         ids_list = ",".join(["'" + str(i) + "'" for i in ids])
         sql = f"DELETE FROM {self.table} WHERE id IN ({ids_list})"
         loop = asyncio.get_event_loop()
@@ -115,6 +132,7 @@ class MyScaleBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         sql = f"TRUNCATE TABLE {self.table}"
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self._client.command(sql))

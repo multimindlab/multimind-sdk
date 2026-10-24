@@ -3,10 +3,13 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import lancedb
-import pyarrow as pa
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import lancedb
+    import pyarrow as pa
+except ImportError:
+    lancedb = None
 
 
 class LanceDBBackend(VectorStoreBackend):
@@ -57,10 +60,16 @@ class LanceDBBackend(VectorStoreBackend):
             self._init_lock = asyncio.Lock()
         return self._init_lock
 
+    async def initialize(self) -> None:
+        """Connect to LanceDB and open or create the table."""
+        await self._initialize()
+
     async def _initialize(self):
         async with self._get_init_lock():
             if self._initialized:
                 return
+            if lancedb is None:
+                raise ImportError("lancedb is required for LanceDBBackend: pip install lancedb")
             # LanceDB supports both local and cloud
             if self.api_key and self.region:
                 self._db = await lancedb.connect_async(

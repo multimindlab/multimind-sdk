@@ -7,7 +7,7 @@
   <title>MultiMind Governance</title>
   <link rel="stylesheet" href="./style.css">
   <style>
-    /* Form controls used by the Scan Text and Compliance views. */
+    /* Form controls used by the Scan Text, Compliance, and playground views. */
     textarea {
       font: inherit; color: var(--ink); background: var(--surface);
       border: 1px solid var(--border); border-radius: 7px; padding: 0.45rem 0.6rem;
@@ -29,6 +29,25 @@
         <span>MultiMind<br><small>Governance</small></span>
       </div>
       <nav aria-label="Sections">
+        <div class="nav-group">Playground</div>
+        <a href="#/features" data-view="features">Features</a>
+        <a href="#/models" data-view="models">Models</a>
+        <a href="#/chat" data-view="chat">Chat</a>
+        <a href="#/compare" data-view="compare">Compare</a>
+        <a href="#/rag" data-view="rag">RAG</a>
+        <a href="#/hallucination" data-view="hallucination">Hallucination</a>
+        <a href="#/agents" data-view="agents">Agents</a>
+        <a href="#/memory" data-view="memory">Memory</a>
+        <a href="#/vectorstores" data-view="vectorstores">Vector stores</a>
+        <a href="#/finetune" data-view="finetune">Fine-tuning</a>
+        <a href="#/conversion" data-view="conversion">Conversion</a>
+        <a href="#/regulatory" data-view="regulatory">Regulatory watch</a>
+        <a href="#/dp" data-view="dp">Differential privacy</a>
+        <a href="#/mcp" data-view="mcp">MCP tools</a>
+        <a href="#/integrations" data-view="integrations">Integrations</a>
+        <a href="#/tracing" data-view="tracing">Tracing</a>
+        <a href="#/context" data-view="context">Context transfer</a>
+        <div class="nav-group">Governance</div>
         <a href="#/overview" data-view="overview">Overview</a>
         <a href="#/audit" data-view="audit">Audit Trail</a>
         <a href="#/costs" data-view="costs">Costs</a>
@@ -37,6 +56,8 @@
         <a href="#/scan" data-view="scan">Scan Text</a>
         <a href="#/evidence" data-view="evidence">Evidence Report</a>
         <a href="#/compliance" data-view="compliance">Compliance</a>
+        <div class="nav-group">Settings</div>
+        <a href="#/settings" data-view="settings">Settings</a>
       </nav>
       <div class="sidebar-foot">
         Local artifacts only.<br>No data leaves this machine.

@@ -21,6 +21,7 @@ from ..core.models import ModelResponse
 from ..core.monitoring import ModelHealth, monitor
 from ..gateway.models import get_model_handler
 from .compliance_api import init_app as init_compliance_app
+from .features_api import init_app as init_features_app
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -65,6 +66,8 @@ if _get_cors_origins():
 
 # Initialize compliance routes
 init_compliance_app(app)
+# Routes for SDK components that had no HTTP surface (see features_api.py)
+init_features_app(app)
 
 
 class ErrorResponse(BaseModel):
@@ -82,10 +85,10 @@ ERROR_RESPONSES = {
 def _model_status() -> Dict[str, bool]:
     # Availability is evaluated per request so keys added to the environment
     # after startup are picked up without a restart.
-    return {
+    status = {
         "openai": bool(os.getenv("OPENAI_API_KEY") or config.openai.api_key),
         "anthropic": bool(os.getenv("ANTHROPIC_API_KEY") or config.anthropic.api_key),
-        "ollama": bool(os.getenv("OLLAMA_API_BASE") or config.ollama.api_base),
+        "ollama": bool(os.getenv("OLLAMA_API_BASE") or config.get_model_config("ollama").api_base),
         "groq": bool(os.getenv("GROQ_API_KEY") or config.groq.api_key),
         "huggingface": bool(os.getenv("HUGGINGFACE_API_KEY") or config.huggingface.api_key)
         or importlib.util.find_spec("transformers") is not None,
@@ -104,6 +107,8 @@ def _model_status() -> Dict[str, bool]:
             or config.anthropic.api_key
         ),
     }
+    # providers.<name>.enabled=false in the config store hides the provider entirely
+    return {name: ok for name, ok in status.items() if config.is_provider_enabled(name)}
 
 
 # Pydantic models for request/response

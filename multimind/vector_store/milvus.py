@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections, utility
+except ImportError:
+    connections = None
 
 
 class MilvusBackend(VectorStoreBackend):
@@ -56,7 +59,14 @@ class MilvusBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
-        # Connect to Milvus
+        self.collection = None
+
+    async def initialize(self) -> None:
+        """Connect to Milvus and create the collection, index and partition if needed."""
+        if self.collection is not None:
+            return
+        if connections is None:
+            raise ImportError("pymilvus is required for MilvusBackend: pip install pymilvus")
         connections.connect(
             alias="default",
             host=self.host,
@@ -97,6 +107,7 @@ class MilvusBackend(VectorStoreBackend):
         partition_name: Optional[str] = None,
         custom_fields_data: Optional[List[Dict[str, Any]]] = None,
     ):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -145,6 +156,7 @@ class MilvusBackend(VectorStoreBackend):
         partition_name: Optional[str] = None,
         hybrid_filter: Optional[str] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
         search_params = search_params or self.index_params
         # Hybrid search: combine vector and scalar filtering
@@ -179,6 +191,7 @@ class MilvusBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids, partition_name: Optional[str] = None):
+        await self.initialize()
         expr = f"id in [{', '.join([repr(i) for i in ids])}]"
         loop = asyncio.get_event_loop()
         partition = partition_name or self.partition_name
@@ -187,6 +200,7 @@ class MilvusBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.collection.drop)
         # Recreate collection with dynamic schema and index
@@ -207,16 +221,19 @@ class MilvusBackend(VectorStoreBackend):
         self.log_metrics("clear", 1)
 
     async def create_partition(self, partition_name: str):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.collection.create_partition(partition_name))
         self.log_metrics("create_partition", partition_name)
 
     async def drop_partition(self, partition_name: str):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.collection.drop_partition(partition_name))
         self.log_metrics("drop_partition", partition_name)
 
     async def create_index(self, field_name: str, index_params: Dict[str, Any]):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
@@ -225,6 +242,7 @@ class MilvusBackend(VectorStoreBackend):
         self.log_metrics("create_index", field_name)
 
     async def drop_index(self, field_name: str):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, lambda: self.collection.drop_index(field_name=field_name))
         self.log_metrics("drop_index", field_name)

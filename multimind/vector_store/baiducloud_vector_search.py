@@ -45,6 +45,13 @@ class BaiduCloudVectorSearchBackend(VectorStoreBackend):
         # self.client = BaiduCloudClient(api_key=self.api_key, secret_key=self.secret_key, endpoint=self.endpoint)
         # self.col = self.client.collection(self.collection)
 
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "BaiduCloudVectorSearchBackend.initialize is not implemented: the "
+            "BaiduCloudVectorSearch backend is a stub. Use an implemented backend "
+            "such as FAISS, Chroma, Qdrant, Pinecone, Milvus, or Weaviate."
+        )
+
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         raise NotImplementedError(
             "BaiduCloudVectorSearchBackend.add_vectors is not implemented: the "

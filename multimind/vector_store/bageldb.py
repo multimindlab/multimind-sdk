@@ -43,6 +43,13 @@ class BagelDBBackend(VectorStoreBackend):
         # self.client = BagelDBClient(api_key=self.api_key, endpoint=self.endpoint)
         # self.col = self.client.collection(self.collection)
 
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "BagelDBBackend.initialize is not implemented: the BagelDB backend is a "
+            "stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
+
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         raise NotImplementedError(
             "BagelDBBackend.add_vectors is not implemented: the BagelDB backend is a "

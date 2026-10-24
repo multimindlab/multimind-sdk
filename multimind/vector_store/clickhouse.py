@@ -5,11 +5,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .base import SearchResult, VectorStoreBackend
 
-try:
-    import clickhouse_connect
-except ImportError:
-    clickhouse_connect = None
-
 
 class ClickHouseBackend(VectorStoreBackend):
     def __init__(
@@ -47,16 +42,14 @@ class ClickHouseBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.explain = explain
         self.logger = logging.getLogger(__name__)
-        if clickhouse_connect is None:
-            raise ImportError(
-                "clickhouse-connect is not installed. Please install it to use this backend."
-            )
-        self.client = clickhouse_connect.get_client(
-            host=self.host,
-            port=self.port,
-            username=self.username,
-            password=self.password,
-            database=self.database,
+        # Stub: no client is created; every operation raises NotImplementedError.
+        self.client = None
+
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "ClickHouseBackend.initialize is not implemented: the ClickHouse backend "
+            "is a stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
         )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):

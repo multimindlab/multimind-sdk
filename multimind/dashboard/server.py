@@ -10,9 +10,11 @@ All data comes from local files; the server makes no external calls.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import threading
+import time
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -25,6 +27,7 @@ from pydantic import BaseModel, Field, field_validator
 from .. import __version__
 from ..compliance.guard import _LABELS, PIIDetector
 from ..compliance.reporting import build_evidence_report
+from ..config_store import PROVIDERS, get_config_store, is_secret_key
 from ..observability.ai_inventory import scan_project
 from ..observability.cost_tracker import CostTracker, load_tracker
 
@@ -222,6 +225,68 @@ def _budget_status(guardrails: GuardrailsConfig, spent: float) -> Optional[Dict[
     }
 
 
+class TestProviderRequest(BaseModel):
+    provider: str
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("provider")
+    @classmethod
+    def _check_provider(cls, v: str) -> str:
+        name = v.strip().lower()
+        if name not in PROVIDERS:
+            raise ValueError(f"Unknown provider {v!r} (use one of {', '.join(PROVIDERS)})")
+        return name
+
+
+def _scrub_secrets(text: str) -> str:
+    """Replace any env credential value that leaks into an error message."""
+    for name, value in os.environ.items():
+        if value and len(value) >= 8 and is_secret_key(name) and value in text:
+            text = text.replace(value, "***")
+    return text
+
+
+def _effective_config(guardrails: GuardrailsConfig) -> Dict[str, Any]:
+    from ..core.config import config
+
+    store = get_config_store()
+    providers: Dict[str, Any] = {}
+    for name in PROVIDERS:
+        model_config = config.get_model_config(name)
+        providers[name] = {
+            "model_name": model_config.model_name,
+            "base_url": model_config.api_base,
+            "enabled": config.is_provider_enabled(name),
+            "has_api_key": bool(model_config.api_key),
+        }
+    env_origins = (
+        os.getenv("MULTIMIND_CORS_ORIGINS") or os.getenv("MULTIMIND_ALLOWED_ORIGINS") or ""
+    )
+    cors = store.get("cors_origins")
+    if cors is None:
+        cors = [o.strip() for o in env_origins.split(",") if o.strip()]
+    return {
+        "path": str(store.path),
+        "exists": store.exists(),
+        "overrides": store.as_dict(),
+        "providers_known": list(PROVIDERS),
+        "pii_types": list(PII_TYPES),
+        "effective": {
+            "default_model": config.effective_default_model(),
+            "log_level": config.effective_log_level(),
+            "cors_origins": cors,
+            "proxy": {
+                "strategy": store.get("proxy.strategy", guardrails.strategy),
+                "block_on": store.get("proxy.block_on", guardrails.block_on),
+                "budget": store.get("proxy.budget", guardrails.budget_max_cost),
+                "scan_output": store.get("proxy.scan_output", guardrails.scan_output),
+            },
+            "providers": providers,
+        },
+    }
+
+
 def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAPI:
     """Build the governance dashboard FastAPI app (env-derived if omitted)."""
     settings = settings or DashboardSettings.from_env()
@@ -231,8 +296,9 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
         description=(
             "Local, mostly-read-only dashboard over MultiMind governance artifacts: "
             "PII audit trail, spend and chargeback, shadow-AI inventory, and "
-            "no-code guardrail authoring. No external calls. Read endpoints are "
-            "unauthenticated; the one write endpoint (PUT /api/guardrails) is "
+            "no-code guardrail authoring, and runtime settings (/api/config; API keys "
+            "stay in env). Read endpoints are unauthenticated; the write endpoints "
+            "(PUT /api/guardrails, PUT /api/config) are "
             "unauthenticated by default but can be gated with an X-API-Key header "
             "by setting MULTIMIND_DASHBOARD_API_KEY. Bind to localhost or put "
             "behind a reverse proxy."
@@ -440,6 +506,68 @@ def create_dashboard_app(settings: Optional[DashboardSettings] = None) -> FastAP
                 f"POST /v1/guardrails/reload on the API, or "
                 f"multimind serve --config {settings.guardrails_path}"
             ),
+        }
+
+    @app.get("/api/config", tags=["governance"])
+    async def get_config():
+        """Effective runtime settings; API keys are reported only as ``has_api_key``."""
+        return _effective_config(_read_guardrails(settings.guardrails_path))
+
+    @app.put("/api/config", tags=["governance"])
+    async def put_config(values: Dict[str, Any], x_api_key: Optional[str] = Header(default=None)):
+        """Partial update of the config store (flat dotted or nested keys); ``null`` clears a key."""
+        if settings.write_api_key and x_api_key != settings.write_api_key:
+            raise HTTPException(status_code=401, detail="Missing or invalid X-API-Key")
+        store = get_config_store()
+        try:
+            store.set_many(values)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except OSError as exc:
+            raise HTTPException(status_code=500, detail=f"Could not write {store.path}: {exc}")
+        guardrails = _read_guardrails(settings.guardrails_path)
+        if any(str(k).startswith("proxy") for k in values):
+            # Mirror proxy settings into the guardrails file so /v1/guardrails/reload applies them.
+            defaults = GuardrailsConfig().model_dump()
+            merged = guardrails.model_dump()
+            for field in ("strategy", "block_on", "budget", "scan_output"):
+                target = "budget_max_cost" if field == "budget" else field
+                merged[target] = store.get(f"proxy.{field}", defaults[target])
+            guardrails = GuardrailsConfig(**merged)
+            path = Path(settings.guardrails_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(guardrails.model_dump(), indent=2) + "\n", encoding="utf-8")
+        body = _effective_config(guardrails)
+        body["apply_hint"] = (
+            "Model, log level and provider settings apply to the next request. "
+            "Proxy settings are written to the guardrails file; POST /v1/guardrails/reload "
+            "to apply them. CORS origins apply on the next start."
+        )
+        return body
+
+    @app.post("/api/config/test-provider", tags=["governance"])
+    async def test_provider(request: TestProviderRequest):
+        """One short real chat call through the provider; returns ok/latency, never keys."""
+        from ..gateway import models as gateway_models
+
+        started = time.perf_counter()
+        try:
+            handler = await asyncio.wait_for(
+                asyncio.to_thread(gateway_models.get_model_handler, request.provider), timeout=10
+            )
+            await asyncio.wait_for(
+                handler.chat([{"role": "user", "content": "ping"}], max_tokens=5), timeout=10
+            )
+        except asyncio.TimeoutError:
+            latency = int((time.perf_counter() - started) * 1000)
+            return {"ok": False, "latency_ms": latency, "error": "timed out after 10s"}
+        except Exception as exc:  # provider errors are reported, not raised
+            latency = int((time.perf_counter() - started) * 1000)
+            return {"ok": False, "latency_ms": latency, "error": _scrub_secrets(str(exc))[:500]}
+        return {
+            "ok": True,
+            "latency_ms": int((time.perf_counter() - started) * 1000),
+            "error": None,
         }
 
     @app.get("/config.js", include_in_schema=False)

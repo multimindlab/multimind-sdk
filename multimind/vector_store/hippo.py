@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from hippo_api import HippoClient
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from hippo_api import HippoClient
+except ImportError:
+    HippoClient = None
 
 
 class HippoBackend(VectorStoreBackend):
@@ -40,11 +43,21 @@ class HippoBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.api_key or not self.endpoint:
             raise ValueError("Hippo API key and endpoint must be provided.")
+        self.client = None
+        self.col = None
+
+    async def initialize(self) -> None:
+        """Connect to Hippo and resolve the collection."""
+        if self.client is not None:
+            return
+        if HippoClient is None:
+            raise ImportError("hippo-api is required for HippoBackend: pip install hippo-api")
         self.client = HippoClient(api_key=self.api_key, endpoint=self.endpoint)
         self.col = self.client.collection(self.collection)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Hippo expects a list of dicts with 'vector', 'metadata', 'document', and optional 'id'
+        await self.initialize()
         items = []
         for i, vector in enumerate(vectors):
             item = {
@@ -70,6 +83,7 @@ class HippoBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         # Build search query
         query = {"vector": query_vector, "k": k}
@@ -118,12 +132,14 @@ class HippoBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         await asyncio.get_event_loop().run_in_executor(
             None, lambda: [self.col.delete_one({"id": doc_id}) for doc_id in ids]
         )
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         await asyncio.get_event_loop().run_in_executor(None, lambda: self.col.delete_many({}))
         self.log_metrics("clear", 1)
 

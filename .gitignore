@@ -119,3 +119,7 @@ multimind-docs/build/
 # Runtime/generated artifacts — not source, shouldn't be tracked
 models/
 guardrails.json
+
+# Runtime settings written by the dashboard (PUT /api/config)
+multimind.config.json
+.claude/settings.*

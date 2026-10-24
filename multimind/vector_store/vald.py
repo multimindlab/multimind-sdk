@@ -3,17 +3,20 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import grpc
-from vald.v1.payload import payload_pb2
-from vald.v1.vald import (
-    flush_pb2_grpc,
-    insert_pb2_grpc,
-    remove_pb2_grpc,
-    search_pb2_grpc,
-    update_pb2_grpc,
-)
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import grpc
+    from vald.v1.payload import payload_pb2
+    from vald.v1.vald import (
+        flush_pb2_grpc,
+        insert_pb2_grpc,
+        remove_pb2_grpc,
+        search_pb2_grpc,
+        update_pb2_grpc,
+    )
+except ImportError:
+    payload_pb2 = None
 
 
 class ValdVectorStore(VectorStoreBackend):
@@ -34,6 +37,17 @@ class ValdVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.channel = None
+
+    async def initialize(self) -> None:
+        """Open the gRPC channel and create the Vald service stubs."""
+        if self.channel is not None:
+            return
+        if payload_pb2 is None:
+            raise ImportError(
+                "vald-client-python and grpcio are required for ValdVectorStore: "
+                "pip install vald-client-python grpcio"
+            )
         self.channel = grpc.insecure_channel(f"{self.host}:{self.port}")
         self.istub = insert_pb2_grpc.InsertStub(self.channel)
         self.sstub = search_pb2_grpc.SearchStub(self.channel)
@@ -42,6 +56,7 @@ class ValdVectorStore(VectorStoreBackend):
         self.fstub = flush_pb2_grpc.FlushStub(self.channel)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         loop = asyncio.get_event_loop()
@@ -65,6 +80,7 @@ class ValdVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -84,6 +100,7 @@ class ValdVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -96,6 +113,7 @@ class ValdVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

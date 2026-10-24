@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from pymilvus import Collection, CollectionSchema, DataType, FieldSchema, connections
+except ImportError:
+    connections = None
 
 
 class ZillizVectorStore(VectorStoreBackend):
@@ -32,10 +35,19 @@ class ZillizVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._connected = False
+
+    async def initialize(self) -> None:
+        """Connect to Zilliz and create the collection if needed."""
+        if self._connected:
+            return
+        if connections is None:
+            raise ImportError("pymilvus is required for ZillizVectorStore: pip install pymilvus")
         connections.connect(
             alias="default", host=self.host, port=self.port, user=self.user, password=self.password
         )
         self._ensure_collection()
+        self._connected = True
 
     def _ensure_collection(self):
         if self.collection not in [c.name for c in Collection.list()]:
@@ -51,6 +63,7 @@ class ZillizVectorStore(VectorStoreBackend):
             Collection(self.collection, schema)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -75,6 +88,7 @@ class ZillizVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -110,6 +124,7 @@ class ZillizVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -121,6 +136,7 @@ class ZillizVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

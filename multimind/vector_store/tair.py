@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-from tair import Tair
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from tair import Tair
+except ImportError:
+    Tair = None
 
 
 class TairVectorStore(VectorStoreBackend):
@@ -33,6 +37,14 @@ class TairVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Tair and create the vector index if needed."""
+        if self.client is not None:
+            return
+        if Tair is None:
+            raise ImportError("tair is required for TairVectorStore: pip install tair")
         self.client = Tair(host=self.host, port=self.port, password=self.password)
         self._ensure_index()
 
@@ -44,6 +56,7 @@ class TairVectorStore(VectorStoreBackend):
             self.logger.warning(f"Index ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -72,6 +85,7 @@ class TairVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -104,6 +118,7 @@ class TairVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -114,6 +129,7 @@ class TairVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

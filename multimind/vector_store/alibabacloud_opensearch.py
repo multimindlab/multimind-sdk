@@ -49,9 +49,16 @@ class AlibabaCloudOpenSearchBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.api_key or not self.endpoint:
             raise ValueError("API key and endpoint must be provided for Alibaba Cloud OpenSearch.")
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Alibaba Cloud OpenSearch."""
+        if self.client is not None:
+            return
         if OpenSearch is None:
             raise ImportError(
-                "opensearchpy is not installed. Please install it to use this backend."
+                "opensearch-py is required for AlibabaCloudOpenSearchBackend: "
+                "pip install opensearch-py"
             )
         self.client = OpenSearch(
             hosts=[{"host": self.endpoint, "port": 443}],
@@ -68,6 +75,7 @@ class AlibabaCloudOpenSearchBackend(VectorStoreBackend):
         ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             body = {
@@ -91,6 +99,7 @@ class AlibabaCloudOpenSearchBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         query = {"size": k, "query": {"knn": {"vector": {"vector": query_vector, "k": k}}}}
         res = self.client.search(index=self.index_name, body=query)
@@ -137,12 +146,14 @@ class AlibabaCloudOpenSearchBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids: List[str]) -> None:
         """Delete vectors by ID (batch supported)."""
+        await self.initialize()
         for doc_id in ids:
             self.client.delete(index=self.index_name, id=doc_id)
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
+        await self.initialize()
         self.client.indices.delete(index=self.index_name, ignore=[400, 404])
         self.log_metrics("clear", 1)
 

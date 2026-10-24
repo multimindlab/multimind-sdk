@@ -41,13 +41,20 @@ class ElasticsearchBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.explain = explain
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Elasticsearch."""
+        if self.client is not None:
+            return
         if Elasticsearch is None:
             raise ImportError(
-                "elasticsearch is not installed. Please install it to use this backend."
+                "elasticsearch is required for ElasticsearchBackend: pip install elasticsearch"
             )
         self.client = Elasticsearch(self.hosts, api_key=self.api_key)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             body = {
@@ -70,6 +77,7 @@ class ElasticsearchBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         query = {"size": k, "query": {"knn": {"vector": {"vector": query_vector, "k": k}}}}
         res = self.client.search(index=self.index_name, body=query)
@@ -115,11 +123,13 @@ class ElasticsearchBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         for doc_id in ids:
             self.client.delete(index=self.index_name, id=doc_id)
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         self.client.indices.delete(index=self.index_name, ignore=[400, 404])
         self.log_metrics("clear", 1)
 

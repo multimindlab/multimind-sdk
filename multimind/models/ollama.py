@@ -86,13 +86,26 @@ class OllamaModel(BaseLLM):
             response.raise_for_status()
             return await response.json()
 
+    @staticmethod
+    def _options(temperature, max_tokens, kwargs):
+        """Ollama reads sampling settings from `options`, not the top level."""
+        options = dict(kwargs.pop("options", None) or {})
+        options.setdefault("temperature", temperature)
+        if max_tokens:
+            options.setdefault("num_predict", max_tokens)
+        return {"options": options, **kwargs}
+
     async def generate(
         self, prompt: str, temperature: float = 0.7, max_tokens: Optional[int] = None, **kwargs
     ) -> str:
         """Generate text from the local model."""
-        data = {"model": self.model_name, "prompt": prompt, "temperature": temperature, **kwargs}
-        if max_tokens:
-            data["max_tokens"] = max_tokens
+        # Ollama streams NDJSON unless stream=false is sent explicitly.
+        data = {
+            "model": self.model_name,
+            "prompt": prompt,
+            "stream": False,
+            **self._options(temperature, max_tokens, kwargs),
+        }
 
         response = await self._make_request("api/generate", data)
         return response.get("response", "")
@@ -104,12 +117,9 @@ class OllamaModel(BaseLLM):
         data = {
             "model": self.model_name,
             "prompt": prompt,
-            "temperature": temperature,
             "stream": True,
-            **kwargs,
+            **self._options(temperature, max_tokens, kwargs),
         }
-        if max_tokens:
-            data["max_tokens"] = max_tokens
 
         async for chunk in self._make_request_stream("api/generate", data):
             if "response" in chunk:
@@ -126,11 +136,9 @@ class OllamaModel(BaseLLM):
         data = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": temperature,
-            **kwargs,
+            "stream": False,
+            **self._options(temperature, max_tokens, kwargs),
         }
-        if max_tokens:
-            data["max_tokens"] = max_tokens
 
         response = await self._make_request("api/chat", data)
         return response.get("message", {}).get("content", "")
@@ -146,12 +154,9 @@ class OllamaModel(BaseLLM):
         data = {
             "model": self.model_name,
             "messages": messages,
-            "temperature": temperature,
             "stream": True,
-            **kwargs,
+            **self._options(temperature, max_tokens, kwargs),
         }
-        if max_tokens:
-            data["max_tokens"] = max_tokens
 
         async for chunk in self._make_request_stream("api/chat", data):
             if "message" in chunk and "content" in chunk["message"]:

@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-import usearch
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import usearch
+except ImportError:
+    usearch = None
 
 
 class USearchVectorStore(VectorStoreBackend):
@@ -27,6 +31,14 @@ class USearchVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.index = None
+
+    async def initialize(self) -> None:
+        """Open or create the USearch index file."""
+        if self.index is not None:
+            return
+        if usearch is None:
+            raise ImportError("usearch is required for USearchVectorStore: pip install usearch")
         self.index = usearch.Index(metric=self.metric, ndim=self.dim, path=self.index_path)
         self._ensure_index()
 
@@ -35,6 +47,7 @@ class USearchVectorStore(VectorStoreBackend):
             self.index.save(self.index_path)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or list(range(n))
         metadatas = metadatas or [{} for _ in range(n)]
@@ -58,6 +71,7 @@ class USearchVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -78,6 +92,7 @@ class USearchVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -88,6 +103,7 @@ class USearchVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():
@@ -97,6 +113,7 @@ class USearchVectorStore(VectorStoreBackend):
         self.log_metrics("clear", 1)
 
     async def persist(self, path):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _persist():
@@ -108,6 +125,7 @@ class USearchVectorStore(VectorStoreBackend):
     @classmethod
     async def load(cls, path, config):
         backend = cls(**config.connection_params)
+        await backend.initialize()
         backend.index.load(path)
         return backend
 

@@ -3,10 +3,13 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from opensearchpy import OpenSearch, RequestsHttpConnection
-from requests.auth import HTTPBasicAuth
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from opensearchpy import OpenSearch, RequestsHttpConnection
+    from requests.auth import HTTPBasicAuth
+except ImportError:
+    OpenSearch = None
 
 
 class OpenSearchVectorBackend(VectorStoreBackend):
@@ -33,6 +36,16 @@ class OpenSearchVectorBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Connect to OpenSearch and create the index if needed."""
+        if self._client is not None:
+            return
+        if OpenSearch is None:
+            raise ImportError(
+                "opensearch-py is required for OpenSearchVectorBackend: pip install opensearch-py"
+            )
         self._client = OpenSearch(
             hosts=[{"host": self.host, "port": self.port}],
             http_auth=(
@@ -58,6 +71,7 @@ class OpenSearchVectorBackend(VectorStoreBackend):
             )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -89,6 +103,7 @@ class OpenSearchVectorBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
         query = {
             "size": k,
@@ -129,6 +144,7 @@ class OpenSearchVectorBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -139,6 +155,7 @@ class OpenSearchVectorBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,

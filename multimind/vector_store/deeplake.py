@@ -5,11 +5,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .base import SearchResult, VectorStoreBackend
 
-try:
-    import deeplake
-except ImportError:
-    deeplake = None
-
 
 class DeepLakeBackend(VectorStoreBackend):
     def __init__(
@@ -39,9 +34,15 @@ class DeepLakeBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.explain = explain
         self.logger = logging.getLogger(__name__)
-        if deeplake is None:
-            raise ImportError("deeplake is not installed. Please install it to use this backend.")
-        self.ds = deeplake.load(self.path, token=self.token) if self.path else None
+        # Stub: no dataset is opened; every operation raises NotImplementedError.
+        self.ds = None
+
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "DeepLakeBackend.initialize is not implemented: the DeepLake backend is "
+            "a stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         raise NotImplementedError(

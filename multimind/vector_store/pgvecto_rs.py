@@ -4,11 +4,15 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-import psycopg2
-import psycopg2.extras
-from pgvector.psycopg2 import register_vector
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import psycopg2
+    import psycopg2.extras
+    from pgvector.psycopg2 import register_vector
+except ImportError:
+    psycopg2 = None
 
 
 class PGVectoRSBackend(VectorStoreBackend):
@@ -37,6 +41,17 @@ class PGVectoRSBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._conn = None
+
+    async def initialize(self) -> None:
+        """Connect to PostgreSQL (pgvecto.rs) and create the vector table if needed."""
+        if self._conn is not None:
+            return
+        if psycopg2 is None:
+            raise ImportError(
+                "psycopg2 and pgvector are required for PGVectoRSBackend: "
+                "pip install psycopg2-binary pgvector"
+            )
         self._conn = psycopg2.connect(
             host=self.host,
             port=self.port,
@@ -62,6 +77,7 @@ class PGVectoRSBackend(VectorStoreBackend):
             )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -98,6 +114,7 @@ class PGVectoRSBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -133,6 +150,7 @@ class PGVectoRSBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -143,6 +161,7 @@ class PGVectoRSBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

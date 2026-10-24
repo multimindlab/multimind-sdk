@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import marqo
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import marqo
+except ImportError:
+    marqo = None
 
 
 class MarqoBackend(VectorStoreBackend):
@@ -26,8 +29,16 @@ class MarqoBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+        self._index = None
+
+    async def initialize(self) -> None:
+        """Connect to Marqo and create the index if needed."""
+        if self._client is not None:
+            return
+        if marqo is None:
+            raise ImportError("marqo is required for MarqoBackend: pip install marqo")
         self._client = marqo.Client(url=self.endpoint, api_key=self.api_key)
-        # Ensure index exists
         if self.index_name not in [
             idx["index_name"] for idx in self._client.get_indexes()["results"]
         ]:
@@ -36,6 +47,7 @@ class MarqoBackend(VectorStoreBackend):
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Marqo expects documents with text and optional metadata
+        await self.initialize()
         docs = []
         for i, doc in enumerate(documents):
             entry = {"_id": ids[i] if ids else str(i), "text": doc}
@@ -57,6 +69,7 @@ class MarqoBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # Marqo supports both vector and text search; prefer query_text if provided
+        await self.initialize()
         loop = asyncio.get_event_loop()
         if query_text:
             result = await loop.run_in_executor(None, self._index.search, query_text, {"limit": k})
@@ -79,12 +92,14 @@ class MarqoBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._index.delete_documents, ids)
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # Delete all documents in the index
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._index.delete)
         self.log_metrics("clear", 1)

@@ -3,10 +3,13 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import psycopg2
-from timescale_vector import TimescaleVector
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import psycopg2
+    from timescale_vector import TimescaleVector
+except ImportError:
+    psycopg2 = None
 
 
 class TimescaleVectorStore(VectorStoreBackend):
@@ -35,6 +38,18 @@ class TimescaleVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.conn = None
+        self.ts_vector = None
+
+    async def initialize(self) -> None:
+        """Connect to TimescaleDB and create the vector table if needed."""
+        if self.conn is not None:
+            return
+        if psycopg2 is None:
+            raise ImportError(
+                "psycopg2 and timescale-vector are required for TimescaleVectorStore: "
+                "pip install psycopg2-binary timescale-vector"
+            )
         self.conn = psycopg2.connect(
             host=self.host,
             port=self.port,
@@ -60,6 +75,7 @@ class TimescaleVectorStore(VectorStoreBackend):
             self.conn.commit()
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -92,6 +108,7 @@ class TimescaleVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -126,6 +143,7 @@ class TimescaleVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -139,6 +157,7 @@ class TimescaleVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

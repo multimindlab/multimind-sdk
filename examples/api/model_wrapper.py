@@ -1,150 +1,75 @@
-import logging
+"""Query OpenAI and Claude through the MultiMind SDK model classes.
+
+Demonstrates ``OpenAIModel`` and ``ClaudeModel`` behind the shared ``BaseLLM``
+interface: the same ``generate()`` / ``chat()`` calls work for both providers.
+
+Runs offline: with no ``OPENAI_API_KEY`` / ``ANTHROPIC_API_KEY`` set it prints
+what to configure and exits 0.
+"""
+
+import asyncio
 import os
-import subprocess
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, Tuple, Type
 
-import openai
-from anthropic import Anthropic
-from dotenv import load_dotenv
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from multimind.core.exceptions import ConfigurationError
+from multimind.models import BaseLLM, ClaudeModel, OpenAIModel
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# provider -> (model class, default model name, env vars that hold its key)
+PROVIDERS: Dict[str, Tuple[Type[BaseLLM], str, Tuple[str, ...]]] = {
+    "openai": (OpenAIModel, "gpt-4o-mini", ("OPENAI_API_KEY",)),
+    "claude": (ClaudeModel, "claude-sonnet-4-5", ("ANTHROPIC_API_KEY", "CLAUDE_API_KEY")),
+}
 
-class ModelWrapper:
-    def __init__(self, env_path: Optional[str] = None):
-        # Load environment variables
-        if env_path:
-            load_dotenv(env_path)
-        else:
-            load_dotenv()  # Look for .env in current directory
 
-        # Load API keys from environment
-        self.openai_key = os.getenv('OPENAI_API_KEY')
-        self.claude_key = os.getenv('CLAUDE_API_KEY')
-        self.hf_token = os.getenv('HF_TOKEN')
-
-        # Initialize clients
-        if self.openai_key:
-            openai.api_key = self.openai_key
-            logger.info("OpenAI API key loaded")
-        if self.claude_key:
-            self.claude = Anthropic(api_key=self.claude_key)
-            logger.info("Claude API key loaded")
-
-    def available_models(self) -> List[str]:
-        """Check which models are available based on API keys and local installations."""
-        available = []
-
-        # Check API-based models
-        if self.openai_key:
-            available.append("openai")
-        if self.claude_key:
-            available.append("claude")
-        if self.hf_token:
-            available.append("huggingface")
-
-        # Check Ollama installation
+def build_models() -> Dict[str, BaseLLM]:
+    """Instantiate every provider whose API key is present in the environment."""
+    models: Dict[str, BaseLLM] = {}
+    for name, (model_cls, default_model, env_vars) in PROVIDERS.items():
+        if not any(os.getenv(var) for var in env_vars):
+            continue
         try:
-            result = subprocess.run(
-                ["ollama", "list"],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode == 0:
-                available.append("ollama")
-                logger.info("Ollama installation detected")
-        except FileNotFoundError:
-            logger.warning("Ollama not installed")
+            models[name] = model_cls(model_name=default_model)
+        except ConfigurationError as exc:
+            print(f"[{name}] skipped: {exc}")
+    return models
 
-        logger.info(f"Available models: {', '.join(available)}")
-        return available
 
-    def query_openai(self, prompt: str) -> str:
-        logger.info("Querying OpenAI model")
+async def query_all(models: Dict[str, BaseLLM], prompt: str) -> Dict[str, str]:
+    """Send the same prompt to each model via the unified BaseLLM interface."""
+    results: Dict[str, str] = {}
+    for name, model in models.items():
+        print(f"\n--- {name} ({model.model_name}) ---")
         try:
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            return response.choices[0].message['content']
-        except AttributeError:
-            logger.error("ChatCompletion is not available in the OpenAI library. Please update the library.")
-            raise RuntimeError("OpenAI library is outdated or incompatible.")
-        except Exception as e:
-            logger.error(f"Error querying OpenAI model: {e}")
-            raise
+            results[name] = await model.generate(prompt, temperature=0.7, max_tokens=120)
+            print(results[name])
+        except Exception as exc:  # network / auth errors from the provider
+            results[name] = f"error: {exc}"
+            print(f"error: {exc}")
+    return results
 
-    def query_claude(self, prompt: str) -> str:
-        logger.info("Querying Claude model")
-        response = self.claude.messages.create(
-            model="claude-3-opus-20240229",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response.content[0].text
 
-    def query_ollama(self, prompt: str, model: str = "mistral") -> str:
-        logger.info(f"Querying Ollama model: {model}")
-        try:
-            result = subprocess.run(
-                ["ollama", "run", model, prompt],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return result.stdout
-        except subprocess.CalledProcessError as e:
-            logger.error(f"Ollama CLI error: {e.stderr}")
-            raise RuntimeError(f"Failed to query Ollama model: {model}") from e
-        except FileNotFoundError:
-            logger.error("Ollama CLI not found. Please ensure it is installed and in the PATH.")
-            raise RuntimeError("Ollama CLI not found. Please install it and try again.")
+async def main() -> int:
+    models = build_models()
+    if not models:
+        print("No API keys found. Set OPENAI_API_KEY and/or ANTHROPIC_API_KEY to run this example.")
+        return 0
 
-    def query_huggingface(self, prompt: str, model_id: str = "mistralai/Mistral-7B-v0.1") -> str:
-        logger.info(f"Querying Hugging Face model: {model_id}")
-        model_id = kwargs.get('hf_model_id', model_id)
-        if not isinstance(model_id, str):
-            raise ValueError("model_id must be a string. Please provide a valid model_id.")
-        tokenizer = AutoTokenizer.from_pretrained(model_id, token=self.hf_token)
-        model = AutoModelForCausalLM.from_pretrained(model_id, token=self.hf_token)
+    print(f"Configured providers: {', '.join(models)}")
+    await query_all(models, "In one sentence, what is the MultiMind SDK?")
 
-        inputs = tokenizer(prompt, return_tensors="pt")
-        outputs = model.generate(**inputs, max_length=200)
-        return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    # chat() takes a message list and works identically across providers
+    first_name, first_model = next(iter(models.items()))
+    print(f"\n--- chat() via {first_name} ---")
+    reply = await first_model.chat(
+        [
+            {"role": "system", "content": "You answer in exactly three words."},
+            {"role": "user", "content": "Describe the ocean."},
+        ],
+        max_tokens=20,
+    )
+    print(reply)
+    return 0
 
-    def query_model(self, model: str, prompt: str, **kwargs) -> Dict[str, Any]:
-        """Query a specific model with error handling and logging."""
-        try:
-            # Check if model is available
-            if model not in self.available_models():
-                raise ValueError(f"Model {model} is not available. Available models: {', '.join(self.available_models())}")
 
-            response = ""
-            if model == "openai":
-                response = self.query_openai(prompt)
-            elif model == "claude":
-                response = self.query_claude(prompt)
-            elif model == "ollama":
-                response = self.query_ollama(prompt, kwargs.get('ollama_model', 'mistral'))
-            elif model == "huggingface":
-                response = self.query_huggingface(prompt, kwargs.get('hf_model_id'))
-            else:
-                raise ValueError(f"Unsupported model: {model}")
-
-            return {
-                "status": "success",
-                "model": model,
-                "response": response
-            }
-        except Exception as e:
-            logger.error(f"Error querying {model}: {str(e)}")
-            return {
-                "status": "error",
-                "model": model,
-                "error": str(e)
-            }
+if __name__ == "__main__":
+    raise SystemExit(asyncio.run(main()))

@@ -94,7 +94,55 @@ MULTIMIND_API_BASE=                   # API base URL the dashboard page calls (e
 MULTIMIND_API_KEY=                    # X-API-Key the dashboard page sends to that API
 ```
 
-`multimind backend` reads `MULTIMIND_BACKEND_HOST` and `MULTIMIND_BACKEND_PORT` (default `127.0.0.1:8080`).
+`multimind backend` reads `MULTIMIND_BACKEND_HOST` and `MULTIMIND_BACKEND_PORT` (default `127.0.0.1:8080`) and serves the dashboard UI at `/` on that same port.
+
+### Managing settings from the dashboard
+
+`multimind backend` (and the standalone `multimind dashboard`) expose the
+non-secret runtime settings over `GET/PUT /api/config`, which the dashboard's
+Settings view edits. Writes go to a small JSON file, `multimind.config.json`
+in the working directory (override the path with `MULTIMIND_CONFIG_FILE`),
+and are read on every request, so model, log level, and provider changes take
+effect without a restart. Add the file to version control only if it holds
+nothing environment-specific; it is git-ignored by default.
+
+Editable keys (flat dotted form; nested objects are accepted too):
+
+| Key | Values | Applies |
+| --- | --- | --- |
+| `default_model` | one of the 15 provider names | next request |
+| `log_level` | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` | next request (reported via `GatewayConfig.effective_log_level()`) |
+| `providers.<name>.model_name` | non-empty string | next request |
+| `providers.<name>.base_url` | non-empty URL (Ollama and OpenAI-compatible providers) | next request |
+| `providers.<name>.enabled` | `true` / `false`; `false` hides the provider from `/v1/models` and makes `get_model_handler` refuse it | next request |
+| `cors_origins` | list of origins | next start of `multimind backend` |
+| `proxy.strategy`, `proxy.block_on`, `proxy.budget`, `proxy.scan_output` | same values as `guardrails.json` | also written to the guardrails file; `POST /v1/guardrails/reload` on the proxy applies them |
+
+`<name>` is one of `openai, anthropic, claude, ollama, groq, huggingface,
+gemini, mistral, deepseek, openrouter, together, xai, perplexity, fireworks,
+cerebras`. Sending `null` for a key removes the override.
+
+**API keys are never part of this.** They stay in environment variables (or
+`.env`), are never written to `multimind.config.json`, and are never returned
+by the API; `GET /api/config` only reports `providers.<name>.has_api_key` so
+the UI can show whether a key is set. Any key whose name looks like a
+credential (`api_key`, `*_key`, `token`, `secret`, `password`) is rejected
+with 422.
+
+Precedence, highest first:
+
+1. **Config store** (`multimind.config.json`) for the keys above.
+2. **Environment variables** (`DEFAULT_MODEL`, `LOG_LEVEL`, `<PROVIDER>_MODEL_NAME`,
+   `OLLAMA_API_BASE`, `MULTIMIND_CORS_ORIGINS`, ...).
+3. **Built-in defaults.**
+
+There is no CLI flag for these keys on `multimind backend`, so the store is
+the top of the chain. For the guard proxy the usual rule still holds: explicit
+`multimind serve` flags win over the guardrails file, which wins over
+`MULTIMIND_PROXY_*` env vars. In code, `GatewayConfig.effective_default_model()`,
+`effective_log_level()`, `is_provider_enabled()` and `get_model_config()` return
+the store-aware values; plain attribute access such as `config.openai.model_name`
+still returns the env/default value.
 
 ### API Servers and Misc
 

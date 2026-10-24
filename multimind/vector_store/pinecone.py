@@ -7,9 +7,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import pinecone
-
 from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
+try:
+    import pinecone
+except ImportError:
+    pinecone = None
 
 
 class PineconeBackend(VectorStoreBackend):
@@ -42,6 +45,10 @@ class PineconeBackend(VectorStoreBackend):
     async def initialize(self) -> None:
         if self._initialized:
             return
+        if pinecone is None:
+            raise ImportError(
+                "pinecone-client is required for PineconeBackend: pip install pinecone"
+            )
         pinecone.init(api_key=self.api_key, environment=self.environment)
         if self.index_name not in pinecone.list_indexes():
             pinecone.create_index(

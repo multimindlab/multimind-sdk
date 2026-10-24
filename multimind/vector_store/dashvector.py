@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from .base import SearchResult, VectorStoreBackend
@@ -23,22 +24,22 @@ class DashVectorBackend(VectorStoreBackend):
         explain: bool = False,
         **kwargs,
     ):
-        super().__init__(
-            api_key,
-            endpoint,
-            collection,
-            enable_hybrid_search,
-            hybrid_weight,
-            scoring_method,
-            enable_metadata_indexing,
-            live_indexing,
-            metrics_enabled,
-            plugin_registry,
-            retry_policy,
-            explain,
-            **kwargs,
-        )
+        # VectorStoreBackend.__init__ takes a config object, not these kwargs.
+        self.api_key = api_key
+        self.endpoint = endpoint
+        self.collection = collection
+        self.metrics_enabled = metrics_enabled
+        self.plugin_registry = plugin_registry or {}
+        self.retry_policy = retry_policy or {"retries": 3}
+        self.logger = logging.getLogger(__name__)
         self._store = []
+
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "DashVectorBackend.initialize is not implemented: the DashVector backend "
+            "is a stub. Use an implemented backend such as FAISS, Chroma, Qdrant, "
+            "Pinecone, Milvus, or Weaviate."
+        )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         raise NotImplementedError(
