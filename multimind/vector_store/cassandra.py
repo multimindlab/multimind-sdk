@@ -51,9 +51,16 @@ class CassandraBackend(VectorStoreBackend):
         self.retry_policy = retry_policy or {"retries": 3}
         self.explain = explain
         self.logger = logging.getLogger(__name__)
+        self.cluster = None
+        self.session = None
+
+    async def initialize(self) -> None:
+        """Connect to the Cassandra cluster and keyspace."""
+        if self.session is not None:
+            return
         if Cluster is None or PlainTextAuthProvider is None:
             raise ImportError(
-                "cassandra-driver is not installed. Please install it to use this backend."
+                "cassandra-driver is required for CassandraBackend: pip install cassandra-driver"
             )
         auth_provider = None
         if self.username and self.password:
@@ -64,6 +71,7 @@ class CassandraBackend(VectorStoreBackend):
         self.session = self.cluster.connect(self.keyspace)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             # Placeholder: actual vector storage logic depends on schema
@@ -103,11 +111,13 @@ class CassandraBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         for doc_id in ids:
             self.session.execute(f"DELETE FROM {self.table} WHERE id = %s", (doc_id,))
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         self.session.execute(f"TRUNCATE {self.table}")
         self.log_metrics("clear", 1)
 

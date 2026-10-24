@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List
 
-from multimind.gateway import MultiMindCLI, chat_manager, config, get_model_handler, monitor
+from multimind.gateway import chat_manager, config, get_model_handler, monitor
 
 
 async def example_chat_session():
@@ -19,7 +19,7 @@ async def example_chat_session():
     session = chat_manager.create_session(
         model="openai",
         system_prompt="You are a helpful AI assistant.",
-        metadata={"purpose": "example", "user": "demo"}
+        metadata={"purpose": "example", "user": "demo"},
     )
     print(f"Created session: {session.session_id}")
 
@@ -28,7 +28,7 @@ async def example_chat_session():
         role="user",
         content="What is the capital of France?",
         model="openai",
-        metadata={"topic": "geography"}
+        metadata={"topic": "geography"},
     )
 
     # Get a response
@@ -39,7 +39,7 @@ async def example_chat_session():
         role="assistant",
         content=response.content,
         model="openai",
-        metadata={"tokens": response.usage.get("total_tokens", 0) if response.usage else 0}
+        metadata={"tokens": response.usage.get("total_tokens", 0) if response.usage else 0},
     )
 
     # Save the session
@@ -52,6 +52,7 @@ async def example_chat_session():
     print(json.dumps(json.loads(export_data), indent=2))
 
     return session.session_id
+
 
 async def example_monitoring():
     """Example of monitoring model health and metrics"""
@@ -86,7 +87,7 @@ async def example_monitoring():
                     tokens=response.usage.get("total_tokens", 0) if response.usage else 0,
                     cost=0.0,  # Example cost
                     response_time=response_time,
-                    success=True
+                    success=True,
                 )
 
                 # Failed request (example)
@@ -96,7 +97,7 @@ async def example_monitoring():
                     cost=0.0,
                     response_time=0.1,
                     success=False,
-                    error="Example error"
+                    error="Example error",
                 )
             except Exception as e:
                 print(f"Error with {model}: {e}")
@@ -108,21 +109,22 @@ async def example_monitoring():
         m = data["metrics"]
         print(f"\n{model.upper()}:")
         print(f"Total Requests: {m.total_requests}")
-        print(f"Success Rate: {(m.successful_requests / m.total_requests * 100):.1f}%" if m.total_requests > 0 else "N/A")
+        print(
+            f"Success Rate: {(m.successful_requests / m.total_requests * 100):.1f}%"
+            if m.total_requests > 0
+            else "N/A"
+        )
         print(f"Average Response Time: {m.avg_response_time:.2f}s")
         print(f"Total Tokens: {m.total_tokens}")
         print(f"Total Cost: ${m.total_cost:.4f}")
+
 
 async def example_rate_limiting():
     """Example of rate limiting"""
     print("\n=== Rate Limiting Example ===")
 
     # Set custom rate limits
-    monitor.set_rate_limits(
-        model="openai",
-        requests_per_minute=10,
-        tokens_per_minute=1000
-    )
+    monitor.set_rate_limits(model="openai", requests_per_minute=10, tokens_per_minute=1000)
 
     print("Set rate limits for OpenAI:")
     print(f"Requests per minute: {monitor.rate_limits['openai']['requests_per_minute']}")
@@ -132,12 +134,16 @@ async def example_rate_limiting():
     can_proceed = await monitor.check_rate_limit("openai", tokens=100)
     print(f"\nCan proceed with request: {can_proceed}")
 
+
 async def main():
     """Run all examples"""
     try:
-        # Initialize CLI to validate config
-        cli = MultiMindCLI()
-        cli.validate_config()
+        if (
+            not config.get_model_config(config.default_model).api_key
+            and config.default_model != "ollama"
+        ):
+            print(f"Set an API key for the default model '{config.default_model}' first.")
+            return
 
         # Run examples
         session_id = await example_chat_session()
@@ -150,6 +156,7 @@ async def main():
 
     except Exception as e:
         print(f"Error running examples: {e}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

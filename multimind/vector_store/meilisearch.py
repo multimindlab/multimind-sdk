@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import meilisearch
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import meilisearch
+except ImportError:
+    meilisearch = None
 
 
 class MeiliSearchBackend(VectorStoreBackend):
@@ -26,13 +29,24 @@ class MeiliSearchBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+        self._index = None
+
+    async def initialize(self) -> None:
+        """Connect to Meilisearch and create the index if needed."""
+        if self._client is not None:
+            return
+        if meilisearch is None:
+            raise ImportError(
+                "meilisearch is required for MeiliSearchBackend: pip install meilisearch"
+            )
         self._client = meilisearch.Client(self.host, self.api_key)
-        # Ensure index exists
         if self.index_name not in [idx["uid"] for idx in self._client.get_indexes()["results"]]:
             self._client.create_index(self.index_name, {"primaryKey": "id"})
         self._index = self._client.index(self.index_name)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         docs = []
         for i, doc in enumerate(documents):
             entry = {"id": ids[i] if ids else str(i), "vector": vectors[i], "text": doc}
@@ -54,6 +68,7 @@ class MeiliSearchBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # Meilisearch is primarily text search, but can store vectors for hybrid use
+        await self.initialize()
         loop = asyncio.get_event_loop()
         search_params = {"limit": k}
         if query_text:
@@ -82,11 +97,13 @@ class MeiliSearchBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._index.delete_documents, ids)
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._index.delete_all_documents)
         self.log_metrics("clear", 1)

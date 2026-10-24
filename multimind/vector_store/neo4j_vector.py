@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-from neo4j import GraphDatabase, basic_auth
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from neo4j import GraphDatabase, basic_auth
+except ImportError:
+    GraphDatabase = None
 
 
 class Neo4jVectorBackend(VectorStoreBackend):
@@ -31,9 +35,18 @@ class Neo4jVectorBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._driver = None
+
+    async def initialize(self) -> None:
+        """Create the Neo4j driver."""
+        if self._driver is not None:
+            return
+        if GraphDatabase is None:
+            raise ImportError("neo4j is required for Neo4jVectorBackend: pip install neo4j")
         self._driver = GraphDatabase.driver(self.uri, auth=basic_auth(self.user, self.password))
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -68,6 +81,7 @@ class Neo4jVectorBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # Neo4j does not natively support vector search, but you can compute cosine similarity in Cypher
+        await self.initialize()
         loop = asyncio.get_event_loop()
         filter_cypher = ""
         if filter_criteria:
@@ -106,6 +120,7 @@ class Neo4jVectorBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -116,6 +131,7 @@ class Neo4jVectorBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

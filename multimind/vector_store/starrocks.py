@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import pymysql
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import pymysql
+except ImportError:
+    pymysql = None
 
 
 class StarRocksBackend(VectorStoreBackend):
@@ -34,6 +37,14 @@ class StarRocksBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._conn = None
+
+    async def initialize(self) -> None:
+        """Connect to StarRocks and create the vector table if needed."""
+        if self._conn is not None:
+            return
+        if pymysql is None:
+            raise ImportError("pymysql is required for StarRocksBackend: pip install pymysql")
         self._conn = pymysql.connect(
             host=self.host,
             port=self.port,
@@ -58,6 +69,7 @@ class StarRocksBackend(VectorStoreBackend):
             )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -89,6 +101,7 @@ class StarRocksBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -124,6 +137,7 @@ class StarRocksBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -136,6 +150,7 @@ class StarRocksBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

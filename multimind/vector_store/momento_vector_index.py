@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import momento
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import momento
+except ImportError:
+    momento = None
 
 
 class MomentoVectorIndexBackend(VectorStoreBackend):
@@ -26,15 +29,25 @@ class MomentoVectorIndexBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Create the Momento client (indexes are auto-created on upsert)."""
+        if self._client is not None:
+            return
+        if momento is None:
+            raise ImportError(
+                "momento is required for MomentoVectorIndexBackend: pip install momento"
+            )
         self._client = (
             momento.Client(self.auth_token, endpoint=self.endpoint)
             if self.endpoint
             else momento.Client(self.auth_token)
         )
-        # Ensure index exists (Momento auto-creates on upsert)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Momento upserts vectors with metadata
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -60,6 +73,7 @@ class MomentoVectorIndexBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
         # Momento supports vector search with optional metadata filtering
         filter_expr = None
@@ -87,6 +101,7 @@ class MomentoVectorIndexBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         for id_ in ids:
             await loop.run_in_executor(
@@ -96,6 +111,7 @@ class MomentoVectorIndexBackend(VectorStoreBackend):
 
     async def clear(self):
         # Momento does not have a direct clear; delete all by listing
+        await self.initialize()
         loop = asyncio.get_event_loop()
         all_ids = await loop.run_in_executor(
             None, lambda: [item["id"] for item in self._client.vector.list(self.index_name)]

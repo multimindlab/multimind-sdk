@@ -592,7 +592,10 @@ class HybridMemory(BaseMemory):
         all_messages = []
         for memory in self.memories.values():
             all_messages.extend(await memory.get_messages())
-        return sorted(all_messages, key=lambda x: x["timestamp"])
+        # Child memories such as BufferMemory do not stamp messages; keep their order.
+        if all("timestamp" in m for m in all_messages):
+            return sorted(all_messages, key=lambda x: x["timestamp"])
+        return all_messages
 
     async def clear(self) -> None:
         """Clear all memories."""

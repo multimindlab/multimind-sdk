@@ -7,6 +7,7 @@ All backend implementations (e.g., Milvus, Pinecone, Qdrant, etc.) are mapped in
 this file, so the user can select any supported backend via configuration.
 """
 
+import inspect
 import logging
 import os
 from typing import Any, Dict, List, Optional, Type
@@ -148,11 +149,23 @@ class VectorStore:
     def _get_backend(self) -> VectorStoreBackend:
         """Get or create the backend instance."""
         if self._backend_instance is None:
-            backend_class = get_backend_class(self.config.backend_type)
+            store_type = self.config.store_type
+            if not store_type:
+                raise ValueError("VectorStoreConfig needs a store_type to pick a backend")
+            backend_type = VectorStoreType.from_string(store_type)
+            backend_class = get_backend_class(backend_type)
             if backend_class is None:
-                raise ValueError(f"Backend {self.config.backend_type} is not available")
+                raise ValueError(f"Backend {store_type} is not available")
 
-            self._backend_instance = backend_class(self.config)
+            # Local backends take the config object; client backends take keyword args.
+            params = inspect.signature(backend_class.__init__).parameters
+            if "config" in params:
+                self._backend_instance = backend_class(self.config)
+            else:
+                kwargs = {
+                    k: v for k, v in self.config.connection_params.items() if k != "store_type"
+                }
+                self._backend_instance = backend_class(**kwargs)
         return self._backend_instance
 
     async def initialize(self) -> None:

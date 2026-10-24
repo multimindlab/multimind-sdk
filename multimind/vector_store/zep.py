@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from zep_python import ZepClient
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from zep_python import ZepClient
+except ImportError:
+    ZepClient = None
 
 
 class ZepVectorStore(VectorStoreBackend):
@@ -28,6 +31,14 @@ class ZepVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Zep and create the collection if needed."""
+        if self.client is not None:
+            return
+        if ZepClient is None:
+            raise ImportError("zep-python is required for ZepVectorStore: pip install zep-python")
         self.client = ZepClient(base_url=self.api_url, api_key=self.api_key)
         self._ensure_collection()
 
@@ -40,6 +51,7 @@ class ZepVectorStore(VectorStoreBackend):
             self.logger.warning(f"Collection ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -69,6 +81,7 @@ class ZepVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -100,6 +113,7 @@ class ZepVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -110,6 +124,7 @@ class ZepVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

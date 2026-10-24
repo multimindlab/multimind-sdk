@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-import llmrails
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import llmrails
+except ImportError:
+    llmrails = None
 
 
 class LLMRailsBackend(VectorStoreBackend):
@@ -26,10 +29,19 @@ class LLMRailsBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.api_key or not self.datastore_id:
             raise ValueError("LLMRails API key and datastore_id must be provided.")
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Create the LLMRails client."""
+        if self._client is not None:
+            return
+        if llmrails is None:
+            raise ImportError("llmrails is required for LLMRailsBackend: pip install llmrails")
         self._client = llmrails.Client(self.api_key)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # LLMRails expects text, not raw vectors; use documents as input
+        await self.initialize()
         data = []
         for i, doc in enumerate(documents):
             entry = {"text": doc}
@@ -58,6 +70,7 @@ class LLMRailsBackend(VectorStoreBackend):
         # LLMRails expects a query string, not a vector
         if not query_text:
             raise ValueError("query_text must be provided for LLMRails search.")
+        await self.initialize()
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(
             None, self._client.similarity_search, query_text, self.datastore_id, k

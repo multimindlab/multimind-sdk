@@ -5,9 +5,8 @@ Demonstrates a minimal, working support-ticket chat loop: conversation
 history is kept in a token-bounded BufferMemory (persisted to disk between
 runs), each turn is tagged with a lightweight ticket category, and replies
 are generated directly via the configured LLM. Uses BufferMemory.add_message/
-get_messages directly rather than multimind.core.MultiMind.chat(), since
-that helper expects an AgentMemory with an add_interaction() method that
-BufferMemory (and every other multimind.memory.* class) does not implement.
+get_messages directly rather than multimind.core.MultiMind.chat() so the
+per-turn ticket-category metadata can be attached to each stored message.
 """
 
 import argparse

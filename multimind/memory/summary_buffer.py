@@ -17,6 +17,7 @@ to add buffering on top of summarization — not a redundant duplicate.
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+from ..models.base import BaseLLM
 from .summary import SummaryMemory
 
 
@@ -25,26 +26,30 @@ class SummaryBufferMemory(SummaryMemory):
 
     def __init__(
         self,
+        llm: BaseLLM,
         max_messages: Optional[int] = None,
         max_tokens: Optional[int] = None,
         summary_interval: int = 10,  # messages
         summary_strategy: str = "extractive",  # extractive, abstractive, hybrid
         max_summaries: int = 5,
         buffer_strategy: str = "sliding",  # sliding, fixed, dynamic
+        tokenizer: Optional[Any] = None,
         **kwargs,
     ):
         """Initialize summary buffer memory."""
         super().__init__(
-            max_messages=max_messages,
+            llm,
             summary_interval=summary_interval,
-            summary_strategy=summary_strategy,
+            strategy=summary_strategy,
             max_summaries=max_summaries,
             **kwargs,
         )
 
         # Buffer configuration
+        self.max_messages = max_messages
         self.max_tokens = max_tokens
         self.buffer_strategy = buffer_strategy
+        self.tokenizer = tokenizer
 
         # Buffer state
         self.buffer: List[Dict[str, Any]] = []
@@ -56,7 +61,7 @@ class SummaryBufferMemory(SummaryMemory):
     ) -> None:
         """Add a message to memory and buffer."""
         # Add to main memory
-        await super().add_message(message, metadata)
+        await self.add_messages([message], metadata)
 
         # Add to buffer
         await self._add_to_buffer(message, metadata)
@@ -74,7 +79,12 @@ class SummaryBufferMemory(SummaryMemory):
         """Add message to buffer."""
         # Calculate tokens
         content = message.get("content", "")
-        tokens = len(self.tokenizer.encode(content)) if self.max_tokens else 0
+        if not self.max_tokens:
+            tokens = 0
+        elif self.tokenizer:
+            tokens = len(self.tokenizer.encode(content))
+        else:
+            tokens = len(content.split())
 
         # Add to buffer
         self.buffer.append(
@@ -150,7 +160,7 @@ class SummaryBufferMemory(SummaryMemory):
             return
 
         # Get latest summary
-        latest_summary = await self.get_latest_summary()
+        latest_summary = self.summaries[-1] if self.summaries else None
         if not latest_summary:
             return
 

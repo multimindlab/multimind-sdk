@@ -20,6 +20,7 @@ class ChromaBackend(VectorStoreBackend):
         collection_name: str = "default",
         dimension: Optional[int] = None,
         chroma_settings: Optional[Dict[str, Any]] = None,
+        persist_directory: Optional[str] = None,
         enable_hybrid_search: bool = False,
         hybrid_weight: float = 0.5,
         scoring_method: str = "weighted_sum",
@@ -33,7 +34,12 @@ class ChromaBackend(VectorStoreBackend):
     ):
         self.collection_name = collection_name
         self.dimension = dimension
-        self.chroma_settings = chroma_settings or {}
+        self.chroma_settings = dict(chroma_settings or {})
+        # VectorStoreConfig validates `persist_directory` at the top level; honor it.
+        if persist_directory and "persist_directory" not in self.chroma_settings:
+            self.chroma_settings.update(
+                {"is_persistent": True, "persist_directory": str(persist_directory)}
+            )
         self.enable_hybrid_search = enable_hybrid_search
         self.hybrid_weight = hybrid_weight
         self.scoring_method = scoring_method

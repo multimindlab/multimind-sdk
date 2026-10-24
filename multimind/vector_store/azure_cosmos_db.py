@@ -45,15 +45,23 @@ class AzureCosmosDBBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.endpoint or not self.key:
             raise ValueError("Azure Cosmos DB endpoint and key must be provided.")
+        self.client = None
+        self.container = None
+
+    async def initialize(self) -> None:
+        """Connect to Azure Cosmos DB and resolve the container client."""
+        if self.client is not None:
+            return
         if CosmosClient is None:
             raise ImportError(
-                "azure-cosmos is not installed. Please install it to use this backend."
+                "azure-cosmos is required for AzureCosmosDBBackend: pip install azure-cosmos"
             )
         self.client = CosmosClient(self.endpoint, credential=self.key)
         self.db = self.client.get_database_client(self.database_name)
         self.container = self.db.get_container_client(self.container_name)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             doc = {
@@ -96,6 +104,7 @@ class AzureCosmosDBBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         for doc_id in ids:
             self.container.delete_item(item=doc_id, partition_key=doc_id)
         self.log_metrics("delete_vectors", len(ids))

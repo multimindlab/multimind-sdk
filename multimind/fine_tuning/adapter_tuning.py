@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 import torch
 from datasets import Dataset as HFDataset
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, TaskType, get_peft_model
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,

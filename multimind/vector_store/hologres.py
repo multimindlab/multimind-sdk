@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from hologres_vector import HologresVector
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from hologres_vector import HologresVector
+except ImportError:
+    HologresVector = None
 
 
 class HologresBackend(VectorStoreBackend):
@@ -52,6 +55,16 @@ class HologresBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not all([self.host, self.port, self.dbname, self.user, self.password, self.vector_dim]):
             raise ValueError("Hologres connection parameters and vector_dim must be provided.")
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Hologres and create the vector table if needed."""
+        if self.client is not None:
+            return
+        if HologresVector is None:
+            raise ImportError(
+                "hologres-vector is required for HologresBackend: pip install hologres-vector"
+            )
         conn_str = HologresVector.connection_string_from_db_params(
             self.host, self.port, self.dbname, self.user, self.password
         )
@@ -66,6 +79,7 @@ class HologresBackend(VectorStoreBackend):
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Hologres expects vectors, ids, schema_datas, metadatas
+        await self.initialize()
         schema_datas = documents if documents else [{} for _ in vectors]
         metadatas = metadatas if metadatas else [{} for _ in vectors]
         ids = ids if ids else [str(i) for i in range(len(vectors))]
@@ -89,6 +103,7 @@ class HologresBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         # Integrated query: nearest neighbor + filter
         search_kwargs = {"k": k}
@@ -144,6 +159,7 @@ class HologresBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids):
         # Delete by id using schema_data_filters
+        await self.initialize()
         for doc_id in ids:
             await asyncio.get_event_loop().run_in_executor(
                 None, lambda: self.client.delete_vectors(schema_data_filters={"id": doc_id})
@@ -152,6 +168,7 @@ class HologresBackend(VectorStoreBackend):
 
     async def clear(self):
         # Delete all data
+        await self.initialize()
         await asyncio.get_event_loop().run_in_executor(None, lambda: self.client.delete_vectors())
         self.log_metrics("clear", 1)
 

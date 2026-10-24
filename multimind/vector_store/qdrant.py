@@ -4,10 +4,14 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import FieldCondition, Filter, MatchValue, PointStruct
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from qdrant_client import QdrantClient
+    from qdrant_client.http.models import FieldCondition, Filter, MatchValue, PointStruct
+except ImportError:
+    QdrantClient = None
 
 
 class QdrantBackend(VectorStoreBackend):
@@ -32,8 +36,17 @@ class QdrantBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Connect to Qdrant and create the collection if needed."""
+        if self._client is not None:
+            return
+        if QdrantClient is None:
+            raise ImportError(
+                "qdrant-client is required for QdrantBackend: pip install qdrant-client"
+            )
         self._client = QdrantClient(host=self.host, port=self.port, api_key=self.api_key)
-        # Ensure collection exists
         if self.collection not in [c.name for c in self._client.get_collections().collections]:
             self._client.create_collection(
                 collection_name=self.collection,
@@ -41,6 +54,7 @@ class QdrantBackend(VectorStoreBackend):
             )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -70,6 +84,7 @@ class QdrantBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
         qdrant_filter = None
         if filter_criteria:
@@ -101,6 +116,7 @@ class QdrantBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None, lambda: self._client.delete(collection_name=self.collection, points=ids)
@@ -108,6 +124,7 @@ class QdrantBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,

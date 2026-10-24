@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from google.cloud import aiplatform
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from google.cloud import aiplatform
+except ImportError:
+    aiplatform = None
 
 
 class MatchingEngineBackend(VectorStoreBackend):
@@ -32,6 +35,18 @@ class MatchingEngineBackend(VectorStoreBackend):
             raise ValueError(
                 "project, index_id, and endpoint_id must be provided for Matching Engine."
             )
+        self.index = None
+        self.endpoint = None
+
+    async def initialize(self) -> None:
+        """Initialise Vertex AI and resolve the index and endpoint."""
+        if self.index is not None:
+            return
+        if aiplatform is None:
+            raise ImportError(
+                "google-cloud-aiplatform is required for MatchingEngineBackend: "
+                "pip install google-cloud-aiplatform"
+            )
         aiplatform.init(project=self.project, location=self.location)
         self.index = aiplatform.MatchingEngineIndex(index_name=self.index_id)
         self.endpoint = aiplatform.MatchingEngineIndexEndpoint(index_endpoint_name=self.endpoint_id)
@@ -39,6 +54,7 @@ class MatchingEngineBackend(VectorStoreBackend):
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         # Matching Engine expects embeddings and optional metadata
         # This is a sync API, so run in thread
+        await self.initialize()
         loop = asyncio.get_event_loop()
         # Prepare datapoints
         datapoints = []
@@ -66,6 +82,7 @@ class MatchingEngineBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # Only vector search is supported
+        await self.initialize()
         loop = asyncio.get_event_loop()
         results = await loop.run_in_executor(
             None,
@@ -87,12 +104,14 @@ class MatchingEngineBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self.index.remove_datapoints, ids)
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
         # No direct clear; must remove all datapoints by listing and deleting
+        await self.initialize()
         loop = asyncio.get_event_loop()
         datapoints = await loop.run_in_executor(None, self.index.list_datapoints)
         all_ids = [dp.datapoint_id for dp in datapoints]

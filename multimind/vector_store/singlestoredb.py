@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-import singlestoredb as s2
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import singlestoredb as s2
+except ImportError:
+    s2 = None
 
 
 class SingleStoreDBBackend(VectorStoreBackend):
@@ -35,6 +39,16 @@ class SingleStoreDBBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._conn = None
+
+    async def initialize(self) -> None:
+        """Connect to SingleStoreDB and create the vector table if needed."""
+        if self._conn is not None:
+            return
+        if s2 is None:
+            raise ImportError(
+                "singlestoredb is required for SingleStoreDBBackend: pip install singlestoredb"
+            )
         self._conn = s2.connect(
             host=self.host,
             port=self.port,
@@ -58,6 +72,7 @@ class SingleStoreDBBackend(VectorStoreBackend):
             )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -94,6 +109,7 @@ class SingleStoreDBBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -129,6 +145,7 @@ class SingleStoreDBBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -141,6 +158,7 @@ class SingleStoreDBBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

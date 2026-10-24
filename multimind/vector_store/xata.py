@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from xata.client import XataClient
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from xata.client import XataClient
+except ImportError:
+    XataClient = None
 
 
 class XataVectorStore(VectorStoreBackend):
@@ -28,6 +31,14 @@ class XataVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Connect to Xata and create the vector table if needed."""
+        if self.client is not None:
+            return
+        if XataClient is None:
+            raise ImportError("xata is required for XataVectorStore: pip install xata")
         self.client = XataClient(db_url=self.db_url, api_key=self.api_key)
         self._ensure_table()
 
@@ -49,6 +60,7 @@ class XataVectorStore(VectorStoreBackend):
             self.logger.warning(f"Table ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -80,6 +92,7 @@ class XataVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -113,6 +126,7 @@ class XataVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -123,6 +137,7 @@ class XataVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

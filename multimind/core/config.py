@@ -159,8 +159,24 @@ class GatewayConfig(BaseSettings):
 
     model_config = {"env_prefix": "MULTIMIND_", "case_sensitive": False}
 
+    @staticmethod
+    def _store():
+        from ..config_store import get_config_store
+
+        return get_config_store()
+
+    def effective_default_model(self) -> str:
+        """Default provider: config store, else env/default."""
+        return self._store().get("default_model") or self.default_model
+
+    def effective_log_level(self) -> str:
+        return self._store().get("log_level") or self.log_level
+
+    def is_provider_enabled(self, model_name: str) -> bool:
+        return bool(self._store().get(f"providers.{model_name.lower()}.enabled", True))
+
     def get_model_config(self, model_name: str) -> ModelConfig:
-        """Get configuration for a specific model"""
+        """Get configuration for a specific model (store overrides model_name/api_base; key from env)"""
         model_map = {
             "openai": self.openai,
             "anthropic": self.anthropic,
@@ -184,7 +200,16 @@ class GatewayConfig(BaseSettings):
             raise ValueError(
                 f"Unknown model name '{model_name}'. Available models: {available_models}"
             )
-        return model_map[normalized_name]
+        base = model_map[normalized_name]
+        store = self._store()
+        overrides = {}
+        model_override = store.get(f"providers.{normalized_name}.model_name")
+        if model_override:
+            overrides["model_name"] = model_override
+        base_url = store.get(f"providers.{normalized_name}.base_url")
+        if base_url:
+            overrides["api_base"] = base_url
+        return base.model_copy(update=overrides) if overrides else base
 
     @classmethod
     def validate(cls, value: "GatewayConfig") -> "GatewayConfig":

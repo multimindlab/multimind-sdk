@@ -377,6 +377,155 @@ GET  /v1/compliance/alerts?organization_id=...&status=active[&severity=...]
 
 Request/response models are in the OpenAPI spec. Unknown regulation names return `400`.
 
+### Feature routes
+
+`multimind.gateway.features_api` adds one thin route per SDK component that had no HTTP surface. Each route calls the SDK class named below; none reimplements it. A missing optional dependency is a `200` capability report on `GET` routes and a `501` with an install hint on `POST` routes. Model-backed routes take the same model names as `/v1/chat` and resolve them through `get_model_handler`; an unconfigured model returns `400`.
+
+#### Feature registry
+
+```http
+GET /v1/features
+-> {"count": 27, "features": [{"name": "hallucination", "module": "multimind.evaluation.hallucination",
+                               "routes": ["POST /v1/evaluation/hallucination"], "available": true}, ...]}
+```
+
+One entry per feature, pre-existing routes included (chat, compare, sessions, compliance monitor, guard proxy, scan text, audit, evidence, inventory, costs, guardrails, RAG). `available` is computed by importing `module` in the server process; torch-gated entries (`fine-tuning`, `model-conversion`) carry `reason` and `install` when unavailable. The dashboard and the feature-chain test read this list.
+
+#### Hallucination detection
+
+```http
+POST /v1/evaluation/hallucination
+{"response": "Paris is the capital of France. It has 80 million people.",
+ "sources": ["Paris is the capital and largest city of France."],
+ "judge_model": "openai"}                       # optional
+
+-> {"score": 0.5, "unsupported_count": 1, "summary": "grounding score 0.50 over 2 sentence(s): ...",
+    "sentences": [{"sentence", "verdict": "supported|partial|unsupported", "score", "best_source_snippet"}],
+    "claims": {"score", "summary", "claims": [{"claim", "verdict"}]} | null}
+```
+
+Calls `HallucinationDetector.check_grounding` (lexical, no model). With `judge_model` it also runs `check_claims` through that model; unparseable judge output returns `502`.
+
+#### Session model switch
+
+```http
+POST /v1/sessions/{session_id}/switch
+{"model": "claude", "strategy": "full" | "summary" | "adapted"}
+
+-> {"session_id", "model": "claude", "strategy_applied", "message_count",
+    "transfer": {"from_model", "to_model", "strategy", "message_count", "timestamp"}}
+```
+
+Builds a `ModelSession` (`multimind.client.model_session`) seeded with the gateway session's history, calls `switch()`, writes the resulting history back, re-targets `session.model`, and appends the transfer entry to `session.metadata["transfers"]`. `summary` calls the session's current model to compact the history into one system message; `full` and `adapted` make no model call (`adapted` falls back to `full` when no provider adapter matches). Unknown session `404`, unknown strategy `400`.
+
+#### Context transfer
+
+```http
+POST /v1/context-transfer
+{"messages": [{"role": "user", "content": "..."}, ...], "source_model": "chatgpt",
+ "target_model": "claude", "strategy": "concise|detailed|structured", "last_n": 5}
+
+-> {"success": true, "formatted_prompt": "...", "metadata": {"messages_processed", "messages_extracted", "model_capabilities", ...}}
+```
+
+Calls `ContextTransferAPI.transfer_context_api` over `ContextTransferManager` (same as `multimind context-transfer`, without files).
+
+#### Agents
+
+```http
+POST /v1/agents/run
+{"model": "openai", "task": "What is 17 * 23?", "tools": ["calculator"], "max_turns": 5}
+
+-> {"answer": "391", "error": null, "native_tools": true, "tools": ["calculator"],
+    "tool_calls": [{"tool": "calculator", "args": {"expression": "17*23"}, "result": 391.0}]}
+```
+
+Runs `multimind.agents.Agent` with `CalculatorTool`. `native_tools` is true when the model client is OpenAI-shaped (function-calling loop with a trace); otherwise the agent's keyword routing applies. Unknown tool names return `400`.
+
+#### Memory demo store
+
+```http
+GET    /v1/memory                        -> {"kinds": [{"kind", "module", "class", "needs_model", "constructible", "active"}]}
+POST   /v1/memory/{kind}/messages        {"role": "user", "content": "...", "model": "openai"}  -> {"kind", "stored": true, "message_count"}
+GET    /v1/memory/{kind}/messages        -> {"kind", "active", "messages": [...]}
+DELETE /v1/memory/{kind}                 -> {"kind", "cleared"}
+```
+
+Kinds: `buffer` (`BufferMemory`), `summary` (`SummaryMemory`), `episodic`, `semantic`, `procedural`; all but `buffer` need `model` on the first message. One instance per kind lives in the server process and calls the real class's `add_message`, `get_messages`, and `clear`. Unknown kinds return `404`.
+
+#### Vector store inventory
+
+```http
+GET /v1/vector-stores[?refresh=true]
+-> {"total": 60, "constructible": 49,
+    "backends": [{"name": "FAISSBackend", "module", "client_module": "faiss", "client_installed": true,
+                  "local": true, "experimental": false, "constructible": true, "reason"?}]}
+```
+
+Every backend in the `multimind.vector_store` registry, probed once per process: `constructible` constructs the class with a minimal dummy config (nothing connects), `client_installed` checks the client package the module imports, `local` marks the six in-process backends, `experimental` marks the eleven placeholders.
+
+#### Fine-tuning and conversion
+
+```http
+POST /v1/finetune/synthetic-qa
+{"chunks": ["..."], "model": "openai", "max_pairs": 5, "questions_per_chunk": 3}
+-> {"count", "pairs": [{"question", "answer", "source_chunk", "grounding_score"}], "records": [{"instruction", "input", "output"}]}
+
+GET /v1/finetune/capabilities
+-> {"torch_installed": false, "install": "pip install 'multimind-sdk[finetune]'",
+    "methods": {"synthetic_qa": {"available": true}, "lora": {"available": false, "reason": "..."}, "qlora", "adapter", "conversion"}}
+
+GET /v1/convert/formats
+-> {"available": true, "sources": [...], "targets": [...], "converters": [...]}
+   | {"available": false, "install": "pip install 'multimind-sdk[finetune]'", "reason": "..."}
+```
+
+`synthetic-qa` calls `SyntheticQAGenerator.generate`. The capability routes import `multimind.fine_tuning.*` and `multimind.model_conversion` and report the result; both return `200` whether or not torch is installed.
+
+#### Regulatory watch and differential privacy
+
+```http
+POST /v1/compliance/regulatory-check
+{"sources": [{"name": "eu-ai-act", "url": "https://...", "content": "..."}], "offline": true, "state_path": "..."}
+-> {"mode": "offline", "state_path", "events": [{"name", "url", "changed", "diff", "checked_at", "previous_hash", "current_hash"}]}
+
+POST /v1/compliance/dp/privatize
+{"value": 42, "epsilon": 0.5, "sensitivity": 1.0, "budget": 1.0, "budget_id": "demo"}   # or "values": [..]
+-> {"value": 42.37, "epsilon", "sensitivity", "budget": {"id", "total_epsilon", "spent_epsilon", "remaining_epsilon"}}
+```
+
+`regulatory-check` calls `RegulatoryWatcher`: offline mode hashes the supplied `content` through `check_offline`; online mode (`offline: false`) fetches each `url` with `check`. `dp/privatize` calls `DPMechanism.privatize` with an optional `PrivacyBudget`; naming a `budget_id` carries the budget across calls in the process, and exhaustion returns `400` with the SDK's message.
+
+#### MCP tools
+
+```http
+GET  /v1/mcp/tools              -> {"server": "multimind-compliance", "server_startable": true, "tools": [{"name", "description", "parameters"}]}
+POST /v1/mcp/tools/{name}       {"arguments": {"text": "..."}}  -> {"tool", "result"}
+```
+
+Lists the tool functions `multimind.mcp_server` registers without starting the server and invokes them in-process: `scan_text`, `redact_text`, `check_grounding`, `check_policy`, and `audit_log` (appends to `MULTIMIND_AUDIT_LOG`). Unknown tool `404`, bad arguments `400`.
+
+#### Framework integrations
+
+```http
+GET /v1/integrations
+-> {"frameworks": [{"framework": "langchain", "module", "client_module": "langchain_core", "installed": true,
+                    "install": "pip install langchain-core", "entry_points": ["guard_runnable", ...]}]}
+```
+
+One entry per adapter in `multimind.integrations.frameworks` (langchain, llamaindex, crewai, autogen, haystack, openai_client).
+
+#### Tracing
+
+```http
+GET  /v1/traces?limit=20   -> {"available": true, "db": "...", "runs": [...]} | {"available": false, "reason": "...", "runs": []}
+POST /v1/traces/demo       {"prompt": "..."}  -> {"persisted", "db", "run": {...}, "spans": [...]}
+```
+
+`GET` reads root runs from the `RunTracer` SQLite sink at `MULTIMIND_TRACING_DB` (see [tracing](/tracing)). `POST /v1/traces/demo` records one `trace_model` call on a stub model through the default tracer so a trace exists without a provider key; hashes and lengths only, as the tracer defaults.
+
+Cost summaries already exist at `GET /api/costs` on `multimind backend` (see [dashboard](/dashboard)), so no `/v1/costs` route was added.
+
 ### Error Responses
 
 Errors use FastAPI's standard shape:
@@ -392,7 +541,8 @@ Status codes used by the gateway:
 - `400`: requested model is not configured, or the request is malformed
 - `404`: chat session not found
 - `422`: request body failed validation (FastAPI's default; `detail` is a list of field errors)
-- `502`: the model provider call failed while adding a session message
+- `501`: a feature route needs an optional extra that is not installed (`detail` carries the install hint)
+- `502`: the model provider call failed while adding a session message, or a feature route got unusable model output
 - `503`: no model provider is configured at all
 - `500`: unexpected server error (details are logged, not returned)
 
@@ -401,5 +551,5 @@ Status codes used by the gateway:
 For complete working examples, see:
 - [Gateway Examples](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/api/gateway_examples.py)
 - [Ollama chat CLI](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/cli/chat_ollama_cli.py)
-- [RAG Example](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/api/rag_example.py)
-- [Advanced RAG](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/api/rag_advanced_example.py)
+- [RAG Example](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/rag/example_rag.py)
+- [Advanced RAG](https://github.com/multimindlab/multimind-sdk/blob/develop/examples/rag/self_tuning_rag_example.py)

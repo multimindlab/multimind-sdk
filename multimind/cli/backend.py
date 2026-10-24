@@ -1,4 +1,4 @@
-"""`multimind backend` — run every REST API from one process/port."""
+"""`multimind backend` — run every REST API plus the dashboard UI from one process/port."""
 
 from typing import Optional
 
@@ -28,10 +28,12 @@ def _backend():
 @click.option("--host", default=None, help="Bind host (default 127.0.0.1)")
 @click.option("--port", "-p", type=int, default=None, help="Bind port (default 8080)")
 def backend(host: Optional[str], port: Optional[int]):
-    """Serve every supported MultiMind REST route from one process and one Swagger UI.
+    """Serve every supported MultiMind REST route and the governance dashboard UI from one port.
 
-    This is the stable API (`GET /docs`). The older four-app mount aggregator
-    remains available as multimind.backend.app.create_backend_app.
+    The dashboard page is served at `/` (same origin as `/v1/*` and `/api/*`,
+    so no CORS or backend URL setup is needed); the stable API docs are at
+    `GET /docs`. The older four-app mount aggregator remains available as
+    multimind.backend.app.create_backend_app.
     """
     import os
 
@@ -43,6 +45,7 @@ def backend(host: Optional[str], port: Optional[int]):
     console.print(
         Panel.fit(
             f"[bold]API:[/bold]     [green]{base}[/green]\n"
+            f"[bold]UI:[/bold]      {base}/\n"
             f"[bold]Swagger:[/bold] {base}/docs\n"
             f"[bold]Health:[/bold]  {base}/health",
             title="MultiMind API",

@@ -134,3 +134,69 @@ def test_compliance_dashboard_and_alerts_reflect_recorded_checks(client):
     assert len(alerts) == 1
     assert alerts[0]["severity"] == "high" and alerts[0]["status"] == "active"
     assert client.get("/v1/compliance/alerts", params={"organization_id": "other"}).json() == []
+
+
+@pytest.fixture()
+def isolated_store(tmp_path, monkeypatch):
+    from multimind.config_store import reset_config_store
+
+    monkeypatch.setenv("MULTIMIND_CONFIG_FILE", str(tmp_path / "multimind.config.json"))
+    reset_config_store()
+    yield
+    monkeypatch.delenv("MULTIMIND_CONFIG_FILE", raising=False)
+    reset_config_store()
+
+
+def test_dashboard_ui_is_served_at_root(client):
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "text/html" in page.headers["content-type"]
+    assert "<html" in page.text.lower()
+    assert client.get("/app.js").status_code == 200
+    assert client.get("/config.js").status_code == 200
+    assert client.get("/health").json()["status"] == "healthy"
+    assert client.get("/ready").status_code == 200
+    assert client.get("/docs").status_code == 200
+    paths = client.get("/openapi.json").json()["paths"]
+    assert "/api/config" in paths
+    assert "/api/config/test-provider" in paths
+    assert "get" in paths["/api/config"] and "put" in paths["/api/config"]
+
+
+def test_ui_files_are_open_when_api_keys_set(monkeypatch):
+    monkeypatch.setenv("API_KEYS", "secret")
+    client = TestClient(create_platform_app())
+    assert client.get("/").status_code == 200
+    assert client.get("/app.js").status_code == 200
+    assert client.get("/api/config").status_code == 401
+
+
+def test_config_store_changes_apply_without_restart(client, monkeypatch, isolated_store):
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("GROQ_API_KEY", "gsk-test")
+    assert "openai" in client.get("/v1/models").json()["models"]
+
+    response = client.put("/api/config", json={"providers.openai.enabled": False})
+    assert response.status_code == 200
+    models = client.get("/v1/models").json()["models"]
+    assert "openai" not in models and "groq" in models
+    assert client.get("/api/config").json()["effective"]["providers"]["openai"]["enabled"] is False
+
+    from multimind.gateway.models import get_model_handler
+
+    with pytest.raises(ValueError, match="not available"):
+        get_model_handler("openai")
+
+    assert client.get("/api/config").json()["effective"]["default_model"] != "groq"
+    assert client.put("/api/config", json={"default_model": "groq"}).status_code == 200
+    assert client.get("/api/config").json()["effective"]["default_model"] == "groq"
+    assert "sk-test" not in client.get("/api/config").text
+
+
+def test_platform_config_js_never_contains_a_key(monkeypatch):
+    monkeypatch.setenv("MULTIMIND_API_KEY", "dashboard-secret-key")
+    monkeypatch.setenv("API_KEYS", "dashboard-secret-key")
+    client = TestClient(create_platform_app())
+    body = client.get("/config.js").text
+    assert "dashboard-secret-key" not in body
+    assert 'window.MULTIMIND_API_KEY=""' in body

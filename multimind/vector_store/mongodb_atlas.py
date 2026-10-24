@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from pymongo import MongoClient
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from pymongo import MongoClient
+except ImportError:
+    MongoClient = None
 
 
 class MongoDBAtlasBackend(VectorStoreBackend):
@@ -28,6 +31,15 @@ class MongoDBAtlasBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+        self._collection = None
+
+    async def initialize(self) -> None:
+        """Connect to MongoDB Atlas and ensure the vector index exists."""
+        if self._client is not None:
+            return
+        if MongoClient is None:
+            raise ImportError("pymongo is required for MongoDBAtlasBackend: pip install pymongo")
         self._client = MongoClient(self.uri)
         self._db = self._client[self.database]
         self._collection = self._db[self.collection_name]
@@ -39,6 +51,7 @@ class MongoDBAtlasBackend(VectorStoreBackend):
             pass
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         docs = []
         for i, vector in enumerate(vectors):
             doc = {
@@ -63,6 +76,7 @@ class MongoDBAtlasBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # MongoDB Atlas vector search (requires Atlas Search index)
+        await self.initialize()
         loop = asyncio.get_event_loop()
         pipeline = [
             {
@@ -107,6 +121,7 @@ class MongoDBAtlasBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None, lambda: self._collection.delete_many({"_id": {"$in": ids}})
@@ -114,6 +129,7 @@ class MongoDBAtlasBackend(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._collection.delete_many, {})
         self.log_metrics("clear", 1)

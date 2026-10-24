@@ -83,7 +83,32 @@ body {
 .sidebar nav a:hover { background: var(--accent-soft); color: var(--ink); }
 .sidebar nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
-.sidebar-foot { margin-top: auto; font-size: 12px; color: var(--ink-3); }
+.sidebar nav .nav-group {
+  margin: 0.9rem 0 0.2rem;
+  padding: 0 0.7rem;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.sidebar nav .nav-group:first-child { margin-top: 0; }
+.sidebar { overflow-y: auto; }
+
+.sidebar-foot { margin-top: auto; padding-top: 1rem; font-size: 12px; color: var(--ink-3); }
+
+/* Playground: chat transcripts and wide table cells. */
+.messages { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0 1rem; max-height: 420px; overflow-y: auto; }
+.msg { border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.75rem; background: var(--bg); }
+.msg.user { border-color: var(--accent); }
+.msg-role { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+.msg-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+td.wrap { white-space: normal; overflow-wrap: anywhere; max-width: 420px; }
+tr.active-row td { background: var(--accent-soft); }
+input[type="password"], input[type="file"] {
+  font: inherit; color: var(--ink); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 7px; padding: 0.35rem 0.6rem; min-width: 9rem;
+}
 
 .content {
   flex: 1;

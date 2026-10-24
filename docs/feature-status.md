@@ -1,53 +1,56 @@
 ---
 title: "MultiMind SDK - Feature Status"
+description: "Verified status of every MultiMind SDK feature: what is tested and working, what exists but is untested, and what is a placeholder."
 ---
 
-This document provides an honest status of all features in MultiMind SDK. Each feature is marked with one of three status badges:
+This page is the source of truth for what the SDK does today. Every row was checked against the code and the test suite on 2026-10-13, and the badges follow one rule:
 
-- ✅ **Stable**: Production-ready, fully tested, and working
-- 🚧 **Beta**: Functional but may have limitations or missing features
-- 📋 **Planned**: Not yet implemented or placeholder only
+- ✅ **Stable**: works, and a test in the default suite proves it
+- 🚧 **Beta**: real code that constructs and runs, but with a stated limitation or without a test in the default suite
+- 📋 **Planned**: not implemented, or a placeholder that raises `NotImplementedError` rather than pretending to work
+
+A row never says a feature works unless something runs it. Where the proof needs a live service or a GPU, the row says so and stays Beta.
 
 ---
 
 ## 🧠 Core AI Model Management
 
 ### Model Integrations
-- ✅ **OpenAI Integration** (`OpenAIModel`) - Full API support with GPT-3.5, GPT-4, embeddings
-  - Example: `examples/api/model_wrapper.py`
-- ✅ **Claude Integration** (`ClaudeModel`) - Anthropic API support
-  - Example: `examples/api/model_wrapper.py`
-- ✅ **Ollama Integration** (`OllamaModel`) - Local model support
-  - Example: `examples/cli/chat_ollama_cli.py`
-- ✅ **Mistral Integration** - `MistralAIModel` (direct Mistral API) and `MistralModel` (local via Ollama)
-- ✅ **OpenRouter Integration** (`OpenRouterModel`) - 300+ models from dozens of providers via one API key
-- ✅ **Together AI Integration** (`TogetherModel`) - Open-weight models with embeddings support
-- ✅ **xAI Integration** (`XAIModel`) - Grok models
-- ✅ **Perplexity Integration** (`PerplexityModel`) - Sonar online models
-- ✅ **Fireworks AI Integration** (`FireworksModel`) - Open-weight models with embeddings support
-- ✅ **Cerebras Integration** (`CerebrasModel`) - Fast inference on Cerebras hardware
-- ✅ **100+ Model Support** - 13 first-party providers (OpenAI, Claude, Gemini, Groq, Mistral, DeepSeek, Ollama, OpenRouter, Together, xAI, Perplexity, Fireworks, Cerebras) plus 300+ models via OpenRouter aggregation
+- ✅ **OpenAI** (`OpenAIModel`) - chat, generation, embeddings, vision input
+  - Example: `examples/api/model_wrapper.py`; tests: `tests/test_new_providers.py`, `tests/test_vision.py`
+- ✅ **Claude** (`ClaudeModel`) - chat, generation, vision input
+  - Example: `examples/api/model_wrapper.py`; tests: `tests/test_new_providers.py`, `tests/test_vision.py`
+- ✅ **Ollama** (`OllamaModel`) - local models over HTTP. Two bugs fixed on 2026-10-13: non-streaming calls never sent `stream: false`, so every `generate()` and `chat()` against a real server failed on the NDJSON response; and `temperature`/`max_tokens` were sent at the top level, where Ollama ignores them, instead of under `options` as `temperature`/`num_predict`
+  - Example: `examples/cli/chat_ollama_cli.py`; tests: `tests/test_ollama_model.py`
+- ✅ **Mistral** - `MistralAIModel` (Mistral API, OpenAI-compatible) and `MistralModel` (the Ollama model `mistral`)
+- ✅ **Gemini**, **Groq**, **DeepSeek** (`GeminiModel`, `GroqModel`, `DeepSeekModel`)
+- ✅ **OpenRouter** (`OpenRouterModel`) - one key for the models OpenRouter aggregates; `embeddings()` raises `NotImplementedError` by design
+- ✅ **Together AI** (`TogetherModel`) - chat and embeddings
+- ✅ **xAI** (`XAIModel`) - chat; no embeddings endpoint
+- ✅ **Perplexity** (`PerplexityModel`) - Sonar models
+- ✅ **Fireworks AI** (`FireworksModel`) - chat and embeddings
+- ✅ **Cerebras** (`CerebrasModel`)
+- ✅ **13 first-party providers** - the thirteen classes above, each tested with a mocked client in `tests/test_new_providers.py`. `HuggingFaceModel` runs local transformers models and needs the `[finetune]` extra. Model counts per provider depend on the upstream catalog; the SDK ships no model list
 
 ### Model Features
-- ✅ **Vision/Multimodal Input** - `images=` on `generate`/`chat` for OpenAI-compatible providers (content-parts with base64 data URLs or URLs) and Claude (base64/URL image blocks); providers without a vision-capable endpoint raise `NotImplementedError`
-  - Example: `examples/models/vision_demo.py`
-- ✅ **Multi-Model Wrapper** - Unified interface for multiple models
-  - Example: `examples/api/multi_model_wrapper.py`
-- ✅ **Model Routing** - Basic routing between models
-  - Example: `examples/api/ensemble_api.py`
-- ✅ **Model Sessions** (`ModelSession`, `multimind/client/model_session.py`) - Stateful chat over any BaseLLM-compatible model (including guard-wrapped ones) with history, a rolling summary when the token budget is exceeded, and `switch(model, strategy=...)` to move a conversation to another model using `full`, `summary`, or `adapted` transfer; every switch is logged in `transfers`
+- ✅ **Vision/Multimodal Input** - `images=` on `generate`/`chat` for OpenAI-compatible providers (content parts with base64 data URLs or URLs) and Claude (image blocks); providers without a vision endpoint raise `NotImplementedError`
+  - Example: `examples/models/vision_demo.py`; tests: `tests/test_vision.py`
+- ✅ **Multi-Model Wrapper** (`MultiModelWrapper`) - one interface over several models with per-model performance stats
+  - Example: `examples/api/multi_model_wrapper.py`; tests: `tests/examples/cli/test_multi_model_wrapper_cli.py`, `tests/test_basic.py`
+- ✅ **Model Routing** (`Router`, `ModelRouter`) - rule-based routing between models
+  - Example: `examples/api/ensemble_api.py`; tests: `tests/test_orchestration_router.py`, `tests/examples/api/test_ensemble_api.py`
+- ✅ **Model Sessions** (`ModelSession`) - stateful chat over any model with history, a rolling summary past the token budget, and `switch(model, strategy=...)` with `full`, `summary`, or `adapted` transfer
   - Tests: `tests/test_model_session.py`
-- ✅ **Context Transfer** (`multimind.context_transfer`, `multimind context-transfer`) - Reformats a saved conversation from one provider into a prompt for another with last-N extraction, concise/detailed/structured summaries, and provider adapters; the CLI's `--list_models`, `--model_info`, argument validation, and missing-file paths are tested. Two tests for private formatter methods that no longer exist are skipped, not failing
+- ✅ **Context Transfer** (`multimind.context_transfer`, `multimind context-transfer`) - reformats a saved conversation from one provider into a prompt for another with last-N extraction, three summary styles, and provider adapters. Two tests for private formatter methods that no longer exist are skipped, not failing
   - Tests: `tests/test_context_transfer.py`, `tests/test_context_transfer_integration.py`, `tests/test_cli.py`
-- 🚧 **Model Conversion** (`ModelConversionManager`, `multimind convert`) - HuggingFace/PyTorch/TensorFlow/ONNX/Ollama sources to GGUF/Safetensors/TFLite/ORT/ONNX targets; needs the `[finetune]` extra (torch). Only the CLI's no-torch failure path is tested; the converters themselves have no automated coverage, so this stays Beta
-  - Tests: `tests/test_cli.py` (`test_convert_without_torch_fails_cleanly`)
-- 🚧 **Mixture-of-Experts (MoE)** - Basic implementation. `MoEFactory.create_model` was passing its config dict positionally into `MoEModel(config)` instead of unpacking it as keyword arguments, so model creation via the factory was broken; fixed. Edge-case tests added for config validation and (torch-gated) routing/capacity behavior; stays Beta pending fuller real-model coverage
-  - Example: `examples/moe/`
-  - Tests: `tests/test_moe_edge_cases.py`
-- 🚧 **Model Compression** - Basic quantization support. Fixed a real bug where dynamic quantization's result was discarded: `torch.quantization.quantize_dynamic()` returns a new module rather than mutating in place, so the quantized layer was never actually installed on the model. Edge-case tests added (torch-gated; this venv has no torch so they run in CI's torch job); stays Beta pending broader real-model coverage
+- 🚧 **Model Conversion** (`ModelConversionManager`, `multimind convert`) - HuggingFace, PyTorch, TensorFlow, ONNX, and Ollama sources to GGUF, Safetensors, TFLite, ORT, and ONNX targets. Needs the `[finetune]` extra. Only the no-torch failure path is tested
+  - Tests: `tests/test_cli.py`
+- 🚧 **Mixture-of-Experts** (`MoEFactory`, `MoEModel`) - config validation tested without torch; routing and capacity tests need torch and skip in the default suite. Two factories exist (`models/moe.py` and `models/moe/moe_factory.py`)
+  - Example: `examples/moe/`; tests: `tests/test_moe_edge_cases.py`
+- 🚧 **Model Compression** - dynamic quantization. All tests need torch and skip in the default suite
   - Tests: `tests/test_model_compression_edge_cases.py`
-- 📋 **Federated Learning** - Not implemented
-- 📋 **Model Watermarking** - Not implemented
+- 📋 **Federated Learning** - `memory/federated.py` and `client/federated_router.py` raise `NotImplementedError`; no training
+- 📋 **Model Watermarking** - `ModelWatermarking.watermark_model` and `verify_watermark` raise `NotImplementedError`; only `track_fingerprint` works
 
 ---
 
@@ -55,246 +58,238 @@ This document provides an honest status of all features in MultiMind SDK. Each f
 
 ### Vector Store Backends
 
-#### ✅ **Core** (Recommended, most exercised)
-- ✅ **FAISS** - Fully functional local vector store, now with real add/search/delete/persist/load round-trip integration tests (example: `examples/vector_store/`)
-- ✅ **Chroma** - Complete implementation with metadata support (example: `examples/rag/rag_example.py`)
-- ✅ **Pinecone**, **Qdrant**, **Weaviate**, **Milvus**, **Zilliz**
-- ✅ **Elasticsearch**, **OpenSearch**, **MongoDB Atlas**
-- ✅ **PGVector**, **PGVectoRS**, **PGEmbedding** (PostgreSQL family)
-- ✅ **Annoy**, **sklearn**, **SQLiteVSS**, **LanceDB** - fixed real bugs that made Annoy/sklearn/SQLiteVSS impossible to even instantiate (missing the required `initialize()` override) or return correct results (SQLiteVSS's query syntax and an empty-table crash in its underlying native library; a missing `vector` field on sklearn's and SQLiteVSS's search results; Annoy losing index density after deletes). All four now have real add/search/delete round-trip integration tests
-  - Tests: `tests/integration/test_vector_stores_live.py` (`pytest -m integration`), `tests/integration/README.md`
+The SDK ships 60 backend modules. On 2026-10-13 every one of them was made constructible: 50 were missing the `initialize()` override the base class requires, so they raised `TypeError` before touching a client. The unified `VectorStore` wrapper was also fixed; it read a config attribute that did not exist and passed the config positionally to backends that take keyword arguments, so it had never worked with any backend.
 
-#### 🚧 **Client-backed** (Real implementations, less battle-tested)
-AlibabaCloud OpenSearch, AnalyticDB, AstraDB, Hippo, Hologres, Marqo, Matching Engine,
-Meilisearch, Momento, MyScale, Neo4j Vector, NucliaDB, Rockset, SingleStoreDB, StarRocks,
-Supabase, Tair, TencentVectorDB, Tigris, TimescaleVector, Typesense, USearch, Vald,
-Vectara, Xata, Zep — each calls its actual client library and returns real results.
+- Tests: `tests/test_vector_store_construction.py` (every backend constructs; local backends round-trip; the unified wrapper round-trips FAISS and Chroma), `tests/integration/test_vector_stores_live.py` (`pytest -m integration`)
 
-Partially implemented (unsupported operations raise `NotImplementedError`):
-Cassandra (no search), Azure AI Search / Azure Cosmos DB (no vector search),
-LLMRails (no delete), TileDB (no delete).
+#### ✅ **Local** - tested end to end in the default suite
+- ✅ **FAISS** - add, search, delete, persist, load; honors `filter_criteria` including lookup by id
+- ✅ **Chroma** - in-process persistent client; add, search, metadata filter, delete, reopen from disk. `persist_directory` in the config is honored
+- ✅ **Annoy**, **sklearn**, **SQLiteVSS** - add, search, delete round-trips
+- ✅ **LanceDB** - constructs and initializes against the installed library; no round-trip test yet beyond construction
 
-#### 📋 **Not Implemented** (all methods raise `NotImplementedError`)
-AwaDB, BagelDB, BaiduCloud, Clarifai, ClickHouse, DashVector, Databricks Vector Search,
-DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla
+#### 🚧 **Client-backed** - real client code, constructible, needs a live service to prove
+Each of these imports its client library lazily, raises a clear `ImportError` naming the pip package when it is missing, and calls the real client in `add_vectors`, `search`, and `delete_vectors`. None is exercised against a live service in CI, so none is Stable.
 
-> **Note**: ~44 of the ~60 backends are real client-library-backed implementations.
-> The 11 unimplemented ones raise `NotImplementedError` immediately — no backend
-> silently pretends to work.
+Pinecone, Qdrant, Weaviate, Milvus, Zilliz, Elasticsearch, OpenSearch, MongoDB Atlas, Atlas, PGVector, PGVectoRS, PGEmbedding, AlibabaCloud OpenSearch, AnalyticDB, AstraDB, Hippo, Hologres, Marqo, Matching Engine, Meilisearch, Momento, MyScale, Neo4j Vector, NucliaDB, Rockset, SingleStoreDB, StarRocks, Supabase, Tair, TencentVectorDB, Tigris, TimescaleVector, Typesense, USearch, Vald, Vectara, Xata, Zep.
+
+Partially implemented, where the unsupported operation raises `NotImplementedError`: Cassandra (no search), Azure AI Search and Azure Cosmos DB (no vector search), LLMRails (no delete), TileDB (no delete).
+
+#### 📋 **Not implemented** - every operation raises `NotImplementedError`
+AwaDB, BagelDB, BaiduCloud, Clarifai, ClickHouse, DashVector, Databricks Vector Search, DeepLake, DingoDB, Elastic Vector Search (legacy module), Epsilla. These load only when `MULTIMIND_EXPERIMENTAL_VECTOR_STORES=1` is set.
+
+> Count: 6 local backends tested in the default suite, 43 client-backed backends that construct and have real client code but no CI proof, 11 placeholders.
 
 ### RAG Features
-- ✅ **Basic RAG Pipeline** - Core RAG implementation with document processing
-  - Example: `examples/rag/rag_example.py`
-- ✅ **Document Processing** - Text splitting and basic processing
-  - Example: `examples/rag/rag_example.py`
-- ✅ **Embedding Management** - Basic embedding support
-- 🚧 **Advanced RAG** - Enhanced retrieval with metadata filtering. Edge-case tests added for `Retriever`/`EnhancedRetriever`/`HybridRetriever` (malformed filters, empty corpus, oversized k, fusion-weight/feedback behavior); stays Beta pending broader coverage
-  - Example: `examples/rag/rag_advanced_example.py`
-  - Tests: `tests/test_advanced_rag_edge_cases.py`
-- ✅ **Hybrid RAG Architecture** - `GraphRetriever` builds an entity/relation graph via LLM extraction (`GraphRAG`) and ranks documents by query-entity overlap plus one-hop neighbor expansion
-  - Example: `tests/test_graph_retrieval.py`
-- 📋 **Quantum-Enhanced Search** - Quantum algorithms not implemented
-- 🚧 **Multi-Modal Document Processing** - Table extraction implemented (pdfplumber for PDFs, pandas for pre-parsed rows); image extraction does OCR via pytesseract (`[documents]` extra) with no object detection/captioning (no vision model configured); LLM-based structure analysis remains a placeholder
+- ✅ **Basic RAG Pipeline** (`RAG`, `RAGPipeline`) - add documents, retrieve, generate
+  - Example: `examples/rag/example_rag.py`; tests: `tests/examples/rag/`, `tests/test_api_rag.py`
+- ✅ **Document Processing** (`TextSplitter`, `document_processing`) - splitting and chunking
+  - Example: `examples/rag/example_rag.py`; tests: `tests/test_splitter.py`, `tests/test_advanced_document_processor.py`
+- ✅ **Embedding Management** (`EmbeddingGenerator`, `OpenAIEmbedder`) - batching, normalization, dimension handling, stats
+  - Tests: `tests/test_embeddings_openai.py`. `HuggingFaceEmbedder` needs torch and is not tested in the default suite
+- 🚧 **Advanced RAG** (`Retriever`, `EnhancedRetriever`, `HybridRetriever`) - metadata filtering and fusion. Known bug: `RAG.retrieve(filter_criteria=...)` spreads the dict as keyword arguments into the vector store search and raises; filter client-side until fixed
+  - Example: `examples/rag/self_tuning_rag_example.py`; tests: `tests/test_advanced_rag_edge_cases.py`, `tests/test_retrieval.py`
+- ✅ **Hybrid RAG with knowledge graph** (`GraphRetriever`, `GraphRAG`) - entity and relation graph built by LLM extraction, ranked by query-entity overlap with one-hop neighbor expansion
+  - Tests: `tests/test_graph_retrieval.py`
+- 📋 **Quantum-Enhanced Search** - not implemented
+- 🚧 **Multi-Modal Document Processing** - table extraction via pdfplumber and pandas; image OCR via pytesseract (`[documents]` extra); no object detection or captioning; LLM-based structure analysis is a placeholder
 
 ---
 
 ## 🤖 AI Agents
 
 ### Agent Framework
-- ✅ **Basic Agents** - `Agent` class with real native function-calling: builds JSON-schema tool definitions from registered tools, executes returned `tool_calls` in a bounded loop (`max_turns`), and feeds results back to the model — used automatically when the model exposes an OpenAI-compatible client; falls back to keyword-based tool routing otherwise (duck-typed detection)
-  - Example: `examples/cli/basic_agent.py`
-- ✅ **Agent Registry** - Agent registration and management
-  - Example: `examples/agents/agent_registry_example.py`
-- ✅ **ReAct Toolchain** - ReAct pattern implementation
-  - Example: `examples/agents/react_toolchain_example.py`
-- 🚧 **Multi-Agent Orchestration** - Basic coordination
-- ✅ **Self-Evolving Agents** (bounded) - `SelfEvolvingAgent` records task outcomes and injects the top-utility few-shot exemplars into future prompts; utility rises on success and decays on failure. Bound: no self-modification of code or prompts beyond exemplar selection
-  - Example: `tests/test_self_evolving.py`
-- ✅ **Cognitive Scratchpad** - Step dependencies (`add_step_dependency`, cycle-checked) and revision history (`revise_step`/`get_revision_history`) added on top of the existing LLM-based reasoning-chain tracking
-  - Example: `tests/test_cognitive_scratchpad.py`
+- ✅ **Basic Agents** (`Agent`) - native function calling: JSON-schema tool definitions, a bounded `tool_calls` loop (`max_turns`), results fed back to the model; keyword-based tool routing when the model has no tool API
+  - Example: `examples/cli/basic_agent.py`; tests: `tests/test_agents_function_calling.py`
+- ✅ **Agent Registry** (`AgentRegistry`, exported from `multimind.agents`) - registration, lookup, and fallback
+  - Example: `examples/agents/agent_registry_example.py`; tests: `tests/test_agents_registry_and_chain.py`
+- 🚧 **Reasoning Chain** (`ReasoningChain`, `agents/react_toolchain.py`) - a sequential pipeline of callables with hooks. It is not a ReAct loop: there is no model-driven thought, action, observation cycle and no tool selection. The example runs offline
+  - Example: `examples/agents/react_toolchain_example.py`; tests: `tests/test_agents_registry_and_chain.py`
+- ✅ **Multi-Agent Orchestration** (`AgentOrchestrator`) - delegation and spawning with depth, agent-count, and turn bounds, plus an audit hook
+  - Tests: `tests/test_agent_orchestration.py`
+- ✅ **Self-Evolving Agents** (`SelfEvolvingAgent`) - records task outcomes and injects top-utility few-shot exemplars; no self-modification of code or prompts
+  - Tests: `tests/test_self_evolving.py`
+- ✅ **Cognitive Scratchpad** - step dependencies with cycle checks and revision history
+  - Tests: `tests/test_cognitive_scratchpad.py`
+- ✅ **`MultiMind` facade with memory** - `MultiMind(llm, memory=...)` now records turns through the memory API that exists. Until 2026-10-13 it called a method no memory class implemented, so any `chat()` with a memory raised
+  - Tests: `tests/test_multimind_memory.py`
 
 ---
 
 ## 🧠 Memory Systems
 
-### ✅ **Stable** Memory Types
-- ✅ **Buffer Memory** - Working conversation buffer
-- ✅ **Summary Memory** - Working summarization
-- ✅ **Summary Buffer Memory** - Hybrid summary + buffer
-- ✅ **Agent Memory** - Agent state management
-  - Example: `examples/memory/basic_usage.py`
-- ✅ **Vector Store Memory** - Real add/get/search/clear/save-load round-trips against a live FAISS backend, with correct similarity ordering. Fixed real bugs: the default config crashed on construction (passed kwargs the real `VectorStoreConfig` doesn't accept), several call sites read config values as attributes that don't exist on `VectorStoreConfig` (now uses `.get(...)`), the embedding call used a nonexistent `BaseLLM` method name, and `VectorStore.load()` discarded the backend instance its own `load()` classmethod returned. Known limitation: the FAISS backend ignores `filter_criteria`, so `get(memory_id)` isn't reliable once more than one vector is stored
-  - Tests: `tests/test_memory_beta.py`
-- ✅ **Episodic Memory** - Real add/retrieve round-trips through the spatial/temporal/emotional indices, episode chaining, and save/load persistence. Fixed real bugs: a `len()` called on an int in `get_episode_suggestions`, chain-list mutation of a predecessor's own stored list, sets not JSON-serializable on save (and not restored as sets on load), and self-similarity inflating episode chaining
-  - Tests: `tests/test_memory_beta.py`
-- ✅ **Semantic Memory** - Real concept-extraction, relationship-inference, and save/load round-trips. Fixed real bugs: a missing `await` on `embeddings()` during `load()` (silently storing coroutine objects instead of vectors), sets not JSON-serializable on save, and self-similarity inflating relationship inference
-  - Tests: `tests/test_memory_beta.py`
-- ✅ **Procedural Memory** - Real procedure-extraction, `record_execution`/adaptation, and save/load round-trips. Fixed real bugs: two methods named `get_procedure_stats`/`get_procedure_suggestions` in the same class silently shadowed each other, so `super().get_procedure_stats()` in the subclass resolved to a nonexistent parent method instead of the intended base implementation (renamed the base versions); a missing `await` on `embeddings()` during `load()`; sets not JSON-serializable on save
-  - Tests: `tests/test_memory_beta.py`
-- ✅ **Hybrid Memory** - Real routing across two live child memories (both full- and partial-routing cases), `get_hybrid_stats`, and save/load round-trips. Fixed a real bug: `load()` restored the hybrid bookkeeping but never reloaded each child memory's own persisted content, so reloaded child memories came back empty
-  - Example: `examples/memory/advanced_memory_manager.py`
-  - Tests: `tests/test_memory_beta.py`
+Memory classes that are abstract and cannot be instantiated are listed on the [memory page](/memory), not here.
 
-### 📋 **Planned/Experimental** Memory Types
-- 📋 **Quantum Memory** - Simulation code only (not real quantum computing)
-  - Note: This is a classical simulation, not actual quantum hardware
-  - Example: `examples/memory/quantum_memory.py` (for educational purposes)
-- 🚧 **Consensus Memory** - Local in-process replication with majority-vote reads; networked RAFT (elections, RPCs) not implemented and raises `NotImplementedError`
-- ✅ **Planning Memory** - Plan-step recording plus success-weighted next-step suggestion from historical state/action outcomes (same style as `ReinforcementMemory`); the old fake multi-step "rollout" simulation (fabricated outcomes, no real environment) was removed rather than kept as invented output
-  - Example: `tests/test_planning_memory.py`
-- 🚧 **Declarative Memory** - Fact storage with timestamp-based temporal relations, lexical-cue causal heuristics, and knowledge-graph updates (delegates to a configured graph memory, else a plain dict graph); verification/consistency/reasoning analyses depend on a JSON-capable LLM
-- 🚧 **Implicit Memory** - Skill tracking with prerequisite graph and practice-based proficiency
-- 🚧 **Reinforcement Memory** - Pure-python tabular Q-learning for budget management (keep/evict/compress)
-- 🚧 **Generative Memory** - Regeneration bookkeeping, drift tracking, and due-memory regeneration via a caller-supplied generator
-- 🚧 **Active Learning Memory** - Explicit feedback loop: per-memory utility scores, utility-weighted recency retrieval, low-utility eviction
+### ✅ **Stable** Memory Types
+- ✅ **Buffer Memory** - conversation buffer with save and load
+  - Tests: `tests/test_advanced_features.py`
+- ✅ **Summary Memory** - LLM-backed rolling summaries. `get_messages()` returned empty strings until 2026-10-13 because it read the wrong key
+  - Tests: `tests/test_advanced_features.py`
+- ✅ **Summary Buffer Memory** - recent messages plus a summary of older ones. Could not be constructed at all until 2026-10-13: it passed an argument its parent does not accept
+  - Tests: `tests/test_memory.py`
+- ✅ **Agent Memory** (`AgentMemory`) - task, response, and state tracking
+  - Example: `examples/memory/basic_usage.py`; tests: `tests/test_advanced_features.py`, `tests/test_multimind_memory.py`
+- ✅ **Vector Store Memory** - add, get, search, clear, save, and load against FAISS with correct similarity ordering
+  - Tests: `tests/test_memory_beta.py`
+- ✅ **Episodic Memory** - spatial, temporal, and emotional indices, episode chaining, persistence
+  - Tests: `tests/test_memory_beta.py`
+- ✅ **Semantic Memory** - concept extraction, relationship inference, persistence
+  - Tests: `tests/test_memory_beta.py`
+- ✅ **Procedural Memory** - procedure extraction, execution recording, adaptation, persistence
+  - Tests: `tests/test_memory_beta.py`
+- ✅ **Hybrid Memory** - routes across child memories with stats and persistence. Until 2026-10-13 `get_messages()` raised `KeyError` whenever a child such as `BufferMemory` emitted messages without timestamps, which was the documented configuration
+  - Example: `examples/memory/advanced_memory_manager.py`; tests: `tests/test_memory_beta.py`, `tests/test_memory_hybrid_buffer.py`
+- ✅ **Planning Memory** - plan-step recording with success-weighted next-step suggestion
+  - Tests: `tests/test_planning_memory.py`
+
+### 🚧 **Beta** Memory Types
+- 🚧 **Consensus Memory** - in-process replication with majority-vote reads; networked RAFT raises `NotImplementedError`
+- 🚧 **Declarative Memory** - facts with temporal and causal relations and a knowledge-graph update path; analyses need a JSON-capable LLM
+- 🚧 **Implicit Memory** - skill tracking with a prerequisite graph
+- 🚧 **Reinforcement Memory** - tabular Q-learning for keep, evict, and compress decisions
+- 🚧 **Generative Memory** - regeneration bookkeeping and drift tracking with a caller-supplied generator
+- 🚧 **Active Learning Memory** - utility-weighted retrieval and low-utility eviction
+  - Tests for all six: `tests/test_memory_advanced.py`, `tests/test_declarative_memory.py`
+
+### 📋 **Planned** Memory Types
+- 📋 **Quantum Memory** - `QRAM`, `QAM`, `TopologicalMemory`, and `QuantumClassicalHybridMemory` are abstract scaffolds that cannot be instantiated. `examples/memory/quantum_memory.py` demonstrates that honestly by printing each `TypeError`
 
 ---
 
 ## 🔄 Fine-Tuning & Model Training
 
-### Fine-Tuning Features
-- 🚧 **Basic LoRA** - Basic LoRA support
+Everything in this section needs torch, which the default test suite does not install. Nothing here is Stable because nothing here is proven in CI.
+
+- 🚧 **Basic LoRA** (`LoRATrainer`) - a peft and `Trainer` wrapper; no tests
   - Example: `examples/fine_tuning/`
-- 🚧 **Adapter Training** - Basic adapter support
-- 🚧 **Non-Transformer Models** - Mamba and RWKV run real inference (HuggingFace-backed); the other listed architectures (Hyena, S4 variants, RetNet, H3, MLP-only, diffusion-text, etc.) are extension scaffolds only and raise `NotImplementedError`
+- 🚧 **Adapter Training** (`AdapterTuner`, `PTuner`) - constructors raised `NameError` on a missing import until 2026-10-13; no runtime tests
+  - Tests: `tests/test_adapter_tuning_imports.py` (import check only)
+- 🚧 **Non-Transformer Models** - `MambaLLM` and `RWKVLLM` load through HuggingFace; Hyena, S4 variants, RetNet, H3, MLP-only, and diffusion-text are scaffolds that raise `NotImplementedError`
   - Example: `examples/non_transformer/`
-- 🚧 **QLoRA** - Real 4-bit NF4 quantization + LoRA adapters via transformers/peft/bitsandbytes (`[finetune-gpu]` extra); raises `NotImplementedError` when those deps are absent. Compacter remains a scaffold (peft ships no Compacter config)
-- 📋 **HyperLoRA** - Complex hypernetwork not implemented
-- ✅ **RAG Fine-tuning** - `SyntheticQAGenerator` generates Q/A pairs from document chunks via strict-parsed LLM JSON, dedups by question hash, quality-filters by grounding score, and exports Alpaca-style instruction-tuning JSONL; pure Python, no torch required
-  - Example: `tests/test_synthetic_data.py`
-- 📋 **Advanced Optimization** - Many techniques not implemented
+- 🚧 **QLoRA** (`QLoRALLM`, `QLoraTuner`) - 4-bit NF4 plus LoRA through transformers, peft, and bitsandbytes (`[finetune-gpu]`); raises a clear error when those are absent. `CompacterLLM` is a scaffold
+  - Tests: `tests/test_llm.py`, `tests/test_llm_wrappers.py` (no-dependency paths only)
+- 📋 **HyperLoRA** (`HyperLoRATuner`) - builds hypernetworks that are never wired into training; `train()` runs plain LoRA
+- ✅ **Synthetic Q/A for fine-tuning** (`SyntheticQAGenerator`) - Q/A pairs from document chunks via strictly parsed LLM JSON, deduplicated, quality-filtered, exported as Alpaca-style JSONL; pure Python
+  - Tests: `tests/test_synthetic_data.py`
+- 🚧 **Advanced Optimization** (`BayesianOptimizer`, `KnowledgeDistillation`) - code exists, needs torch and scikit-learn, no tests
 
 ---
 
 ## 🔐 Compliance & Security
 
-### ✅ **Stable** Compliance Features
-- ✅ **Basic Compliance Framework** - Core compliance infrastructure
-  - Example: `examples/compliance/healthcare_compliance_example.py`
-- ✅ **Healthcare Compliance** - PHI tracking with audit-logged access, breach modeling, and state-based HIPAA/HITECH rule checks; requirements needing external systems report `unverifiable` instead of a fabricated pass
-  - Example: `examples/compliance/healthcare/`
-- ✅ **GDPR Runtime Enforcement** - `GDPRPolicy.check_processing(purpose, data_categories, consent, retention_days)` evaluates a concrete processing request against a configured lawful-basis/purpose-limitation/retention policy and returns an `allowed`/`denied`/`not_configured` decision with reasons; unknown purposes get an explicit `not_configured` denial rather than a guess. `gdpr_enforce(policy)` derives real `ComplianceGuard` settings from the policy (blocks special-category PII when no purpose permits sensitive data; `hash` vs `mask` redaction strategy from the pseudonymization setting), wiring the policy into the actual runtime guard
+### ✅ **Stable**
+- ✅ **PII Guard** (`ComplianceGuard`, `PIIDetector`, `guard(model)`) - detection and redaction (mask, hash, remove) on prompts and responses, block lists, and a JSONL audit trail
+  - Tests: `tests/test_compliance_guard.py`
+- ✅ **Healthcare Compliance** - PHI tracking with audit-logged access, breach modeling, and state-based HIPAA and HITECH rule checks; requirements needing external systems report `unverifiable`, never a fabricated pass
+  - Example: `examples/compliance/healthcare/`; tests: `tests/compliance/test_healthcare.py`
+- ✅ **GDPR Runtime Enforcement** (`GDPRPolicy`, `gdpr_enforce`) - evaluates a processing request against lawful basis, purpose limitation, and retention and returns `allowed`, `denied`, or `not_configured` with reasons; wires the policy into the runtime guard
   - Tests: `tests/compliance/test_gdpr_enforcement.py`
-- ✅ **Framework Governance Adapters** (`multimind.integrations.frameworks`) - Drop-in PII guard/budget/cost/audit wrappers for LangChain (`guard_runnable`, `guard_tool`/`guard_tools` for agent tool inputs, `MultiMindCallbackHandler` with `pii_detected` audit events since LangChain callbacks can't mutate prompts), LlamaIndex (`guard_llm`, `MultiMindLlamaIndexHandler`), CrewAI (`guard_crew_llm`, verified against installed crewai 1.15.1), AutoGen (`guard_autogen_client`, targets autogen-core's `ChatCompletionClient` ABC), Haystack (`guard_haystack_generator`, duck-typed — never imports `haystack`), and raw OpenAI clients (`guard_openai`, covers `chat.completions.create`, `responses.create`, and `embeddings.create`). All lazy-imported; a missing framework raises a `pip install ...` hint only when its adapter is used
-  - Docs: `docs/integrations.md`
-  - Tests: `tests/test_framework_adapters.py`, `tests/test_framework_adapter_autogen.py`, `tests/test_framework_adapter_haystack.py`
-- ✅ **Guard Proxy** (`multimind serve`, `multimind/gateway/guard_proxy.py`) - OpenAI-compatible `/v1/chat/completions` and `/v1/embeddings` proxy in front of a named or custom upstream, with PII redaction (mask/hash/remove), `--block-on` rejection, budget enforcement, JSONL audit and cost logs, output scanning, and guardrails JSON hot-reload via `POST /v1/guardrails/reload`. Requires the `[gateway]` extra
-  - Docs: `docs/guard-proxy.md`
-  - Tests: `tests/test_guard_proxy.py`
-- ✅ **Hallucination Detection** (`multimind/evaluation/hallucination.py`) - `HallucinationDetector` scores each response sentence against supplied sources (containment-based grounding) and, with a judge model, extracts and verifies claims; `GuardedModel` wraps any model and on a low grounding score annotates, raises `HallucinationError`, or retries; `detect_hallucinations()` is the one-call form. Malformed judge output raises `ValueError` rather than being guessed at
+- ✅ **Framework Governance Adapters** - PII guard, budget, cost, and audit wrappers for LangChain, LlamaIndex, CrewAI, AutoGen, Haystack, and raw OpenAI clients; lazy imports with install hints. Tested with stubs; not exercised against the installed frameworks in CI
+  - Docs: [integrations](/integrations); tests: `tests/test_framework_adapters.py`, `tests/test_framework_adapter_autogen.py`, `tests/test_framework_adapter_haystack.py`
+- ✅ **Guard Proxy** (`multimind serve`) - OpenAI-compatible proxy with redaction, block lists, budgets, audit and cost logs, output scanning, guardrails hot reload, and `MULTIMIND_CORS_ORIGINS`
+  - Docs: [guard proxy](/guard-proxy); tests: `tests/test_guard_proxy.py`
+- ✅ **Hallucination Detection** (`HallucinationDetector`, `GuardedModel`, `HallucinationError`, `detect_hallucinations`) - sentence-level grounding against supplied sources, claim verification with a judge model, and annotate, raise, or retry policies
   - Tests: `tests/test_hallucination.py`
-- ✅ **Evidence Reports** (`build_evidence_report`, `multimind compliance report-evidence`) - Markdown or self-contained HTML report built from the guard audit log, the cost log, and an inventory scan, mapped to EU AI Act / SOC 2 / HIPAA control themes. Absent inputs are stated as absent, never fabricated; the framework mapping shrinks to the sources present; rendering is deterministic
+- ✅ **Evidence Reports** (`build_evidence_report`, `multimind compliance report-evidence`) - Markdown or HTML from the audit log, cost log, and inventory scan, mapped to EU AI Act, SOC 2, and HIPAA control themes; absent inputs are stated as absent
   - Tests: `tests/test_compliance_reporting.py`
-- ✅ **Governance Dashboard** (`multimind dashboard`, `multimind/dashboard/server.py`) - Local read-only web UI and JSON API (`/api/summary`, `/api/audit`, `/api/costs`, `/api/inventory`, `/api/scan-text`, `/api/evidence-report`, `/api/guardrails`) over the audit trail, cost log, and inventory scan, plus a no-code guardrails editor whose file feeds `multimind serve --config`. Requires the `[gateway]` extra
-  - Docs: `docs/dashboard.md`
-  - Tests: `tests/test_dashboard.py`
-- ✅ **MCP Server** (`python -m multimind.mcp_server`, `[mcp]` extra) - Anthropic Model Context Protocol server exposing `scan_text`, `redact_text`, `check_grounding`, `check_policy`, and `audit_log` tools to Claude Desktop, Claude Code, and other MCP clients; findings carry spans, never raw PII values. Importable without the MCP SDK and fails with an install hint only when started
-  - Docs: `docs/mcp-server.md`
-  - Tests: `tests/test_mcp_server.py`
+- ✅ **Governance Dashboard and Playground** (`multimind dashboard`, or `/` on `multimind backend`) - 26 views: governance (audit, costs, inventory, guardrails editor, scan text, evidence report, compliance), a playground view for every feature on this page (chat, compare, sessions, models, RAG, hallucination, agents, memory, vector stores, fine-tuning, conversion, regulatory watch, differential privacy, MCP tools, integrations, tracing, context transfer), and settings for every option except API keys
+  - Docs: [dashboard](/dashboard); tests: `tests/test_dashboard.py`, `tests/test_dashboard_views.py`
+- ✅ **MCP Server** (`python -m multimind.mcp_server`, `[mcp]`) - `scan_text`, `redact_text`, `check_grounding`, `check_policy`, and `audit_log` tools; findings carry spans, never raw PII
+  - Docs: [MCP server](/mcp-server); tests: `tests/test_mcp_server.py`
+- ✅ **Regulatory Change Detection** (`RegulatoryWatcher`) - fetches source pages, hashes content, and reports `ChangeEvent`s with a unified diff; `check_offline()` for dry runs. Distinct from the legacy `RegulatoryChangeDetector` stub below
+  - Example: `examples/compliance/regulatory_watch_demo.py`; tests: `tests/test_regulatory_watch.py`
+- ✅ **Differential Privacy** (`DPMechanism`, `PrivacyBudget`, `BudgetExhaustedError`) - Laplace noise with sequential epsilon accounting; advanced composition is not implemented
+  - Tests: `tests/test_differential_privacy.py`
+- ✅ **Compliance monitor API** (`POST /v1/compliance/monitor`) - PII scan of supplied text and GDPR purpose checks; anything without runtime evidence is `unverifiable`. Results are recorded per server process and feed `/v1/compliance/dashboard` and `/alerts`
+  - Tests: `tests/test_platform.py`
 
-### 🚧 **Beta** Compliance Features
-- 🚧 **Data Governance** - Basic governance framework
+### 🚧 **Beta**
+- 🚧 **Adaptive Privacy** (`AdaptivePrivacy`) - adjusts epsilon from compliance-score and loss feedback within configured bounds. Its starting epsilon disagrees with the encryption stub's until the first adaptation
+  - Tests: `tests/test_differential_privacy.py`
+- 🚧 **Data Governance** (`GovernanceConfig`, `ComplianceMetadata`, `DataProtectionManager`) - configuration models and a data-protection manager; there is no governance rule engine
 
-### 📋 **Planned** Compliance Features
-- 📋 **Zero-Knowledge Proofs** - `cryptography.zkp` import fails
-- 📋 **Federated Shards** - `FederatedShard` class missing
-- 📋 **Homomorphic Encryption** - Basic implementation only
-- 📋 **Self-Healing Compliance** - Patch generation not implemented
-- 📋 **Adaptive Privacy** - Feedback mechanisms not functional
-- ✅ **Regulatory Change Detection** - `RegulatoryWatcher` (`multimind/compliance/regulatory_watch.py`) fetches source pages via httpx, hashes content, and reports `ChangeEvent`s with a raw unified diff on change — no fabricated legal interpretation; offline `check_offline()` mode for dry runs. Note: distinct from the pre-existing `RegulatoryChangeDetector` stub in `advanced.py`, which remains unimplemented
-  - Example: `examples/compliance/regulatory_watch_demo.py`
-- 📋 **Quantum-Safe Encryption** - Not implemented
-- ✅ **Differential Privacy** - Laplace mechanism (`DPMechanism`) with epsilon-budget accounting (`PrivacyBudget`, `BudgetExhaustedError`) in `multimind/compliance/advanced.py`; composition is simple sequential (sum of epsilons per call) — (epsilon, delta)-advanced composition is not implemented
+### 📋 **Planned** - fail-closed stubs
+- 📋 **Zero-Knowledge Proofs** - `ZeroKnowledgeProof.prove` and `verify` raise `NotImplementedError`; no ZKP backend
+- 📋 **Homomorphic Encryption** - `HomomorphicEncryption.encrypt` raises `NotImplementedError`; nothing is encrypted
+- 📋 **Federated Compliance** - `FederatedCompliance.verify_global_compliance` and `ComplianceShard.verify_compliance` raise `NotImplementedError`; the shard's in-memory history and alerts are filled only by the compliance monitor API
+- 📋 **Self-Healing Compliance** - `check_and_heal` returns the input unchanged and raises when a vulnerability is detected
+- 📋 **`RegulatoryChangeDetector`** - legacy stub whose constructor raises `AttributeError`; use `RegulatoryWatcher`
+- 📋 **Quantum-Safe Encryption** - not implemented
 
 ---
 
 ## 🔄 Workflow & Orchestration
-
-### Workflow Features
-- ✅ **Prompt Chains** - Basic chaining
-  - Example: `examples/cli/prompt_chain.py`
-- ✅ **Task Runner** - Simple task execution
-  - Example: `examples/cli/task_runner.py`
-- 🚧 **MCP (Model Composition Protocol)** - Basic executor and parser for MultiMind's internal workflow format. Note: this is not Anthropic's Model Context Protocol — that is supported via the `multimind-compliance` MCP server (`python -m multimind.mcp_server`, `[mcp]` extra, see `docs/mcp-server.md`).
-  - Example: `examples/mcp_workflows/`
-- 🚧 **Pipeline Builder** - Basic pipeline construction
-  - Example: `examples/pipeline/pipeline_example.py`
-- 📋 **Visual Workflow Builder** - Drag-and-drop not implemented
-- 📋 **Event-Driven Architecture** - Reactive workflows not fully implemented
-- 📋 **Advanced Workflow Automation** - Complex features missing
+- ✅ **Prompt Chains** (`PromptChain`) - sequential prompt chaining
+  - Example: `examples/cli/prompt_chain.py`; tests: `tests/test_basic.py`
+- ✅ **Task Runner** (`TaskRunner`) - simple task execution
+  - Example: `examples/cli/task_runner.py`; tests: `tests/test_orchestration_router.py`
+- 🚧 **MCP workflows** (Model Composition Protocol, `multimind.mcp`) - executor and parser for MultiMind's internal workflow format; requires a real `model_registry`. Not Anthropic's Model Context Protocol, which is the Stable MCP server above
+  - Example: `examples/mcp_workflows/`; tests: `tests/examples/cli/test_mcp_workflow.py`, `tests/test_release_fixes.py`
+- 🚧 **Pipeline Builder** - basic pipeline construction
+  - Example: `examples/pipeline/pipeline_example.py`; tests: `tests/test_pipeline.py`
+- 📋 **Visual Workflow Builder**, **Event-Driven Architecture**, **Advanced Workflow Automation** - not implemented
 
 ---
 
 ## 📊 Monitoring & Analytics
-
-### Observability Features
-- ✅ **Cost Tracking and Budgets** (`CostTracker`, `Budget`, `track_costs`, `multimind/observability/cost_tracker.py`) - Per-call cost records with real token usage when the provider exposes it (else a flagged estimate), pricing from the model's `cost_per_token` or `MODEL_PRICING` (unpriced models record `$0` and are flagged, never a made-up price), per-model/provider/tag summaries, optional JSONL persistence, and `Budget` that warns at a ratio and raises `BudgetExceededError` at the cap
+- ✅ **Cost Tracking and Budgets** (`CostTracker`, `Budget`, `track_costs`) - per-call cost records from real token usage where the provider reports it, flagged estimates otherwise, unpriced models recorded at zero and flagged, JSONL persistence, and budget warnings and caps
   - Tests: `tests/test_cost_tracker.py`
-- ✅ **Shadow-AI Inventory and Chargeback** (`scan_project`, `CostTracker.chargeback`, `multimind audit`) - Static scan of dependencies, API URLs, env-var reads, and hardcoded AI keys (reported by location, never by value) plus per-tag chargeback reports from the session tracker or a JSONL cost log
-  - Docs: `docs/ai-inventory.md`
-  - Tests: `tests/test_ai_inventory.py`, `tests/test_cost_tracker.py`
-- ✅ **Run Tracing** (`RunTracer`, `trace_model`, `multimind/observability/tracing.py`) - Runs and nested spans for llm/chain/tool calls with latency, tokens, and cost, written to a local SQLite sink and/or exported to a self-hosted platform (`POST /api/v1/runs`, buffered retry on failure). Stores only character counts and SHA-256 hashes of prompts and responses unless `store_content=True` is passed
-  - Docs: `docs/tracing.md`
-  - Tests: `tests/test_tracing.py`
-- 🚧 **Basic Logging** - TraceLogger and basic metrics
-- 🚧 **Usage Tracking** - Basic usage tracking
-  - Example: `examples/cli/usage_tracking.py`
-- 📋 **Real-time Performance Tracking** - Microsecond-level monitoring not implemented
-- 📋 **AI-Powered Anomaly Detection** - Not implemented
-- 📋 **Cost Optimization Engine** - Intelligent allocation not implemented
-- 📋 **Predictive Maintenance** - Not implemented
+- ✅ **Shadow-AI Inventory and Chargeback** (`scan_project`, `CostTracker.chargeback`, `multimind audit`) - static scan of dependencies, API URLs, env-var reads, and hardcoded keys (by location, never by value), plus per-tag chargeback
+  - Docs: [AI inventory](/ai-inventory); tests: `tests/test_ai_inventory.py`
+- ✅ **Run Tracing** (`RunTracer`, `trace_model`) - runs and nested spans with latency, tokens, and cost to SQLite or a self-hosted platform; hashes and lengths only unless `store_content=True`
+  - Docs: [tracing](/tracing); tests: `tests/test_tracing.py`
+- 🚧 **Basic Logging** (`TraceLogger`) and **Usage Tracking** (`UsageTracker`) - lightweight helpers
+  - Example: `examples/cli/usage_tracking.py`; tests: `tests/test_basic.py`, `tests/examples/cli/test_usage_tracking.py`
+- 📋 **Real-time Performance Tracking**, **Anomaly Detection**, **Cost Optimization Engine**, **Predictive Maintenance** - not implemented
 
 ---
 
 ## 🛠️ CLI & API
+- ✅ **CLI** - eight command groups: `audit`, `backend`, `chat`, `compliance`, `config`, `dashboard`, `models`, `serve`, plus `convert` and `context-transfer`, and `--version`
+  - Docs: [CLI](/cli); tests: `tests/test_cli.py`
+- ✅ **Backend API** (`multimind backend`) - one FastAPI app and one Swagger UI for chat, sessions, compliance, governance, the guard proxy, and RAG, with optional `X-API-Key` auth
+  - Docs: [API overview](/api_reference/overview); tests: `tests/test_platform.py`, `tests/test_api_gateway.py`, `tests/test_dashboard.py`
+- 🚧 **Compliance alerts** - `POST /v1/compliance/alerts/configure` stores rules in memory; only `enabled: false` is evaluated and there are no notification channels
 
-### ✅ **Stable**
-- ✅ **CLI Framework** - Click-based CLI with multiple commands
-  - Docs: `docs/cli.md`; tests: `tests/test_cli.py`
-- ✅ **Basic API** - REST API gateway
-  - Example: `examples/api/gateway_examples.py`
+- ✅ **Feature routes and registry** - every component above has a route under `/v1` and `GET /v1/features` reports each one's availability and routes; settings are managed through `GET/PUT /api/config` with API keys kept in the environment
+  - Docs: [gateway](/api_reference/gateway), [configuration](/configuration); tests: `tests/test_features_api.py`, `tests/test_config_api.py`, `tests/test_config_store.py`
 
-### 🚧 **Beta**
-- 🚧 **Advanced API Features** - Some features may be limited
+Two CI checks keep this page honest. `scripts/check_docs_parity.py` fails when a CLI command or backend route is not mentioned under `docs/`. `scripts/check_feature_chain.py` fails when any registered feature lacks its route, its dashboard call, or its docs mention. The [feature parity matrix](/maintainers/feature-parity) shows the chain per feature.
 
 ---
 
 ## 📈 Test Coverage
 
-Test counts are not kept on this page because they go stale; the [CI workflow](https://github.com/multimindlab/multimind-sdk/blob/develop/.github/workflows/ci.yml) publishes the current passed/skipped/failed numbers per Python version on every run, and the `test-full` job enforces a 95% pass-rate gate. Tests that need optional heavy dependencies or live services skip in the default suite; the integration suite runs with `pytest -m integration`.
+Counts go stale, so this page does not keep them. The [CI workflow](https://github.com/multimindlab/multimind-sdk/blob/develop/.github/workflows/ci.yml) publishes passed, skipped, and failed numbers per Python version on every run. Gates: a 95% pass rate and a 20% line-coverage floor on the full suite, 70% line coverage on the PII guard and the guard proxy, and 35% on the provider, agent, and CLI trees. Tests that need torch, a GPU, a remote vector database, or a provider key skip in the default suite; the integration suite runs with `pytest -m integration`.
 
 ---
 
 ## 🎯 Summary
 
-### What Works Today (Production Ready)
-- Multi-model AI chat across 13 first-party providers (OpenAI, Claude, Gemini, Groq, Mistral, DeepSeek, Ollama, OpenRouter, Together, xAI, Perplexity, Fireworks, Cerebras) plus 300+ models via OpenRouter aggregation, with vision/multimodal input
-- Runtime PII guard, cost budgets, hallucination detection, and audit trails — one-line wrappers around any model
-- Compliance proxy (`multimind serve`), governance dashboard (`multimind dashboard`), AI-usage audit/chargeback (`multimind audit`), and evidence reports mapped to EU AI Act / SOC 2 / HIPAA control themes
-- Framework governance adapters for LangChain, LlamaIndex, CrewAI, AutoGen, Haystack, and raw OpenAI clients
-- Anthropic MCP server exposing compliance tools, plus an OSS tracing client for a self-hosted observability platform
-- Bounded agents with real native function-calling, tool-input scanning, and bounded self-evolving exemplar learning
-- GDPR runtime enforcement (policy → guard wiring) and state-based HIPAA validation (never a fabricated pass)
-- RAG (Retrieval-Augmented Generation) with hybrid knowledge-graph retrieval and synthetic Q/A generation for fine-tuning
-- 5 Stable memory types (Episodic, Semantic, Procedural, Hybrid, Vector Store) plus Buffer/Summary/Agent memory
-- ~44 real vector-database integrations (FAISS, Chroma, Pinecone, Qdrant, Weaviate, Milvus, and more)
-- CLI interface (7 command groups) and REST gateway with Swagger UI
-- Basic model conversion, fine-tuning (LoRA, real QLoRA), and context transfer between models
+### What works today, with tests
+- Thirteen first-party providers, vision input, model sessions, and context transfer
+- PII guard, cost budgets, hallucination detection, audit trails, and run tracing
+- Guard proxy, governance dashboard, AI-usage audit and chargeback, and evidence reports
+- Framework adapters for LangChain, LlamaIndex, CrewAI, AutoGen, Haystack, and raw OpenAI clients, tested with stubs
+- Anthropic MCP server
+- Agents with native function calling, an orchestrator with bounds, and bounded self-evolving exemplars
+- GDPR runtime enforcement, HIPAA validation that never fabricates a pass, differential privacy, and regulatory change detection
+- RAG with knowledge-graph retrieval, embeddings, and synthetic Q/A generation
+- Ten Stable memory types
+- Six local vector stores, and a unified wrapper that constructs all 49 real backends
+- CLI with eight command groups and one backend API with Swagger
 
-### What's In Development (Beta)
-- Advanced vector database integrations (26 client-backed backends, less battle-tested than the Core set)
-- MoE, model compression, and advanced RAG (edge-case tested this round; real bugs fixed, broader real-model coverage still pending)
-- Consensus/Declarative/Implicit/Reinforcement/Generative/Active-Learning memory (all real, none fabricated — see Memory Systems for specifics)
-- MCP workflows (Model Composition Protocol, MultiMind's internal workflow format — distinct from the Anthropic MCP server, which is Stable)
+### Real but unproven in CI
+- 43 client-backed vector stores that need a live service
+- Model conversion, LoRA, QLoRA, adapter tuning, MoE, compression, and the non-transformer models, which need torch
+- Six Beta memory types, the reasoning chain, MCP workflows, the pipeline builder, and adaptive privacy
 
-### What's Planned (Future)
-- Quantum memory (real quantum hardware)
-- 50+ additional vector database backends
-- Zero-knowledge proofs, homomorphic encryption, model/federated-learning watermarking, self-healing compliance patch generation
-- Visual workflow builder
-- Advanced monitoring and analytics (real-time performance tracking, anomaly detection, cost optimization engine)
+### Placeholders
+- Quantum memory and quantum search
+- Eleven vector store modules
+- Zero-knowledge proofs, homomorphic encryption, federated compliance, self-healing, watermarking, and federated learning
+- HyperLoRA, the visual workflow builder, and the advanced monitoring engines
 
 ---
 
-> **Honesty Note**: MultiMind SDK is actively being developed. While we have a solid foundation, many features described in marketing materials are still in development or planned. We're committed to transparency about what works today versus what's coming in the future. See [ROADMAP.md](https://github.com/multimindlab/multimind-sdk/blob/develop/ROADMAP.md) for our development priorities.
-
+> This page replaces marketing claims with what the test suite can show. When a row is wrong, open an issue with the row name; the fix goes into both the code and this page. See the [roadmap](https://github.com/multimindlab/multimind-sdk/blob/develop/ROADMAP.md) for what comes next.

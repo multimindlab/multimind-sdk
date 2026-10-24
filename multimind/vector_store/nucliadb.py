@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from nucliadb_sdk import NucliaDB
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from nucliadb_sdk import NucliaDB
+except ImportError:
+    NucliaDB = None
 
 
 class NucliaDBBackend(VectorStoreBackend):
@@ -28,10 +31,22 @@ class NucliaDBBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+        self._kb = None
+
+    async def initialize(self) -> None:
+        """Connect to NucliaDB and resolve the knowledge box."""
+        if self._client is not None:
+            return
+        if NucliaDB is None:
+            raise ImportError(
+                "nucliadb-sdk is required for NucliaDBBackend: pip install nucliadb-sdk"
+            )
         self._client = NucliaDB(self.host, self.key)
         self._kb = self._client.kb(self.kb)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -60,6 +75,7 @@ class NucliaDBBackend(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
         # NucliaDB supports vector search with optional metadata filtering
         filter_expr = filter_criteria or {}
@@ -81,6 +97,7 @@ class NucliaDBBackend(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
         for id_ in ids:
             await loop.run_in_executor(None, lambda: self._kb.delete_resource(id_))
@@ -88,6 +105,7 @@ class NucliaDBBackend(VectorStoreBackend):
 
     async def clear(self):
         # NucliaDB does not have a direct clear; delete all by listing
+        await self.initialize()
         loop = asyncio.get_event_loop()
         all_resources = await loop.run_in_executor(None, lambda: self._kb.list_resources())
         all_ids = [res["id"] for res in all_resources.get("resources", [])]

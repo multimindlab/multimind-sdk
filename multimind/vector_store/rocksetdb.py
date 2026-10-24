@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-import rockset
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import rockset
+except ImportError:
+    rockset = None
 
 
 class RocksetDBBackend(VectorStoreBackend):
@@ -29,14 +33,22 @@ class RocksetDBBackend(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._client = None
+
+    async def initialize(self) -> None:
+        """Connect to Rockset and create the collection if needed."""
+        if self._client is not None:
+            return
+        if rockset is None:
+            raise ImportError("rockset is required for RocksetDBBackend: pip install rockset")
         self._client = rockset.Client(api_key=self.api_key, host=self.host)
-        # Ensure collection exists
         try:
             self._client.Collection.retrieve(self.workspace, self.collection)
         except rockset.exceptions.NotFoundException:
             self._client.Collection.create(self.workspace, name=self.collection)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -67,6 +79,7 @@ class RocksetDBBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         # Rockset does not natively support vector search, but you can use SQL UDFs for similarity
+        await self.initialize()
         loop = asyncio.get_event_loop()
         filter_sql = ""
         if filter_criteria:
@@ -101,6 +114,7 @@ class RocksetDBBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids):
         # Rockset does not support direct delete by ID; use SQL
+        await self.initialize()
         loop = asyncio.get_event_loop()
         ids_list = ",".join(["'" + str(i) + "'" for i in ids])
         sql = f"DELETE FROM {self.workspace}.{self.collection} WHERE id IN ({ids_list})"
@@ -109,6 +123,7 @@ class RocksetDBBackend(VectorStoreBackend):
 
     async def clear(self):
         # Truncate collection using SQL
+        await self.initialize()
         loop = asyncio.get_event_loop()
         sql = f"DELETE FROM {self.workspace}.{self.collection}"
         await loop.run_in_executor(None, lambda: self._client.Query.query(sql=sql))

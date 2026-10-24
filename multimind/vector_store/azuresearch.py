@@ -45,9 +45,16 @@ class AzureSearchBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.endpoint or not self.api_key:
             raise ValueError("Azure Search endpoint and API key must be provided.")
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Create the Azure AI Search client."""
+        if self.client is not None:
+            return
         if SearchClient is None or AzureKeyCredential is None:
             raise ImportError(
-                "azure-search-documents is not installed. Please install it to use this backend."
+                "azure-search-documents is required for AzureSearchBackend: "
+                "pip install azure-search-documents"
             )
         self.client = SearchClient(
             endpoint=self.endpoint,
@@ -56,6 +63,7 @@ class AzureSearchBackend(VectorStoreBackend):
         )
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         actions = []
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
@@ -100,6 +108,7 @@ class AzureSearchBackend(VectorStoreBackend):
         return results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         actions = [{"@search.action": "delete", "id": doc_id} for doc_id in ids]
         self.client.upload_documents(documents=actions)
         self.log_metrics("delete_vectors", len(ids))

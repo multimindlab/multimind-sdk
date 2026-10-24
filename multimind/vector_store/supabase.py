@@ -3,9 +3,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from supabase import Client, create_client
-
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    from supabase import create_client
+except ImportError:
+    create_client = None
 
 
 class SupabaseVectorStore(VectorStoreBackend):
@@ -30,7 +33,15 @@ class SupabaseVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
-        self.client: Client = create_client(self.url, self.api_key)
+        self.client = None
+
+    async def initialize(self) -> None:
+        """Create the Supabase client and ensure the vector table exists."""
+        if self.client is not None:
+            return
+        if create_client is None:
+            raise ImportError("supabase is required for SupabaseVectorStore: pip install supabase")
+        self.client = create_client(self.url, self.api_key)
         self._ensure_table()
 
     def _ensure_table(self):
@@ -49,6 +60,7 @@ class SupabaseVectorStore(VectorStoreBackend):
             self.logger.warning(f"Table ensure failed or already exists: {e}")
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or [str(i) for i in range(n)]
         metadatas = metadatas or [{} for _ in range(n)]
@@ -78,6 +90,7 @@ class SupabaseVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -118,6 +131,7 @@ class SupabaseVectorStore(VectorStoreBackend):
         return search_results
 
     async def delete_vectors(self, ids):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _delete():
@@ -128,6 +142,7 @@ class SupabaseVectorStore(VectorStoreBackend):
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

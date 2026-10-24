@@ -1,9 +1,11 @@
 """One FastAPI application and one OpenAPI document for the supported HTTP API.
 
 Routes are copied from the gateway (chat, sessions, compliance), the governance
-dashboard (audit, costs, inventory, guardrails), and the guard proxy
-(OpenAI-compatible chat and embeddings, guardrail reload). The multi-modal MoE
-app is not included. RAG routes are included when the RAG extra imports.
+dashboard (audit, costs, inventory, guardrails, runtime config), and the guard
+proxy (OpenAI-compatible chat and embeddings, guardrail reload). The dashboard
+UI is served at ``/`` from the same process, so the page calls ``/v1/*`` and
+``/api/*`` on its own origin. The multi-modal MoE app is not included. RAG
+routes are included when the RAG extra imports.
 
 Authentication: when ``API_KEYS`` is set (comma-separated), every route except
 health, readiness, and the docs pages requires an ``X-API-Key`` header. When
@@ -13,16 +15,20 @@ health, readiness, and the docs pages requires an ``X-API-Key`` header. When
 from __future__ import annotations
 
 import os
-from typing import Iterable, List, Optional
+from pathlib import Path
+from typing import Iterable, List, Optional, Set
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from fastapi.staticfiles import StaticFiles
 
 from .. import __version__
+from ..config_store import get_config_store
 
 _DOC_PATHS = {"/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc"}
 _OPEN_PATHS = {"/health", "/ready", "/", *_DOC_PATHS}
+_STATIC_DIR = Path(__file__).parent.parent / "dashboard" / "static"
 
 
 def _iter_routes(router) -> Iterable[object]:
@@ -75,9 +81,15 @@ def create_platform_app() -> FastAPI:
         ],
     )
 
+    # Dashboard UI files are open so the page can load and then send X-API-Key itself.
+    ui_paths: Set[str] = {"/config.js", "/index.html"}
+    if _STATIC_DIR.is_dir():
+        ui_paths.update(f"/{p.name}" for p in _STATIC_DIR.iterdir() if p.is_file())
+
     @app.middleware("http")
     async def require_api_key(request, call_next):
-        if request.url.path in _OPEN_PATHS or request.url.path.startswith("/docs"):
+        path = request.url.path
+        if path in _OPEN_PATHS or path in ui_paths or path.startswith("/docs"):
             return await call_next(request)
         raw = os.getenv("API_KEYS", "")
         keys = [item.strip() for item in raw.split(",") if item.strip()]
@@ -88,7 +100,8 @@ def create_platform_app() -> FastAPI:
         return await call_next(request)
 
     # Added after auth so browser preflight is answered before the key check.
-    origins = [
+    # Config store wins over env; read once here, so a change needs a restart.
+    origins = get_config_store().get("cors_origins") or [
         item.strip()
         for item in (
             os.getenv("MULTIMIND_CORS_ORIGINS") or os.getenv("MULTIMIND_ALLOWED_ORIGINS") or ""
@@ -118,8 +131,20 @@ def create_platform_app() -> FastAPI:
             if path.startswith("/api")
         ]
         _copy_routes(dashboard, app, paths=api_paths)
+
+        # Never embed a key here: this file is open and would hand out the API key.
+        # The page is same-origin, so no base URL is needed; the key comes from the UI.
+        @app.get("/config.js", include_in_schema=False)
+        async def platform_config_js():
+            return Response(
+                content='window.MULTIMIND_API_BASE="";\nwindow.MULTIMIND_API_KEY="";\n',
+                media_type="application/javascript",
+                headers={"Cache-Control": "no-store"},
+            )
+
+        serve_ui = _STATIC_DIR.is_dir()
     except ImportError:
-        pass
+        serve_ui = False
 
     try:
         from ..gateway.guard_proxy import create_app as create_proxy
@@ -140,5 +165,13 @@ def create_platform_app() -> FastAPI:
         app.state.rag = "mounted"
     except ImportError:
         app.state.rag = "unavailable"
+
+    if serve_ui:
+        # The gateway's JSON "/" gives way to the dashboard page; static files are matched last.
+        app.router.routes[:] = [r for r in app.router.routes if getattr(r, "path", None) != "/"]
+        app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="dashboard-ui")
+        app.state.dashboard_ui = "mounted"
+    else:
+        app.state.dashboard_ui = "unavailable"
 
     return app

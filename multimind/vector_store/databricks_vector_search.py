@@ -43,6 +43,13 @@ class DatabricksVectorSearchBackend(VectorStoreBackend):
         # self.client = DatabricksVectorSearchClient(api_token=self.api_token, workspace_url=self.workspace_url)
         # self.col = self.client.index(self.index_name)
 
+    async def initialize(self) -> None:
+        raise NotImplementedError(
+            "DatabricksVectorSearchBackend.initialize is not implemented: the "
+            "DatabricksVectorSearch backend is a stub. Use an implemented backend "
+            "such as FAISS, Chroma, Qdrant, Pinecone, Milvus, or Weaviate."
+        )
+
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
         raise NotImplementedError(
             "DatabricksVectorSearchBackend.add_vectors is not implemented: the "

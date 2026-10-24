@@ -312,6 +312,8 @@ class SDKModelHandler(ModelHandler):
 def get_model_handler(model_name: str) -> ModelHandler:
     """Factory function to get the appropriate model handler"""
     name = model_name.lower()
+    if not config.is_provider_enabled(name):
+        raise ValueError(f"Model {model_name} is not available (disabled in the config store)")
     legacy = {
         "openai": OpenAIHandler,
         "anthropic": AnthropicHandler,

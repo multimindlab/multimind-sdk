@@ -49,10 +49,8 @@ class AstraDBBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.token or not self.api_endpoint:
             raise ValueError("AstraDB token and API endpoint must be provided.")
-        if AstraDB is None:
-            raise ImportError("astrapy is not installed. Please install it to use this backend.")
-        self.client = AstraDB(self.token, self.api_endpoint)
-        self.col = self.client.collection(self.collection)
+        self.client = None
+        self.col = None
 
     async def add_vectors(
         self,
@@ -62,6 +60,7 @@ class AstraDBBackend(VectorStoreBackend):
         ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             doc = {
@@ -85,6 +84,7 @@ class AstraDBBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         query = {"$vectorSearch": {"vector": query_vector, "k": k}}
         res = self.col.find(query)
@@ -131,12 +131,14 @@ class AstraDBBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids: List[str]) -> None:
         """Delete vectors by ID (batch supported)."""
+        await self.initialize()
         for doc_id in ids:
             self.col.delete_one({"_id": doc_id})
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
+        await self.initialize()
         self.col.delete_many({})
         self.log_metrics("clear", 1)
 
@@ -163,8 +165,13 @@ class AstraDBBackend(VectorStoreBackend):
             self.logger.info(f"[METRIC] {metric_name}: {value}")
 
     async def initialize(self) -> None:
-        """Connect to AstraDB and create index if needed."""
-        pass
+        """Connect to AstraDB and resolve the collection."""
+        if self.client is not None:
+            return
+        if AstraDB is None:
+            raise ImportError("astrapy is required for AstraDBBackend: pip install astrapy")
+        self.client = AstraDB(self.token, self.api_endpoint)
+        self.col = self.client.collection(self.collection)
 
     async def _run_plugin(self, name: str, *args, **kwargs):
         if name in self.plugin_registry:

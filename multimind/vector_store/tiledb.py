@@ -4,9 +4,13 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-import tiledb
 
 from .base import SearchResult, VectorStoreBackend
+
+try:
+    import tiledb
+except ImportError:
+    tiledb = None
 
 
 class TileDBVectorStore(VectorStoreBackend):
@@ -25,7 +29,16 @@ class TileDBVectorStore(VectorStoreBackend):
         self.plugin_registry = plugin_registry or {}
         self.retry_policy = retry_policy or {"retries": 3}
         self.logger = logging.getLogger(__name__)
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        """Create the TileDB array if it does not exist."""
+        if self._initialized:
+            return
+        if tiledb is None:
+            raise ImportError("tiledb is required for TileDBVectorStore: pip install tiledb")
         self._ensure_array()
+        self._initialized = True
 
     def _ensure_array(self):
         if not tiledb.object_type(self.array_uri):
@@ -43,6 +56,7 @@ class TileDBVectorStore(VectorStoreBackend):
             tiledb.DenseArray.create(self.array_uri, schema)
 
     async def add_vectors(self, vectors, metadatas, documents, ids=None):
+        await self.initialize()
         n = len(vectors)
         ids = ids or list(range(n))
         metadatas = metadatas or [{} for _ in range(n)]
@@ -70,6 +84,7 @@ class TileDBVectorStore(VectorStoreBackend):
         metadata_fields: Optional[List[str]] = None,
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _search():
@@ -117,6 +132,7 @@ class TileDBVectorStore(VectorStoreBackend):
         )
 
     async def clear(self):
+        await self.initialize()
         loop = asyncio.get_event_loop()
 
         def _clear():

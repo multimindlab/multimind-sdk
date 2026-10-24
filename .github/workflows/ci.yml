@@ -37,6 +37,8 @@ jobs:
         run: pip install -e ".[gateway]"
       - name: Docs parity (CLI commands and routes mentioned in docs/)
         run: python scripts/check_docs_parity.py
+      - name: Feature chain (component -> API -> dashboard -> docs)
+        run: python scripts/check_feature_chain.py
 
   # ---------------------------------------------------------------------------
   # Security scanning.

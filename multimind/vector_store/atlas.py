@@ -9,9 +9,12 @@ import logging
 import os
 from typing import Any, Callable, Dict, List, Optional
 
-from pymongo import MongoClient
-
 from .base import SearchResult, VectorStoreBackend, VectorStoreConfig
+
+try:
+    from pymongo import MongoClient
+except ImportError:
+    MongoClient = None
 
 
 class AtlasBackend(VectorStoreBackend):
@@ -46,13 +49,17 @@ class AtlasBackend(VectorStoreBackend):
         self.logger = logging.getLogger(__name__)
         if not self.uri:
             raise ValueError("MongoDB Atlas URI must be provided.")
-        self.client = MongoClient(self.uri)
-        self.col = self.client[self.db_name][self.collection]
+        self.client = None
+        self.col = None
 
     async def initialize(self) -> None:
-        """Connect to Atlas and create index if needed."""
-        self.logger.info("Initializing Atlas backend...")
-        pass
+        """Connect to Atlas and resolve the collection."""
+        if self.client is not None:
+            return
+        if MongoClient is None:
+            raise ImportError("pymongo is required for AtlasBackend: pip install pymongo")
+        self.client = MongoClient(self.uri)
+        self.col = self.client[self.db_name][self.collection]
 
     async def add_vectors(
         self,
@@ -62,6 +69,7 @@ class AtlasBackend(VectorStoreBackend):
         ids: Optional[List[str]] = None,
     ) -> None:
         """Add vectors with metadata and documents (batch supported)."""
+        await self.initialize()
         for i, vector in enumerate(vectors):
             doc_id = ids[i] if ids else None
             doc = {
@@ -86,6 +94,7 @@ class AtlasBackend(VectorStoreBackend):
         explain: Optional[bool] = None,
     ) -> List[SearchResult]:
         """Hybrid search: vector + keyword + metadata + custom scoring."""
+        await self.initialize()
         explain = explain if explain is not None else self.explain
         pipeline = [
             {
@@ -139,12 +148,14 @@ class AtlasBackend(VectorStoreBackend):
 
     async def delete_vectors(self, ids: List[str]) -> None:
         """Delete vectors by ID (batch supported)."""
+        await self.initialize()
         for doc_id in ids:
             self.col.delete_one({"_id": doc_id})
         self.log_metrics("delete_vectors", len(ids))
 
     async def clear(self) -> None:
         """Clear all vectors from the index."""
+        await self.initialize()
         self.col.delete_many({})
         self.log_metrics("clear", 1)
 
